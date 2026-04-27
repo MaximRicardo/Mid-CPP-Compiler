@@ -46,7 +46,7 @@ bool Parser_is_binop(enum Parser_ExprType type);
 bool Parser_is_unaryop(enum Parser_ExprType type);
 bool Parser_is_op(enum Parser_ExprType type);
 
-// goes from 0 to 16, where 16 is the highest precedence
+// goes from 0 to 15, where 15 is the highest precedence
 i32 Parser_op_precedence(enum Parser_ExprType op);
 bool Parser_op_ltr_assoc(enum Parser_ExprType op);
 

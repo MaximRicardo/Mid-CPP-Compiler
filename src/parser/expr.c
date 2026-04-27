@@ -40,7 +40,7 @@ bool Parser_is_op(enum Parser_ExprType type)
 
 i32 Parser_op_precedence(enum Parser_ExprType op)
 {
-    // goes from 17 to 1
+    // goes from 16 to 1
     i32 flipped;
 
     switch (op) {
@@ -65,13 +65,13 @@ i32 Parser_op_precedence(enum Parser_ExprType op)
         break;
     }
 
-    return 17 - flipped;
+    return 16 - flipped;
 }
 
 bool Parser_op_ltr_assoc(enum Parser_ExprType op)
 {
     i32 prec = Parser_op_precedence(op);
-    return prec != 15 && prec != 14 && prec != 1;
+    return prec != 13 && prec != 1;
 }
 
 static struct Parser_Expr numlit_tok_to_expr(const struct Lexer_Token *tok)
