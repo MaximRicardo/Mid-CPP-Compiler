@@ -2,8 +2,9 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/tokenize.h"
-#include "parser/expr.h"
+#include "parser/type.h"
 #include <assert.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -77,15 +78,26 @@ int main(int argc, char **argv)
     */
 
     struct DiagVec parser_diags = gen_dyninit();
+
+    /*
     auto expr = Parser_parse_expr(lex.toks.arr, 0, lex.toks.len, &parser_diags);
     if (print_diags(&parser_diags))
         goto parser_failed;
 
     printf("expr = %" PRId64 "\n", Parser_evaluate(&expr).sint);
+    */
+
+    auto type = Parser_parse_type(lex.toks.arr, 0, NULL, &parser_diags);
+    if (print_diags(&parser_diags))
+        goto parser_failed;
+
+    printf("type spec = %d\n", type.spec);
+    for (isize_t i = 0; i < type.mods.len; ++i)
+        printf("mod[%" PRIisz "] = %d\n", i, type.mods.arr[i]);
 
 parser_failed:
+    Parser_Type_deinit(&type);
     gen_dyndeinit(&parser_diags, Diag_deinit);
-    Parser_Expr_deinit(&expr);
 tokenize_failed:
     Lexer_Tokenize_deinit(&lex);
     free(src);

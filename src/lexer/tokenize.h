@@ -1,10 +1,12 @@
 #pragma once
 
 #include "diag.h"
+#include "symbol.h"
 #include "token.h"
 
 struct Lexer_Tokenize {
     struct Lexer_TokenVec toks;
+    struct SymbolTable symtbl;
     struct DiagVec diags;
 } Lexer_tokenize(const char *src, const char *file);
 

@@ -28,3 +28,15 @@ bool Lexer_is_op(enum Lexer_TokenType type)
 {
     return Lexer_is_binop(type) || Lexer_is_unaryop(type);
 }
+
+bool Lexer_is_typespec(enum Lexer_TokenType type)
+{
+    return type > LEXER_TOKENTYPE_TYPESPEC_START &&
+           type < LEXER_TOKENTYPE_TYPESPEC_END;
+}
+
+bool Lexer_is_typemod(enum Lexer_TokenType type)
+{
+    return type > LEXER_TOKENTYPE_TYPEMOD_START &&
+           type < LEXER_TOKENTYPE_TYPEMOD_END;
+}

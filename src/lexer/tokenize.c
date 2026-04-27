@@ -7,10 +7,66 @@
 #include "literal.h"
 #include "position.h"
 #include "print.h"
+#include "symbol.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// expands to a chain of case statements
+#define CASE_ISALPHA                                                           \
+    case 'a':                                                                  \
+    case 'b':                                                                  \
+    case 'c':                                                                  \
+    case 'd':                                                                  \
+    case 'e':                                                                  \
+    case 'f':                                                                  \
+    case 'g':                                                                  \
+    case 'h':                                                                  \
+    case 'i':                                                                  \
+    case 'j':                                                                  \
+    case 'k':                                                                  \
+    case 'l':                                                                  \
+    case 'm':                                                                  \
+    case 'n':                                                                  \
+    case 'o':                                                                  \
+    case 'p':                                                                  \
+    case 'q':                                                                  \
+    case 'r':                                                                  \
+    case 's':                                                                  \
+    case 't':                                                                  \
+    case 'u':                                                                  \
+    case 'v':                                                                  \
+    case 'w':                                                                  \
+    case 'x':                                                                  \
+    case 'y':                                                                  \
+    case 'z':                                                                  \
+    case 'A':                                                                  \
+    case 'B':                                                                  \
+    case 'C':                                                                  \
+    case 'D':                                                                  \
+    case 'E':                                                                  \
+    case 'F':                                                                  \
+    case 'G':                                                                  \
+    case 'H':                                                                  \
+    case 'I':                                                                  \
+    case 'J':                                                                  \
+    case 'K':                                                                  \
+    case 'L':                                                                  \
+    case 'M':                                                                  \
+    case 'N':                                                                  \
+    case 'O':                                                                  \
+    case 'P':                                                                  \
+    case 'Q':                                                                  \
+    case 'R':                                                                  \
+    case 'S':                                                                  \
+    case 'T':                                                                  \
+    case 'U':                                                                  \
+    case 'V':                                                                  \
+    case 'W':                                                                  \
+    case 'X':                                                                  \
+    case 'Y':                                                                  \
+    case 'Z'
 
 static struct Lexer_Token create_basic_tok(enum Lexer_TokenType type,
                                            struct Position pos,
@@ -232,9 +288,78 @@ static struct Lexer_Token create_numlit_tok(const char *src, isize_t start,
     return ret;
 }
 
-struct Lexer_Tokenize Lexer_tokenize(const char *src, const char *file)
+static bool is_identifier_char(char c)
+{
+    return isalnum(c) || c == '_';
+}
+
+static isize_t identifier_end(const char *src, isize_t start)
+{
+    isize_t end;
+    for (end = start; is_identifier_char(src[end]); ++end)
+        ;
+    return end;
+}
+
+// end - an out variable and can be NULL
+static char *read_identifier(const char *src, isize_t start, isize_t *end)
+{
+    isize_t id_end = identifier_end(src, start);
+    if (end)
+        *end = id_end;
+
+    isize_t len = id_end - start;
+    char *str = malloc((len + 1) * sizeof(*str));
+    str[len] = '\0';
+
+    for (isize_t i = 0; i < len; ++i)
+        str[i] = src[i + start];
+
+    return str;
+}
+
+static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
+                                                const char *line)
+{
+    if (!strcmp(id, "char"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR_SPEC};
+    else if (!strcmp(id, "short"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SHORT_SPEC};
+    else if (!strcmp(id, "int"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_INT_SPEC};
+    else if (!strcmp(id, "long"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_LONG_SPEC};
+    else if (!strcmp(id, "float"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_FLOAT_SPEC};
+    else if (!strcmp(id, "double"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DOUBLE_SPEC};
+    else if (!strcmp(id, "signed"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SIGNED};
+    else if (!strcmp(id, "unsigned"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_UNSIGNED};
+    else if (!strcmp(id, "static"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_STATIC};
+    else if (!strcmp(id, "constexpr"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONSTEXPR};
+    else
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_IDENTIFIER};
+}
+
+static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 {
     struct Lexer_TokenVec toks = gen_dyninit();
+    struct SymbolTable symbtbl = gen_dyninit();
     struct DiagVec diags = gen_dyninit();
     struct Position pos = {.file = file, .line = 1, .column = 1};
 
@@ -308,6 +433,21 @@ struct Lexer_Tokenize Lexer_tokenize(const char *src, const char *file)
                                                 line_start));
             break;
 
+        CASE_ISALPHA:
+        case '_': {
+            char *id = read_identifier(src, i, &i);
+            --i;
+            auto tok = create_identifier_tok(id, pos, line_start);
+            gen_dynpush(&toks, tok);
+            // if the symbol is an actual identifier then it needs to be added
+            // to the symbol table, otherwise the identifier can be discarded
+            if (tok.type == LEXER_TOKENTYPE_IDENTIFIER)
+                gen_dynpush(&symbtbl, id);
+            else
+                free(id);
+            break;
+        }
+
         default:
             struct Diag err = {
                 .is_err = true,
@@ -324,12 +464,206 @@ struct Lexer_Tokenize Lexer_tokenize(const char *src, const char *file)
 
     struct Lexer_Tokenize ret;
     ret.toks = toks;
+    ret.symtbl = symbtbl;
     ret.diags = diags;
     return ret;
+}
+
+static enum Lexer_TokenType make_spec_unsigned(enum Lexer_TokenType type)
+{
+    switch (type) {
+    case LEXER_TOKENTYPE_CHAR_SPEC:
+    case LEXER_TOKENTYPE_SCHAR_SPEC:
+    case LEXER_TOKENTYPE_UCHAR_SPEC:
+        return LEXER_TOKENTYPE_UCHAR_SPEC;
+
+    case LEXER_TOKENTYPE_SHORT_SPEC:
+    case LEXER_TOKENTYPE_USHORT_SPEC:
+        return LEXER_TOKENTYPE_USHORT_SPEC;
+
+    case LEXER_TOKENTYPE_INT_SPEC:
+    case LEXER_TOKENTYPE_UINT_SPEC:
+        return LEXER_TOKENTYPE_UINT_SPEC;
+
+    case LEXER_TOKENTYPE_LONG_SPEC:
+    case LEXER_TOKENTYPE_ULONG_SPEC:
+        return LEXER_TOKENTYPE_ULONG_SPEC;
+
+    case LEXER_TOKENTYPE_LONGLONG_SPEC:
+    case LEXER_TOKENTYPE_ULONGLONG_SPEC:
+        return LEXER_TOKENTYPE_ULONGLONG_SPEC;
+
+    default:
+        assert(false);
+    }
+}
+
+static enum Lexer_TokenType make_spec_signed(enum Lexer_TokenType type)
+{
+    switch (type) {
+    case LEXER_TOKENTYPE_CHAR_SPEC:
+    case LEXER_TOKENTYPE_SCHAR_SPEC:
+    case LEXER_TOKENTYPE_UCHAR_SPEC:
+        return LEXER_TOKENTYPE_SCHAR_SPEC;
+
+    case LEXER_TOKENTYPE_SHORT_SPEC:
+    case LEXER_TOKENTYPE_USHORT_SPEC:
+        return LEXER_TOKENTYPE_SHORT_SPEC;
+
+    case LEXER_TOKENTYPE_INT_SPEC:
+    case LEXER_TOKENTYPE_UINT_SPEC:
+        return LEXER_TOKENTYPE_INT_SPEC;
+
+    case LEXER_TOKENTYPE_LONG_SPEC:
+    case LEXER_TOKENTYPE_ULONG_SPEC:
+        return LEXER_TOKENTYPE_LONG_SPEC;
+
+    case LEXER_TOKENTYPE_LONGLONG_SPEC:
+    case LEXER_TOKENTYPE_ULONGLONG_SPEC:
+        return LEXER_TOKENTYPE_LONGLONG_SPEC;
+
+    default:
+        assert(false);
+    }
+}
+
+static bool typespec_unsignable(enum Lexer_TokenType type)
+{
+    return type == LEXER_TOKENTYPE_FLOAT_SPEC ||
+           type == LEXER_TOKENTYPE_DOUBLE_SPEC ||
+           type == LEXER_TOKENTYPE_LONGDOUBLE_SPEC;
+}
+
+static const char *typespec_to_str(enum Lexer_TokenType type)
+{
+    switch (type) {
+    case LEXER_TOKENTYPE_CHAR_SPEC:
+        return "char";
+
+    case LEXER_TOKENTYPE_SCHAR_SPEC:
+        return "signed char";
+
+    case LEXER_TOKENTYPE_UCHAR_SPEC:
+        return "unsigned char";
+
+    case LEXER_TOKENTYPE_SHORT_SPEC:
+        return "short";
+
+    case LEXER_TOKENTYPE_USHORT_SPEC:
+        return "unsigned short";
+
+    case LEXER_TOKENTYPE_INT_SPEC:
+        return "int";
+
+    case LEXER_TOKENTYPE_UINT_SPEC:
+        return "unsigned int";
+
+    case LEXER_TOKENTYPE_LONG_SPEC:
+        return "long";
+
+    case LEXER_TOKENTYPE_ULONG_SPEC:
+        return "unsigned long";
+
+    case LEXER_TOKENTYPE_LONGLONG_SPEC:
+        return "long long";
+
+    case LEXER_TOKENTYPE_ULONGLONG_SPEC:
+        return "unsigned long long";
+
+    case LEXER_TOKENTYPE_FLOAT_SPEC:
+        return "float";
+
+    case LEXER_TOKENTYPE_DOUBLE_SPEC:
+        return "double";
+
+    case LEXER_TOKENTYPE_LONGDOUBLE_SPEC:
+        return "long double";
+
+    default:
+        assert(false);
+    }
+}
+
+static struct Lexer_Token merge_sign_w_typespec(const struct Lexer_Token *sign,
+                                                const struct Lexer_Token *spec,
+                                                struct DiagVec *diags)
+{
+    if (typespec_unsignable(spec->type)) {
+        struct Diag err = {
+            .pos = sign->pos,
+            .line = sign->line,
+            .msg = Print_fmt_to_str("type '%s' can not be signed or unsigned",
+                                    typespec_to_str(spec->type)),
+            .err = ERRORTYPE_TYPE_UNSIGNABLE,
+            .is_err = 1,
+        };
+        gen_dynpush(diags, err);
+
+        return (struct Lexer_Token){
+            .pos = sign->pos, .line = sign->line, .type = spec->type};
+    }
+
+    struct Lexer_Token ret = *sign;
+    if (sign->type == LEXER_TOKENTYPE_SIGNED)
+        ret.type = make_spec_signed(spec->type);
+    else
+        ret.type = make_spec_unsigned(spec->type);
+
+    return ret;
+}
+
+// converts stuff like
+//    long long
+//    signed int
+//    unsigned
+//    long double
+// into a singular token
+static void merge_typemod_and_typespec(struct Lexer_TokenVec *toks,
+                                       struct DiagVec *diags)
+{
+    for (isize_t i = toks->len - 1; i >= 0; --i) {
+        auto cur = &toks->arr[i];
+        auto next = i + 1 < toks->len ? &toks->arr[i + 1] : NULL;
+
+        if (cur->type == LEXER_TOKENTYPE_LONG_SPEC && next &&
+
+            next->type == LEXER_TOKENTYPE_LONG_SPEC) {
+            cur->type = LEXER_TOKENTYPE_LONGLONG_SPEC;
+            gen_dynremove(toks, i + 1);
+
+        } else if (cur->type == LEXER_TOKENTYPE_LONG_SPEC && next &&
+                   next->type == LEXER_TOKENTYPE_DOUBLE_SPEC) {
+
+            cur->type = LEXER_TOKENTYPE_LONGDOUBLE_SPEC;
+            gen_dynremove(toks, i + 1);
+
+        } else if (cur->type == LEXER_TOKENTYPE_SIGNED ||
+                   cur->type == LEXER_TOKENTYPE_UNSIGNED) {
+
+            if (next && Lexer_is_typespec(next->type)) {
+                *cur = merge_sign_w_typespec(cur, next, diags);
+                gen_dynremove(toks, i + 1);
+            } else {
+                cur->type = cur->type == LEXER_TOKENTYPE_SIGNED
+                                ? LEXER_TOKENTYPE_INT_SPEC
+                                : LEXER_TOKENTYPE_UINT_SPEC;
+            }
+        }
+    }
+}
+
+struct Lexer_Tokenize Lexer_tokenize(const char *src, const char *file)
+{
+    auto lex = read_tokens(src, file);
+
+    merge_typemod_and_typespec(&lex.toks, &lex.diags);
+
+    return lex;
 }
 
 void Lexer_Tokenize_deinit(struct Lexer_Tokenize *self)
 {
     gen_dyndeinit(&self->toks);
+    gen_dyndeinit(&self->symtbl, free);
     gen_dyndeinit(&self->diags, Diag_deinit);
 }

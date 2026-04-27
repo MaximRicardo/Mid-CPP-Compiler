@@ -34,6 +34,32 @@ enum Lexer_TokenType {
 
     LEXER_TOKENTYPE_L_PAREN,
     LEXER_TOKENTYPE_R_PAREN,
+
+    LEXER_TOKENTYPE_IDENTIFIER,
+
+    LEXER_TOKENTYPE_TYPESPEC_START,
+    LEXER_TOKENTYPE_CHAR_SPEC,
+    LEXER_TOKENTYPE_SCHAR_SPEC,
+    LEXER_TOKENTYPE_UCHAR_SPEC,
+    LEXER_TOKENTYPE_SHORT_SPEC,
+    LEXER_TOKENTYPE_USHORT_SPEC,
+    LEXER_TOKENTYPE_INT_SPEC,
+    LEXER_TOKENTYPE_UINT_SPEC,
+    LEXER_TOKENTYPE_LONG_SPEC,
+    LEXER_TOKENTYPE_ULONG_SPEC,
+    LEXER_TOKENTYPE_LONGLONG_SPEC,
+    LEXER_TOKENTYPE_ULONGLONG_SPEC,
+    LEXER_TOKENTYPE_FLOAT_SPEC,
+    LEXER_TOKENTYPE_DOUBLE_SPEC,
+    LEXER_TOKENTYPE_LONGDOUBLE_SPEC,
+    LEXER_TOKENTYPE_TYPESPEC_END,
+
+    LEXER_TOKENTYPE_TYPEMOD_START,
+    LEXER_TOKENTYPE_SIGNED,
+    LEXER_TOKENTYPE_UNSIGNED,
+    LEXER_TOKENTYPE_STATIC,
+    LEXER_TOKENTYPE_CONSTEXPR,
+    LEXER_TOKENTYPE_TYPEMOD_END,
 };
 
 bool Lexer_is_numlit(enum Lexer_TokenType type);
@@ -41,9 +67,14 @@ bool Lexer_is_ternaryop(enum Lexer_TokenType type);
 bool Lexer_is_binop(enum Lexer_TokenType type);
 bool Lexer_is_unaryop(enum Lexer_TokenType type);
 bool Lexer_is_op(enum Lexer_TokenType type);
+bool Lexer_is_typespec(enum Lexer_TokenType type);
+bool Lexer_is_typemod(enum Lexer_TokenType type);
 
 struct Lexer_Token {
-    union Literal_Value val;
+    union {
+        union Literal_Value val;
+        const char *ident;
+    };
     struct Position pos;
     const char *line;
     enum Lexer_TokenType type;
