@@ -23,6 +23,9 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_DOUBLE,
     PARSER_TYPESPEC_LONGDOUBLE,
 
+    // the weird kid
+    PARSER_TYPESPEC_AUTO,
+
     // prefixed types
     PARSER_TYPESPEC_STRUCT,
     PARSER_TYPESPEC_UNION,

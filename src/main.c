@@ -1,8 +1,9 @@
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
+#include "lexer/token.h"
 #include "lexer/tokenize.h"
-#include "parser/type.h"
+#include "parser/var_decl.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -40,6 +41,17 @@ bool print_diags(const struct DiagVec *diags)
     return err;
 }
 
+isize_t find_semicolon(const struct Lexer_Token *toks, isize_t start,
+                       isize_t end)
+{
+    for (isize_t i = start; i < end; ++i) {
+        if (toks[i].type == LEXER_TOKENTYPE_SEMICOLON)
+            return i;
+    }
+
+    return -1;
+}
+
 int main(int argc, char **argv)
 {
     int ret = 0;
@@ -51,31 +63,34 @@ int main(int argc, char **argv)
     if (print_diags(&lex.diags))
         goto tokenize_failed;
 
-    /*
-    for (isize_t i = 0; i < toks.len; ++i) {
+    for (isize_t i = 0; i < lex.toks.len; ++i) {
         printf("i = %" PRIisz ", pos = (%d, %d), type = %d", i,
-               toks.arr[i].pos.line, toks.arr[i].pos.column, toks.arr[i].type);
-        if (toks.arr[i].type == LEXER_TOKENTYPE_INT_LIT)
-            printf(", value int = %" PRId64, toks.arr[i].val.s_lit);
-        else if (toks.arr[i].type == LEXER_TOKENTYPE_LONG_LIT)
-            printf(", value long = %" PRId64, toks.arr[i].val.s_lit);
-        else if (toks.arr[i].type == LEXER_TOKENTYPE_LONGLONG_LIT)
-            printf(", value long long = %" PRId64, toks.arr[i].val.s_lit);
-        else if (toks.arr[i].type == LEXER_TOKENTYPE_UINT_LIT)
-            printf(", value u int = %" PRId64, toks.arr[i].val.u_lit);
-        else if (toks.arr[i].type == LEXER_TOKENTYPE_ULONG_LIT)
-            printf(", value u long = %" PRId64, toks.arr[i].val.u_lit);
-        else if (toks.arr[i].type == LEXER_TOKENTYPE_ULONGLONG_LIT)
-            printf(", value u long long = %" PRId64, toks.arr[i].val.u_lit);
-        else if (toks.arr[i].type == LEXER_TOKENTYPE_FLOAT_LIT)
-            printf(", value f = %f", toks.arr[i].val.f_lit);
-        else if (toks.arr[i].type == LEXER_TOKENTYPE_DOUBLE_LIT)
-            printf(", value d = %lf", toks.arr[i].val.d_lit);
-        else if (toks.arr[i].type == LEXER_TOKENTYPE_LONGDOUBLE_LIT)
-            printf(", value ld = %Lf", toks.arr[i].val.ld_lit);
+               lex.toks.arr[i].pos.line, lex.toks.arr[i].pos.column,
+               lex.toks.arr[i].type);
+        if (lex.toks.arr[i].type == LEXER_TOKENTYPE_INT_LIT)
+            printf(", value int = %" PRId64, lex.toks.arr[i].val.sint);
+        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_LONG_LIT)
+            printf(", value long = %" PRId64, lex.toks.arr[i].val.sint);
+        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_LONGLONG_LIT)
+            printf(", value long long = %" PRId64, lex.toks.arr[i].val.sint);
+        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_UINT_LIT)
+            printf(", value u int = %" PRId64, lex.toks.arr[i].val.uint);
+        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_ULONG_LIT)
+            printf(", value u long = %" PRId64, lex.toks.arr[i].val.uint);
+        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_ULONGLONG_LIT)
+            printf(", value u long long = %" PRId64, lex.toks.arr[i].val.uint);
+        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_FLOAT_LIT)
+            printf(", value f = %f", lex.toks.arr[i].val.flt);
+        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_DOUBLE_LIT)
+            printf(", value d = %lf", lex.toks.arr[i].val.dbl);
+        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_LONGDOUBLE_LIT)
+            printf(", value ld = %Lf", lex.toks.arr[i].val.l_dbl);
         printf("\n");
     }
-    */
+
+    for (isize_t i = 0; i < lex.symtbl.len; ++i) {
+        printf("symtbl[%" PRIisz "] = '%s'\n", i, lex.symtbl.arr[i]);
+    }
 
     struct DiagVec parser_diags = gen_dyninit();
 
@@ -87,16 +102,18 @@ int main(int argc, char **argv)
     printf("expr = %" PRId64 "\n", Parser_evaluate(&expr).sint);
     */
 
-    auto type = Parser_parse_type(lex.toks.arr, 0, NULL, &parser_diags);
+    auto decl = Parser_parse_vardecl(
+        lex.toks.arr, 0, find_semicolon(lex.toks.arr, 0, lex.toks.len),
+        &parser_diags);
     if (print_diags(&parser_diags))
         goto parser_failed;
 
-    printf("type spec = %d\n", type.spec);
-    for (isize_t i = 0; i < type.mods.len; ++i)
-        printf("mod[%" PRIisz "] = %d\n", i, type.mods.arr[i]);
+    printf("type spec = %d\n", decl.type.spec);
+    for (isize_t i = 0; i < decl.type.mods.len; ++i)
+        printf("mod[%" PRIisz "] = %d\n", i, decl.type.mods.arr[i]);
 
 parser_failed:
-    Parser_Type_deinit(&type);
+    Parser_VarDecl_deinit(&decl);
     gen_dyndeinit(&parser_diags, Diag_deinit);
 tokenize_failed:
     Lexer_Tokenize_deinit(&lex);

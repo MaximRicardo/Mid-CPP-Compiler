@@ -352,8 +352,10 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONSTEXPR};
     else
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_IDENTIFIER};
+        return (struct Lexer_Token){.pos = pos,
+                                    .line = line,
+                                    .type = LEXER_TOKENTYPE_IDENTIFIER,
+                                    .ident = id};
 }
 
 static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
@@ -398,6 +400,11 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
                         create_basic_tok(LEXER_TOKENTYPE_DIV, pos, line_start));
             break;
 
+        case '=':
+            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ASSIGN, pos,
+                                                line_start));
+            break;
+
         case '0':
         case '1':
         case '2':
@@ -433,8 +440,14 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
                                                 line_start));
             break;
 
+        case ';':
+            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_SEMICOLON, pos,
+                                                line_start));
+            break;
+
         CASE_ISALPHA:
         case '_': {
+            auto old_i = i;
             char *id = read_identifier(src, i, &i);
             --i;
             auto tok = create_identifier_tok(id, pos, line_start);
@@ -445,6 +458,7 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
                 gen_dynpush(&symbtbl, id);
             else
                 free(id);
+            pos.column += i - old_i;
             break;
         }
 
@@ -664,6 +678,6 @@ struct Lexer_Tokenize Lexer_tokenize(const char *src, const char *file)
 void Lexer_Tokenize_deinit(struct Lexer_Tokenize *self)
 {
     gen_dyndeinit(&self->toks);
-    gen_dyndeinit(&self->symtbl, free);
+    gen_dyndeinit(&self->symtbl, Symbol_deinit_symbol);
     gen_dyndeinit(&self->diags, Diag_deinit);
 }

@@ -7,7 +7,6 @@
 #include "literal.h"
 #include "print.h"
 #include <assert.h>
-#include <stdio.h>
 
 bool Parser_is_numlit(enum Parser_ExprType type)
 {
@@ -59,6 +58,9 @@ i32 Parser_op_precedence(enum Parser_ExprType op)
     case PARSER_EXPRTYPE_DIV:
         flipped = 5;
         break;
+
+    case PARSER_EXPRTYPE_ASSIGN:
+        flipped = 15;
 
     default:
         assert(false);
@@ -151,6 +153,10 @@ static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *tok)
 
     case LEXER_TOKENTYPE_DIV:
         ret.type = PARSER_EXPRTYPE_DIV;
+        break;
+
+    case LEXER_TOKENTYPE_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_ASSIGN;
         break;
 
     default:
