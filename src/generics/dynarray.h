@@ -73,8 +73,6 @@
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         free(self_super_specific_name______->arr);                             \
         self_super_specific_name______->arr = NULL;                            \
-        self_super_specific_name______->len = 0;                               \
-        self_super_specific_name______->cap = 0;                               \
     } while (0)
 
 #define GEN_DYNDEINIT_W_FREE(self_arg, free_func)                              \
@@ -85,8 +83,6 @@
             free_func(&self_super_specific_name______->arr[i]);                \
         free(self_super_specific_name______->arr);                             \
         self_super_specific_name______->arr = NULL;                            \
-        self_super_specific_name______->cap = 0;                               \
-        self_super_specific_name______->len = 0;                               \
     } while (0)
 
 // void gen_dyndeinit(gen_dynarray(elem_type) *self,
