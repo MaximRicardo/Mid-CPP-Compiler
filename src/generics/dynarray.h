@@ -63,7 +63,7 @@
 
 #define GEN_DYNARRAY_IDX_VALID(self, idx)                                      \
     do {                                                                       \
-        assert((self) >= 0 && (idx) < (self)->len);                            \
+        assert((idx) >= 0 && (idx) < (self)->len);                             \
     } while (0)
 
 #define gen_dyninit() {0}
