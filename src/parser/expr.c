@@ -61,6 +61,22 @@ i32 Parser_op_precedence(enum Parser_ExprType op)
 
     case PARSER_EXPRTYPE_ASSIGN:
         flipped = 15;
+        break;
+
+    case PARSER_EXPRTYPE_BITWISE_AND:
+        flipped = 10;
+        break;
+
+    case PARSER_EXPRTYPE_LOGICAL_AND:
+        flipped = 13;
+
+    case PARSER_EXPRTYPE_DEREF:
+        flipped = 3;
+        break;
+
+    case PARSER_EXPRTYPE_REF:
+        flipped = 3;
+        break;
 
     default:
         assert(false);
@@ -157,6 +173,22 @@ static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *tok)
 
     case LEXER_TOKENTYPE_ASSIGN:
         ret.type = PARSER_EXPRTYPE_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_BITWISE_AND:
+        ret.type = PARSER_EXPRTYPE_BITWISE_AND;
+        break;
+
+    case LEXER_TOKENTYPE_LOGICAL_AND:
+        ret.type = PARSER_EXPRTYPE_LOGICAL_AND;
+        break;
+
+    case LEXER_TOKENTYPE_DEREF:
+        ret.type = PARSER_EXPRTYPE_DEREF;
+        break;
+
+    case LEXER_TOKENTYPE_REF:
+        ret.type = PARSER_EXPRTYPE_REF;
         break;
 
     default:

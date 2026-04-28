@@ -35,8 +35,8 @@ bool Lexer_is_typespec(enum Lexer_TokenType type)
            type < LEXER_TOKENTYPE_TYPESPEC_END;
 }
 
-bool Lexer_is_typemod(enum Lexer_TokenType type)
+bool Lexer_is_typequal(enum Lexer_TokenType type)
 {
-    return type > LEXER_TOKENTYPE_TYPEMOD_START &&
-           type < LEXER_TOKENTYPE_TYPEMOD_END;
+    return type > LEXER_TOKENTYPE_TYPEQUAL_START &&
+           type < LEXER_TOKENTYPE_TYPEQUAL_END;
 }

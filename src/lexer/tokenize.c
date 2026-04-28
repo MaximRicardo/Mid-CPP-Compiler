@@ -348,6 +348,9 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
     else if (!strcmp(id, "static"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_STATIC};
+    else if (!strcmp(id, "const"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONST};
     else if (!strcmp(id, "constexpr"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONSTEXPR};
@@ -399,10 +402,20 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
             gen_dynpush(&toks,
                         create_basic_tok(LEXER_TOKENTYPE_DIV, pos, line_start));
             break;
-
         case '=':
             gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ASSIGN, pos,
                                                 line_start));
+            break;
+        case '&':
+            if (src[i + 1] == '&') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LOGICAL_AND,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_BITWISE_AND,
+                                                    pos, line_start));
+            }
             break;
 
         case '0':

@@ -3,6 +3,9 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "macros.h"
+#include "print.h"
+#include "vecs.h"
 #include <assert.h>
 #include <string.h>
 
@@ -56,14 +59,17 @@ enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type)
     }
 }
 
-enum Parser_TypeMod Parser_toktype_to_typemod(enum Lexer_TokenType type)
+static void set_qual_flag(struct Parser_TypeQual *qual,
+                          enum Lexer_TokenType type)
 {
     switch (type) {
     case LEXER_TOKENTYPE_STATIC:
-        return PARSER_TYPEMOD_STATIC;
+        qual->is_static = true;
+        break;
 
     case LEXER_TOKENTYPE_CONSTEXPR:
-        return PARSER_TYPEMOD_CONSTEXPR;
+        qual->is_constexpr = true;
+        break;
 
     default:
         assert(false);
@@ -72,20 +78,95 @@ enum Parser_TypeMod Parser_toktype_to_typemod(enum Lexer_TokenType type)
 
 void Parser_Type_deinit(struct Parser_Type *self)
 {
-    gen_dyndeinit(&self->mods);
+    gen_dyndeinit(&self->is_const);
+}
+
+bool is_ptr_tok(enum Lexer_TokenType type)
+{
+    return type == LEXER_TOKENTYPE_MUL || type == LEXER_TOKENTYPE_DEREF;
+}
+
+bool is_lv_ref_tok(enum Lexer_TokenType type)
+{
+    return type == LEXER_TOKENTYPE_BITWISE_AND || type == LEXER_TOKENTYPE_REF;
+}
+
+bool is_rv_ref_tok(enum Lexer_TokenType type)
+{
+    return type == LEXER_TOKENTYPE_LOGICAL_AND;
+}
+
+static struct Diag unnecessary_const_warn(const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("unnecessary const specifier"),
+        .warn = WARNTYPE_UNNECESSARY_CONST,
+        .is_err = false,
+    };
+}
+
+static struct Diag ptr_to_ref_err(const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("pointer to a reference is not allowed"),
+        .err = ERRORTYPE_PTR_TO_REF,
+        .is_err = false,
+    };
+}
+
+static struct Diag missplaced_const_err(const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("missplaced const specifier"),
+        .err = ERRORTYPE_MISPLACED_QUALIFIER,
+        .is_err = true,
+    };
+}
+
+static struct Diag type_alr_const_err(const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("type is already a reference"),
+        .err = ERRORTYPE_TYPE_ALREADY_REF,
+        .is_err = true,
+    };
+}
+
+static void flip_boolarr(const struct BoolVec *arr)
+{
+    for (isize_t i = 0; i < arr->len / 2; ++i) {
+        isize_t j = arr->len - i - 1;
+        SWAP(arr->arr[i], arr->arr[j]);
+    }
 }
 
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *end,
                                      struct DiagVec *diags)
 {
-    struct Parser_Type ret = {.mods = gen_dyninit()};
+    struct Parser_Type ret = {.quals = gen_dyninit(),
+                              .is_const = gen_dyninit()};
 
     isize_t i = start;
 
-    while (Lexer_is_typemod(toks[i].type)) {
-        gen_dynpush(&ret.mods, Parser_toktype_to_typemod(toks[i].type));
-        ++i;
+    bool is_const = false;
+
+    for (; Lexer_is_typequal(toks[i].type); ++i) {
+        if (toks[i].type == LEXER_TOKENTYPE_CONST) {
+            if (is_const)
+                gen_dynpush(diags, unnecessary_const_warn(&toks[i]));
+            is_const = true;
+        } else {
+            set_qual_flag(&ret.quals, toks[i].type);
+        }
     }
 
     if (!Lexer_is_typespec(toks[i].type)) {
@@ -96,10 +177,48 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                            .is_err = true};
         gen_dynpush(diags, err);
     } else {
-        ret.spec = Parser_toktype_to_typespec(toks[i].type);
+        ret.spec = Parser_toktype_to_typespec(toks[i++].type);
     }
 
+    for (; toks[i].type == LEXER_TOKENTYPE_CONST || is_ptr_tok(toks[i].type) ||
+           is_lv_ref_tok(toks[i].type) || is_rv_ref_tok(toks[i].type);
+         ++i) {
+        if (toks[i].type == LEXER_TOKENTYPE_CONST) {
+            if (is_const)
+                gen_dynpush(diags, unnecessary_const_warn(&toks[i]));
+            if (ret.is_lv_ref || ret.is_rv_ref)
+                gen_dynpush(diags, missplaced_const_err(&toks[i]));
+            is_const = true;
+        } else if (is_ptr_tok(toks[i].type)) {
+            if (ret.is_lv_ref || ret.is_rv_ref)
+                gen_dynpush(diags, ptr_to_ref_err(&toks[i]));
+            gen_dynpush(&ret.is_const, is_const);
+            is_const = false;
+        } else if (is_lv_ref_tok(toks[i].type)) {
+            if (ret.is_lv_ref || ret.is_rv_ref)
+                gen_dynpush(diags, type_alr_const_err(&toks[i]));
+            else
+                ret.is_lv_ref = true;
+        } else {
+            if (ret.is_lv_ref || ret.is_rv_ref)
+                gen_dynpush(diags, type_alr_const_err(&toks[i]));
+            else
+                ret.is_rv_ref = true;
+        }
+    }
+    gen_dynpush(&ret.is_const, is_const);
+
+    if (ret.quals.is_constexpr)
+        ret.is_const.arr[0] = true;
+    // is_const needs to go from most to least indirection
+    flip_boolarr(&ret.is_const);
+
     if (end)
-        *end = i + 1;
+        *end = i;
     return ret;
+}
+
+isize_t Parser_n_indir(const struct Parser_Type *type)
+{
+    return type->is_const.len - 1;
 }

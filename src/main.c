@@ -109,8 +109,13 @@ int main(int argc, char **argv)
         goto parser_failed;
 
     printf("type spec = %d\n", decl.type.spec);
-    for (isize_t i = 0; i < decl.type.mods.len; ++i)
-        printf("mod[%" PRIisz "] = %d\n", i, decl.type.mods.arr[i]);
+    printf("is_static = %d\n", decl.type.quals.is_static);
+    printf("is_constexpr = %d\n", decl.type.quals.is_constexpr);
+    printf("is_lv_ref = %d\n", decl.type.is_lv_ref);
+    printf("is_rv_ref = %d\n", decl.type.is_rv_ref);
+    for (isize_t i = 0; i < decl.type.is_const.len; ++i)
+        printf("type is_const[%" PRIisz "] = %d\n", i,
+               decl.type.is_const.arr[i]);
 
 parser_failed:
     Parser_VarDecl_deinit(&decl);

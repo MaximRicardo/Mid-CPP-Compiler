@@ -1,1 +1,1 @@
-int x = 10 + 27;
+static const constexpr unsigned long long *const *& x = 10 + 27;

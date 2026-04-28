@@ -4,6 +4,7 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "vecs.h"
 
 enum Parser_TypeSpec {
     // primitive types
@@ -31,24 +32,24 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_UNION,
     PARSER_TYPESPEC_ENUM,
     PARSER_TYPESPEC_ENUMCLASS,
-
-    // custom types without a prefix
-    PARSER_TYPESPEC_CUSTOM,
 };
 
 enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type);
 
-enum Parser_TypeMod {
-    PARSER_TYPEMOD_STATIC,
-    PARSER_TYPEMOD_CONSTEXPR,
+struct Parser_TypeQual {
+    bool is_static;
+    bool is_constexpr;
 };
-gen_dynarray_struct_named(Parser_TypeModVec, enum Parser_TypeMod);
-
-enum Parser_TypeMod Parser_toktype_to_typemod(enum Lexer_TokenType type);
 
 struct Parser_Type {
+    const char *name; // name of a class / struct / union, etc.
+                      // for primitive types this is just the name of the type.
+                      // NULL for ptrs
     enum Parser_TypeSpec spec;
-    struct Parser_TypeModVec mods;
+    struct Parser_TypeQual quals;
+    struct BoolVec is_const; // one element for each level of indirection
+    bool is_lv_ref;
+    bool is_rv_ref;
 };
 
 void Parser_Type_deinit(struct Parser_Type *self);
@@ -56,3 +57,4 @@ void Parser_Type_deinit(struct Parser_Type *self);
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *end,
                                      struct DiagVec *diags);
+isize_t Parser_n_indir(const struct Parser_Type *type);
