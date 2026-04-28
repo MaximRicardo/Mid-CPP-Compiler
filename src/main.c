@@ -94,25 +94,18 @@ int main(int argc, char **argv)
 
     struct DiagVec parser_diags = gen_dyninit();
 
-    /*
-    auto expr = Parser_parse_expr(lex.toks.arr, 0, lex.toks.len, &parser_diags);
-    if (print_diags(&parser_diags))
-        goto parser_failed;
-
-    printf("expr = %" PRId64 "\n", Parser_evaluate(&expr).sint);
-    */
-
     auto decl = Parser_parse_vardecl(
         lex.toks.arr, 0, find_semicolon(lex.toks.arr, 0, lex.toks.len),
         &parser_diags);
     if (print_diags(&parser_diags))
         goto parser_failed;
 
+    printf("decl name = %s\n", decl.name);
     printf("type spec = %d\n", decl.type.spec);
     printf("is_static = %d\n", decl.type.quals.is_static);
     printf("is_constexpr = %d\n", decl.type.quals.is_constexpr);
-    printf("is_lv_ref = %d\n", decl.type.is_lv_ref);
-    printf("is_rv_ref = %d\n", decl.type.is_rv_ref);
+    printf("is_lv_ref = %d\n", decl.type.lv_ref);
+    printf("is_rv_ref = %d\n", decl.type.rv_ref);
     for (isize_t i = 0; i < decl.type.is_const.len; ++i)
         printf("type is_const[%" PRIisz "] = %d\n", i,
                decl.type.is_const.arr[i]);

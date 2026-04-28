@@ -323,22 +323,22 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
 {
     if (!strcmp(id, "char"))
         return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR_SPEC};
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR};
     else if (!strcmp(id, "short"))
         return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SHORT_SPEC};
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SHORT};
     else if (!strcmp(id, "int"))
         return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_INT_SPEC};
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_INT};
     else if (!strcmp(id, "long"))
         return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_LONG_SPEC};
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_LONG};
     else if (!strcmp(id, "float"))
         return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_FLOAT_SPEC};
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_FLOAT};
     else if (!strcmp(id, "double"))
         return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DOUBLE_SPEC};
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DOUBLE};
     else if (!strcmp(id, "signed"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SIGNED};
@@ -417,6 +417,10 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
                                                     pos, line_start));
             }
             break;
+        case ',':
+            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_COMMA, pos,
+                                                line_start));
+            break;
 
         case '0':
         case '1':
@@ -451,6 +455,14 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case ')':
             gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_R_PAREN, pos,
                                                 line_start));
+            break;
+        case '[':
+            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_L_SQBRACKET,
+                                                pos, line_start));
+            break;
+        case ']':
+            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_R_SQBRACKET,
+                                                pos, line_start));
             break;
 
         case ';':
@@ -488,6 +500,7 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 
         ++pos.column;
     }
+    gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_END, pos, line_start));
 
     struct Lexer_Tokenize ret;
     ret.toks = toks;
@@ -496,6 +509,7 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
     return ret;
 }
 
+/*
 static enum Lexer_TokenType make_spec_unsigned(enum Lexer_TokenType type)
 {
     switch (type) {
@@ -678,12 +692,13 @@ static void merge_typemod_and_typespec(struct Lexer_TokenVec *toks,
         }
     }
 }
+*/
 
 struct Lexer_Tokenize Lexer_tokenize(const char *src, const char *file)
 {
     auto lex = read_tokens(src, file);
 
-    merge_typemod_and_typespec(&lex.toks, &lex.diags);
+    // merge_typemod_and_typespec(&lex.toks, &lex.diags);
 
     return lex;
 }

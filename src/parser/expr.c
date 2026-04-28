@@ -69,6 +69,11 @@ i32 Parser_op_precedence(enum Parser_ExprType op)
 
     case PARSER_EXPRTYPE_LOGICAL_AND:
         flipped = 13;
+        break;
+
+    case PARSER_EXPRTYPE_COMMA:
+        flipped = 16;
+        break;
 
     case PARSER_EXPRTYPE_DEREF:
         flipped = 3;
@@ -182,6 +187,9 @@ static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *tok)
     case LEXER_TOKENTYPE_LOGICAL_AND:
         ret.type = PARSER_EXPRTYPE_LOGICAL_AND;
         break;
+
+    case LEXER_TOKENTYPE_COMMA:
+        ret.type = PARSER_EXPRTYPE_COMMA;
 
     case LEXER_TOKENTYPE_DEREF:
         ret.type = PARSER_EXPRTYPE_DEREF;

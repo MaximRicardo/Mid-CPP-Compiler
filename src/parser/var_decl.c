@@ -25,12 +25,9 @@ struct Parser_VarDecl Parser_parse_vardecl(const struct Lexer_Token *toks,
 {
     struct Parser_VarDecl ret = {};
     isize_t type_end;
-    ret.type = Parser_parse_type(toks, start, &type_end, diags);
-    ret.name = toks[type_end].type == LEXER_TOKENTYPE_IDENTIFIER
-                   ? toks[type_end].ident
-                   : NULL;
+    ret.type = Parser_parse_type(toks, start, &type_end, &ret.name, diags);
 
-    if (type_end < end && !ret.name) {
+    if (!ret.name) {
         struct Diag err = {.pos = toks[start].pos,
                            .line = toks[start].line,
                            .msg = Print_fmt_to_str("expected identifier"),
@@ -39,7 +36,7 @@ struct Parser_VarDecl Parser_parse_vardecl(const struct Lexer_Token *toks,
         gen_dynpush(diags, err);
     }
 
-    isize_t assign_idx = ret.name ? type_end + 1 : type_end;
+    isize_t assign_idx = type_end;
     bool has_init =
         assign_idx < end && toks[assign_idx].type == LEXER_TOKENTYPE_ASSIGN;
 
