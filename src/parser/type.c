@@ -602,12 +602,14 @@ static struct Parser_TypeArray copy_array(const struct Parser_TypeArray *arr)
     return ret;
 }
 
-static void add_base(struct Parser_Type *type, const struct Parser_Type *base)
+static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
+                     const struct Lexer_Token *type_start,
+                     struct DiagVec *diags)
 {
     if (type->spec == PARSER_TYPESPEC_FPTR) {
-        add_base(&type->fptr->ret, base);
+        add_base(&type->fptr->ret, base, type_start, diags);
     } else if (type->spec == PARSER_TYPESPEC_ARRAY) {
-        add_base(&type->array->elem, base);
+        add_base(&type->array->elem, base, type_start, diags);
     } else {
         if (base->spec == PARSER_TYPESPEC_FPTR) {
             type->fptr = malloc(sizeof(*type->fptr));
@@ -619,10 +621,15 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base)
             type->named = base->named;
         }
 
+        if (type->dquals.len > 0 && (base->lv_ref || base->rv_ref))
+            gen_dynpush(diags, ptr_to_ref_err(type_start));
+
         for (isize_t i = 0; i < base->dquals.len; ++i)
             gen_dynpush(&type->dquals, base->dquals.arr[i]);
         type->spec = base->spec;
         type->squals = base->squals;
+        type->lv_ref |= base->lv_ref;
+        type->rv_ref |= base->rv_ref;
     }
 }
 
@@ -642,7 +649,7 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
 
     auto ret = parse_other_part(toks, c - (declname != NULL), i, out_end,
                                 parent, &base.squals, diags);
-    add_base(&ret, &base);
+    add_base(&ret, &base, &toks[start], diags);
 
     if (out_declname)
         *out_declname = declname;
