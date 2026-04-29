@@ -4,7 +4,6 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
-#include "vecs.h"
 
 enum Parser_TypeSpec {
     // primitive types
@@ -40,10 +39,15 @@ enum Parser_TypeSpec {
 bool Parser_is_typespec_named(enum Parser_TypeSpec spec);
 enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type);
 
-struct Parser_TypeQual {
+struct Parser_TypeStorQual {
     bool is_static;
     bool is_constexpr;
 };
+
+struct Parser_TypeDataQual {
+    bool is_const;
+};
+gen_dynarray_struct_named(Parser_TypeDataQualVec, struct Parser_TypeDataQual);
 
 struct Parser_Type {
     union {
@@ -51,9 +55,10 @@ struct Parser_Type {
         struct Parser_TypeArray *array;
         const char *named; // used by classes, structs, enums, etc.
     };
-    struct BoolVec is_const; // one element for each level of indirection
+    struct Parser_TypeDataQualVec dquals; // one element for each level of
+                                          // indirection, including 0
     enum Parser_TypeSpec spec;
-    struct Parser_TypeQual quals;
+    struct Parser_TypeStorQual squals;
     bool lv_ref;
     bool rv_ref;
 };

@@ -62,11 +62,15 @@ enum Lexer_TokenType {
     LEXER_TOKENTYPE_UNSIGNED,
     LEXER_TOKENTYPE_TYPEMOD_END,
 
-    LEXER_TOKENTYPE_TYPEQUAL_START,
+    // type storage qualifiers
+    LEXER_TOKENTYPE_TYPESTORQUAL_START,
     LEXER_TOKENTYPE_STATIC,
-    LEXER_TOKENTYPE_CONST,
     LEXER_TOKENTYPE_CONSTEXPR,
-    LEXER_TOKENTYPE_TYPEQUAL_END,
+    LEXER_TOKENTYPE_TYPESTORQUAL_END,
+
+    LEXER_TOKENTYPE_TYPEDATAQUAL_START,
+    LEXER_TOKENTYPE_CONST,
+    LEXER_TOKENTYPE_TYPEDATAQUAL_END,
 };
 
 bool Lexer_is_numlit(enum Lexer_TokenType type);
@@ -75,6 +79,8 @@ bool Lexer_is_binop(enum Lexer_TokenType type);
 bool Lexer_is_unaryop(enum Lexer_TokenType type);
 bool Lexer_is_op(enum Lexer_TokenType type);
 bool Lexer_is_typespec(enum Lexer_TokenType type);
+bool Lexer_is_typestorqual(enum Lexer_TokenType type);
+bool Lexer_is_typedataqual(enum Lexer_TokenType type);
 bool Lexer_is_typequal(enum Lexer_TokenType type);
 // signed, unsigned, short and long
 bool Lexer_is_typemod(enum Lexer_TokenType type);

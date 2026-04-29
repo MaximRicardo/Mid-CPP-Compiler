@@ -35,10 +35,21 @@ bool Lexer_is_typespec(enum Lexer_TokenType type)
            type < LEXER_TOKENTYPE_TYPESPEC_END;
 }
 
+bool Lexer_is_typestorqual(enum Lexer_TokenType type)
+{
+    return type > LEXER_TOKENTYPE_TYPESTORQUAL_START &&
+           type < LEXER_TOKENTYPE_TYPESTORQUAL_END;
+}
+
+bool Lexer_is_typedataqual(enum Lexer_TokenType type)
+{
+    return type > LEXER_TOKENTYPE_TYPEDATAQUAL_START &&
+           type < LEXER_TOKENTYPE_TYPEDATAQUAL_END;
+}
+
 bool Lexer_is_typequal(enum Lexer_TokenType type)
 {
-    return type > LEXER_TOKENTYPE_TYPEQUAL_START &&
-           type < LEXER_TOKENTYPE_TYPEQUAL_END;
+    return Lexer_is_typedataqual(type) || Lexer_is_typestorqual(type);
 }
 
 bool Lexer_is_typemod(enum Lexer_TokenType type)

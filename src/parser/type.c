@@ -5,7 +5,6 @@
 #include "lexer/token.h"
 #include "parser/find_twin.h"
 #include "print.h"
-#include "vecs.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -39,8 +38,8 @@ enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type)
     }
 }
 
-static void set_qual_flag(struct Parser_TypeQual *qual,
-                          enum Lexer_TokenType type)
+static void set_squal_flag(struct Parser_TypeStorQual *qual,
+                           enum Lexer_TokenType type)
 {
     switch (type) {
     case LEXER_TOKENTYPE_STATIC:
@@ -67,7 +66,7 @@ void Parser_Type_deinit(struct Parser_Type *self)
         free(self->array);
     }
 
-    gen_dyndeinit(&self->is_const);
+    gen_dyndeinit(&self->dquals);
 }
 
 bool is_ptr_tok(enum Lexer_TokenType type)
@@ -360,7 +359,7 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
     const struct Lexer_Token *is_long = NULL;
     const struct Lexer_Token *is_longlong = NULL;
 
-    bool is_const = false;
+    struct Parser_TypeDataQual dquals = {};
 
     bool missing_spec = true;
 
@@ -368,9 +367,9 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
            Lexer_is_typemod(toks[i].type);
          ++i) {
         if (toks[i].type == LEXER_TOKENTYPE_CONST) {
-            if (is_const)
+            if (dquals.is_const)
                 gen_dynpush(diags, unnecessary_qual_warn("const", &toks[i]));
-            is_const = &toks[i];
+            dquals.is_const = &toks[i];
         } else if (toks[i].type == LEXER_TOKENTYPE_SIGNED) {
             if (is_signed)
                 gen_dynpush(diags, unnecessary_qual_warn("signed", &toks[i]));
@@ -399,13 +398,13 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
                 is_long = &toks[i];
             }
         } else if (Lexer_is_typequal(toks[i].type)) {
-            set_qual_flag(&ret.quals, toks[i].type);
+            set_squal_flag(&ret.squals, toks[i].type);
         } else {
             missing_spec = false;
             ret.spec = Parser_toktype_to_typespec(toks[i].type);
         }
     }
-    gen_dynpush(&ret.is_const, is_const);
+    gen_dynpush(&ret.dquals, dquals);
 
     // short, long and long long don't need a type spec
     if ((is_short || is_long || is_longlong) && missing_spec) {
@@ -490,12 +489,12 @@ static isize_t parse_array(struct Parser_Type *type,
 struct Parser_Type parse_other_part(const struct Lexer_Token *toks,
                                     isize_t start, isize_t min,
                                     isize_t *out_end,
-                                    const struct Parser_TypeQual *quals,
+                                    const struct Parser_TypeStorQual *squals,
                                     struct DiagVec *diags)
 {
-    struct Parser_Type ret = {.quals = *quals};
+    struct Parser_Type ret = {.squals = *squals};
 
-    bool is_const = false;
+    struct Parser_TypeDataQual dquals = {};
 
     isize_t i;
     for (i = start;
@@ -504,27 +503,27 @@ struct Parser_Type parse_other_part(const struct Lexer_Token *toks,
           is_lv_ref_tok(toks[i].type) || is_rv_ref_tok(toks[i].type));
          --i) {
         if (toks[i].type == LEXER_TOKENTYPE_CONST) {
-            if (is_const)
+            if (dquals.is_const)
                 gen_dynpush(diags, unnecessary_qual_warn("const", &toks[i]));
-            is_const = true;
+            dquals.is_const = true;
         } else if (is_ptr_tok(toks[i].type)) {
-            gen_dynpush(&ret.is_const, is_const);
-            is_const = false;
+            gen_dynpush(&ret.dquals, dquals);
+            dquals = (struct Parser_TypeDataQual){};
         } else if (is_lv_ref_tok(toks[i].type)) {
             if (ret.lv_ref || ret.rv_ref)
                 gen_dynpush(diags, type_alr_const_err(&toks[i]));
-            else if (ret.is_const.len > 0)
+            else if (ret.dquals.len > 0)
                 gen_dynpush(diags, ptr_to_ref_err(&toks[i]));
-            else if (is_const)
+            else if (dquals.is_const)
                 gen_dynpush(diags, missplaced_const_err(&toks[i]));
             else
                 ret.lv_ref = true;
         } else {
             if (ret.lv_ref || ret.rv_ref)
                 gen_dynpush(diags, type_alr_const_err(&toks[i]));
-            else if (ret.is_const.len > 0)
+            else if (ret.dquals.len > 0)
                 gen_dynpush(diags, ptr_to_ref_err(&toks[i]));
-            else if (is_const)
+            else if (dquals.is_const)
                 gen_dynpush(diags, missplaced_const_err(&toks[i]));
             else
                 ret.rv_ref = true;
@@ -577,9 +576,9 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base)
     } else if (type->spec == PARSER_TYPESPEC_ARRAY) {
         add_base(&type->array->elem, base);
     } else {
-        gen_dynpush(&type->is_const, base->is_const.arr[0]);
+        gen_dynpush(&type->dquals, base->dquals.arr[0]);
         type->spec = base->spec;
-        type->quals = base->quals;
+        type->squals = base->squals;
     }
 }
 
@@ -598,7 +597,7 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
         toks[c].type == LEXER_TOKENTYPE_IDENTIFIER ? toks[c].ident : NULL;
 
     auto ret = parse_other_part(toks, c - (declname != NULL), i, out_end,
-                                &base.quals, diags);
+                                &base.squals, diags);
     add_base(&ret, &base);
 
     if (out_declname)
@@ -609,5 +608,5 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
 
 isize_t Parser_n_indir(const struct Parser_Type *type)
 {
-    return type->is_const.len - 1;
+    return type->dquals.len - 1;
 }
