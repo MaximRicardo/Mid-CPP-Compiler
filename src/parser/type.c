@@ -1,5 +1,6 @@
 #include "type.h"
 #include "diag.h"
+#include "dynstr.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
@@ -37,6 +38,63 @@ enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type)
 
     default:
         assert(false);
+    }
+}
+
+const char *Parser_typespec_to_str(enum Parser_TypeSpec spec)
+{
+    switch (spec) {
+    case PARSER_TYPESPEC_VOID:
+        return "void";
+
+    case PARSER_TYPESPEC_CHAR:
+        return "char";
+    case PARSER_TYPESPEC_SCHAR:
+        return "signed char";
+    case PARSER_TYPESPEC_UCHAR:
+        return "unsigned char";
+
+    case PARSER_TYPESPEC_SHORT:
+        return "short";
+    case PARSER_TYPESPEC_USHORT:
+        return "unsigned short";
+
+    case PARSER_TYPESPEC_INT:
+        return "int";
+    case PARSER_TYPESPEC_UINT:
+        return "unsigned int";
+
+    case PARSER_TYPESPEC_LONG:
+        return "long";
+    case PARSER_TYPESPEC_ULONG:
+        return "unsigned long";
+
+    case PARSER_TYPESPEC_LONGLONG:
+        return "long long";
+    case PARSER_TYPESPEC_ULONGLONG:
+        return "unsigned long long";
+
+    case PARSER_TYPESPEC_FLOAT:
+        return "float";
+    case PARSER_TYPESPEC_DOUBLE:
+        return "double";
+    case PARSER_TYPESPEC_LONGDOUBLE:
+        return "long double";
+
+    case PARSER_TYPESPEC_AUTO:
+        return "auto";
+
+    case PARSER_TYPESPEC_CLASS:
+        return "class";
+    case PARSER_TYPESPEC_UNION:
+        return "union";
+    case PARSER_TYPESPEC_ENUM:
+        return "enum";
+
+    case PARSER_TYPESPEC_FPTR:
+    case PARSER_TYPESPEC_ARRAY:
+        assert(false);
+        return "INVALID-TYPE";
     }
 }
 
@@ -150,63 +208,6 @@ static struct Diag bad_qual_err(const char *type_name,
     };
 }
 
-const char *spec_to_str(enum Parser_TypeSpec spec)
-{
-    switch (spec) {
-    case PARSER_TYPESPEC_VOID:
-        return "void";
-
-    case PARSER_TYPESPEC_CHAR:
-        return "char";
-    case PARSER_TYPESPEC_SCHAR:
-        return "signed char";
-    case PARSER_TYPESPEC_UCHAR:
-        return "unsigned char";
-
-    case PARSER_TYPESPEC_SHORT:
-        return "short";
-    case PARSER_TYPESPEC_USHORT:
-        return "unsigned short";
-
-    case PARSER_TYPESPEC_INT:
-        return "int";
-    case PARSER_TYPESPEC_UINT:
-        return "unsigned int";
-
-    case PARSER_TYPESPEC_LONG:
-        return "long";
-    case PARSER_TYPESPEC_ULONG:
-        return "unsigned long";
-
-    case PARSER_TYPESPEC_LONGLONG:
-        return "long long";
-    case PARSER_TYPESPEC_ULONGLONG:
-        return "unsigned long long";
-
-    case PARSER_TYPESPEC_FLOAT:
-        return "float";
-    case PARSER_TYPESPEC_DOUBLE:
-        return "double";
-    case PARSER_TYPESPEC_LONGDOUBLE:
-        return "long double";
-
-    case PARSER_TYPESPEC_AUTO:
-        return "auto";
-
-    case PARSER_TYPESPEC_CLASS:
-        return "class";
-    case PARSER_TYPESPEC_UNION:
-        return "union";
-    case PARSER_TYPESPEC_ENUM:
-        return "enum";
-
-    case PARSER_TYPESPEC_FPTR:
-    case PARSER_TYPESPEC_ARRAY:
-        assert(false);
-        return "INVALID-TYPE";
-    }
-}
-
 static enum Parser_TypeSpec make_spec_signed(enum Parser_TypeSpec spec,
                                              const struct Lexer_Token *tok,
                                              struct DiagVec *diags)
@@ -234,7 +235,8 @@ static enum Parser_TypeSpec make_spec_signed(enum Parser_TypeSpec spec,
         return PARSER_TYPESPEC_LONGLONG;
 
     default:
-        gen_dynpush(diags, spec_unsignable_err(spec_to_str(spec), tok));
+        gen_dynpush(diags,
+                    spec_unsignable_err(Parser_typespec_to_str(spec), tok));
         return spec;
     }
 }
@@ -266,7 +268,8 @@ static enum Parser_TypeSpec make_spec_unsigned(enum Parser_TypeSpec spec,
         return PARSER_TYPESPEC_ULONGLONG;
 
     default:
-        gen_dynpush(diags, spec_unsignable_err(spec_to_str(spec), tok));
+        gen_dynpush(diags,
+                    spec_unsignable_err(Parser_typespec_to_str(spec), tok));
         return spec;
     }
 }
@@ -335,6 +338,19 @@ static void set_squal_flag(struct Parser_TypeStorQual *qual,
 
     case LEXER_TOKENTYPE_TYPEDEF:
         qual->is_typedef = true;
+        break;
+
+    default:
+        assert(false);
+    }
+}
+
+static void set_dqual_flag(struct Parser_TypeDataQual *qual,
+                           enum Lexer_TokenType type)
+{
+    switch (type) {
+    case LEXER_TOKENTYPE_CONST:
+        qual->is_const = true;
         break;
 
     default:
@@ -413,8 +429,10 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
         }
     }
     ret.squals = squals;
-    if (!spec_is_typedef)
+    if (!spec_is_typedef && !missing_spec)
         ret.dquals.arr[0] = dquals;
+    else if (!spec_is_typedef && missing_spec)
+        gen_dynpush(&ret.dquals, dquals);
 
     // short, long and long long don't need a type spec
     if ((is_short || is_long || is_longlong) && missing_spec) {
@@ -447,25 +465,34 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
     return ret;
 }
 
-// start is the idx of the left paren starting the parameter list
+struct Parser_Type
+parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
+                     isize_t *out_end, const struct Parser_ASTNode *parent,
+                     const struct Parser_TypeStorQual *squals,
+                     struct DiagVec *diags);
+
 // returns the end of the function ptr
-// void (*ptr)(int, float)
-//            ^          ^
-//          start       end
+// void (*func_ptr)(int, float)
+//      ^         ^           ^
+//    lparen    rparen      return
 static isize_t parse_fptr(struct Parser_Type *type,
-                          const struct Lexer_Token *toks, isize_t start,
+                          const struct Lexer_Token *toks, isize_t lparen,
+                          isize_t rparen, isize_t min,
                           const struct Parser_ASTNode *parent,
                           struct DiagVec *diags)
 {
-    isize_t rparen = Parser_find_twin_paren(toks, start, ISIZE_MAX);
+    isize_t p_lparen = rparen + 1;
+    isize_t p_rparen = Parser_find_twin_paren(toks, p_lparen, ISIZE_MAX);
 
     type->spec = PARSER_TYPESPEC_FPTR;
     type->fptr = malloc(sizeof(*type->fptr));
-    type->fptr->ret = (struct Parser_Type){};
+    type->fptr->ret =
+        parse_recursive_part(toks, lparen - 1, min, NULL, parent,
+                             &(struct Parser_TypeStorQual){}, diags);
     type->fptr->params = (struct Parser_TypeVec){};
 
-    isize_t i = start + 1;
-    while (i < rparen) {
+    isize_t i = p_lparen + 1;
+    while (i < p_rparen) {
         gen_dynpush(&type->fptr->params,
                     Parser_parse_type(toks, i, &i, parent, NULL, diags));
 
@@ -477,7 +504,7 @@ static isize_t parse_fptr(struct Parser_Type *type,
         ++i;
     }
 
-    return rparen + 1;
+    return p_rparen + 1;
 }
 
 // start is the idx of the left bracket
@@ -486,7 +513,8 @@ static isize_t parse_fptr(struct Parser_Type *type,
 //        ^             ^
 //      start          end
 static isize_t parse_array(struct Parser_Type *type,
-                           const struct Lexer_Token *toks, isize_t start,
+                           const struct Lexer_Token *toks, isize_t lparen,
+                           isize_t rparen, isize_t min,
                            const struct Parser_ASTNode *parent,
                            struct DiagVec *diags)
 {
@@ -494,17 +522,18 @@ static isize_t parse_array(struct Parser_Type *type,
     assert(false);
     (void)type;
     (void)toks;
-    (void)start;
+    (void)lparen;
+    (void)rparen;
+    (void)min;
     (void)parent;
     (void)diags;
 }
 
-struct Parser_Type parse_other_part(const struct Lexer_Token *toks,
-                                    isize_t start, isize_t min,
-                                    isize_t *out_end,
-                                    const struct Parser_ASTNode *parent,
-                                    const struct Parser_TypeStorQual *squals,
-                                    struct DiagVec *diags)
+struct Parser_Type
+parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
+                     isize_t *out_end, const struct Parser_ASTNode *parent,
+                     const struct Parser_TypeStorQual *squals,
+                     struct DiagVec *diags)
 {
     struct Parser_Type ret = {.squals = *squals};
 
@@ -513,13 +542,11 @@ struct Parser_Type parse_other_part(const struct Lexer_Token *toks,
     isize_t i;
     for (i = start;
          i >= min &&
-         (toks[i].type == LEXER_TOKENTYPE_CONST || is_ptr_tok(toks[i].type) ||
+         (Lexer_is_typedataqual(toks[i].type) || is_ptr_tok(toks[i].type) ||
           is_lv_ref_tok(toks[i].type) || is_rv_ref_tok(toks[i].type));
          --i) {
-        if (toks[i].type == LEXER_TOKENTYPE_CONST) {
-            if (dquals.is_const)
-                gen_dynpush(diags, unnecessary_qual_warn("const", &toks[i]));
-            dquals.is_const = true;
+        if (Lexer_is_typedataqual(toks[i].type)) {
+            set_dqual_flag(&dquals, toks[i].type);
         } else if (is_ptr_tok(toks[i].type)) {
             gen_dynpush(&ret.dquals, dquals);
             dquals = (struct Parser_TypeDataQual){};
@@ -553,9 +580,9 @@ struct Parser_Type parse_other_part(const struct Lexer_Token *toks,
             gen_dynpush(diags, expected_paren(false, &toks[i]));
         } else {
             if (toks[rparen + 1].type == LEXER_TOKENTYPE_L_PAREN)
-                end = parse_fptr(&ret, toks, rparen + 1, parent, diags);
+                end = parse_fptr(&ret, toks, i, rparen, min, parent, diags);
             else if (toks[rparen + 1].type == LEXER_TOKENTYPE_L_SQBRACKET)
-                end = parse_array(&ret, toks, rparen + 1, parent, diags);
+                end = parse_array(&ret, toks, i, rparen, min, parent, diags);
         }
     } else if (toks[end].type == LEXER_TOKENTYPE_IDENTIFIER) {
         ++end;
@@ -647,8 +674,8 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
     const char *declname =
         toks[c].type == LEXER_TOKENTYPE_IDENTIFIER ? toks[c].ident : NULL;
 
-    auto ret = parse_other_part(toks, c - (declname != NULL), i, out_end,
-                                parent, &base.squals, diags);
+    auto ret = parse_recursive_part(toks, c - (declname != NULL), i, out_end,
+                                    parent, &base.squals, diags);
     add_base(&ret, &base, &toks[start], diags);
 
     if (out_declname)
@@ -764,4 +791,63 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
     }
 
     return ret;
+}
+
+static void type_to_str_impl(const struct Parser_Type *type,
+                             struct Dynstr *str);
+
+static void fptr_to_str(const struct Parser_Type *type, struct Dynstr *str)
+{
+    type_to_str_impl(&type->fptr->ret, str);
+    Dynstr_append_char(str, ' ');
+
+    Dynstr_append_char(str, '(');
+    for (isize_t i = 0; i < Parser_n_indir(type) + 1; ++i)
+        Dynstr_append_char(str, '*');
+    if (type->lv_ref)
+        Dynstr_append_char(str, '&');
+    else if (type->rv_ref)
+        Dynstr_append(str, "&&");
+    Dynstr_append_char(str, ')');
+
+    Dynstr_append_char(str, '(');
+    for (isize_t i = 0; i < type->fptr->params.len; ++i) {
+        if (i > 0)
+            Dynstr_append(str, ", ");
+        type_to_str_impl(&type->fptr->params.arr[i], str);
+    }
+    Dynstr_append_char(str, ')');
+}
+
+static void regular_type_to_str(const struct Parser_Type *type,
+                                struct Dynstr *str)
+{
+    Dynstr_append(str, Parser_typespec_to_str(type->spec));
+
+    if (Parser_is_typespec_named(type->spec))
+        Dynstr_append_printf(str, " %s", type->named);
+
+    for (isize_t i = 0; i < Parser_n_indir(type); ++i) {
+        Dynstr_append_char(str, '*');
+    }
+
+    if (type->lv_ref)
+        Dynstr_append_char(str, '&');
+    else if (type->rv_ref)
+        Dynstr_append(str, "&&");
+}
+
+static void type_to_str_impl(const struct Parser_Type *type, struct Dynstr *str)
+{
+    if (type->spec == PARSER_TYPESPEC_FPTR)
+        fptr_to_str(type, str);
+    else
+        regular_type_to_str(type, str);
+}
+
+char *Parser_type_to_str(const struct Parser_Type *type)
+{
+    struct Dynstr str = Dynstr();
+    type_to_str_impl(type, &str);
+    return str.str;
 }

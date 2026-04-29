@@ -5,6 +5,7 @@
 #include "lexer/tokenize.h"
 #include "parser/ast.h"
 #include "parser/astvec.h"
+#include "parser/type.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -126,12 +127,19 @@ int main(int argc, char **argv)
     if (print_diags(&parser_diags))
         goto parser_failed;
 
+    /*
     printf("n indirs = %" PRIisz
            ", is const = %d, is typedef = %d, lv_ref = %d\n",
            root.root.arr[1].var_decl.type.dquals.len - 1,
            root.root.arr[1].var_decl.type.dquals.arr[0].is_const,
            root.root.arr[1].var_decl.type.squals.is_typedef,
            root.root.arr[1].var_decl.type.lv_ref);
+    */
+    {
+        char *type_str = Parser_type_to_str(&root.root.arr[1].var_decl.type);
+        printf("type = '%s'\n", type_str);
+        free(type_str);
+    }
 
 parser_failed:
     Parser_ASTNode_deinit(&root);

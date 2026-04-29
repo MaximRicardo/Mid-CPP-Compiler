@@ -36,6 +36,7 @@ enum Parser_TypeSpec {
 
 bool Parser_is_typespec_named(enum Parser_TypeSpec spec);
 enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type);
+const char *Parser_typespec_to_str(enum Parser_TypeSpec spec);
 
 struct Parser_TypeStorQual {
     bool is_static;
@@ -91,3 +92,4 @@ struct Parser_Type Parser_ref_type(const struct Parser_Type *type,
                                    bool *out_failed);
 struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
                                      bool *out_failed);
+char *Parser_type_to_str(const struct Parser_Type *type);
