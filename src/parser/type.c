@@ -610,3 +610,80 @@ isize_t Parser_n_indir(const struct Parser_Type *type)
 {
     return type->dquals.len - 1;
 }
+
+static struct Parser_TypeFPtr copy_fptr(const struct Parser_TypeFPtr *fptr)
+{
+    struct Parser_TypeFPtr ret = {};
+    ret.ret = Parser_copy_type(&fptr->ret);
+
+    for (isize_t i = 0; i < fptr->params.len; ++i)
+        gen_dynpush(&ret.params, fptr->params.arr[i]);
+
+    return ret;
+}
+
+static struct Parser_TypeArray copy_array(const struct Parser_TypeArray *arr)
+{
+    struct Parser_TypeArray ret = {};
+    ret.elem = Parser_copy_type(&arr->elem);
+    ret.len = arr->len;
+    return ret;
+}
+
+struct Parser_Type Parser_copy_type(const struct Parser_Type *type)
+{
+    struct Parser_Type ret = {
+        .spec = type->spec,
+        .squals = type->squals,
+        .lv_ref = type->lv_ref,
+        .rv_ref = type->rv_ref,
+    };
+
+    for (isize_t i = 0; i < type->dquals.len; ++i)
+        gen_dynpush(&ret.dquals, type->dquals.arr[i]);
+
+    if (type->spec == PARSER_TYPESPEC_FPTR) {
+        ret.fptr = malloc(sizeof(*ret.fptr));
+        *ret.fptr = copy_fptr(type->fptr);
+    } else if (type->spec == PARSER_TYPESPEC_ARRAY) {
+        ret.array = malloc(sizeof(*ret.array));
+        *ret.array = copy_array(type->array);
+    } else if (Parser_is_typespec_named(type->spec)) {
+        ret.named = type->named;
+    }
+
+    return ret;
+}
+
+struct Parser_Type Parser_ref_type(const struct Parser_Type *type,
+                                   bool *out_failed)
+{
+    auto ret = Parser_copy_type(type);
+
+    if (!ret.lv_ref && !ret.rv_ref) {
+        gen_dynpush(&ret.dquals, (struct Parser_TypeDataQual){});
+        if (out_failed)
+            *out_failed = false;
+    } else if (out_failed) {
+        *out_failed = true;
+    }
+
+    return ret;
+}
+
+struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
+                                     bool *out_failed)
+{
+    auto ret = Parser_copy_type(type);
+
+    if (ret.dquals.len > 1) {
+        // the first element holds the top most ptr
+        gen_dynremove(&ret.dquals, 0);
+        if (out_failed)
+            *out_failed = false;
+    } else if (out_failed) {
+        *out_failed = true;
+    }
+
+    return ret;
+}

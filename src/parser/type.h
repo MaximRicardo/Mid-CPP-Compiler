@@ -56,7 +56,8 @@ struct Parser_Type {
         const char *named; // used by classes, structs, enums, etc.
     };
     struct Parser_TypeDataQualVec dquals; // one element for each level of
-                                          // indirection, including 0
+                                          // indirection, including 0.
+                                          // starts at the top most ptr
     enum Parser_TypeSpec spec;
     struct Parser_TypeStorQual squals;
     bool lv_ref;
@@ -80,3 +81,8 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      const char **out_declname,
                                      struct DiagVec *diags);
 isize_t Parser_n_indir(const struct Parser_Type *type);
+struct Parser_Type Parser_copy_type(const struct Parser_Type *type);
+struct Parser_Type Parser_ref_type(const struct Parser_Type *type,
+                                   bool *out_failed);
+struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
+                                     bool *out_failed);
