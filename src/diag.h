@@ -1,7 +1,6 @@
 #pragma once
 
 #include "generics/dynarray.h"
-#include "ints.h"
 #include "position.h"
 
 enum ErrorType {
@@ -15,6 +14,8 @@ enum ErrorType {
     ERRORTYPE_MISPLACED_QUALIFIER,
     ERRORTYPE_TYPE_ALREADY_REF,
     ERRORTYPE_UNEXPECTED_TOKEN,
+    ERRORTYPE_TYPEDEF_MISSING_NAME,
+    ERRORTYPE_MISSING_SEMICOLON,
 };
 
 enum WarnType {

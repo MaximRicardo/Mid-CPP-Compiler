@@ -30,10 +30,8 @@ enum Parser_TypeSpec {
 
     // prefixed types
     PARSER_TYPESPEC_CLASS,
-    PARSER_TYPESPEC_STRUCT,
     PARSER_TYPESPEC_UNION,
     PARSER_TYPESPEC_ENUM,
-    PARSER_TYPESPEC_ENUMCLASS,
 };
 
 bool Parser_is_typespec_named(enum Parser_TypeSpec spec);
@@ -42,6 +40,7 @@ enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type);
 struct Parser_TypeStorQual {
     bool is_static;
     bool is_constexpr;
+    bool is_typedef;
 };
 
 struct Parser_TypeDataQual {
@@ -75,9 +74,15 @@ struct Parser_TypeArray {
     isize_t len;
 };
 
+struct Parser_ASTNode;
+
 void Parser_Type_deinit(struct Parser_Type *self);
+// if the type is named then a name must be provided
+struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
+                                          const char *name);
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
+                                     const struct Parser_ASTNode *parent,
                                      const char **out_declname,
                                      struct DiagVec *diags);
 isize_t Parser_n_indir(const struct Parser_Type *type);

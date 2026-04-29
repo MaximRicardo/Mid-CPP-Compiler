@@ -354,6 +354,21 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
     else if (!strcmp(id, "constexpr"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONSTEXPR};
+    else if (!strcmp(id, "class"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CLASS};
+    else if (!strcmp(id, "struct"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_STRUCT};
+    else if (!strcmp(id, "union"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_UNION};
+    else if (!strcmp(id, "enum"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_ENUM};
+    else if (!strcmp(id, "typedef"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_TYPEDEF};
     else
         return (struct Lexer_Token){.pos = pos,
                                     .line = line,
@@ -508,191 +523,6 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
     ret.diags = diags;
     return ret;
 }
-
-/*
-static enum Lexer_TokenType make_spec_unsigned(enum Lexer_TokenType type)
-{
-    switch (type) {
-    case LEXER_TOKENTYPE_CHAR_SPEC:
-    case LEXER_TOKENTYPE_SCHAR_SPEC:
-    case LEXER_TOKENTYPE_UCHAR_SPEC:
-        return LEXER_TOKENTYPE_UCHAR_SPEC;
-
-    case LEXER_TOKENTYPE_SHORT_SPEC:
-    case LEXER_TOKENTYPE_USHORT_SPEC:
-        return LEXER_TOKENTYPE_USHORT_SPEC;
-
-    case LEXER_TOKENTYPE_INT_SPEC:
-    case LEXER_TOKENTYPE_UINT_SPEC:
-        return LEXER_TOKENTYPE_UINT_SPEC;
-
-    case LEXER_TOKENTYPE_LONG_SPEC:
-    case LEXER_TOKENTYPE_ULONG_SPEC:
-        return LEXER_TOKENTYPE_ULONG_SPEC;
-
-    case LEXER_TOKENTYPE_LONGLONG_SPEC:
-    case LEXER_TOKENTYPE_ULONGLONG_SPEC:
-        return LEXER_TOKENTYPE_ULONGLONG_SPEC;
-
-    default:
-        assert(false);
-    }
-}
-
-static enum Lexer_TokenType make_spec_signed(enum Lexer_TokenType type)
-{
-    switch (type) {
-    case LEXER_TOKENTYPE_CHAR_SPEC:
-    case LEXER_TOKENTYPE_SCHAR_SPEC:
-    case LEXER_TOKENTYPE_UCHAR_SPEC:
-        return LEXER_TOKENTYPE_SCHAR_SPEC;
-
-    case LEXER_TOKENTYPE_SHORT_SPEC:
-    case LEXER_TOKENTYPE_USHORT_SPEC:
-        return LEXER_TOKENTYPE_SHORT_SPEC;
-
-    case LEXER_TOKENTYPE_INT_SPEC:
-    case LEXER_TOKENTYPE_UINT_SPEC:
-        return LEXER_TOKENTYPE_INT_SPEC;
-
-    case LEXER_TOKENTYPE_LONG_SPEC:
-    case LEXER_TOKENTYPE_ULONG_SPEC:
-        return LEXER_TOKENTYPE_LONG_SPEC;
-
-    case LEXER_TOKENTYPE_LONGLONG_SPEC:
-    case LEXER_TOKENTYPE_ULONGLONG_SPEC:
-        return LEXER_TOKENTYPE_LONGLONG_SPEC;
-
-    default:
-        assert(false);
-    }
-}
-
-static bool typespec_unsignable(enum Lexer_TokenType type)
-{
-    return type == LEXER_TOKENTYPE_FLOAT_SPEC ||
-           type == LEXER_TOKENTYPE_DOUBLE_SPEC ||
-           type == LEXER_TOKENTYPE_LONGDOUBLE_SPEC;
-}
-
-static const char *typespec_to_str(enum Lexer_TokenType type)
-{
-    switch (type) {
-    case LEXER_TOKENTYPE_CHAR_SPEC:
-        return "char";
-
-    case LEXER_TOKENTYPE_SCHAR_SPEC:
-        return "signed char";
-
-    case LEXER_TOKENTYPE_UCHAR_SPEC:
-        return "unsigned char";
-
-    case LEXER_TOKENTYPE_SHORT_SPEC:
-        return "short";
-
-    case LEXER_TOKENTYPE_USHORT_SPEC:
-        return "unsigned short";
-
-    case LEXER_TOKENTYPE_INT_SPEC:
-        return "int";
-
-    case LEXER_TOKENTYPE_UINT_SPEC:
-        return "unsigned int";
-
-    case LEXER_TOKENTYPE_LONG_SPEC:
-        return "long";
-
-    case LEXER_TOKENTYPE_ULONG_SPEC:
-        return "unsigned long";
-
-    case LEXER_TOKENTYPE_LONGLONG_SPEC:
-        return "long long";
-
-    case LEXER_TOKENTYPE_ULONGLONG_SPEC:
-        return "unsigned long long";
-
-    case LEXER_TOKENTYPE_FLOAT_SPEC:
-        return "float";
-
-    case LEXER_TOKENTYPE_DOUBLE_SPEC:
-        return "double";
-
-    case LEXER_TOKENTYPE_LONGDOUBLE_SPEC:
-        return "long double";
-
-    default:
-        assert(false);
-    }
-}
-
-static struct Lexer_Token merge_sign_w_typespec(const struct Lexer_Token *sign,
-                                                const struct Lexer_Token *spec,
-                                                struct DiagVec *diags)
-{
-    if (typespec_unsignable(spec->type)) {
-        struct Diag err = {
-            .pos = sign->pos,
-            .line = sign->line,
-            .msg = Print_fmt_to_str("type '%s' can not be signed or unsigned",
-                                    typespec_to_str(spec->type)),
-            .err = ERRORTYPE_TYPE_UNSIGNABLE,
-            .is_err = 1,
-        };
-        gen_dynpush(diags, err);
-
-        return (struct Lexer_Token){
-            .pos = sign->pos, .line = sign->line, .type = spec->type};
-    }
-
-    struct Lexer_Token ret = *sign;
-    if (sign->type == LEXER_TOKENTYPE_SIGNED)
-        ret.type = make_spec_signed(spec->type);
-    else
-        ret.type = make_spec_unsigned(spec->type);
-
-    return ret;
-}
-
-// converts stuff like
-//    long long
-//    signed int
-//    unsigned
-//    long double
-// into a singular token
-static void merge_typemod_and_typespec(struct Lexer_TokenVec *toks,
-                                       struct DiagVec *diags)
-{
-    for (isize_t i = toks->len - 1; i >= 0; --i) {
-        auto cur = &toks->arr[i];
-        auto next = i + 1 < toks->len ? &toks->arr[i + 1] : NULL;
-
-        if (cur->type == LEXER_TOKENTYPE_LONG_SPEC && next &&
-
-            next->type == LEXER_TOKENTYPE_LONG_SPEC) {
-            cur->type = LEXER_TOKENTYPE_LONGLONG_SPEC;
-            gen_dynremove(toks, i + 1);
-
-        } else if (cur->type == LEXER_TOKENTYPE_LONG_SPEC && next &&
-                   next->type == LEXER_TOKENTYPE_DOUBLE_SPEC) {
-
-            cur->type = LEXER_TOKENTYPE_LONGDOUBLE_SPEC;
-            gen_dynremove(toks, i + 1);
-
-        } else if (cur->type == LEXER_TOKENTYPE_SIGNED ||
-                   cur->type == LEXER_TOKENTYPE_UNSIGNED) {
-
-            if (next && Lexer_is_typespec(next->type)) {
-                *cur = merge_sign_w_typespec(cur, next, diags);
-                gen_dynremove(toks, i + 1);
-            } else {
-                cur->type = cur->type == LEXER_TOKENTYPE_SIGNED
-                                ? LEXER_TOKENTYPE_INT_SPEC
-                                : LEXER_TOKENTYPE_UINT_SPEC;
-            }
-        }
-    }
-}
-*/
 
 struct Lexer_Tokenize Lexer_tokenize(const char *src, const char *file)
 {

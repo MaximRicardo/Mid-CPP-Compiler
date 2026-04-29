@@ -5,6 +5,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "literal.h"
+#include "macros.h"
 #include "print.h"
 #include <assert.h>
 
@@ -286,45 +287,44 @@ static void push_operator(const struct Lexer_Token *tok,
 }
 
 // a sub expression is a part of an expression encased in parentheses
-// r_paren - an out parameter than can be NULL
 static struct Parser_Expr parse_subexpr(const struct Lexer_Token *toks,
-                                        isize_t l_paren, isize_t end,
-                                        struct DiagVec *diags, isize_t *r_paren)
+                                        isize_t l_paren, isize_t *out_end,
+                                        struct DiagVec *diags)
 {
-    isize_t sub_end = Parser_find_twin_paren(toks, l_paren, end);
-    if (sub_end == -1) {
+    if (Parser_find_twin_paren(toks, l_paren, ISIZE_MAX) == -1) {
         struct Diag err = {.pos = toks[l_paren].pos,
                            .line = toks[l_paren].line,
                            .msg = Print_fmt_to_str("expected ')'"),
                            .err = ERRORTYPE_MISSING_PAREN,
                            .is_err = true};
         gen_dynpush(diags, err);
-        sub_end = end;
     }
 
-    if (r_paren)
-        *r_paren = sub_end;
-
-    return Parser_parse_expr(toks, l_paren + 1, sub_end, diags);
+    return Parser_parse_expr(toks, l_paren + 1, LEXER_TOKENTYPE_R_PAREN,
+                             out_end, diags);
 }
 
 struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
-                                     isize_t start, isize_t end,
-                                     struct DiagVec *diags)
+                                     isize_t start,
+                                     enum Lexer_TokenType end_type,
+                                     isize_t *out_end, struct DiagVec *diags)
 {
     // uses the shunting yard algorithm
 
     struct Parser_ExprVec out = gen_dyninit();
     struct Parser_ExprVec ops = gen_dyninit();
 
-    for (isize_t i = start; i < end; ++i) {
+    isize_t i;
+    for (i = start; toks[i].type != end_type; ++i) {
         if (Lexer_is_numlit(toks[i].type))
             gen_dynpush(&out, numlit_tok_to_expr(&toks[i]));
         else if (Lexer_is_op(toks[i].type))
             push_operator(&toks[i], &out, &ops, diags);
         else if (toks[i].type == LEXER_TOKENTYPE_L_PAREN)
-            gen_dynpush(&out, parse_subexpr(toks, i, end, diags, &i));
+            gen_dynpush(&out, parse_subexpr(toks, i, &i, diags));
     }
+    if (out_end)
+        *out_end = i;
 
     // excess operators just get popped in fifo order
     while (ops.len > 0) {
@@ -335,7 +335,7 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
 
     if (out.len != 1) {
         // handle operator and operand mismatch here
-        assert(false);
+        CRASH("mismatched operators and operands");
     }
 
     struct Parser_Expr ret = out.arr[0];

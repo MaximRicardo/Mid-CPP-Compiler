@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include "ints.h"
+
 #ifndef GEN_DYNARRAY_DEFAULT_SIZE_TYPE
 #define GEN_DYNARRAY_DEFAULT_SIZE_TYPE long long
 #endif

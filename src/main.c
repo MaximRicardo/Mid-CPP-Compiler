@@ -3,7 +3,8 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/tokenize.h"
-#include "parser/var_decl.h"
+#include "parser/ast.h"
+#include "parser/astvec.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -94,6 +95,7 @@ int main(int argc, char **argv)
 
     struct DiagVec parser_diags = gen_dyninit();
 
+    /*
     auto decl = Parser_parse_vardecl(
         lex.toks.arr, 0, find_semicolon(lex.toks.arr, 0, lex.toks.len),
         &parser_diags);
@@ -109,9 +111,30 @@ int main(int argc, char **argv)
     for (isize_t i = 0; i < decl.type.dquals.len; ++i)
         printf("type is_const[%" PRIisz "] = %d\n", i,
                decl.type.dquals.arr[i].is_const);
+    */
+
+    struct Parser_ASTNode root = {};
+    root.type = PARSER_ASTNODETYPE_ROOT;
+
+    for (isize_t i = 0; lex.toks.arr[i].type != LEXER_TOKENTYPE_END;) {
+        printf("looping at %d:%d\n", lex.toks.arr[i].pos.line,
+               lex.toks.arr[i].pos.column);
+        auto node =
+            Parser_parse_node(lex.toks.arr, i, &i, &root, &parser_diags);
+        gen_dynpush(&root.root, node);
+    }
+    if (print_diags(&parser_diags))
+        goto parser_failed;
+
+    printf("n indirs = %" PRIisz
+           ", is const = %d, is typedef = %d, lv_ref = %d\n",
+           root.root.arr[1].var_decl.type.dquals.len - 1,
+           root.root.arr[1].var_decl.type.dquals.arr[0].is_const,
+           root.root.arr[1].var_decl.type.squals.is_typedef,
+           root.root.arr[1].var_decl.type.lv_ref);
 
 parser_failed:
-    Parser_VarDecl_deinit(&decl);
+    Parser_ASTNode_deinit(&root);
     gen_dyndeinit(&parser_diags, Diag_deinit);
 tokenize_failed:
     Lexer_Tokenize_deinit(&lex);
