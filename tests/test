@@ -1,2 +1,2 @@
-typedef unsigned long long u64;
-u64 **(***&func)(int, char (*)());
+int func(float (*param)(), 5);
+int x;

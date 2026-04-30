@@ -93,3 +93,6 @@ struct Parser_Type Parser_ref_type(const struct Parser_Type *type,
 struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
                                      bool *out_failed);
 char *Parser_type_to_str(const struct Parser_Type *type);
+// can the token be the start of a type?
+bool Parser_valid_type_start(const struct Lexer_Token *tok,
+                             const struct Parser_ASTNode *parent);

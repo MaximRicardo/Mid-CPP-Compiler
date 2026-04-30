@@ -84,6 +84,8 @@ bool Lexer_is_binop(enum Lexer_TokenType type);
 bool Lexer_is_unaryop(enum Lexer_TokenType type);
 bool Lexer_is_op(enum Lexer_TokenType type);
 bool Lexer_is_typespec(enum Lexer_TokenType type);
+// class, struct, union and enum
+bool Lexer_is_named_typespec(enum Lexer_TokenType type);
 bool Lexer_is_typestorqual(enum Lexer_TokenType type);
 bool Lexer_is_typedataqual(enum Lexer_TokenType type);
 bool Lexer_is_typequal(enum Lexer_TokenType type);

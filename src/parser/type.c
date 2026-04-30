@@ -388,10 +388,8 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
     for (; Lexer_is_typequal(toks[i].type) || Lexer_is_typemod(toks[i].type) ||
            Sema_is_typespec(&toks[i], parent);
          ++i) {
-        if (toks[i].type == LEXER_TOKENTYPE_CONST) {
-            if (dquals.is_const)
-                gen_dynpush(diags, unnecessary_qual_warn("const", &toks[i]));
-            dquals.is_const = &toks[i];
+        if (Lexer_is_typedataqual(toks[i].type)) {
+            set_dqual_flag(&dquals, toks[i].type);
         } else if (toks[i].type == LEXER_TOKENTYPE_SIGNED) {
             if (is_signed)
                 gen_dynpush(diags, unnecessary_qual_warn("signed", &toks[i]));
@@ -602,9 +600,11 @@ isize_t find_type_center(const struct Lexer_Token *toks, isize_t start)
 {
     isize_t i = start;
     while (toks[i].type == LEXER_TOKENTYPE_L_PAREN ||
-           toks[i].type == LEXER_TOKENTYPE_CONST || is_ptr_tok(toks[i].type) ||
-           is_lv_ref_tok(toks[i].type) || is_rv_ref_tok(toks[i].type) ||
-           toks[i].type == LEXER_TOKENTYPE_IDENTIFIER)
+           Lexer_is_typedataqual(toks[i].type) || is_ptr_tok(toks[i].type) ||
+           is_lv_ref_tok(toks[i].type) || is_rv_ref_tok(toks[i].type))
+        ++i;
+
+    if (toks[i].type == LEXER_TOKENTYPE_IDENTIFIER)
         ++i;
 
     return i - 1;
@@ -670,6 +670,7 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
     auto base = parse_typespec(toks, start, &i, parent, diags);
 
     isize_t c = find_type_center(toks, i);
+    printf("c at %d:%d\n", toks[c].pos.line, toks[c].pos.column);
 
     const char *declname =
         toks[c].type == LEXER_TOKENTYPE_IDENTIFIER ? toks[c].ident : NULL;
@@ -850,4 +851,11 @@ char *Parser_type_to_str(const struct Parser_Type *type)
     struct Dynstr str = Dynstr();
     type_to_str_impl(type, &str);
     return str.str;
+}
+
+bool Parser_valid_type_start(const struct Lexer_Token *tok,
+                             const struct Parser_ASTNode *parent)
+{
+    return Lexer_is_typemod(tok->type) || Lexer_is_typequal(tok->type) ||
+           Sema_is_typespec(tok, parent);
 }

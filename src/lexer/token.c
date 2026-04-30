@@ -35,6 +35,12 @@ bool Lexer_is_typespec(enum Lexer_TokenType type)
            type < LEXER_TOKENTYPE_TYPESPEC_END;
 }
 
+bool Lexer_is_named_typespec(enum Lexer_TokenType type)
+{
+    return type == LEXER_TOKENTYPE_STRUCT || type == LEXER_TOKENTYPE_CLASS ||
+           type == LEXER_TOKENTYPE_UNION || type == LEXER_TOKENTYPE_ENUM;
+}
+
 bool Lexer_is_typestorqual(enum Lexer_TokenType type)
 {
     return type > LEXER_TOKENTYPE_TYPESTORQUAL_START &&

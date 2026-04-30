@@ -1,13 +1,15 @@
 #include "ast.h"
+#include "decl.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "macros.h"
 #include "parser/enum.h"
 #include "parser/expr.h"
+#include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
-#include "sema/type.h"
 
 void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
 {
@@ -60,11 +62,16 @@ struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
 
     isize_t end;
 
-    if (Lexer_is_typemod(toks[start].type) ||
-        Lexer_is_typequal(toks[start].type) ||
-        Sema_is_typespec(&toks[start], parent)) {
-        ret.type = PARSER_ASTNODETYPE_VAR_DECL;
-        ret.var_decl = Parser_parse_var_decl(toks, start, &end, parent, diags);
+    if (Parser_valid_type_start(&toks[start], parent)) {
+        bool mvp;
+        if (Parser_decl_is_func(toks, start, parent, diags, &mvp)) {
+            printf("mvp = %d\n", mvp);
+            CRASH("func encountered");
+        } else {
+            ret.type = PARSER_ASTNODETYPE_VAR_DECL;
+            ret.var_decl =
+                Parser_parse_var_decl(toks, start, &end, parent, diags);
+        }
     } else {
         ret.type = PARSER_ASTNODETYPE_EXPR;
         ret.expr = Parser_parse_expr(toks, start, LEXER_TOKENTYPE_SEMICOLON,
