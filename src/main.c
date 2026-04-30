@@ -102,7 +102,7 @@ int main(int argc, char **argv)
     for (isize_t i = 0; lex.toks.arr[i].type != LEXER_TOKENTYPE_END;) {
         printf("looping at %d:%d, %" PRIisz "/%" PRIisz "\n",
                lex.toks.arr[i].pos.line, lex.toks.arr[i].pos.column, i,
-               lex.toks.len);
+               lex.toks.len - 1);
         auto node =
             Parser_parse_node(lex.toks.arr, i, &i, &root, &parser_diags);
         gen_dynpush(&root.root, node);

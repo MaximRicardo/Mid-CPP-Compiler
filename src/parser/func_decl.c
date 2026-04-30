@@ -10,7 +10,6 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
-#include <stdio.h>
 
 void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self)
 {
