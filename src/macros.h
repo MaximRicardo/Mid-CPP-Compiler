@@ -16,3 +16,6 @@
     } while (0)
 
 #define ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+#define MAX(x, y) ((x) < (y) ? (y) : (x))
+#define MIN(x, y) ((x) > (y) ? (y) : (x))
