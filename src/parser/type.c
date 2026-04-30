@@ -107,6 +107,8 @@ void Parser_Type_deinit(struct Parser_Type *self)
     } else if (self->spec == PARSER_TYPESPEC_ARRAY) {
         Parser_Type_deinit(&self->array->elem);
         free(self->array);
+    } else if (Parser_is_typespec_named(self->spec)) {
+        free(self->named);
     }
 
     gen_dyndeinit(&self->dquals);
@@ -645,7 +647,8 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
             type->array = malloc(sizeof(*type->array));
             *type->array = copy_array(base->array);
         } else if (Parser_is_typespec_named(base->spec)) {
-            type->named = base->named;
+            type->named = malloc(sizeof(*type->named));
+            *type->named = *base->named;
         }
 
         if (type->dquals.len > 0 && (base->lv_ref || base->rv_ref))
@@ -709,7 +712,8 @@ struct Parser_Type Parser_copy_type(const struct Parser_Type *type)
         ret.array = malloc(sizeof(*ret.array));
         *ret.array = copy_array(type->array);
     } else if (Parser_is_typespec_named(type->spec)) {
-        ret.named = type->named;
+        ret.named = malloc(sizeof(*ret.named));
+        *ret.named = *type->named;
     }
 
     return ret;
@@ -774,17 +778,23 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
     case LEXER_TOKENTYPE_STRUCT:
     case LEXER_TOKENTYPE_CLASS:
         ret.spec = PARSER_TYPESPEC_CLASS;
-        ret.named = name;
+        ret.named = malloc(sizeof(*ret.named));
+        ret.named->name = name;
+        ret.named->decl = NULL;
         break;
 
     case LEXER_TOKENTYPE_UNION:
         ret.spec = PARSER_TYPESPEC_UNION;
-        ret.named = name;
+        ret.named = malloc(sizeof(*ret.named));
+        ret.named->name = name;
+        ret.named->decl = NULL;
         break;
 
     case LEXER_TOKENTYPE_ENUM:
         ret.spec = PARSER_TYPESPEC_ENUM;
-        ret.named = name;
+        ret.named = malloc(sizeof(*ret.named));
+        ret.named->name = name;
+        ret.named->decl = NULL;
         break;
 
     default:
@@ -826,7 +836,7 @@ static void regular_type_to_str(const struct Parser_Type *type,
     Dynstr_append(str, Parser_typespec_to_str(type->spec));
 
     if (Parser_is_typespec_named(type->spec))
-        Dynstr_append_printf(str, " %s", type->named);
+        Dynstr_append_printf(str, " %s", type->named->name);
 
     for (isize_t i = 0; i < Parser_n_indir(type); ++i) {
         Dynstr_append_char(str, '*');

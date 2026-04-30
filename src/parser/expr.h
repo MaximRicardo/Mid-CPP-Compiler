@@ -5,10 +5,12 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "literal.h"
+#include "parser/type.h"
 
 enum Parser_ExprType {
     // num literals
     PARSER_EXPRTYPE_NUMLIT_START,
+    PARSER_EXPRTYPE_CHAR_LIT,
     PARSER_EXPRTYPE_INT_LIT,
     PARSER_EXPRTYPE_UINT_LIT,
     PARSER_EXPRTYPE_LONG_LIT,
@@ -69,6 +71,7 @@ struct Parser_Expr {
     } info;
 
     const struct Lexer_Token *tok;
+    struct Parser_Type ret;
     enum Parser_ExprType type;
 };
 

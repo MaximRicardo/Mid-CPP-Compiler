@@ -6,6 +6,7 @@
 #include "parser/ast.h"
 #include "parser/astvec.h"
 #include "parser/type.h"
+#include "sema/type.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -110,6 +111,13 @@ int main(int argc, char **argv)
     if (print_diags(&parser_diags))
         goto parser_failed;
 
+    struct DiagVec sema_diags = gen_dyninit();
+    Sema_typecheck_root(&root, &sema_diags);
+    if (print_diags(&sema_diags))
+        goto sema_failed;
+
+sema_failed:
+    gen_dyndeinit(&sema_diags, Diag_deinit);
 parser_failed:
     Parser_ASTNode_deinit(&root);
     gen_dyndeinit(&parser_diags, Diag_deinit);

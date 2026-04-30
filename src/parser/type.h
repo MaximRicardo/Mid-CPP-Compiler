@@ -53,7 +53,7 @@ struct Parser_Type {
     union {
         struct Parser_TypeFPtr *fptr;
         struct Parser_TypeArray *array;
-        const char *named; // used by classes, structs, enums, etc.
+        struct Parser_TypeNamed *named; // used by classes, structs, enums, etc.
     };
     struct Parser_TypeDataQualVec dquals; // one element for each level of
                                           // indirection, including 0.
@@ -73,6 +73,11 @@ struct Parser_TypeFPtr {
 struct Parser_TypeArray {
     struct Parser_Type elem;
     isize_t len;
+};
+
+struct Parser_TypeNamed {
+    const char *name;
+    const struct Parser_ASTNode *decl;
 };
 
 struct Parser_ASTNode;

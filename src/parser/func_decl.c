@@ -16,7 +16,7 @@ void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self)
 {
     Parser_Type_deinit(&self->type);
     gen_dyndeinit(&self->params, Parser_VarDecl_deinit);
-    gen_dyndeinit(&self->nodes, Parser_ASTNode_deinit);
+    gen_dyndeinit(&self->nodes, Parser_ASTNodeP_deinit);
 }
 
 struct Parser_VarDeclVec
@@ -68,9 +68,10 @@ static void parse_func_body(struct Parser_FuncDecl *func,
         return;
     }
 
-    for (isize_t i = lcurly + 1; i < rcurly;)
-        gen_dynpush(&func->nodes,
-                    Parser_parse_node(toks, i, &i, func_node, diags));
+    for (isize_t i = lcurly + 1; i < rcurly;) {
+        auto node = Parser_parse_node(toks, i, &i, func_node, diags);
+        gen_dynpush(&func->nodes, node);
+    }
 }
 
 void Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,

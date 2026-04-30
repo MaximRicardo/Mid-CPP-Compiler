@@ -1,8 +1,12 @@
 #pragma once
 
+#include "diag.h"
 #include "lexer/token.h"
 #include "parser/ast.h"
+#include "parser/expr.h"
+#include "parser/func_decl.h"
 #include "parser/type.h"
+#include "parser/var_decl.h"
 
 bool Sema_is_typespec(const struct Lexer_Token *tok,
                       const struct Parser_ASTNode *parent);
@@ -22,3 +26,15 @@ Sema_find_type_const(const char *name, const struct Parser_ASTNode *node,
 struct Parser_ASTNode *Sema_find_type(const char *name,
                                       struct Parser_ASTNode *node,
                                       const struct Lexer_Token *end);
+
+void Sema_typecheck_expr(struct Parser_Expr *expr,
+                         const struct Parser_ASTNode *parent,
+                         struct DiagVec *diags);
+void Sema_typecheck_root(struct Parser_ASTNode *node, struct DiagVec *diags);
+void Sema_typecheck_var_decl(struct Parser_VarDecl *decl,
+                             struct Parser_ASTNode *node,
+                             struct DiagVec *diags);
+void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
+                              struct Parser_ASTNode *node,
+                              struct DiagVec *diags);
+void Sema_typecheck_node(struct Parser_ASTNode *node, struct DiagVec *diags);

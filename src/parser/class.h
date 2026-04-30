@@ -4,7 +4,7 @@
 
 // classes, structs and unions
 struct Parser_Class {
-    struct Parser_ASTNodeVec nodes;
+    struct Parser_ASTNodePVec nodes;
     const char *name;
     bool is_union;
 };

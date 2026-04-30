@@ -12,12 +12,13 @@
 #include "parser/var_decl.h"
 #include "print.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
 {
     switch (self->type) {
     case PARSER_ASTNODETYPE_ROOT:
-        gen_dyndeinit(&self->root, Parser_ASTNode_deinit);
+        gen_dyndeinit(&self->root, Parser_ASTNodeP_deinit);
         break;
 
     case PARSER_ASTNODETYPE_EXPR:
@@ -46,6 +47,12 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
     }
 }
 
+void Parser_ASTNodeP_deinit(struct Parser_ASTNode **self)
+{
+    Parser_ASTNode_deinit(*self);
+    free(*self);
+}
+
 static struct Diag missing_semi_err(const struct Lexer_Token *tok)
 {
     return (struct Diag){
@@ -57,16 +64,16 @@ static struct Diag missing_semi_err(const struct Lexer_Token *tok)
     };
 }
 
-struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
-                                        isize_t start, isize_t *out_end,
-                                        struct Parser_ASTNode *parent,
-                                        struct DiagVec *diags)
+struct Parser_ASTNode *Parser_parse_node(const struct Lexer_Token *toks,
+                                         isize_t start, isize_t *out_end,
+                                         struct Parser_ASTNode *parent,
+                                         struct DiagVec *diags)
 {
-    struct Parser_ASTNode ret = {};
-    ret.start = &toks[start];
-    ret.parent = parent;
+    struct Parser_ASTNode *ret = malloc(sizeof(*ret));
+    *ret = (struct Parser_ASTNode){.start = &toks[start], .parent = parent};
 
-    printf("AST START AT %d:%d\n", ret.start->pos.line, ret.start->pos.column);
+    printf("AST START AT %d:%d\n", ret->start->pos.line,
+           ret->start->pos.column);
 
     isize_t end;
     bool check_semi = true;
@@ -75,19 +82,19 @@ struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
         bool mvp;
         if (Parser_decl_is_func(toks, start, parent, diags, &mvp)) {
             printf("mvp = %d\n", mvp);
-            ret.type = PARSER_ASTNODETYPE_FUNC_DECL;
-            Parser_parse_func_decl(toks, start, &end, &ret, diags);
-            check_semi = !ret.func_decl.has_def;
+            ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
+            Parser_parse_func_decl(toks, start, &end, ret, diags);
+            check_semi = !ret->func_decl.has_def;
         } else {
-            ret.type = PARSER_ASTNODETYPE_VAR_DECL;
-            ret.var_decl = Parser_parse_var_decl(
+            ret->type = PARSER_ASTNODETYPE_VAR_DECL;
+            ret->var_decl = Parser_parse_var_decl(
                 toks, start, &end, PARSER_DEFAULT_ENDTYPES, parent, diags);
         }
     } else {
         printf("EXPR NODE\n");
-        ret.type = PARSER_ASTNODETYPE_EXPR;
-        ret.expr = Parser_parse_expr(toks, start, PARSER_DEFAULT_ENDTYPES, &end,
-                                     diags);
+        ret->type = PARSER_ASTNODETYPE_EXPR;
+        ret->expr = Parser_parse_expr(toks, start, PARSER_DEFAULT_ENDTYPES,
+                                      &end, diags);
     }
 
     if (check_semi && toks[end].type != LEXER_TOKENTYPE_SEMICOLON)
@@ -100,7 +107,7 @@ struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
     return ret;
 }
 
-const struct Parser_ASTNodeVec *
+const struct Parser_ASTNodePVec *
 Parser_node_subs_const(const struct Parser_ASTNode *node)
 {
     switch (node->type) {
@@ -124,7 +131,7 @@ Parser_node_subs_const(const struct Parser_ASTNode *node)
     }
 }
 
-struct Parser_ASTNodeVec *Parser_node_subs(struct Parser_ASTNode *node)
+struct Parser_ASTNodePVec *Parser_node_subs(struct Parser_ASTNode *node)
 {
-    return (struct Parser_ASTNodeVec *)Parser_node_subs_const(node);
+    return (struct Parser_ASTNodePVec *)Parser_node_subs_const(node);
 }

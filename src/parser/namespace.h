@@ -3,7 +3,7 @@
 #include "parser/astvec.h"
 
 struct Parser_Namespace {
-    struct Parser_ASTNodeVec nodes;
+    struct Parser_ASTNodePVec nodes;
     const char *name; // NULL for anonymous namespaces
 };
 

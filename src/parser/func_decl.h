@@ -7,7 +7,7 @@
 struct Parser_FuncDecl {
     struct Parser_Type type;
     struct Parser_VarDeclVec params;
-    struct Parser_ASTNodeVec nodes;
+    struct Parser_ASTNodePVec nodes;
     const char *name;
     bool has_def; // does this node hold the definition of the func?
 };

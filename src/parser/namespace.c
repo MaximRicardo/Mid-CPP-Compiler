@@ -4,5 +4,5 @@
 
 void Parser_Namespace_deinit(struct Parser_Namespace *self)
 {
-    gen_dyndeinit(&self->nodes, Parser_ASTNode_deinit);
+    gen_dyndeinit(&self->nodes, Parser_ASTNodeP_deinit);
 }

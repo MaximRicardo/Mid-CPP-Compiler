@@ -23,7 +23,7 @@ enum Parser_ASTNodeType {
 
 struct Parser_ASTNode {
     union {
-        struct Parser_ASTNodeVec root;
+        struct Parser_ASTNodePVec root;
         struct Parser_Expr expr;
         struct Parser_VarDecl var_decl;
         struct Parser_FuncDecl func_decl;
@@ -37,11 +37,12 @@ struct Parser_ASTNode {
 };
 
 void Parser_ASTNode_deinit(struct Parser_ASTNode *self);
-struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
-                                        isize_t start, isize_t *out_end,
-                                        struct Parser_ASTNode *parent,
-                                        struct DiagVec *diags);
+void Parser_ASTNodeP_deinit(struct Parser_ASTNode **self);
+struct Parser_ASTNode *Parser_parse_node(const struct Lexer_Token *toks,
+                                         isize_t start, isize_t *out_end,
+                                         struct Parser_ASTNode *parent,
+                                         struct DiagVec *diags);
 // returns NULL if the node doesn't have a vector of children
-const struct Parser_ASTNodeVec *
+const struct Parser_ASTNodePVec *
 Parser_node_subs_const(const struct Parser_ASTNode *node);
-struct Parser_ASTNodeVec *Parser_node_subs(struct Parser_ASTNode *node);
+struct Parser_ASTNodePVec *Parser_node_subs(struct Parser_ASTNode *node);

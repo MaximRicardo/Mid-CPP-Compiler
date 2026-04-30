@@ -6,6 +6,7 @@
 #include "lexer/token.h"
 #include "literal.h"
 #include "macros.h"
+#include "parser/type.h"
 #include "print.h"
 #include <assert.h>
 #include <stdio.h>
@@ -225,45 +226,45 @@ static bool has_enough_operands(enum Parser_ExprType op, int n)
         assert(false);
 }
 
-static void add_op_to_out(struct Parser_Expr op, struct Parser_ExprVec *out,
+static void add_op_to_out(struct Parser_Expr *op, struct Parser_ExprVec *out,
                           struct DiagVec *diags)
 {
-    if (!has_enough_operands(op.type, out->len)) {
+    if (!has_enough_operands(op->type, out->len)) {
         struct Diag err = {
-            .pos = op.tok->pos,
-            .line = op.tok->line,
+            .pos = op->tok->pos,
+            .line = op->tok->line,
             .msg = Print_fmt_to_str(
                 "%s operator expects %d %s, received %" PRIisz,
-                Parser_is_unaryop(op.type) ? "unary"
-                : Parser_is_binop(op.type) ? "binary"
-                                           : "ternary",
-                Parser_is_unaryop(op.type) ? 1
-                : Parser_is_binop(op.type) ? 2
-                                           : 3,
-                Parser_is_unaryop(op.type) ? "operand" : "operands", out->len),
+                Parser_is_unaryop(op->type) ? "unary"
+                : Parser_is_binop(op->type) ? "binary"
+                                            : "ternary",
+                Parser_is_unaryop(op->type) ? 1
+                : Parser_is_binop(op->type) ? 2
+                                            : 3,
+                Parser_is_unaryop(op->type) ? "operand" : "operands", out->len),
             .err = ERRORTYPE_INSUFFICIENT_OPERANDS,
             .is_err = true};
         gen_dynpush(diags, err);
         return;
     }
 
-    op.info.args = (struct Parser_ExprVec)gen_dyninit();
+    op->info.args = (struct Parser_ExprVec)gen_dyninit();
 
     // the exprs at the top act as operands for the new op
-    if (Parser_is_ternaryop(op.type))
-        gen_dynpush(&op.info.args, out->arr[out->len - 3]);
-    if (Parser_is_ternaryop(op.type) || Parser_is_binop(op.type))
-        gen_dynpush(&op.info.args, out->arr[out->len - 2]);
-    gen_dynpush(&op.info.args, out->arr[out->len - 1]);
+    if (Parser_is_ternaryop(op->type))
+        gen_dynpush(&op->info.args, out->arr[out->len - 3]);
+    if (Parser_is_ternaryop(op->type) || Parser_is_binop(op->type))
+        gen_dynpush(&op->info.args, out->arr[out->len - 2]);
+    gen_dynpush(&op->info.args, out->arr[out->len - 1]);
 
     // the expressions are now encoded in op
-    if (Parser_is_ternaryop(op.type))
+    if (Parser_is_ternaryop(op->type))
         gen_dynpop(out);
-    if (Parser_is_ternaryop(op.type) || Parser_is_binop(op.type))
+    if (Parser_is_ternaryop(op->type) || Parser_is_binop(op->type))
         gen_dynpop(out);
     gen_dynpop(out);
 
-    gen_dynpush(out, op);
+    gen_dynpush(out, *op);
 }
 
 // handles sending an operator through the shunting yard
@@ -281,7 +282,7 @@ static void push_operator(const struct Lexer_Token *tok,
 
         if (top_prec > op_prec ||
             (top_prec == op_prec && Parser_op_ltr_assoc(op.type))) {
-            add_op_to_out(*top, out, diags);
+            add_op_to_out(top, out, diags);
             gen_dynpop(ops);
             top = &ops->arr[ops->len - 1];
         } else {
@@ -348,7 +349,7 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
 
     // excess operators just get popped in fifo order
     while (ops.len > 0) {
-        add_op_to_out(ops.arr[ops.len - 1], &out, diags);
+        add_op_to_out(&ops.arr[ops.len - 1], &out, diags);
         gen_dynpop(&ops);
     }
     gen_dyndeinit(&ops);
@@ -415,6 +416,8 @@ void Parser_Expr_deinit(struct Parser_Expr *expr)
             Parser_Expr_deinit(&expr->info.args.arr[i]);
         gen_dyndeinit(&expr->info.args);
     }
+
+    Parser_Type_deinit(&expr->ret);
 }
 
 bool Parser_expr_uses_args(enum Parser_ExprType type)
