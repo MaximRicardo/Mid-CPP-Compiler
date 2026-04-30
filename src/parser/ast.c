@@ -65,15 +65,17 @@ struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
     ret.start = &toks[start];
     ret.parent = parent;
 
+    printf("AST START AT %d:%d\n", ret.start->pos.line, ret.start->pos.column);
+
     isize_t end;
     bool check_semi = true;
     if (Parser_valid_type_start(&toks[start], parent)) {
+        printf("DECL NODE\n");
         bool mvp;
         if (Parser_decl_is_func(toks, start, parent, diags, &mvp)) {
             printf("mvp = %d\n", mvp);
             ret.type = PARSER_ASTNODETYPE_FUNC_DECL;
-            ret.func_decl =
-                Parser_parse_func_decl(toks, start, &end, &ret, diags);
+            Parser_parse_func_decl(toks, start, &end, &ret, diags);
             check_semi = !ret.func_decl.has_def;
         } else {
             ret.type = PARSER_ASTNODETYPE_VAR_DECL;
@@ -81,6 +83,7 @@ struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
                 Parser_parse_var_decl(toks, start, &end, parent, diags);
         }
     } else {
+        printf("EXPR NODE\n");
         ret.type = PARSER_ASTNODETYPE_EXPR;
         ret.expr = Parser_parse_expr(toks, start, LEXER_TOKENTYPE_SEMICOLON,
                                      &end, diags);
@@ -102,6 +105,9 @@ Parser_node_subs_const(const struct Parser_ASTNode *node)
     switch (node->type) {
     case PARSER_ASTNODETYPE_ROOT:
         return &node->root;
+
+    case PARSER_ASTNODETYPE_FUNC_DECL:
+        return &node->func_decl.nodes;
 
     case PARSER_ASTNODETYPE_ENUM:
         return &node->enum_.nodes;

@@ -17,7 +17,6 @@ struct Parser_VarDeclVec
 Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
                          isize_t *out_rparen, struct Parser_ASTNode *func_node,
                          struct DiagVec *diags);
-struct Parser_FuncDecl Parser_parse_func_decl(const struct Lexer_Token *toks,
-                                              isize_t start, isize_t *out_end,
-                                              struct Parser_ASTNode *func_node,
-                                              struct DiagVec *diags);
+void Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
+                            isize_t *out_end, struct Parser_ASTNode *func_node,
+                            struct DiagVec *diags);

@@ -72,13 +72,10 @@ const char *Sema_node_type_name(const struct Parser_ASTNode *node)
         CRASH("ast node doesn't have a type name");
 }
 
-const struct Parser_ASTNode *
-Sema_find_type_const(const char *name, const struct Parser_ASTNode *node,
-                     const struct Lexer_Token *end)
+static const struct Parser_ASTNode *
+find_type_impl(const char *name, const struct Parser_ASTNode *node,
+               const struct Lexer_Token *end)
 {
-    if (Sema_node_is_type(node) && !strcmp(Sema_node_type_name(node), name))
-        return node;
-
     auto subs = Parser_node_subs_const(node);
     if (!subs)
         return NULL;
@@ -87,15 +84,22 @@ Sema_find_type_const(const char *name, const struct Parser_ASTNode *node,
         if (subs->arr[i].start >= end)
             break;
 
-        auto ret = Sema_find_type_const(name, &subs->arr[i], end);
-        if (ret)
-            return ret;
+        if (Sema_node_is_type(&subs->arr[i]) &&
+            !strcmp(Sema_node_type_name(&subs->arr[i]), name))
+            return &subs->arr[i];
     }
 
     if (node->parent)
-        return Sema_find_type_const(name, node->parent, end);
+        return find_type_impl(name, node->parent, end);
     else
         return NULL;
+}
+
+const struct Parser_ASTNode *
+Sema_find_type_const(const char *name, const struct Parser_ASTNode *node,
+                     const struct Lexer_Token *end)
+{
+    return find_type_impl(name, node, end);
 }
 
 struct Parser_ASTNode *Sema_find_type(const char *name,

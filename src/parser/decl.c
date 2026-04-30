@@ -17,20 +17,19 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
                            const struct Parser_ASTNode *parent,
                            struct DiagVec *diags)
 {
-    printf("start at %d:%d\n", toks[start].pos.line, toks[start].pos.column);
     assert(Parser_valid_type_start(&toks[start], parent));
 
-    auto type = Parser_parse_type(toks, start, out_end, parent, NULL, diags);
+    auto decl = Parser_parse_var_decl(toks, start, out_end, parent, diags);
 
     bool has_dquals =
-        memcmp(&type.dquals.arr[0], &(struct Parser_TypeDataQual){},
-               sizeof(type.dquals.arr[0])) != 0;
+        memcmp(&decl.type.dquals.arr[0], &(struct Parser_TypeDataQual){},
+               sizeof(decl.type.dquals.arr[0])) != 0;
 
-    bool ret = Parser_is_typespec_named(type.spec) &&
-               Parser_n_indir(&type) == 0 && !type.lv_ref && !type.rv_ref &&
-               !has_dquals;
+    bool ret = decl.init == NULL && Parser_is_typespec_named(decl.type.spec) &&
+               Parser_n_indir(&decl.type) == 0 && !decl.type.lv_ref &&
+               !decl.type.rv_ref && !has_dquals;
 
-    Parser_Type_deinit(&type);
+    Parser_VarDecl_deinit(&decl);
     return ret;
 }
 
@@ -62,9 +61,6 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
     isize_t type_end;
     auto type = Parser_parse_type(toks, start, &type_end, parent, NULL, diags);
 
-    printf("type end at %d:%d\n", toks[type_end].pos.line,
-           toks[type_end].pos.column);
-
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN) {
         printf("0\n");
         ret = false;
@@ -74,15 +70,12 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
     isize_t lparen = type_end;
 
     if (toks[lparen + 1].type == LEXER_TOKENTYPE_R_PAREN) {
-        printf("1\n");
         mvp = true;
         ret = true;
     } else if (Parser_valid_type_start(&toks[lparen + 1], parent)) {
-        printf("2\n");
         mvp = are_params_ambig(toks, lparen, parent, diags);
         ret = true;
     } else {
-        printf("3\n");
         ret = false;
     }
 
