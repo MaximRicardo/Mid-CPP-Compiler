@@ -3,6 +3,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "parser/ast.h"
+#include "parser/end_types.h"
 #include "parser/type.h"
 #include <assert.h>
 #include <stdio.h>
@@ -19,7 +20,8 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
 {
     assert(Parser_valid_type_start(&toks[start], parent));
 
-    auto decl = Parser_parse_var_decl(toks, start, out_end, parent, diags);
+    auto decl = Parser_parse_var_decl(toks, start, out_end,
+                                      PARSER_PARAM_ENDTYPES, parent, diags);
 
     bool has_dquals =
         memcmp(&decl.type.dquals.arr[0], &(struct Parser_TypeDataQual){},
@@ -62,7 +64,6 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
     auto type = Parser_parse_type(toks, start, &type_end, parent, NULL, diags);
 
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN) {
-        printf("0\n");
         ret = false;
         goto finish;
     }

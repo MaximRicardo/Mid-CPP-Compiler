@@ -5,7 +5,6 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "literal.h"
-#include "position.h"
 
 enum Parser_ExprType {
     // num literals
@@ -20,6 +19,8 @@ enum Parser_ExprType {
     PARSER_EXPRTYPE_DOUBLE_LIT,
     PARSER_EXPRTYPE_LONGDOUBLE_LIT,
     PARSER_EXPRTYPE_NUMLIT_END,
+
+    PARSER_EXPRTYPE_IDENTIFIER,
 
     // ternary ops
     PARSER_EXPRTYPE_TERNARYOP_START,
@@ -64,10 +65,10 @@ struct Parser_Expr {
     union {
         struct Parser_ExprVec args;
         union Literal_Value val;
+        const char *ident;
     } info;
 
-    struct Position pos;
-    const char *line;
+    const struct Lexer_Token *tok;
     enum Parser_ExprType type;
 };
 
@@ -75,7 +76,8 @@ void Parser_Expr_deinit(struct Parser_Expr *expr);
 // stops when reaching end_type
 struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                                      isize_t start,
-                                     enum Lexer_TokenType end_type,
-                                     isize_t *out_end, struct DiagVec *diags);
+                                     const enum Lexer_TokenType *end_types,
+                                     isize_t n_end_types, isize_t *out_end,
+                                     struct DiagVec *diags);
 // evaluate the result of a constant expression
 union Literal_Value Parser_evaluate(const struct Parser_Expr *expr);

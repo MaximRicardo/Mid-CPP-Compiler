@@ -4,6 +4,7 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "parser/end_types.h"
 #include "parser/enum.h"
 #include "parser/expr.h"
 #include "parser/func_decl.h"
@@ -79,14 +80,14 @@ struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
             check_semi = !ret.func_decl.has_def;
         } else {
             ret.type = PARSER_ASTNODETYPE_VAR_DECL;
-            ret.var_decl =
-                Parser_parse_var_decl(toks, start, &end, parent, diags);
+            ret.var_decl = Parser_parse_var_decl(
+                toks, start, &end, PARSER_DEFAULT_ENDTYPES, parent, diags);
         }
     } else {
         printf("EXPR NODE\n");
         ret.type = PARSER_ASTNODETYPE_EXPR;
-        ret.expr = Parser_parse_expr(toks, start, LEXER_TOKENTYPE_SEMICOLON,
-                                     &end, diags);
+        ret.expr = Parser_parse_expr(toks, start, PARSER_DEFAULT_ENDTYPES, &end,
+                                     diags);
     }
 
     if (check_semi && toks[end].type != LEXER_TOKENTYPE_SEMICOLON)

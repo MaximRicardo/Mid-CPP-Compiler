@@ -6,6 +6,7 @@
 #include "macros.h"
 #include "parser/ast.h"
 #include "parser/astvec.h"
+#include "parser/end_types.h"
 #include "parser/find_twin.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
@@ -40,7 +41,9 @@ Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
     }
 
     for (isize_t i = lparen + 1; i < rparen; ++i)
-        gen_dynpush(&params, Parser_parse_var_decl(toks, i, &i, parent, diags));
+        gen_dynpush(&params,
+                    Parser_parse_var_decl(toks, i, &i, PARSER_PARAM_ENDTYPES,
+                                          parent, diags));
 
     return params;
 }

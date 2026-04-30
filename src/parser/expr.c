@@ -8,6 +8,7 @@
 #include "macros.h"
 #include "print.h"
 #include <assert.h>
+#include <stdio.h>
 
 bool Parser_is_numlit(enum Parser_ExprType type)
 {
@@ -102,10 +103,7 @@ static struct Parser_Expr numlit_tok_to_expr(const struct Lexer_Token *tok)
 {
     assert(Lexer_is_numlit(tok->type));
 
-    struct Parser_Expr ret;
-    ret.pos = tok->pos;
-    ret.line = tok->line;
-    ret.info.val = tok->val;
+    struct Parser_Expr ret = {.tok = tok, .info.val = tok->val};
 
     switch (tok->type) {
     case LEXER_TOKENTYPE_INT_LIT:
@@ -152,13 +150,21 @@ static struct Parser_Expr numlit_tok_to_expr(const struct Lexer_Token *tok)
     return ret;
 }
 
+static struct Parser_Expr ident_tok_to_expr(const struct Lexer_Token *tok)
+{
+    assert(tok->type == LEXER_TOKENTYPE_IDENTIFIER);
+
+    struct Parser_Expr ret = {.tok = tok,
+                              .info.ident = tok->ident,
+                              .type = PARSER_EXPRTYPE_IDENTIFIER};
+    return ret;
+}
+
 static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *tok)
 {
     assert(Lexer_is_op(tok->type));
 
-    struct Parser_Expr ret;
-    ret.pos = tok->pos;
-    ret.line = tok->line;
+    struct Parser_Expr ret = {.tok = tok};
 
     switch (tok->type) {
     case LEXER_TOKENTYPE_ADD:
@@ -224,8 +230,8 @@ static void add_op_to_out(struct Parser_Expr op, struct Parser_ExprVec *out,
 {
     if (!has_enough_operands(op.type, out->len)) {
         struct Diag err = {
-            .pos = op.pos,
-            .line = op.line,
+            .pos = op.tok->pos,
+            .line = op.tok->line,
             .msg = Print_fmt_to_str(
                 "%s operator expects %d %s, received %" PRIisz,
                 Parser_is_unaryop(op.type) ? "unary"
@@ -300,14 +306,26 @@ static struct Parser_Expr parse_subexpr(const struct Lexer_Token *toks,
         gen_dynpush(diags, err);
     }
 
-    return Parser_parse_expr(toks, l_paren + 1, LEXER_TOKENTYPE_R_PAREN,
-                             out_end, diags);
+    return Parser_parse_expr(toks, l_paren + 1,
+                             (enum Lexer_TokenType[]){LEXER_TOKENTYPE_R_PAREN},
+                             1, out_end, diags);
+}
+
+static bool is_end_type(enum Lexer_TokenType type,
+                        const enum Lexer_TokenType *end_types,
+                        isize_t n_end_types)
+{
+    for (isize_t i = 0; i < n_end_types; ++i)
+        if (type == end_types[i])
+            return true;
+    return false;
 }
 
 struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                                      isize_t start,
-                                     enum Lexer_TokenType end_type,
-                                     isize_t *out_end, struct DiagVec *diags)
+                                     const enum Lexer_TokenType *end_types,
+                                     isize_t n_end_types, isize_t *out_end,
+                                     struct DiagVec *diags)
 {
     // uses the shunting yard algorithm
 
@@ -315,9 +333,11 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
     struct Parser_ExprVec ops = gen_dyninit();
 
     isize_t i;
-    for (i = start; toks[i].type != end_type; ++i) {
+    for (i = start; !is_end_type(toks[i].type, end_types, n_end_types); ++i) {
         if (Lexer_is_numlit(toks[i].type))
             gen_dynpush(&out, numlit_tok_to_expr(&toks[i]));
+        else if (toks[i].type == LEXER_TOKENTYPE_IDENTIFIER)
+            gen_dynpush(&out, ident_tok_to_expr(&toks[i]));
         else if (Lexer_is_op(toks[i].type))
             push_operator(&toks[i], &out, &ops, diags);
         else if (toks[i].type == LEXER_TOKENTYPE_L_PAREN)
@@ -335,6 +355,10 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
 
     if (out.len != 1) {
         // handle operator and operand mismatch here
+        printf("expr start at %d:%d\n", toks[start].pos.line,
+               toks[start].pos.column);
+        printf("expr end at %d:%d\n", toks[i].pos.line, toks[i].pos.column);
+        printf("out len = %" PRIisz "\n", out.len);
         CRASH("mismatched operators and operands");
     }
 

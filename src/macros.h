@@ -14,3 +14,5 @@
         x = y;                                                                 \
         y = tmp_super_specific_name______;                                     \
     } while (0)
+
+#define ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
