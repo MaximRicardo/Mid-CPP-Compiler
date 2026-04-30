@@ -12,11 +12,13 @@ void Diag_deinit(struct Diag *self)
 void Diag_print(const struct Diag *diag)
 {
     // example: "test.cpp:10:5: error: expected ';' after expression"
-    //          "10 | printf("hello world")"
+    //          "00010 | printf("hello world")"
+    //                   ^
     printf("%s:%" PRId32 ":%" PRId32 ": %s: %s\n", diag->pos.file,
            diag->pos.line, diag->pos.column, diag->is_err ? "error" : "warning",
            diag->msg);
-    printf("%" PRId32 " | ", diag->pos.line);
+    printf("%05" PRId32 " | ", diag->pos.line);
     Print_line(diag->line);
-    putchar('\n');
+    printf("\n      | ");
+    Print_column_arrow(diag->pos.column);
 }

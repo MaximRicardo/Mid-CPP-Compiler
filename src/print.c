@@ -28,3 +28,10 @@ char *Print_fmt_to_str(const char *fmt, ...)
 
     return str;
 }
+
+void Print_column_arrow(i32 column)
+{
+    for (i32 i = 0; i < column - 1; ++i)
+        printf(" ");
+    printf("^\n");
+}
