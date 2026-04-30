@@ -8,12 +8,14 @@
 #include "lexer/token.h"
 #include "namespace.h"
 #include "parser/astvec.h"
+#include "parser/func_decl.h"
 #include "parser/var_decl.h"
 
 enum Parser_ASTNodeType {
     PARSER_ASTNODETYPE_ROOT,
     PARSER_ASTNODETYPE_EXPR,
     PARSER_ASTNODETYPE_VAR_DECL,
+    PARSER_ASTNODETYPE_FUNC_DECL,
     PARSER_ASTNODETYPE_CLASS,
     PARSER_ASTNODETYPE_ENUM,
     PARSER_ASTNODETYPE_NAMESPACE,
@@ -24,6 +26,7 @@ struct Parser_ASTNode {
         struct Parser_ASTNodeVec root;
         struct Parser_Expr expr;
         struct Parser_VarDecl var_decl;
+        struct Parser_FuncDecl func_decl;
         struct Parser_Class class_;
         struct Parser_Enum enum_;
         struct Parser_Namespace nmspace;

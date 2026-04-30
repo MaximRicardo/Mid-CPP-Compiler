@@ -479,6 +479,14 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
             gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_R_SQBRACKET,
                                                 pos, line_start));
             break;
+        case '{':
+            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_L_CURLY, pos,
+                                                line_start));
+            break;
+        case '}':
+            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_R_CURLY, pos,
+                                                line_start));
+            break;
 
         case ';':
             gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_SEMICOLON, pos,

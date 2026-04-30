@@ -1,2 +1,9 @@
-int func(float (*param)(), 5);
-int x;
+int func(int x)
+{
+    5 + 20;
+}
+
+int main(int argc, char **argv)
+{
+    1234 * 2;
+}

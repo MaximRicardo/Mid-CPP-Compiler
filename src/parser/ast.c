@@ -4,12 +4,13 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
-#include "macros.h"
 #include "parser/enum.h"
 #include "parser/expr.h"
+#include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
+#include <stdio.h>
 
 void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
 {
@@ -24,6 +25,10 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
 
     case PARSER_ASTNODETYPE_VAR_DECL:
         Parser_VarDecl_deinit(&self->var_decl);
+        break;
+
+    case PARSER_ASTNODETYPE_FUNC_DECL:
+        Parser_FuncDecl_deinit(&self->func_decl);
         break;
 
     case PARSER_ASTNODETYPE_ENUM:
@@ -61,12 +66,15 @@ struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
     ret.parent = parent;
 
     isize_t end;
-
+    bool check_semi = true;
     if (Parser_valid_type_start(&toks[start], parent)) {
         bool mvp;
         if (Parser_decl_is_func(toks, start, parent, diags, &mvp)) {
             printf("mvp = %d\n", mvp);
-            CRASH("func encountered");
+            ret.type = PARSER_ASTNODETYPE_FUNC_DECL;
+            ret.func_decl =
+                Parser_parse_func_decl(toks, start, &end, &ret, diags);
+            check_semi = !ret.func_decl.has_def;
         } else {
             ret.type = PARSER_ASTNODETYPE_VAR_DECL;
             ret.var_decl =
@@ -78,9 +86,9 @@ struct Parser_ASTNode Parser_parse_node(const struct Lexer_Token *toks,
                                      &end, diags);
     }
 
-    if (toks[end].type != LEXER_TOKENTYPE_SEMICOLON)
+    if (check_semi && toks[end].type != LEXER_TOKENTYPE_SEMICOLON)
         gen_dynpush(diags, missing_semi_err(&toks[start]));
-    else
+    else if (check_semi)
         ++end;
 
     if (out_end)

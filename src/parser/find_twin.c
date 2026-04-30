@@ -36,3 +36,10 @@ isize_t Parser_find_twin_sqbracket(const struct Lexer_Token *toks,
                                     LEXER_TOKENTYPE_L_SQBRACKET,
                                     LEXER_TOKENTYPE_R_SQBRACKET);
 }
+
+isize_t Parser_find_twin_curly(const struct Lexer_Token *toks, isize_t l_idx,
+                               isize_t end_idx)
+{
+    return Parser_find_twin_generic(
+        toks, l_idx, end_idx, LEXER_TOKENTYPE_L_CURLY, LEXER_TOKENTYPE_R_CURLY);
+}

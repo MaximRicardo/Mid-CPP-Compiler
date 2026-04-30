@@ -9,6 +9,8 @@ isize_t Parser_find_twin_paren(const struct Lexer_Token *toks, isize_t l_idx,
                                isize_t end_idx);
 isize_t Parser_find_twin_sqbracket(const struct Lexer_Token *toks,
                                    isize_t l_idx, isize_t end_idx);
+isize_t Parser_find_twin_curly(const struct Lexer_Token *toks, isize_t l_idx,
+                               isize_t end_idx);
 
 isize_t Parser_find_twin_generic(const struct Lexer_Token *toks, isize_t l_idx,
                                  isize_t end_idx, enum Lexer_TokenType l_type,
