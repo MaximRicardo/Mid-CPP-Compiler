@@ -28,8 +28,7 @@ struct Parser_ASTNode *Sema_find_type(const char *name,
                                       const struct Lexer_Token *end);
 
 void Sema_typecheck_expr(struct Parser_Expr *expr,
-                         const struct Parser_ASTNode *parent,
-                         struct DiagVec *diags);
+                         struct Parser_ASTNode *parent, struct DiagVec *diags);
 void Sema_typecheck_root(struct Parser_ASTNode *node, struct DiagVec *diags);
 void Sema_typecheck_var_decl(struct Parser_VarDecl *decl,
                              struct Parser_ASTNode *node,

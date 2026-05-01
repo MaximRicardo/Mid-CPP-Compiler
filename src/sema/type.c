@@ -110,6 +110,14 @@ struct Parser_ASTNode *Sema_find_type(const char *name,
 
 static void typecheck_lit_expr(struct Parser_Expr *expr)
 {
+    if (expr->type == PARSER_EXPRTYPE_STRING_LIT ||
+        expr->type == PARSER_EXPRTYPE_WSTRING_LIT ||
+        expr->type == PARSER_EXPRTYPE_STRING16_LIT ||
+        expr->type == PARSER_EXPRTYPE_STRING32_LIT)
+        expr->valtype = PARSER_EXPRVALUE_LVALUE;
+    else
+        expr->valtype = PARSER_EXPRVALUE_PRVALUE;
+
     switch (expr->type) {
     case PARSER_EXPRTYPE_CHAR_LIT:
         expr->ret.spec = PARSER_TYPESPEC_CHAR;
@@ -159,6 +167,9 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
 {
     assert(expr->type == PARSER_EXPRTYPE_IDENTIFIER);
 
+    // all identifiers are lvalues
+    expr->valtype = PARSER_EXPRVALUE_LVALUE;
+
     const struct Parser_Type *type =
         Sema_ident_type_const(expr->tok->ident, parent, expr->tok);
 
@@ -176,9 +187,49 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
         expr->ret = Parser_copy_type(type);
 }
 
+static void set_func_call_node(struct Parser_Expr *expr,
+                               struct Parser_ASTNode *parent,
+                               struct DiagVec *diags)
+{
+    const struct Parser_Expr *name_expr = &expr->info.args.arr[0];
+
+    if (name_expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
+        expr->node =
+            Sema_ident_creation(name_expr->info.ident, parent, expr->tok);
+        if (!expr->node || expr->node->type != PARSER_ASTNODETYPE_FUNC_DECL)
+            gen_dynpush(diags,
+                        ((struct Diag){
+                            .pos = name_expr->tok->pos,
+                            .line = name_expr->tok->line,
+                            .msg = Print_fmt_to_str("'%s' is not a function",
+                                                    name_expr->info.ident),
+                            .err = ERRORTYPE_BAD_IDENTIFIER,
+                            .is_err = true,
+                        }));
+    } else
+        CRASH("calling function ptrs not implemented");
+}
+
+static void typecheck_func_call(struct Parser_Expr *expr,
+                                struct Parser_ASTNode *parent,
+                                struct DiagVec *diags)
+{
+    set_func_call_node(expr, parent, diags);
+    if (!expr->node)
+        return;
+
+    expr->ret = Parser_copy_type(&expr->node->func_decl.type);
+
+    if (expr->node->func_decl.type.lv_ref)
+        expr->valtype = PARSER_EXPRVALUE_LVALUE;
+    else if (expr->node->func_decl.type.rv_ref)
+        expr->valtype = PARSER_EXPRVALUE_XVALUE;
+    else
+        expr->valtype = PARSER_EXPRVALUE_PRVALUE;
+}
+
 void Sema_typecheck_expr(struct Parser_Expr *expr,
-                         const struct Parser_ASTNode *parent,
-                         struct DiagVec *diags)
+                         struct Parser_ASTNode *parent, struct DiagVec *diags)
 {
     if (Parser_is_numlit(expr->type)) {
         typecheck_lit_expr(expr);
@@ -188,6 +239,9 @@ void Sema_typecheck_expr(struct Parser_Expr *expr,
         for (isize_t i = 0; i < expr->info.args.len; ++i) {
             Sema_typecheck_expr(&expr->info.args.arr[i], parent, diags);
         }
+
+        if (expr->type == PARSER_EXPRTYPE_FUNC_CALL)
+            typecheck_func_call(expr, parent, diags);
     }
 }
 

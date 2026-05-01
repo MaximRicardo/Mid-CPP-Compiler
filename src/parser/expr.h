@@ -14,6 +14,10 @@ enum Parser_ExprType {
     PARSER_EXPRTYPE_WCHAR_LIT,
     PARSER_EXPRTYPE_CHAR16_LIT,
     PARSER_EXPRTYPE_CHAR32_LIT,
+    PARSER_EXPRTYPE_STRING_LIT,
+    PARSER_EXPRTYPE_WSTRING_LIT,
+    PARSER_EXPRTYPE_STRING16_LIT,
+    PARSER_EXPRTYPE_STRING32_LIT,
     PARSER_EXPRTYPE_INT_LIT,
     PARSER_EXPRTYPE_UINT_LIT,
     PARSER_EXPRTYPE_LONG_LIT,
@@ -132,6 +136,10 @@ struct Parser_Expr {
         const char *ident;
     } info;
 
+    const struct Parser_ASTNode *node; // some expressions may have nodes
+                                       // associated with them, like function
+                                       // calls referencing the function being
+                                       // called
     const struct Lexer_Token *tok;
     struct Parser_Type ret;
     enum Parser_ExprType type;

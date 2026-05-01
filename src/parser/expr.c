@@ -6,10 +6,23 @@
 #include "lexer/token.h"
 #include "literal.h"
 #include "macros.h"
+#include "parser/end_types.h"
 #include "parser/type.h"
 #include "print.h"
 #include <assert.h>
 #include <stdio.h>
+
+static struct Diag expected_token(const char *tok_name,
+                                  const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("expected %s", tok_name),
+        .err = ERRORTYPE_UNEXPECTED_TOKEN,
+        .is_err = true,
+    };
+}
 
 static struct Diag unexpected_token(const char *tok_name,
                                     const struct Lexer_Token *tok)
@@ -741,13 +754,47 @@ static struct Parser_Expr op_tok_to_expr_mode1(const struct Lexer_Token *tok,
     return ret;
 }
 
-static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *tok,
+static void parse_func_call_args(struct Parser_Expr *f_call,
+                                 const struct Lexer_Token *toks, isize_t lparen,
+                                 isize_t *out_rparen, struct DiagVec *diags)
+{
+    isize_t rparen = Parser_find_twin_paren(toks, lparen, ISIZE_MAX);
+    if (rparen == -1) {
+        gen_dynpush(diags, expected_token("')'", &toks[lparen]));
+        rparen = lparen;
+    }
+    if (out_rparen)
+        *out_rparen = rparen;
+
+    for (isize_t i = lparen + 1; i < rparen; ++i) {
+        auto arg = Parser_parse_expr(toks, i, PARSER_PARAM_ENDTYPES, &i, diags);
+        gen_dynpush(&f_call->info.args, arg);
+
+        if (toks[i].type != LEXER_TOKENTYPE_R_PAREN &&
+            toks[i].type != LEXER_TOKENTYPE_COMMA) {
+            gen_dynpush(diags, expected_token("')'", &toks[lparen]));
+        }
+    }
+}
+
+// in most cases out_end_idx is set to idx, but in some cases like func calls
+// and array subscripts out_end_idx is set to the last token in the expr:
+// func(a, b, c, d)
+//     ^          ^
+//    idx    out_end_idx
+static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *toks,
+                                         isize_t idx, isize_t *out_end_idx,
                                          bool mode, struct DiagVec *diags)
 {
-    assert(Lexer_is_op(tok->type));
+    struct Parser_Expr ret = mode ? op_tok_to_expr_mode1(&toks[idx], diags)
+                                  : op_tok_to_expr_mode0(&toks[idx], diags);
 
-    return mode ? op_tok_to_expr_mode1(tok, diags)
-                : op_tok_to_expr_mode0(tok, diags);
+    if (ret.type == PARSER_EXPRTYPE_FUNC_CALL)
+        parse_func_call_args(&ret, toks, idx, out_end_idx, diags);
+    else if (out_end_idx)
+        *out_end_idx = idx;
+
+    return ret;
 }
 
 static bool has_enough_operands(enum Parser_ExprType op, int n)
@@ -784,14 +831,17 @@ static void add_op_to_out(struct Parser_Expr *op, struct Parser_ExprVec *out,
         return;
     }
 
-    op->info.args = (struct Parser_ExprVec)gen_dyninit();
-
     // the exprs at the top act as operands for the new op
     if (Parser_is_ternaryop(op->type))
         gen_dynpush(&op->info.args, out->arr[out->len - 3]);
     if (Parser_is_ternaryop(op->type) || Parser_is_binop(op->type))
         gen_dynpush(&op->info.args, out->arr[out->len - 2]);
-    gen_dynpush(&op->info.args, out->arr[out->len - 1]);
+    if (op->type == PARSER_EXPRTYPE_FUNC_CALL && op->info.args.len > 0)
+        // func calls already have the arguments pushed into args, so we gotta
+        // use insert to put the identifier being called first
+        gen_dyninsert(&op->info.args, 0, out->arr[out->len - 1]);
+    else
+        gen_dynpush(&op->info.args, out->arr[out->len - 1]);
 
     // the expressions are now encoded in op
     if (Parser_is_ternaryop(op->type))
@@ -804,12 +854,12 @@ static void add_op_to_out(struct Parser_Expr *op, struct Parser_ExprVec *out,
 }
 
 // handles sending an operator through the shunting yard
-static void push_operator(const struct Lexer_Token *tok,
-                          struct Parser_ExprVec *out,
+static void push_operator(const struct Lexer_Token *toks, isize_t idx,
+                          isize_t *out_end_idx, struct Parser_ExprVec *out,
                           struct Parser_ExprVec *ops, bool mode,
                           struct DiagVec *diags)
 {
-    struct Parser_Expr op = op_tok_to_expr(tok, mode, diags);
+    struct Parser_Expr op = op_tok_to_expr(toks, idx, out_end_idx, mode, diags);
 
     // remove any greater precedence operators
     struct Parser_Expr *top = &ops->arr[ops->len - 1];
@@ -893,12 +943,13 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                 gen_dynpush(&out, ident_tok_to_expr(&toks[i]));
             mode = false;
         } else if (Lexer_is_op(toks[i].type)) {
-            push_operator(&toks[i], &out, &ops, mode, diags);
+            push_operator(toks, i, &i, &out, &ops, mode, diags);
             mode = ops.arr[ops.len - 1].type != PARSER_EXPRTYPE_POSTFIX_DEC &&
                    ops.arr[ops.len - 1].type != PARSER_EXPRTYPE_POSTFIX_INC;
         } else if (toks[i].type == LEXER_TOKENTYPE_L_PAREN) {
             if (!mode)
-                gen_dynpush(diags, unexpected_token("expression", &toks[i]));
+                // if mode is 0 a sub-expression is actually a function call
+                push_operator(toks, i, &i, &out, &ops, mode, diags);
             else
                 gen_dynpush(&out, parse_subexpr(toks, i, &i, diags));
             mode = false;
