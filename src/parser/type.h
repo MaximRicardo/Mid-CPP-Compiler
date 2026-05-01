@@ -6,6 +6,8 @@
 #include "lexer/token.h"
 
 enum Parser_TypeSpec {
+    PARSER_TYPESPEC_INVALID,
+
     // primitive types
     PARSER_TYPESPEC_VOID,
     PARSER_TYPESPEC_CHAR,
@@ -22,6 +24,10 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_FLOAT,
     PARSER_TYPESPEC_DOUBLE,
     PARSER_TYPESPEC_LONGDOUBLE,
+    PARSER_TYPESPEC_BOOL,
+    PARSER_TYPESPEC_WCHAR,
+    PARSER_TYPESPEC_CHAR16,
+    PARSER_TYPESPEC_CHAR32,
 
     // the weird kids
     PARSER_TYPESPEC_FPTR,
@@ -101,3 +107,7 @@ char *Parser_type_to_str(const struct Parser_Type *type);
 // can the token be the start of a type?
 bool Parser_valid_type_start(const struct Lexer_Token *tok,
                              const struct Parser_ASTNode *parent);
+// the integral type specifier able to hold exactly the given number of bytes
+enum Parser_TypeSpec Parser_uint_type_of_width(i32 bytes);
+enum Parser_TypeSpec Parser_sint_type_of_width(i32 bytes);
+i32 Parser_typespec_conv_rank(enum Parser_TypeSpec spec);

@@ -6,6 +6,11 @@ bool Lexer_is_numlit(enum Lexer_TokenType type)
            type < LEXER_TOKENTYPE_NUMLIT_END;
 }
 
+bool Lexer_is_lit(enum Lexer_TokenType type)
+{
+    return Lexer_is_numlit(type);
+}
+
 bool Lexer_is_ternaryop(enum Lexer_TokenType type)
 {
     return type > LEXER_TOKENTYPE_TERNARYOP_START &&
@@ -22,6 +27,12 @@ bool Lexer_is_unaryop(enum Lexer_TokenType type)
 {
     return type > LEXER_TOKENTYPE_UNARYOP_START &&
            type < LEXER_TOKENTYPE_UNARYOP_END;
+}
+
+bool Lexer_can_be_unary(enum Lexer_TokenType type)
+{
+    return type == LEXER_TOKENTYPE_ADD || type == LEXER_TOKENTYPE_SUB ||
+           type == LEXER_TOKENTYPE_MUL || type == LEXER_TOKENTYPE_BITWISE_AND;
 }
 
 bool Lexer_is_op(enum Lexer_TokenType type)

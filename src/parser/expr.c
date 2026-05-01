@@ -11,6 +11,18 @@
 #include <assert.h>
 #include <stdio.h>
 
+static struct Diag unexpected_token(const char *tok_name,
+                                    const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("unexpected %s", tok_name),
+        .err = ERRORTYPE_UNEXPECTED_TOKEN,
+        .is_err = true,
+    };
+}
+
 bool Parser_is_numlit(enum Parser_ExprType type)
 {
     return type > PARSER_EXPRTYPE_NUMLIT_START &&
@@ -46,49 +58,110 @@ i32 Parser_op_precedence(enum Parser_ExprType op)
     i32 flipped;
 
     switch (op) {
-    case PARSER_EXPRTYPE_ADD:
-        flipped = 6;
+    case PARSER_EXPRTYPE_SCOPE_RES:
+        flipped = 1;
         break;
 
+    case PARSER_EXPRTYPE_MEMB_SEL:
+    case PARSER_EXPRTYPE_PTR_MEMB_SEL:
+    case PARSER_EXPRTYPE_ARRAY_SUBSCR:
+    case PARSER_EXPRTYPE_FUNC_CALL:
+    case PARSER_EXPRTYPE_POSTFIX_INC:
+    case PARSER_EXPRTYPE_POSTFIX_DEC:
+    case PARSER_EXPRTYPE_TYPEID:
+    case PARSER_EXPRTYPE_CONSTCAST:
+    case PARSER_EXPRTYPE_DYNAMICCAST:
+    case PARSER_EXPRTYPE_REINTERPRETCAST:
+    case PARSER_EXPRTYPE_STATICCAST:
+        flipped = 2;
+        break;
+
+    case PARSER_EXPRTYPE_SIZEOF:
+    case PARSER_EXPRTYPE_PREFIX_INC:
+    case PARSER_EXPRTYPE_PREFIX_DEC:
+    case PARSER_EXPRTYPE_BITWISE_NOT:
+    case PARSER_EXPRTYPE_LOGICAL_NOT:
+    case PARSER_EXPRTYPE_UNARY_MINUS:
+    case PARSER_EXPRTYPE_UNARY_PLUS:
+    case PARSER_EXPRTYPE_REF:
+    case PARSER_EXPRTYPE_DEREF:
+    case PARSER_EXPRTYPE_NEW:
+    case PARSER_EXPRTYPE_DELETE:
+    case PARSER_EXPRTYPE_CAST:
+        flipped = 3;
+        break;
+
+    case PARSER_EXPRTYPE_PTR_TO_MEMB_SEL:
+    case PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL:
+        flipped = 4;
+        break;
+
+    case PARSER_EXPRTYPE_MUL:
+    case PARSER_EXPRTYPE_DIV:
+    case PARSER_EXPRTYPE_MOD:
+        flipped = 5;
+        break;
+
+    case PARSER_EXPRTYPE_ADD:
     case PARSER_EXPRTYPE_SUB:
         flipped = 6;
         break;
 
-    case PARSER_EXPRTYPE_MUL:
-        flipped = 5;
+    case PARSER_EXPRTYPE_LEFT_SHIFT:
+    case PARSER_EXPRTYPE_RIGHT_SHIFT:
+        flipped = 7;
         break;
 
-    case PARSER_EXPRTYPE_DIV:
-        flipped = 5;
+    case PARSER_EXPRTYPE_LT:
+    case PARSER_EXPRTYPE_GT:
+    case PARSER_EXPRTYPE_LTEQ:
+    case PARSER_EXPRTYPE_GTEQ:
+        flipped = 8;
         break;
 
-    case PARSER_EXPRTYPE_ASSIGN:
-        flipped = 15;
+    case PARSER_EXPRTYPE_EQ:
+    case PARSER_EXPRTYPE_NEQ:
+        flipped = 9;
         break;
 
     case PARSER_EXPRTYPE_BITWISE_AND:
         flipped = 10;
         break;
 
+    case PARSER_EXPRTYPE_BITWISE_XOR:
+        flipped = 11;
+        break;
+
+    case PARSER_EXPRTYPE_BITWISE_OR:
+        flipped = 12;
+        break;
+
     case PARSER_EXPRTYPE_LOGICAL_AND:
         flipped = 13;
         break;
 
-    case PARSER_EXPRTYPE_COMMA:
-        flipped = 16;
+    case PARSER_EXPRTYPE_LOGICAL_OR:
+        flipped = 14;
         break;
 
-    case PARSER_EXPRTYPE_DEREF:
-        flipped = 3;
-        break;
-
-    case PARSER_EXPRTYPE_REF:
-        flipped = 3;
+    case PARSER_EXPRTYPE_CONDITIONAL:
+    case PARSER_EXPRTYPE_ASSIGN:
+    case PARSER_EXPRTYPE_MUL_ASSIGN:
+    case PARSER_EXPRTYPE_DIV_ASSIGN:
+    case PARSER_EXPRTYPE_MOD_ASSIGN:
+    case PARSER_EXPRTYPE_ADD_ASSIGN:
+    case PARSER_EXPRTYPE_SUB_ASSIGN:
+    case PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN:
+    case PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN:
+    case PARSER_EXPRTYPE_AND_ASSIGN:
+    case PARSER_EXPRTYPE_XOR_ASSIGN:
+    case PARSER_EXPRTYPE_OR_ASSIGN:
+    case PARSER_EXPRTYPE_THROW:
+        flipped = 15;
         break;
 
     default:
-        assert(false);
-        break;
+        CRASH("expr isn't an operator");
     }
 
     return 16 - flipped;
@@ -100,11 +173,24 @@ bool Parser_op_ltr_assoc(enum Parser_ExprType op)
     return prec != 13 && prec != 1;
 }
 
+bool Parser_is_glvalue(enum Parser_ExprValueType type)
+{
+    return type == PARSER_EXPRVALUE_LVALUE || type == PARSER_EXPRVALUE_XVALUE;
+}
+
+bool Parser_is_rvalue(enum Parser_ExprValueType type)
+{
+    return type == PARSER_EXPRVALUE_PRVALUE || type == PARSER_EXPRVALUE_XVALUE;
+}
+
+bool Parser_is_rvalue(enum Parser_ExprValueType type);
+
 static struct Parser_Expr numlit_tok_to_expr(const struct Lexer_Token *tok)
 {
     assert(Lexer_is_numlit(tok->type));
 
-    struct Parser_Expr ret = {.tok = tok, .info.val = tok->val};
+    struct Parser_Expr ret = {
+        .tok = tok, .info.val = tok->val, .valtype = PARSER_EXPRVALUE_PRVALUE};
 
     switch (tok->type) {
     case LEXER_TOKENTYPE_INT_LIT:
@@ -143,6 +229,14 @@ static struct Parser_Expr numlit_tok_to_expr(const struct Lexer_Token *tok)
         ret.type = PARSER_EXPRTYPE_LONGDOUBLE_LIT;
         break;
 
+    case LEXER_TOKENTYPE_BOOL_LIT:
+        ret.type = PARSER_EXPRTYPE_BOOL_LIT;
+        break;
+
+    case LEXER_TOKENTYPE_PTR_LIT:
+        ret.type = PARSER_EXPRTYPE_PTR_LIT;
+        break;
+
     default:
         assert(false);
         break;
@@ -161,57 +255,499 @@ static struct Parser_Expr ident_tok_to_expr(const struct Lexer_Token *tok)
     return ret;
 }
 
-static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *tok)
+static struct Parser_Expr op_tok_to_expr_mode0(const struct Lexer_Token *tok,
+                                               struct DiagVec *diags)
 {
-    assert(Lexer_is_op(tok->type));
-
     struct Parser_Expr ret = {.tok = tok};
 
     switch (tok->type) {
-    case LEXER_TOKENTYPE_ADD:
-        ret.type = PARSER_EXPRTYPE_ADD;
+    case LEXER_TOKENTYPE_SCOPE_RES:
+        ret.type = PARSER_EXPRTYPE_SCOPE_RES;
+        break;
+
+    case LEXER_TOKENTYPE_MEMB_SEL:
+        ret.type = PARSER_EXPRTYPE_MEMB_SEL;
+        break;
+
+    case LEXER_TOKENTYPE_PTR_MEMB_SEL:
+        ret.type = PARSER_EXPRTYPE_PTR_MEMB_SEL;
+        break;
+
+    case LEXER_TOKENTYPE_L_SQBRACKET:
+        ret.type = PARSER_EXPRTYPE_ARRAY_SUBSCR;
+        break;
+
+    case LEXER_TOKENTYPE_L_PAREN:
+        ret.type = PARSER_EXPRTYPE_FUNC_CALL;
+        break;
+
+    case LEXER_TOKENTYPE_INC:
+        ret.type = PARSER_EXPRTYPE_POSTFIX_INC;
+        break;
+
+    case LEXER_TOKENTYPE_DEC:
+        ret.type = PARSER_EXPRTYPE_POSTFIX_DEC;
+        break;
+
+    case LEXER_TOKENTYPE_TYPEID:
+        gen_dynpush(diags, unexpected_token("typeid", tok));
+        ret.type = PARSER_EXPRTYPE_TYPEID;
+        break;
+
+    case LEXER_TOKENTYPE_CONSTCAST:
+        gen_dynpush(diags, unexpected_token("const_cast", tok));
+        ret.type = PARSER_EXPRTYPE_CONSTCAST;
+        break;
+
+    case LEXER_TOKENTYPE_DYNAMICCAST:
+        gen_dynpush(diags, unexpected_token("dynamic_cast", tok));
+        ret.type = PARSER_EXPRTYPE_DYNAMICCAST;
+        break;
+
+    case LEXER_TOKENTYPE_REINTERPRETCAST:
+        gen_dynpush(diags, unexpected_token("reinterpret_cast", tok));
+        ret.type = PARSER_EXPRTYPE_REINTERPRETCAST;
+        break;
+
+    case LEXER_TOKENTYPE_STATICCAST:
+        gen_dynpush(diags, unexpected_token("static_cast", tok));
+        ret.type = PARSER_EXPRTYPE_STATICCAST;
+        break;
+
+    case LEXER_TOKENTYPE_SIZEOF:
+        gen_dynpush(diags, unexpected_token("sizeof", tok));
+        ret.type = PARSER_EXPRTYPE_SIZEOF;
+        break;
+
+    case LEXER_TOKENTYPE_BITWISE_NOT:
+        gen_dynpush(diags, unexpected_token("bitwise not '~'", tok));
+        ret.type = PARSER_EXPRTYPE_BITWISE_NOT;
+        break;
+
+    case LEXER_TOKENTYPE_LOGICAL_NOT:
+        gen_dynpush(diags, unexpected_token("logical not '!'", tok));
+        ret.type = PARSER_EXPRTYPE_LOGICAL_NOT;
         break;
 
     case LEXER_TOKENTYPE_SUB:
         ret.type = PARSER_EXPRTYPE_SUB;
         break;
 
-    case LEXER_TOKENTYPE_MUL:
-        ret.type = PARSER_EXPRTYPE_MUL;
-        break;
-
-    case LEXER_TOKENTYPE_DIV:
-        ret.type = PARSER_EXPRTYPE_DIV;
-        break;
-
-    case LEXER_TOKENTYPE_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_ASSIGN;
+    case LEXER_TOKENTYPE_ADD:
+        ret.type = PARSER_EXPRTYPE_ADD;
         break;
 
     case LEXER_TOKENTYPE_BITWISE_AND:
         ret.type = PARSER_EXPRTYPE_BITWISE_AND;
         break;
 
+    case LEXER_TOKENTYPE_MUL:
+        ret.type = PARSER_EXPRTYPE_MUL;
+        break;
+
+    case LEXER_TOKENTYPE_NEW:
+        gen_dynpush(diags, unexpected_token("new", tok));
+        ret.type = PARSER_EXPRTYPE_NEW;
+        break;
+
+    case LEXER_TOKENTYPE_DELETE:
+        gen_dynpush(diags, unexpected_token("delete", tok));
+        ret.type = PARSER_EXPRTYPE_DELETE;
+        break;
+
+    case LEXER_TOKENTYPE_PTR_TO_MEMB_SEL:
+        ret.type = PARSER_EXPRTYPE_PTR_TO_MEMB_SEL;
+        break;
+
+    case LEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL:
+        ret.type = PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
+        break;
+
+    case LEXER_TOKENTYPE_DIV:
+        ret.type = PARSER_EXPRTYPE_DIV;
+        break;
+
+    case LEXER_TOKENTYPE_MOD:
+        ret.type = PARSER_EXPRTYPE_MOD;
+        break;
+
+    case LEXER_TOKENTYPE_LEFT_SHIFT:
+        ret.type = PARSER_EXPRTYPE_LEFT_SHIFT;
+        break;
+
+    case LEXER_TOKENTYPE_RIGHT_SHIFT:
+        ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT;
+        break;
+
+    case LEXER_TOKENTYPE_LT:
+        ret.type = PARSER_EXPRTYPE_LT;
+        break;
+
+    case LEXER_TOKENTYPE_GT:
+        ret.type = PARSER_EXPRTYPE_GT;
+        break;
+
+    case LEXER_TOKENTYPE_LTEQ:
+        ret.type = PARSER_EXPRTYPE_LTEQ;
+        break;
+
+    case LEXER_TOKENTYPE_GTEQ:
+        ret.type = PARSER_EXPRTYPE_GTEQ;
+        break;
+
+    case LEXER_TOKENTYPE_EQ:
+        ret.type = PARSER_EXPRTYPE_EQ;
+        break;
+
+    case LEXER_TOKENTYPE_NEQ:
+        ret.type = PARSER_EXPRTYPE_NEQ;
+        break;
+
+    case LEXER_TOKENTYPE_BITWISE_XOR:
+        ret.type = PARSER_EXPRTYPE_BITWISE_XOR;
+        break;
+
+    case LEXER_TOKENTYPE_BITWISE_OR:
+        ret.type = PARSER_EXPRTYPE_BITWISE_OR;
+        break;
+
     case LEXER_TOKENTYPE_LOGICAL_AND:
         ret.type = PARSER_EXPRTYPE_LOGICAL_AND;
         break;
 
-    case LEXER_TOKENTYPE_COMMA:
-        ret.type = PARSER_EXPRTYPE_COMMA;
-
-    case LEXER_TOKENTYPE_DEREF:
-        ret.type = PARSER_EXPRTYPE_DEREF;
+    case LEXER_TOKENTYPE_LOGICAL_OR:
+        ret.type = PARSER_EXPRTYPE_LOGICAL_OR;
         break;
 
-    case LEXER_TOKENTYPE_REF:
-        ret.type = PARSER_EXPRTYPE_REF;
+    case LEXER_TOKENTYPE_CONDITIONAL:
+        ret.type = PARSER_EXPRTYPE_CONDITIONAL;
+        break;
+
+    case LEXER_TOKENTYPE_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_MUL_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_MUL_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_DIV_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_DIV_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_MOD_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_MOD_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_ADD_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_ADD_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_SUB_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_SUB_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_AND_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_AND_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_OR_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_OR_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_XOR_ASSIGN:
+        ret.type = PARSER_EXPRTYPE_XOR_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_THROW:
+        gen_dynpush(diags, unexpected_token("throw", tok));
+        ret.type = PARSER_EXPRTYPE_THROW;
+        break;
+
+    case LEXER_TOKENTYPE_COMMA:
+        ret.type = PARSER_EXPRTYPE_COMMA;
         break;
 
     default:
-        assert(false);
+        CRASH("can't convert token to expr");
     }
 
     return ret;
+}
+
+static struct Parser_Expr op_tok_to_expr_mode1(const struct Lexer_Token *tok,
+                                               struct DiagVec *diags)
+{
+    struct Parser_Expr ret = {.tok = tok};
+
+    switch (tok->type) {
+    case LEXER_TOKENTYPE_SCOPE_RES:
+        gen_dynpush(diags, unexpected_token("scope resolution '::'", tok));
+        ret.type = PARSER_EXPRTYPE_SCOPE_RES;
+        break;
+
+    case LEXER_TOKENTYPE_MEMB_SEL:
+        gen_dynpush(diags, unexpected_token("member select '.'", tok));
+        ret.type = PARSER_EXPRTYPE_MEMB_SEL;
+        break;
+
+    case LEXER_TOKENTYPE_PTR_MEMB_SEL:
+        gen_dynpush(diags, unexpected_token("ptr to member select '->'", tok));
+        ret.type = PARSER_EXPRTYPE_PTR_MEMB_SEL;
+        break;
+
+    case LEXER_TOKENTYPE_L_SQBRACKET:
+        gen_dynpush(diags, unexpected_token("array subscript '[]'", tok));
+        ret.type = PARSER_EXPRTYPE_ARRAY_SUBSCR;
+        break;
+
+    case LEXER_TOKENTYPE_L_PAREN:
+        gen_dynpush(diags, unexpected_token("function call '()'", tok));
+        ret.type = PARSER_EXPRTYPE_FUNC_CALL;
+        break;
+
+    case LEXER_TOKENTYPE_INC:
+        ret.type = PARSER_EXPRTYPE_PREFIX_INC;
+        break;
+
+    case LEXER_TOKENTYPE_DEC:
+        ret.type = PARSER_EXPRTYPE_PREFIX_DEC;
+        break;
+
+    case LEXER_TOKENTYPE_TYPEID:
+        ret.type = PARSER_EXPRTYPE_TYPEID;
+        break;
+
+    case LEXER_TOKENTYPE_CONSTCAST:
+        ret.type = PARSER_EXPRTYPE_CONSTCAST;
+        break;
+
+    case LEXER_TOKENTYPE_DYNAMICCAST:
+        ret.type = PARSER_EXPRTYPE_DYNAMICCAST;
+        break;
+
+    case LEXER_TOKENTYPE_REINTERPRETCAST:
+        ret.type = PARSER_EXPRTYPE_REINTERPRETCAST;
+        break;
+
+    case LEXER_TOKENTYPE_STATICCAST:
+        ret.type = PARSER_EXPRTYPE_STATICCAST;
+        break;
+
+    case LEXER_TOKENTYPE_SIZEOF:
+        ret.type = PARSER_EXPRTYPE_SIZEOF;
+        break;
+
+    case LEXER_TOKENTYPE_BITWISE_NOT:
+        ret.type = PARSER_EXPRTYPE_BITWISE_NOT;
+        break;
+
+    case LEXER_TOKENTYPE_LOGICAL_NOT:
+        ret.type = PARSER_EXPRTYPE_LOGICAL_NOT;
+        break;
+
+    case LEXER_TOKENTYPE_SUB:
+        ret.type = PARSER_EXPRTYPE_UNARY_MINUS;
+        break;
+
+    case LEXER_TOKENTYPE_ADD:
+        ret.type = PARSER_EXPRTYPE_UNARY_PLUS;
+        break;
+
+    case LEXER_TOKENTYPE_BITWISE_AND:
+        ret.type = PARSER_EXPRTYPE_REF;
+        break;
+
+    case LEXER_TOKENTYPE_MUL:
+        ret.type = PARSER_EXPRTYPE_DEREF;
+        break;
+
+    case LEXER_TOKENTYPE_NEW:
+        ret.type = PARSER_EXPRTYPE_NEW;
+        break;
+
+    case LEXER_TOKENTYPE_DELETE:
+        ret.type = PARSER_EXPRTYPE_DELETE;
+        break;
+
+    case LEXER_TOKENTYPE_PTR_TO_MEMB_SEL:
+        gen_dynpush(diags, unexpected_token("ptr to member select '.*'", tok));
+        ret.type = PARSER_EXPRTYPE_PTR_TO_MEMB_SEL;
+        break;
+
+    case LEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL:
+        gen_dynpush(diags,
+                    unexpected_token("ptr to ptr member select '->*'", tok));
+        ret.type = PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
+        break;
+
+    case LEXER_TOKENTYPE_DIV:
+        gen_dynpush(diags, unexpected_token("division '/'", tok));
+        ret.type = PARSER_EXPRTYPE_DIV;
+        break;
+
+    case LEXER_TOKENTYPE_MOD:
+        gen_dynpush(diags, unexpected_token("modulo '%'", tok));
+        ret.type = PARSER_EXPRTYPE_MOD;
+        break;
+
+    case LEXER_TOKENTYPE_LEFT_SHIFT:
+        gen_dynpush(diags, unexpected_token("left shift '<<'", tok));
+        ret.type = PARSER_EXPRTYPE_LEFT_SHIFT;
+        break;
+
+    case LEXER_TOKENTYPE_RIGHT_SHIFT:
+        gen_dynpush(diags, unexpected_token("right shift '>>'", tok));
+        ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT;
+        break;
+
+    case LEXER_TOKENTYPE_LT:
+        gen_dynpush(diags, unexpected_token("less than '<'", tok));
+        ret.type = PARSER_EXPRTYPE_LT;
+        break;
+
+    case LEXER_TOKENTYPE_GT:
+        gen_dynpush(diags, unexpected_token("greater than '>'", tok));
+        ret.type = PARSER_EXPRTYPE_GT;
+        break;
+
+    case LEXER_TOKENTYPE_LTEQ:
+        gen_dynpush(diags, unexpected_token("less than or equal '<='", tok));
+        ret.type = PARSER_EXPRTYPE_LTEQ;
+        break;
+
+    case LEXER_TOKENTYPE_GTEQ:
+        gen_dynpush(diags, unexpected_token("greater than or equal '>='", tok));
+        ret.type = PARSER_EXPRTYPE_GTEQ;
+        break;
+
+    case LEXER_TOKENTYPE_EQ:
+        gen_dynpush(diags, unexpected_token("equality '=='", tok));
+        ret.type = PARSER_EXPRTYPE_EQ;
+        break;
+
+    case LEXER_TOKENTYPE_NEQ:
+        gen_dynpush(diags, unexpected_token("inequality '!='", tok));
+        ret.type = PARSER_EXPRTYPE_NEQ;
+        break;
+
+    case LEXER_TOKENTYPE_BITWISE_XOR:
+        gen_dynpush(diags, unexpected_token("bitwise XOR '^'", tok));
+        ret.type = PARSER_EXPRTYPE_BITWISE_XOR;
+        break;
+
+    case LEXER_TOKENTYPE_BITWISE_OR:
+        gen_dynpush(diags, unexpected_token("bitwise OR '|'", tok));
+        ret.type = PARSER_EXPRTYPE_BITWISE_OR;
+        break;
+
+    case LEXER_TOKENTYPE_LOGICAL_AND:
+        gen_dynpush(diags, unexpected_token("logical AND '&&'", tok));
+        ret.type = PARSER_EXPRTYPE_LOGICAL_AND;
+        break;
+
+    case LEXER_TOKENTYPE_LOGICAL_OR:
+        gen_dynpush(diags, unexpected_token("logical OR '||'", tok));
+        ret.type = PARSER_EXPRTYPE_LOGICAL_OR;
+        break;
+
+    case LEXER_TOKENTYPE_CONDITIONAL:
+        gen_dynpush(diags, unexpected_token("conditional operator '?'", tok));
+        ret.type = PARSER_EXPRTYPE_CONDITIONAL;
+        break;
+
+    case LEXER_TOKENTYPE_ASSIGN:
+        gen_dynpush(diags, unexpected_token("assignment '=='", tok));
+        ret.type = PARSER_EXPRTYPE_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_MUL_ASSIGN:
+        gen_dynpush(diags,
+                    unexpected_token("multiplication assignment '*='", tok));
+        ret.type = PARSER_EXPRTYPE_MUL_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_DIV_ASSIGN:
+        gen_dynpush(diags, unexpected_token("division assignment '/='", tok));
+        ret.type = PARSER_EXPRTYPE_DIV_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_MOD_ASSIGN:
+        gen_dynpush(diags, unexpected_token("modulus assignment '%='", tok));
+        ret.type = PARSER_EXPRTYPE_MOD_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_ADD_ASSIGN:
+        gen_dynpush(diags, unexpected_token("addition assignment '+='", tok));
+        ret.type = PARSER_EXPRTYPE_ADD_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_SUB_ASSIGN:
+        gen_dynpush(diags,
+                    unexpected_token("subtraction assignment '-='", tok));
+        ret.type = PARSER_EXPRTYPE_SUB_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN:
+        gen_dynpush(diags,
+                    unexpected_token("left shift assignment '<<='", tok));
+        ret.type = PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN:
+        gen_dynpush(diags,
+                    unexpected_token("right shift assignment '>>='", tok));
+        ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_AND_ASSIGN:
+        gen_dynpush(diags,
+                    unexpected_token("bitwise AND assignment '&='", tok));
+        ret.type = PARSER_EXPRTYPE_AND_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_OR_ASSIGN:
+        gen_dynpush(diags, unexpected_token("bitwise OR assignment '|='", tok));
+        ret.type = PARSER_EXPRTYPE_OR_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_XOR_ASSIGN:
+        gen_dynpush(diags,
+                    unexpected_token("bitwise XOR assignment '^='", tok));
+        ret.type = PARSER_EXPRTYPE_XOR_ASSIGN;
+        break;
+
+    case LEXER_TOKENTYPE_THROW:
+        ret.type = PARSER_EXPRTYPE_THROW;
+        break;
+
+    case LEXER_TOKENTYPE_COMMA:
+        gen_dynpush(diags, unexpected_token("comma ','", tok));
+        ret.type = PARSER_EXPRTYPE_COMMA;
+        break;
+
+    default:
+        CRASH("can't convert token to expr");
+    }
+
+    return ret;
+}
+
+static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *tok,
+                                         bool mode, struct DiagVec *diags)
+{
+    assert(Lexer_is_op(tok->type));
+
+    return mode ? op_tok_to_expr_mode1(tok, diags)
+                : op_tok_to_expr_mode0(tok, diags);
 }
 
 static bool has_enough_operands(enum Parser_ExprType op, int n)
@@ -270,9 +806,10 @@ static void add_op_to_out(struct Parser_Expr *op, struct Parser_ExprVec *out,
 // handles sending an operator through the shunting yard
 static void push_operator(const struct Lexer_Token *tok,
                           struct Parser_ExprVec *out,
-                          struct Parser_ExprVec *ops, struct DiagVec *diags)
+                          struct Parser_ExprVec *ops, bool mode,
+                          struct DiagVec *diags)
 {
-    struct Parser_Expr op = op_tok_to_expr(tok);
+    struct Parser_Expr op = op_tok_to_expr(tok, mode, diags);
 
     // remove any greater precedence operators
     struct Parser_Expr *top = &ops->arr[ops->len - 1];
@@ -333,16 +870,39 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
     struct Parser_ExprVec out = gen_dyninit();
     struct Parser_ExprVec ops = gen_dyninit();
 
+    // when false, binary operators remain binary and unary operators are
+    // treated as postifx operators
+    // when true, binary operators are treated as unary and unary operators are
+    // treated as prefix operators
+    // becomes true after finding an operand, becomes false after finding an
+    // operator unless it's a unary postfix operator
+    bool mode = true;
+
     isize_t i;
     for (i = start; !is_end_type(toks[i].type, end_types, n_end_types); ++i) {
-        if (Lexer_is_numlit(toks[i].type))
-            gen_dynpush(&out, numlit_tok_to_expr(&toks[i]));
-        else if (toks[i].type == LEXER_TOKENTYPE_IDENTIFIER)
-            gen_dynpush(&out, ident_tok_to_expr(&toks[i]));
-        else if (Lexer_is_op(toks[i].type))
-            push_operator(&toks[i], &out, &ops, diags);
-        else if (toks[i].type == LEXER_TOKENTYPE_L_PAREN)
-            gen_dynpush(&out, parse_subexpr(toks, i, &i, diags));
+        if (Lexer_is_numlit(toks[i].type)) {
+            if (!mode)
+                gen_dynpush(diags, unexpected_token("literal", &toks[i]));
+            else
+                gen_dynpush(&out, numlit_tok_to_expr(&toks[i]));
+            mode = false;
+        } else if (toks[i].type == LEXER_TOKENTYPE_IDENTIFIER) {
+            if (!mode)
+                gen_dynpush(diags, unexpected_token("identifier", &toks[i]));
+            else
+                gen_dynpush(&out, ident_tok_to_expr(&toks[i]));
+            mode = false;
+        } else if (Lexer_is_op(toks[i].type)) {
+            push_operator(&toks[i], &out, &ops, mode, diags);
+            mode = ops.arr[ops.len - 1].type != PARSER_EXPRTYPE_POSTFIX_DEC &&
+                   ops.arr[ops.len - 1].type != PARSER_EXPRTYPE_POSTFIX_INC;
+        } else if (toks[i].type == LEXER_TOKENTYPE_L_PAREN) {
+            if (!mode)
+                gen_dynpush(diags, unexpected_token("expression", &toks[i]));
+            else
+                gen_dynpush(&out, parse_subexpr(toks, i, &i, diags));
+            mode = false;
+        }
     }
     if (out_end)
         *out_end = i;

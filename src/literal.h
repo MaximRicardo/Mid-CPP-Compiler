@@ -9,6 +9,8 @@ union Literal_Value {
     float flt;
     double dbl;
     long double l_dbl;
+    bool bl;
+    void *ptr;
 };
 
 gen_dynarray_struct_named(Literal_ValueVec, union Literal_Value);

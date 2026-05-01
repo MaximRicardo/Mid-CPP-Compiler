@@ -324,36 +324,27 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
     if (!strcmp(id, "char"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR};
-    else if (!strcmp(id, "short"))
+    else if (!strcmp(id, "wchar_t"))
         return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SHORT};
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_WCHAR};
+    else if (!strcmp(id, "char16_t"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR16};
+    else if (!strcmp(id, "char32_t"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR32};
+    else if (!strcmp(id, "bool"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_BOOL};
     else if (!strcmp(id, "int"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_INT};
-    else if (!strcmp(id, "long"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_LONG};
     else if (!strcmp(id, "float"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_FLOAT};
     else if (!strcmp(id, "double"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DOUBLE};
-    else if (!strcmp(id, "signed"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SIGNED};
-    else if (!strcmp(id, "unsigned"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_UNSIGNED};
-    else if (!strcmp(id, "static"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_STATIC};
-    else if (!strcmp(id, "const"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONST};
-    else if (!strcmp(id, "constexpr"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONSTEXPR};
     else if (!strcmp(id, "class"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CLASS};
@@ -366,9 +357,77 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
     else if (!strcmp(id, "enum"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_ENUM};
+
+    else if (!strcmp(id, "short"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SHORT};
+    else if (!strcmp(id, "long"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_LONG};
+    else if (!strcmp(id, "signed"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SIGNED};
+    else if (!strcmp(id, "unsigned"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_UNSIGNED};
+    else if (!strcmp(id, "static"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_STATIC};
+    else if (!strcmp(id, "constexpr"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONSTEXPR};
     else if (!strcmp(id, "typedef"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_TYPEDEF};
+
+    else if (!strcmp(id, "const"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONST};
+
+    else if (!strcmp(id, "typeid"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_TYPEID};
+
+    else if (!strcmp(id, "const_cast"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONSTCAST};
+    else if (!strcmp(id, "dynamic_cast"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DYNAMICCAST};
+    else if (!strcmp(id, "reinterpret_cast"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_REINTERPRETCAST};
+    else if (!strcmp(id, "static_cast"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_STATICCAST};
+
+    else if (!strcmp(id, "new"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_NEW};
+    else if (!strcmp(id, "delete"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DELETE};
+
+    else if (!strcmp(id, "throw"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_THROW};
+
+    else if (!strcmp(id, "true"))
+        return (struct Lexer_Token){.pos = pos,
+                                    .line = line,
+                                    .type = LEXER_TOKENTYPE_BOOL_LIT,
+                                    .val.bl = true};
+    else if (!strcmp(id, "false"))
+        return (struct Lexer_Token){.pos = pos,
+                                    .line = line,
+                                    .type = LEXER_TOKENTYPE_BOOL_LIT,
+                                    .val.bl = false};
+    else if (!strcmp(id, "nullptr"))
+        return (struct Lexer_Token){.pos = pos,
+                                    .line = line,
+                                    .type = LEXER_TOKENTYPE_PTR_LIT,
+                                    .val.ptr = NULL};
+
     else
         return (struct Lexer_Token){.pos = pos,
                                     .line = line,
@@ -401,29 +460,196 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '\r':
             break;
 
-        case '+':
-            gen_dynpush(&toks,
-                        create_basic_tok(LEXER_TOKENTYPE_ADD, pos, line_start));
+        case ':':
+            if (src[i + 1] == ':') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_SCOPE_RES,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_COLON, pos,
+                                                    line_start));
+            }
             break;
-        case '-':
-            gen_dynpush(&toks,
-                        create_basic_tok(LEXER_TOKENTYPE_SUB, pos, line_start));
+
+        case '.':
+            if (isdigit(src[i + 1])) { // literals like .5
+                auto old_i = i;
+                gen_dynpush(&toks,
+                            create_numlit_tok(src, i, &i, pos, line_start));
+                --i;
+                pos.column += i - old_i;
+            } else if (src[i + 1] == '*') {
+                gen_dynpush(&toks,
+                            create_basic_tok(LEXER_TOKENTYPE_PTR_TO_MEMB_SEL,
+                                             pos, line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MEMB_SEL,
+                                                    pos, line_start));
+            }
             break;
+
         case '*':
-            gen_dynpush(&toks,
-                        create_basic_tok(LEXER_TOKENTYPE_MUL, pos, line_start));
+            if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MUL_ASSIGN,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MUL, pos,
+                                                    line_start));
+            }
             break;
+
         case '/':
-            gen_dynpush(&toks,
-                        create_basic_tok(LEXER_TOKENTYPE_DIV, pos, line_start));
+            if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_DIV_ASSIGN,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_DIV, pos,
+                                                    line_start));
+            }
             break;
+
+        case '%':
+            if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MOD_ASSIGN,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MOD, pos,
+                                                    line_start));
+            }
+            break;
+
+        case '+':
+            if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ADD_ASSIGN,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else if (src[i + 1] == '+') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_INC, pos,
+                                                    line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ADD, pos,
+                                                    line_start));
+            }
+            break;
+
+        case '-':
+            if (src[i + 1] == '>') {
+                if (src[i + 2] == '*')
+                    gen_dynpush(&toks, create_basic_tok(
+                                           LEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL,
+                                           pos, line_start));
+                else
+                    gen_dynpush(&toks,
+                                create_basic_tok(LEXER_TOKENTYPE_PTR_MEMB_SEL,
+                                                 pos, line_start));
+                ++i;
+                ++pos.column;
+            } else if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_SUB_ASSIGN,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else if (src[i + 1] == '-') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_DEC, pos,
+                                                    line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_SUB, pos,
+                                                    line_start));
+            }
+            break;
+
+        case '<':
+            if (src[i + 1] == '<') {
+                if (src[i + 1] == '=')
+                    gen_dynpush(&toks, create_basic_tok(
+                                           LEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN,
+                                           pos, line_start));
+                else
+                    gen_dynpush(&toks,
+                                create_basic_tok(LEXER_TOKENTYPE_LEFT_SHIFT,
+                                                 pos, line_start));
+                ++i;
+                ++pos.column;
+            } else if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LTEQ, pos,
+                                                    line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LT, pos,
+                                                    line_start));
+            }
+            break;
+
+        case '>':
+            if (src[i + 1] == '>') {
+                if (src[i + 1] == '=')
+                    gen_dynpush(&toks, create_basic_tok(
+                                           LEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN,
+                                           pos, line_start));
+                else
+                    gen_dynpush(&toks,
+                                create_basic_tok(LEXER_TOKENTYPE_RIGHT_SHIFT,
+                                                 pos, line_start));
+                ++i;
+                ++pos.column;
+            } else if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_GTEQ, pos,
+                                                    line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_GT, pos,
+                                                    line_start));
+            }
+            break;
+
         case '=':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ASSIGN, pos,
-                                                line_start));
+            if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_EQ, pos,
+                                                    line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ASSIGN, pos,
+                                                    line_start));
+            }
             break;
+
+        case '!':
+            if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_NEQ, pos,
+                                                    line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LOGICAL_NOT,
+                                                    pos, line_start));
+            }
+            break;
+
         case '&':
             if (src[i + 1] == '&') {
                 gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LOGICAL_AND,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_AND_ASSIGN,
                                                     pos, line_start));
                 ++i;
                 ++pos.column;
@@ -432,9 +658,44 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
                                                     pos, line_start));
             }
             break;
+
+        case '^':
+            if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_XOR_ASSIGN,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_BITWISE_XOR,
+                                                    pos, line_start));
+            }
+            break;
+
+        case '|':
+            if (src[i + 1] == '|') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LOGICAL_OR,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else if (src[i + 1] == '=') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_OR_ASSIGN,
+                                                    pos, line_start));
+                ++i;
+                ++pos.column;
+            } else {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_BITWISE_OR,
+                                                    pos, line_start));
+            }
+            break;
+
         case ',':
             gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_COMMA, pos,
                                                 line_start));
+            break;
+
+        case '~':
+            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_BITWISE_NOT,
+                                                pos, line_start));
             break;
 
         case '0':
@@ -453,15 +714,6 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
             pos.column += i - old_i;
             break;
         }
-        case '.':
-            if (isdigit(src[i + 1])) { // literals like .5
-                auto old_i = i;
-                gen_dynpush(&toks,
-                            create_numlit_tok(src, i, &i, pos, line_start));
-                --i;
-                pos.column += i - old_i;
-            }
-            break;
 
         case '(':
             gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_L_PAREN, pos,
@@ -535,8 +787,6 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 struct Lexer_Tokenize Lexer_tokenize(const char *src, const char *file)
 {
     auto lex = read_tokens(src, file);
-
-    // merge_typemod_and_typespec(&lex.toks, &lex.diags);
 
     return lex;
 }

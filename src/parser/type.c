@@ -9,6 +9,7 @@
 #include "parser/find_twin.h"
 #include "print.h"
 #include "sema/type.h"
+#include "types.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -81,6 +82,15 @@ const char *Parser_typespec_to_str(enum Parser_TypeSpec spec)
     case PARSER_TYPESPEC_LONGDOUBLE:
         return "long double";
 
+    case PARSER_TYPESPEC_BOOL:
+        return "bool";
+    case PARSER_TYPESPEC_WCHAR:
+        return "wchar_t";
+    case PARSER_TYPESPEC_CHAR16:
+        return "char16_t";
+    case PARSER_TYPESPEC_CHAR32:
+        return "char32_t";
+
     case PARSER_TYPESPEC_AUTO:
         return "auto";
 
@@ -91,6 +101,7 @@ const char *Parser_typespec_to_str(enum Parser_TypeSpec spec)
     case PARSER_TYPESPEC_ENUM:
         return "enum";
 
+    case PARSER_TYPESPEC_INVALID:
     case PARSER_TYPESPEC_FPTR:
     case PARSER_TYPESPEC_ARRAY:
         assert(false);
@@ -116,12 +127,12 @@ void Parser_Type_deinit(struct Parser_Type *self)
 
 bool is_ptr_tok(enum Lexer_TokenType type)
 {
-    return type == LEXER_TOKENTYPE_MUL || type == LEXER_TOKENTYPE_DEREF;
+    return type == LEXER_TOKENTYPE_MUL;
 }
 
 bool is_lv_ref_tok(enum Lexer_TokenType type)
 {
-    return type == LEXER_TOKENTYPE_BITWISE_AND || type == LEXER_TOKENTYPE_REF;
+    return type == LEXER_TOKENTYPE_BITWISE_AND;
 }
 
 bool is_rv_ref_tok(enum Lexer_TokenType type)
@@ -868,4 +879,124 @@ bool Parser_valid_type_start(const struct Lexer_Token *tok,
 {
     return Lexer_is_typemod(tok->type) || Lexer_is_typequal(tok->type) ||
            Sema_is_typespec(tok, parent);
+}
+
+enum Parser_TypeSpec Parser_uint_type_of_width(i32 bytes)
+{
+    if (Types_char_size == bytes)
+        return PARSER_TYPESPEC_UCHAR;
+    else if (Types_short_size == bytes)
+        return PARSER_TYPESPEC_USHORT;
+    else if (Types_int_size == bytes)
+        return PARSER_TYPESPEC_UINT;
+    else if (Types_long_size == bytes)
+        return PARSER_TYPESPEC_ULONG;
+    else if (Types_longlong_size == bytes)
+        return PARSER_TYPESPEC_ULONGLONG;
+    else
+        return PARSER_TYPESPEC_INVALID;
+}
+
+enum Parser_TypeSpec Parser_sint_type_of_width(i32 bytes)
+{
+    if (Types_char_size == bytes)
+        return PARSER_TYPESPEC_SCHAR;
+    else if (Types_short_size == bytes)
+        return PARSER_TYPESPEC_SHORT;
+    else if (Types_int_size == bytes)
+        return PARSER_TYPESPEC_INT;
+    else if (Types_long_size == bytes)
+        return PARSER_TYPESPEC_LONG;
+    else if (Types_longlong_size == bytes)
+        return PARSER_TYPESPEC_LONGLONG;
+    else
+        return PARSER_TYPESPEC_INVALID;
+}
+
+/*
+ Every integer type has an integer conversion rank defined as follows:
+
+— No two signed integer types other than char and signed char (if char is
+signed) shall have the same rank, even if they have the same representation.
+
+— The rank of a signed integer type shall be greater than the rank of any signed
+integer type with a smaller size.
+
+— The rank of long long int shall be greater than the rank of long int, which
+shall be greater than the rank of int, which shall be greater than the rank of
+short int, which shall be greater than the rank of signed char.
+
+— The rank of any unsigned integer type shall equal the rank of the
+corresponding signed integer type
+
+— The rank of any standard integer type shall be greater than the rank of any
+extended integer type with the same size.
+
+— The rank of char shall equal the rank of signed char and unsigned char.
+
+— The rank of bool shall be less than the rank of all other standard integer
+types.
+
+— The ranks of char16_t, char32_t, and wchar_t shall equal the ranks of their
+underlying types (3.9.1).
+
+— The rank of any extended signed integer type relative to another extended
+signed integer type with the same size is implementation-defined, but still
+subject to the other rules for determining the integer conversion rank.
+
+— For all integer types T1, T2, and T3, if T1 has greater rank than T2 and T2
+has greater rank than T3, then T1 shall have greater rank than T3.
+ */
+
+i32 Parser_typespec_conv_rank(enum Parser_TypeSpec spec)
+{
+    switch (spec) {
+    case PARSER_TYPESPEC_BOOL:
+        return 10;
+
+    case PARSER_TYPESPEC_CHAR:
+    case PARSER_TYPESPEC_SCHAR:
+    case PARSER_TYPESPEC_UCHAR:
+        return 20;
+
+    case PARSER_TYPESPEC_SHORT:
+    case PARSER_TYPESPEC_USHORT:
+        return 30;
+
+    case PARSER_TYPESPEC_INT:
+    case PARSER_TYPESPEC_UINT:
+        return 40;
+
+    case PARSER_TYPESPEC_LONG:
+    case PARSER_TYPESPEC_ULONG:
+        return 50;
+
+    case PARSER_TYPESPEC_LONGLONG:
+    case PARSER_TYPESPEC_ULONGLONG:
+        return 60;
+
+    case PARSER_TYPESPEC_FLOAT:
+        return 70;
+
+    case PARSER_TYPESPEC_DOUBLE:
+        return 80;
+
+    case PARSER_TYPESPEC_LONGDOUBLE:
+        return 90;
+
+    case PARSER_TYPESPEC_WCHAR:
+        if (Types_wchar_signed)
+            return Parser_typespec_conv_rank(
+                Parser_sint_type_of_width(Types_wchar_size));
+        else
+            return Parser_typespec_conv_rank(
+                Parser_uint_type_of_width(Types_wchar_size));
+    case PARSER_TYPESPEC_CHAR16:
+        return Parser_typespec_conv_rank(Parser_uint_type_of_width(16));
+    case PARSER_TYPESPEC_CHAR32:
+        return Parser_typespec_conv_rank(Parser_uint_type_of_width(32));
+
+    default:
+        CRASH("type doesn't have a rank");
+    }
 }

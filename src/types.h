@@ -6,7 +6,7 @@
 // short is       2 bytes,
 // int is         4 bytes,
 // long is        8 bytes,
-// long long is   16 bytes
+// long long is   8 bytes
 
 // NOTE: types larger than 8 bytes are not supported
 
@@ -19,6 +19,16 @@ constexpr i32 Types_short_size = 2;
 constexpr i32 Types_int_size = 4;
 constexpr i32 Types_long_size = 8;
 constexpr i32 Types_longlong_size = 8;
+constexpr i32 Types_bool_size = 4;
+constexpr i32 Types_wchar_size = 4;
+
+// DO NOT CHANGE
+constexpr i32 Types_float_size = 4;
+constexpr i32 Types_double_size = 8;
+constexpr i32 Types_longdouble_size = 8;
+
+constexpr bool Types_char_signed = true;
+constexpr bool Types_wchar_signed = false;
 
 constexpr i64 Types_char_smax = INT8_MAX;
 constexpr i64 Types_char_smin = INT8_MIN;
