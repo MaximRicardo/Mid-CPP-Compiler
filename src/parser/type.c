@@ -774,6 +774,18 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
         ret.spec = PARSER_TYPESPEC_CHAR;
         break;
 
+    case LEXER_TOKENTYPE_WCHAR:
+        ret.spec = PARSER_TYPESPEC_WCHAR;
+        break;
+
+    case LEXER_TOKENTYPE_CHAR16:
+        ret.spec = PARSER_TYPESPEC_CHAR16;
+        break;
+
+    case LEXER_TOKENTYPE_CHAR32:
+        ret.spec = PARSER_TYPESPEC_CHAR32;
+        break;
+
     case LEXER_TOKENTYPE_INT:
         ret.spec = PARSER_TYPESPEC_INT;
         break;
@@ -784,6 +796,10 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
 
     case LEXER_TOKENTYPE_DOUBLE:
         ret.spec = PARSER_TYPESPEC_DOUBLE;
+        break;
+
+    case LEXER_TOKENTYPE_BOOL:
+        ret.spec = PARSER_TYPESPEC_BOOL;
         break;
 
     case LEXER_TOKENTYPE_STRUCT:

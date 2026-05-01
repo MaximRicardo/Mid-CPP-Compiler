@@ -123,6 +123,18 @@ static void typecheck_lit_expr(struct Parser_Expr *expr)
         expr->ret.spec = PARSER_TYPESPEC_CHAR;
         break;
 
+    case PARSER_EXPRTYPE_WCHAR_LIT:
+        expr->ret.spec = PARSER_TYPESPEC_WCHAR;
+        break;
+
+    case PARSER_EXPRTYPE_CHAR16_LIT:
+        expr->ret.spec = PARSER_TYPESPEC_CHAR16;
+        break;
+
+    case PARSER_EXPRTYPE_CHAR32_LIT:
+        expr->ret.spec = PARSER_TYPESPEC_CHAR32;
+        break;
+
     case PARSER_EXPRTYPE_INT_LIT:
         expr->ret.spec = PARSER_TYPESPEC_INT;
         break;
@@ -154,6 +166,15 @@ static void typecheck_lit_expr(struct Parser_Expr *expr)
 
     case PARSER_EXPRTYPE_LONGDOUBLE_LIT:
         expr->ret.spec = PARSER_TYPESPEC_LONGDOUBLE;
+        break;
+
+    case PARSER_EXPRTYPE_BOOL_LIT:
+        expr->ret.spec = PARSER_TYPESPEC_BOOL;
+        break;
+
+    case PARSER_EXPRTYPE_PTR_LIT:
+        expr->ret.spec = PARSER_TYPESPEC_VOID;
+        gen_dynpush(&expr->ret.dquals, (struct Parser_TypeDataQual){});
         break;
 
     default:
