@@ -5,10 +5,6 @@ class Test {
     int x = y;
     int y;
 
-    class Internal {
-        int var = z;
-    };
-
     int operator-(int a, int b);
 
     int func(int arg)
@@ -19,4 +15,7 @@ class Test {
     float z;
 };
 
-int main() {}
+int main()
+{
+    Test x;
+}

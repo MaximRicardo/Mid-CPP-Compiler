@@ -468,7 +468,6 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
             set_squal_flag(&squals, toks[i].type);
         } else {
             missing_spec = false;
-            // ret.spec = Parser_toktype_to_typespec(toks[i].type);
             ret = Sema_typespec_type(&toks[i], parent);
             spec_is_typedef = ret.squals.is_typedef;
         }

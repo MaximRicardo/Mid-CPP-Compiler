@@ -86,6 +86,7 @@ struct Parser_ASTNode *Parser_parse_node(const struct Lexer_Token *toks,
     bool check_semi = true;
     if (is_class_start(toks[start].type)) {
         printf("CLASS NODE\n");
+        ret->type = PARSER_ASTNODETYPE_CLASS;
         end = Parser_parse_class(ret, toks, start, diags);
     } else if (Parser_valid_type_start(&toks[start], parent)) {
         printf("DECL NODE\n");

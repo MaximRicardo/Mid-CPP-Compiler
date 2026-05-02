@@ -36,4 +36,5 @@ void Sema_typecheck_var_decl(struct Parser_VarDecl *decl,
 void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
                               struct Parser_ASTNode *node,
                               struct DiagVec *diags);
+void Sema_typecheck_class(struct Parser_Class *self, struct DiagVec *diags);
 void Sema_typecheck_node(struct Parser_ASTNode *node, struct DiagVec *diags);

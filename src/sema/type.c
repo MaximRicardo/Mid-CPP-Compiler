@@ -38,6 +38,8 @@ struct Parser_Type Sema_typespec_type(const struct Lexer_Token *tok,
         CRASH("can't convert composed types to a type spec");
     } else if (tok->type == LEXER_TOKENTYPE_IDENTIFIER) {
         auto node = Sema_find_type_const(tok->ident, parent, tok);
+        assert(node);
+
         switch (node->type) {
         case PARSER_ASTNODETYPE_CLASS:
             return Parser_toktype_to_type(node->class_.is_union
@@ -86,6 +88,11 @@ const struct Parser_ASTNode *
 Sema_find_type_const(const char *name, const struct Parser_ASTNode *node,
                      const struct Lexer_Token *end)
 {
+    printf("got here, name = %s\n", name);
+
+    if (Sema_node_is_type(node) && !strcmp(Sema_node_type_name(node), name))
+        return node;
+
     auto subs = Parser_node_subs_const(node);
     if (subs) {
         for (isize_t i = 0; i < subs->len; ++i) {
@@ -777,6 +784,12 @@ void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
         Sema_typecheck_node(decl->nodes.arr[i], diags);
 }
 
+void Sema_typecheck_class(struct Parser_Class *self, struct DiagVec *diags)
+{
+    for (isize_t i = 0; i < self->nodes.len; ++i)
+        Sema_typecheck_node(self->nodes.arr[i], diags);
+}
+
 void Sema_typecheck_node(struct Parser_ASTNode *node, struct DiagVec *diags)
 {
     switch (node->type) {
@@ -794,6 +807,10 @@ void Sema_typecheck_node(struct Parser_ASTNode *node, struct DiagVec *diags)
 
     case PARSER_ASTNODETYPE_FUNC_DECL:
         Sema_typecheck_func_decl(&node->func_decl, node, diags);
+        break;
+
+    case PARSER_ASTNODETYPE_CLASS:
+        Sema_typecheck_class(&node->class_, diags);
         break;
 
     default:
