@@ -6,7 +6,9 @@
 #include "lexer/token.h"
 #include "macros.h"
 #include "parser/ast.h"
+#include "parser/astvec.h"
 #include "parser/expr.h"
+#include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
@@ -659,6 +661,69 @@ static void typecheck_op_expr(struct Parser_Expr *expr,
     }
 }
 
+static isize_t best_op_overload(const struct Parser_ASTNodePVec *overloads,
+                                struct Parser_Expr *expr)
+{
+    for (isize_t i = 0; i < overloads->len; ++i) {
+        const struct Parser_FuncDecl *func = &overloads->arr[i]->func_decl;
+        if (func->params.len != expr->info.args.len)
+            continue;
+
+        bool bad = false;
+        for (isize_t j = 0; j < func->params.len; ++j) {
+            auto param = &func->params.arr[j];
+            auto arg = &expr->info.args.arr[j];
+
+            isize_t param_indir = Parser_n_indir(&param->type);
+            isize_t arg_indir = Parser_n_indir(&arg->ret);
+
+            if (param->type.spec != arg->ret.spec || param_indir != arg_indir) {
+                bad = true;
+                break;
+            }
+
+            // rv references cannot take lvalues and non-const lv rereferences
+            // cannot take rvalues
+            if ((param->type.rv_ref && !Parser_is_rvalue(arg->valtype)) ||
+                (param->type.lv_ref && !param->type.dquals.arr[0].is_const &&
+                 Parser_is_rvalue(arg->valtype))) {
+                bad = true;
+                break;
+            }
+        }
+
+        if (!bad)
+            return i;
+    }
+
+    return -1;
+}
+
+static void typecheck_overloaded_op(struct Parser_Expr *expr,
+                                    struct Parser_ASTNode *parent,
+                                    const struct Parser_ASTNodePVec *overloads,
+                                    struct DiagVec *diags)
+{
+    isize_t best = best_op_overload(overloads, expr);
+    if (best == -1)
+        typecheck_op_expr(expr, parent, diags);
+    else {
+        printf("found overload at %d:%d\n", expr->tok->pos.line,
+               expr->tok->pos.column);
+        const struct Parser_FuncDecl *func = &overloads->arr[best]->func_decl;
+        printf("overload decl at %d:%d\n",
+               overloads->arr[best]->start->pos.line,
+               overloads->arr[best]->start->pos.column);
+
+        if (func->type.lv_ref)
+            expr->valtype = PARSER_EXPRVALUE_LVALUE;
+        else if (func->type.rv_ref)
+            expr->valtype = PARSER_EXPRVALUE_XVALUE;
+        else
+            expr->valtype = PARSER_EXPRVALUE_PRVALUE;
+    }
+}
+
 void Sema_typecheck_expr(struct Parser_Expr *expr,
                          struct Parser_ASTNode *parent, struct DiagVec *diags)
 {
@@ -671,7 +736,12 @@ void Sema_typecheck_expr(struct Parser_Expr *expr,
             Sema_typecheck_expr(&expr->info.args.arr[i], parent, diags);
         }
 
-        typecheck_op_expr(expr, parent, diags);
+        auto overloads = Sema_op_overloads(expr->type, parent, expr->tok);
+        if (overloads.len == 0)
+            typecheck_op_expr(expr, parent, diags);
+        else
+            typecheck_overloaded_op(expr, parent, &overloads, diags);
+        gen_dyndeinit(&overloads);
     }
 }
 

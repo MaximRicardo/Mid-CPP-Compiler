@@ -4,6 +4,7 @@
 #include "lexer/token.h"
 #include "parser/ast.h"
 #include "parser/end_types.h"
+#include "parser/find_twin.h"
 #include "parser/type.h"
 #include <assert.h>
 #include <stdio.h>
@@ -51,6 +52,23 @@ static bool are_params_ambig(const struct Lexer_Token *toks, isize_t lparen,
     return true;
 }
 
+// does nothing if there isn't one
+// Type operator+(const Type &a, const Type &b)
+//              ^
+//            start
+static isize_t skip_operator_overload(const struct Lexer_Token *toks,
+                                      isize_t start)
+{
+    if (toks[start].type == LEXER_TOKENTYPE_L_SQBRACKET)
+        return Parser_find_twin_sqbracket(toks, start, ISIZE_MAX) + 1;
+    else if (toks[start].type == LEXER_TOKENTYPE_L_PAREN) {
+        return Parser_find_twin_paren(toks, start, ISIZE_MAX) + 1;
+    } else if (Lexer_is_op(toks[start].type))
+        return start + 1;
+    else
+        return start;
+}
+
 bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
                          const struct Parser_ASTNode *parent,
                          struct DiagVec *diags, bool *out_mvp)
@@ -61,7 +79,10 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
     bool ret;
 
     isize_t type_end;
-    auto type = Parser_parse_type(toks, start, &type_end, parent, NULL, diags);
+    const char *name;
+    auto type = Parser_parse_type(toks, start, &type_end, parent, &name, diags);
+    if (name && !strcmp(name, "operator"))
+        type_end = skip_operator_overload(toks, type_end);
 
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN) {
         ret = false;

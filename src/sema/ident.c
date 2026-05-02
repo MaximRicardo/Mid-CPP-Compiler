@@ -1,7 +1,10 @@
 #include "ident.h"
+#include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "parser/ast.h"
+#include "parser/astvec.h"
+#include "parser/expr.h"
 #include "parser/type.h"
 #include <stdio.h>
 #include <string.h>
@@ -106,11 +109,18 @@ struct Parser_ASTNode *Sema_ident_creation(const char *ident,
     return (struct Parser_ASTNode *)Sema_ident_creation_const(ident, node, end);
 }
 
+static bool node_is_func_def(const struct Parser_ASTNode *node,
+                             const char *func)
+{
+    return node->type == PARSER_ASTNODETYPE_FUNC_DECL &&
+           node->func_decl.has_def && !strcmp(node->func_decl.name, func);
+}
+
 const struct Parser_ASTNode *
 Sema_func_def_const(const char *name, const struct Parser_ASTNode *node,
                     const struct Lexer_Token *end)
 {
-    if (Sema_node_creates_ident_const(node, name))
+    if (node_is_func_def(node, name))
         return node;
 
     auto subs = Parser_node_subs_const(node);
@@ -119,9 +129,7 @@ Sema_func_def_const(const char *name, const struct Parser_ASTNode *node,
             if (end && subs->arr[i]->start >= end)
                 break;
 
-            if (subs->arr[i]->type == PARSER_ASTNODETYPE_FUNC_DECL &&
-                subs->arr[i]->func_decl.has_def &&
-                !strcmp(subs->arr[i]->func_decl.name, name))
+            if (node_is_func_def(subs->arr[i], name))
                 return subs->arr[i];
         }
     }
@@ -137,4 +145,45 @@ struct Parser_ASTNode *Sema_func_def(const char *name,
                                      const struct Lexer_Token *end)
 {
     return (struct Parser_ASTNode *)Sema_func_def_const(name, node, end);
+}
+
+static bool node_is_op_overload(const struct Parser_ASTNode *node,
+                                enum Parser_ExprType op)
+{
+    return node->type == PARSER_ASTNODETYPE_FUNC_DECL &&
+           node->func_decl.is_op_overload &&
+           node->func_decl.op_overload == op &&
+           !strcmp(node->func_decl.name, "operator");
+}
+
+void find_op_overloads_impl(enum Parser_ExprType op,
+                            struct Parser_ASTNode *node,
+                            const struct Lexer_Token *end,
+                            struct Parser_ASTNodePVec *result)
+{
+    if (node_is_op_overload(node, op))
+        gen_dynpush(result, node);
+
+    auto subs = Parser_node_subs_const(node);
+    if (subs) {
+        for (isize_t i = 0; i < subs->len; ++i) {
+            if (end && subs->arr[i]->start >= end)
+                break;
+
+            if (node_is_op_overload(subs->arr[i], op))
+                gen_dynpush(result, subs->arr[i]);
+        }
+    }
+
+    if (node->parent)
+        find_op_overloads_impl(op, node->parent, end, result);
+}
+
+struct Parser_ASTNodePVec Sema_op_overloads(enum Parser_ExprType op,
+                                            struct Parser_ASTNode *node,
+                                            const struct Lexer_Token *end)
+{
+    struct Parser_ASTNodePVec ret = {};
+    find_op_overloads_impl(op, node, end, &ret);
+    return ret;
 }

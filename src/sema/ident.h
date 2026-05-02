@@ -2,6 +2,7 @@
 
 #include "lexer/token.h"
 #include "parser/ast.h"
+#include "parser/expr.h"
 #include "parser/type.h"
 
 // returns whether or not the node creates 1 or more identifiers
@@ -38,3 +39,9 @@ Sema_func_def_const(const char *name, const struct Parser_ASTNode *search_node,
 struct Parser_ASTNode *Sema_func_def(const char *name,
                                      struct Parser_ASTNode *node,
                                      const struct Lexer_Token *end);
+
+// doesn't have a const version cuz that would be annoying to implement
+// end - set to NULL to ignore
+struct Parser_ASTNodePVec Sema_op_overloads(enum Parser_ExprType op,
+                                            struct Parser_ASTNode *node,
+                                            const struct Lexer_Token *end);

@@ -9,6 +9,8 @@ struct Parser_FuncDecl {
     struct Parser_VarDeclVec params;
     struct Parser_ASTNodePVec nodes;
     const char *name;
+    enum Parser_ExprType op_overload; // the operator that got overloaded
+    bool is_op_overload;
     bool has_def; // does this node hold the definition of the func?
 };
 
