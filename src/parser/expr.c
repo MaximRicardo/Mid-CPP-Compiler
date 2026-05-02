@@ -376,12 +376,12 @@ static struct Parser_Expr op_tok_to_expr_mode0(const struct Lexer_Token *tok,
         break;
 
     case LEXER_TOKENTYPE_BITWISE_NOT:
-        gen_dynpush(diags, unexpected_token("bitwise not '~'", tok));
+        gen_dynpush(diags, unexpected_token("bitwise NOT '~'", tok));
         ret.type = PARSER_EXPRTYPE_BITWISE_NOT;
         break;
 
     case LEXER_TOKENTYPE_LOGICAL_NOT:
-        gen_dynpush(diags, unexpected_token("logical not '!'", tok));
+        gen_dynpush(diags, unexpected_token("logical NOT '!'", tok));
         ret.type = PARSER_EXPRTYPE_LOGICAL_NOT;
         break;
 
