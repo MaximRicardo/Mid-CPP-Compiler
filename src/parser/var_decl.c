@@ -23,7 +23,7 @@ struct Parser_VarDecl
 Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
                       isize_t *out_end, const enum Lexer_TokenType *end_types,
                       isize_t n_end_types, const struct Parser_ASTNode *parent,
-                      struct DiagVec *diags)
+                      bool skip_init, struct DiagVec *diags)
 {
     struct Parser_VarDecl ret = {};
     isize_t type_end;
@@ -44,9 +44,16 @@ Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
 
     if (has_init) {
         isize_t expr_start = assign_idx + 1;
-        ret.init = malloc(sizeof(*ret.init));
-        *ret.init = Parser_parse_expr(toks, expr_start, end_types, n_end_types,
-                                      out_end, diags);
+        ret.init_start = &toks[expr_start];
+        if (skip_init) {
+            if (out_end)
+                *out_end = Parser_skip_expr(toks, expr_start, end_types,
+                                            n_end_types, NULL);
+        } else {
+            ret.init = malloc(sizeof(*ret.init));
+            *ret.init = Parser_parse_expr(toks, expr_start, end_types,
+                                          n_end_types, out_end, diags);
+        }
     } else if (out_end) {
         *out_end = type_end;
     }

@@ -21,8 +21,8 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
 {
     assert(Parser_valid_type_start(&toks[start], parent));
 
-    auto decl = Parser_parse_var_decl(toks, start, out_end,
-                                      PARSER_PARAM_ENDTYPES, parent, diags);
+    auto decl = Parser_parse_var_decl(
+        toks, start, out_end, PARSER_PARAM_ENDTYPES, parent, false, diags);
 
     bool has_dquals =
         memcmp(&decl.type.dquals.arr[0], &(struct Parser_TypeDataQual){},

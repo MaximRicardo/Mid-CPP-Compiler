@@ -4,6 +4,7 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "parser/class.h"
 #include "parser/end_types.h"
 #include "parser/enum.h"
 #include "parser/expr.h"
@@ -64,10 +65,16 @@ static struct Diag missing_semi_err(const struct Lexer_Token *tok)
     };
 }
 
+static bool is_class_start(enum Lexer_TokenType type)
+{
+    return type == LEXER_TOKENTYPE_CLASS || type == LEXER_TOKENTYPE_STRUCT ||
+           type == LEXER_TOKENTYPE_UNION;
+}
+
 struct Parser_ASTNode *Parser_parse_node(const struct Lexer_Token *toks,
                                          isize_t start, isize_t *out_end,
                                          struct Parser_ASTNode *parent,
-                                         struct DiagVec *diags)
+                                         bool skip_def, struct DiagVec *diags)
 {
     struct Parser_ASTNode *ret = malloc(sizeof(*ret));
     *ret = (struct Parser_ASTNode){.start = &toks[start], .parent = parent};
@@ -77,18 +84,22 @@ struct Parser_ASTNode *Parser_parse_node(const struct Lexer_Token *toks,
 
     isize_t end;
     bool check_semi = true;
-    if (Parser_valid_type_start(&toks[start], parent)) {
+    if (is_class_start(toks[start].type)) {
+        printf("CLASS NODE\n");
+        end = Parser_parse_class(ret, toks, start, diags);
+    } else if (Parser_valid_type_start(&toks[start], parent)) {
         printf("DECL NODE\n");
         bool mvp;
         if (Parser_decl_is_func(toks, start, parent, diags, &mvp)) {
             printf("mvp = %d\n", mvp);
             ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
-            Parser_parse_func_decl(toks, start, &end, ret, diags);
+            Parser_parse_func_decl(toks, start, &end, ret, skip_def, diags);
             check_semi = !ret->func_decl.has_def;
         } else {
             ret->type = PARSER_ASTNODETYPE_VAR_DECL;
-            ret->var_decl = Parser_parse_var_decl(
-                toks, start, &end, PARSER_DEFAULT_ENDTYPES, parent, diags);
+            ret->var_decl = Parser_parse_var_decl(toks, start, &end,
+                                                  PARSER_DEFAULT_ENDTYPES,
+                                                  parent, skip_def, diags);
         }
     } else {
         printf("EXPR NODE\n");

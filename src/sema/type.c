@@ -197,7 +197,7 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
     expr->valtype = PARSER_EXPRVALUE_LVALUE;
 
     const struct Parser_Type *type =
-        Sema_ident_type_const(expr->tok->ident, parent, expr->tok);
+        Sema_ident_type_const(expr->tok->ident, parent);
 
     if (!type) {
         gen_dynpush(diags,
@@ -222,8 +222,7 @@ static void set_func_call_node(struct Parser_Expr *expr,
     const struct Parser_Expr *name_expr = &expr->info.args.arr[0];
 
     if (name_expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
-        expr->node =
-            Sema_ident_creation(name_expr->info.ident, parent, expr->tok);
+        expr->node = Sema_ident_creation(name_expr->info.ident, parent);
         if (!expr->node || expr->node->type != PARSER_ASTNODETYPE_FUNC_DECL)
             gen_dynpush(diags,
                         ((struct Diag){
@@ -719,6 +718,8 @@ static void typecheck_overloaded_op(struct Parser_Expr *expr,
         printf("overload decl at %d:%d\n",
                overloads->arr[best]->start->pos.line,
                overloads->arr[best]->start->pos.column);
+
+        expr->ret = Parser_copy_type(&func->type);
 
         if (func->type.lv_ref)
             expr->valtype = PARSER_EXPRVALUE_LVALUE;

@@ -43,3 +43,10 @@ isize_t Parser_find_twin_curly(const struct Lexer_Token *toks, isize_t l_idx,
     return Parser_find_twin_generic(
         toks, l_idx, end_idx, LEXER_TOKENTYPE_L_CURLY, LEXER_TOKENTYPE_R_CURLY);
 }
+
+isize_t Parser_find_twin_angle(const struct Lexer_Token *toks, isize_t l_idx,
+                               isize_t end_idx)
+{
+    return Parser_find_twin_generic(toks, l_idx, end_idx, LEXER_TOKENTYPE_LT,
+                                    LEXER_TOKENTYPE_GT);
+}

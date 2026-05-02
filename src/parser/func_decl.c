@@ -57,20 +57,19 @@ Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
     for (isize_t i = lparen + 1; i < rparen; ++i)
         gen_dynpush(&params,
                     Parser_parse_var_decl(toks, i, &i, PARSER_PARAM_ENDTYPES,
-                                          parent, diags));
+                                          parent, false, diags));
 
     return params;
 }
 
-static void parse_func_body(struct Parser_FuncDecl *func,
-                            const struct Lexer_Token *toks, isize_t lcurly,
-                            isize_t *out_rcurly,
-                            struct Parser_ASTNode *func_node,
-                            struct DiagVec *diags)
+isize_t Parser_parse_func_body(struct Parser_FuncDecl *func,
+                               const struct Lexer_Token *toks, isize_t lcurly,
+                               struct Parser_ASTNode *func_node,
+                               struct DiagVec *diags)
 {
     isize_t rcurly = Parser_find_twin_curly(toks, lcurly, ISIZE_MAX);
-    if (out_rcurly)
-        *out_rcurly = rcurly;
+    if (rcurly == -1)
+        rcurly = lcurly;
 
     if (rcurly == -1) {
         gen_dynpush(diags,
@@ -79,13 +78,15 @@ static void parse_func_body(struct Parser_FuncDecl *func,
                                    .msg = Print_fmt_to_str("expected '}'"),
                                    .err = ERRORTYPE_MISSING_CURLY,
                                    .is_err = true}));
-        return;
+        return rcurly;
     }
 
     for (isize_t i = lcurly + 1; i < rcurly;) {
-        auto node = Parser_parse_node(toks, i, &i, func_node, diags);
+        auto node = Parser_parse_node(toks, i, &i, func_node, false, diags);
         gen_dynpush(&func->nodes, node);
     }
+
+    return rcurly;
 }
 
 // op is the index of the operator
@@ -335,7 +336,7 @@ static void disambig_operator_overload(struct Parser_FuncDecl *decl)
 
 void Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
                             isize_t *out_end, struct Parser_ASTNode *func_node,
-                            struct DiagVec *diags)
+                            bool skip_def, struct DiagVec *diags)
 {
     struct Parser_FuncDecl *decl = &func_node->func_decl;
     isize_t type_end;
@@ -357,12 +358,18 @@ void Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
             *out_end = lcurly;
         return;
     }
-
-    isize_t rcurly;
-    parse_func_body(decl, toks, lcurly, &rcurly, func_node, diags);
+    decl->def_start = &toks[lcurly];
     decl->has_def = true;
 
-    if (out_end)
-        *out_end = rcurly + 1;
-    return;
+    if (skip_def) {
+        isize_t rcurly = Parser_find_twin_curly(toks, lcurly, ISIZE_MAX);
+        if (out_end)
+            *out_end = rcurly == -1 ? lcurly + 1 : rcurly + 1;
+    } else {
+        isize_t rcurly =
+            Parser_parse_func_body(decl, toks, lcurly, func_node, diags);
+
+        if (out_end)
+            *out_end = rcurly + 1;
+    }
 }

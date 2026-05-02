@@ -43,8 +43,7 @@ struct Parser_Type *Sema_node_creates_ident(struct Parser_ASTNode *node,
 }
 
 const struct Parser_Type *
-Sema_ident_type_const(const char *ident, const struct Parser_ASTNode *node,
-                      const struct Lexer_Token *end)
+Sema_ident_type_const(const char *ident, const struct Parser_ASTNode *node)
 {
     {
         auto type = Sema_node_creates_ident_const(node, ident);
@@ -55,9 +54,6 @@ Sema_ident_type_const(const char *ident, const struct Parser_ASTNode *node,
     auto subs = Parser_node_subs_const(node);
     if (subs) {
         for (isize_t i = 0; i < subs->len; ++i) {
-            if (end && subs->arr[i]->start >= end)
-                break;
-
             const struct Parser_Type *type =
                 Sema_node_creates_ident_const(subs->arr[i], ident);
             if (type)
@@ -66,21 +62,19 @@ Sema_ident_type_const(const char *ident, const struct Parser_ASTNode *node,
     }
 
     if (node->parent)
-        return Sema_ident_type_const(ident, node->parent, end);
+        return Sema_ident_type_const(ident, node->parent);
     else
         return NULL;
 }
 
 struct Parser_Type *Sema_ident_type(const char *ident,
-                                    struct Parser_ASTNode *node,
-                                    const struct Lexer_Token *end)
+                                    struct Parser_ASTNode *node)
 {
-    return (struct Parser_Type *)Sema_ident_type_const(ident, node, end);
+    return (struct Parser_Type *)Sema_ident_type_const(ident, node);
 }
 
 const struct Parser_ASTNode *
-Sema_ident_creation_const(const char *ident, const struct Parser_ASTNode *node,
-                          const struct Lexer_Token *end)
+Sema_ident_creation_const(const char *ident, const struct Parser_ASTNode *node)
 {
     if (Sema_node_creates_ident_const(node, ident))
         return node;
@@ -88,63 +82,67 @@ Sema_ident_creation_const(const char *ident, const struct Parser_ASTNode *node,
     auto subs = Parser_node_subs_const(node);
     if (subs) {
         for (isize_t i = 0; i < subs->len; ++i) {
-            if (end && subs->arr[i]->start >= end)
-                break;
-
             if (Sema_node_creates_ident_const(subs->arr[i], ident))
                 return subs->arr[i];
         }
     }
 
     if (node->parent)
-        return Sema_ident_creation_const(ident, node->parent, end);
+        return Sema_ident_creation_const(ident, node->parent);
     else
         return NULL;
 }
 
 struct Parser_ASTNode *Sema_ident_creation(const char *ident,
-                                           struct Parser_ASTNode *node,
-                                           const struct Lexer_Token *end)
+                                           struct Parser_ASTNode *node)
 {
-    return (struct Parser_ASTNode *)Sema_ident_creation_const(ident, node, end);
+    return (struct Parser_ASTNode *)Sema_ident_creation_const(ident, node);
 }
 
 static bool node_is_func_def(const struct Parser_ASTNode *node,
-                             const char *func)
+                             const char *name)
 {
     return node->type == PARSER_ASTNODETYPE_FUNC_DECL &&
-           node->func_decl.has_def && !strcmp(node->func_decl.name, func);
+           node->func_decl.has_def && !strcmp(node->func_decl.name, name);
+}
+
+static bool node_is_class_def(const struct Parser_ASTNode *node,
+                              const char *name)
+{
+    return node->type == PARSER_ASTNODETYPE_CLASS && node->class_.has_def &&
+           !strcmp(node->class_.name, name);
+}
+
+static bool node_is_ident_def(const struct Parser_ASTNode *node,
+                              const char *name)
+{
+    return node_is_func_def(node, name) || node_is_class_def(node, name);
 }
 
 const struct Parser_ASTNode *
-Sema_func_def_const(const char *name, const struct Parser_ASTNode *node,
-                    const struct Lexer_Token *end)
+Sema_ident_def_const(const char *name, const struct Parser_ASTNode *node)
 {
-    if (node_is_func_def(node, name))
+    if (node_is_ident_def(node, name))
         return node;
 
     auto subs = Parser_node_subs_const(node);
     if (subs) {
         for (isize_t i = 0; i < subs->len; ++i) {
-            if (end && subs->arr[i]->start >= end)
-                break;
-
-            if (node_is_func_def(subs->arr[i], name))
+            if (node_is_ident_def(subs->arr[i], name))
                 return subs->arr[i];
         }
     }
 
     if (node->parent)
-        return Sema_ident_creation_const(name, node->parent, end);
+        return Sema_ident_def_const(name, node->parent);
     else
         return NULL;
 }
 
-struct Parser_ASTNode *Sema_func_def(const char *name,
-                                     struct Parser_ASTNode *node,
-                                     const struct Lexer_Token *end)
+struct Parser_ASTNode *Sema_ident_def(const char *name,
+                                      struct Parser_ASTNode *node)
 {
-    return (struct Parser_ASTNode *)Sema_func_def_const(name, node, end);
+    return (struct Parser_ASTNode *)Sema_ident_def_const(name, node);
 }
 
 static bool node_is_op_overload(const struct Parser_ASTNode *node,

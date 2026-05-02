@@ -105,7 +105,7 @@ int main(int argc, char **argv)
                lex.toks.arr[i].pos.line, lex.toks.arr[i].pos.column, i,
                lex.toks.len - 1);
         auto node =
-            Parser_parse_node(lex.toks.arr, i, &i, &root, &parser_diags);
+            Parser_parse_node(lex.toks.arr, i, &i, &root, false, &parser_diags);
         gen_dynpush(&root.root, node);
     }
     if (print_diags(&parser_diags))

@@ -19,7 +19,7 @@ static struct Diag expected_token(const char *tok_name,
         .pos = tok->pos,
         .line = tok->line,
         .msg = Print_fmt_to_str("expected %s", tok_name),
-        .err = ERRORTYPE_UNEXPECTED_TOKEN,
+        .err = ERRORTYPE_MISSING_TOKEN,
         .is_err = true,
     };
 }
@@ -1020,6 +1020,38 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
     struct Parser_Expr ret = out.arr[0];
     gen_dyndeinit(&out);
     return ret;
+}
+
+isize_t Parser_skip_expr(const struct Lexer_Token *toks, isize_t start,
+                         const enum Lexer_TokenType *end_types,
+                         isize_t n_end_types, struct DiagVec *diags)
+{
+    isize_t i;
+    for (i = start; !is_end_type(toks[i].type, end_types, n_end_types); ++i) {
+        if (toks[i].type == LEXER_TOKENTYPE_L_PAREN) {
+            isize_t rparen = Parser_find_twin_paren(toks, i, ISIZE_MAX);
+            if (rparen == -1 && diags)
+                gen_dynpush(diags, expected_token("')'", &toks[i]));
+            i = rparen == -1 ? i : rparen;
+        } else if (toks[i].type == LEXER_TOKENTYPE_L_CURLY) {
+            isize_t rcurly = Parser_find_twin_curly(toks, i, ISIZE_MAX);
+            if (rcurly == -1 && diags)
+                gen_dynpush(diags, expected_token("'}'", &toks[i]));
+            i = rcurly == -1 ? i : rcurly;
+        } else if (toks[i].type == LEXER_TOKENTYPE_L_SQBRACKET) {
+            isize_t rsqbracket = Parser_find_twin_sqbracket(toks, i, ISIZE_MAX);
+            if (rsqbracket == -1 && diags)
+                gen_dynpush(diags, expected_token("']'", &toks[i]));
+            i = rsqbracket == -1 ? i : rsqbracket;
+        } else if (toks[i].type == LEXER_TOKENTYPE_LT) {
+            isize_t rangle = Parser_find_twin_angle(toks, i, ISIZE_MAX);
+            if (rangle == -1 && diags)
+                gen_dynpush(diags, expected_token("'>'", &toks[i]));
+            i = rangle == -1 ? i : rangle;
+        }
+    }
+
+    return i;
 }
 
 static union Literal_Value evaluate_binop(const struct Parser_Expr *expr)
