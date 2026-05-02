@@ -8,7 +8,7 @@ float &operator-(float x)
     0.f - x;
 }
 
-char &&operator()(char x, char y)
+char32_t &&operator()(char32_t x, char32_t y)
 {
     x + y;
 }
@@ -20,12 +20,12 @@ int main()
 
     float f_a = 3.141592f;
 
-    char c_a = 1;
-    char c_b = 2;
+    char32_t c_a = 1;
+    char32_t c_b = 2;
 
     int i_c = i_a - i_b;
     float f_b = -f_a;
-    char c_c = c_a(c_b);
+    char32_t c_c = c_a(c_b);
 
     i_a + i_b = 10;
     -f_a = 10.f;

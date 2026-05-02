@@ -1046,11 +1046,12 @@ i32 Parser_typespec_conv_rank(enum Parser_TypeSpec spec)
             return Parser_typespec_conv_rank(
                 Parser_uint_type_of_width(Types_wchar_size));
     case PARSER_TYPESPEC_CHAR16:
-        return Parser_typespec_conv_rank(Parser_uint_type_of_width(16));
+        return Parser_typespec_conv_rank(Parser_uint_type_of_width(16 / 8));
     case PARSER_TYPESPEC_CHAR32:
-        return Parser_typespec_conv_rank(Parser_uint_type_of_width(32));
+        return Parser_typespec_conv_rank(Parser_uint_type_of_width(32 / 8));
 
     default:
+        printf("type = %d\n", spec);
         CRASH("type doesn't have a rank");
     }
 }
@@ -1067,14 +1068,14 @@ u64 Parser_integral_max(enum Parser_TypeSpec spec)
     case PARSER_TYPESPEC_WCHAR:
         if (Types_wchar_signed)
             return Parser_integral_max(
-                Parser_sint_type_of_width(Types_wchar_signed));
+                Parser_sint_type_of_width(Types_wchar_size));
         else
             return Parser_integral_max(
-                Parser_uint_type_of_width(Types_wchar_signed));
+                Parser_uint_type_of_width(Types_wchar_size));
     case PARSER_TYPESPEC_CHAR16:
-        return Parser_integral_max(Parser_uint_type_of_width(16));
+        return Parser_integral_max(Parser_uint_type_of_width(16 / 8));
     case PARSER_TYPESPEC_CHAR32:
-        return Parser_integral_max(Parser_uint_type_of_width(32));
+        return Parser_integral_max(Parser_uint_type_of_width(32 / 8));
 
     case PARSER_TYPESPEC_SHORT:
         return Types_short_smax;
@@ -1117,7 +1118,7 @@ i64 Parser_integral_min(enum Parser_TypeSpec spec)
     case PARSER_TYPESPEC_WCHAR:
         if (Types_wchar_signed)
             return Parser_integral_min(
-                Parser_sint_type_of_width(Types_wchar_signed));
+                Parser_sint_type_of_width(Types_wchar_size));
         else
             return 0;
     case PARSER_TYPESPEC_CHAR16:
