@@ -10,4 +10,6 @@ int main(int argc, char **argv)
     char **var = argv + argc + func(123 / 10, -1.2f);
     bool asd = true;
     int *ptr = nullptr;
+
+    10 = 5;
 }

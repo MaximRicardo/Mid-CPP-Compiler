@@ -119,6 +119,8 @@ static void typecheck_lit_expr(struct Parser_Expr *expr)
     else
         expr->valtype = PARSER_EXPRVALUE_PRVALUE;
 
+    gen_dynpush(&expr->ret.dquals, (struct Parser_TypeDataQual){});
+
     switch (expr->type) {
     case PARSER_EXPRTYPE_CHAR_LIT:
         expr->ret.spec = PARSER_TYPESPEC_CHAR;
