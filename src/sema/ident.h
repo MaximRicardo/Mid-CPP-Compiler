@@ -1,6 +1,5 @@
 #pragma once
 
-#include "lexer/token.h"
 #include "parser/ast.h"
 #include "parser/expr.h"
 #include "parser/type.h"
@@ -33,7 +32,5 @@ struct Parser_ASTNode *Sema_ident_def(const char *name,
                                       struct Parser_ASTNode *node);
 
 // doesn't have a const version cuz that would be annoying to implement
-// end - stop searching past this token. set to NULL to ignore
 struct Parser_ASTNodePVec Sema_op_overloads(enum Parser_ExprType op,
-                                            struct Parser_ASTNode *node,
-                                            const struct Lexer_Token *end);
+                                            struct Parser_ASTNode *node);

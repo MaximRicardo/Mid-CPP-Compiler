@@ -742,7 +742,7 @@ void Sema_typecheck_expr(struct Parser_Expr *expr,
             Sema_typecheck_expr(&expr->info.args.arr[i], parent, diags);
         }
 
-        auto overloads = Sema_op_overloads(expr->type, parent, expr->tok);
+        auto overloads = Sema_op_overloads(expr->type, parent);
         if (overloads.len == 0)
             typecheck_op_expr(expr, parent, diags);
         else

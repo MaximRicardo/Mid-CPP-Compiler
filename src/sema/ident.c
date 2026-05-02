@@ -1,7 +1,6 @@
 #include "ident.h"
 #include "generics/dynarray.h"
 #include "ints.h"
-#include "lexer/token.h"
 #include "parser/ast.h"
 #include "parser/astvec.h"
 #include "parser/expr.h"
@@ -156,7 +155,6 @@ static bool node_is_op_overload(const struct Parser_ASTNode *node,
 
 void find_op_overloads_impl(enum Parser_ExprType op,
                             struct Parser_ASTNode *node,
-                            const struct Lexer_Token *end,
                             struct Parser_ASTNodePVec *result)
 {
     if (node_is_op_overload(node, op))
@@ -165,23 +163,19 @@ void find_op_overloads_impl(enum Parser_ExprType op,
     auto subs = Parser_node_subs_const(node);
     if (subs) {
         for (isize_t i = 0; i < subs->len; ++i) {
-            if (end && subs->arr[i]->start >= end)
-                break;
-
             if (node_is_op_overload(subs->arr[i], op))
                 gen_dynpush(result, subs->arr[i]);
         }
     }
 
     if (node->parent)
-        find_op_overloads_impl(op, node->parent, end, result);
+        find_op_overloads_impl(op, node->parent, result);
 }
 
 struct Parser_ASTNodePVec Sema_op_overloads(enum Parser_ExprType op,
-                                            struct Parser_ASTNode *node,
-                                            const struct Lexer_Token *end)
+                                            struct Parser_ASTNode *node)
 {
     struct Parser_ASTNodePVec ret = {};
-    find_op_overloads_impl(op, node, end, &ret);
+    find_op_overloads_impl(op, node, &ret);
     return ret;
 }
