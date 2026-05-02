@@ -262,13 +262,18 @@ static void typecheck_assignment_expr(struct Parser_Expr *expr,
     auto lhs = &expr->info.args.arr[0];
 
     if (lhs->valtype != PARSER_EXPRVALUE_LVALUE)
-        gen_dynpush(diags, ((struct Diag){
-                               .pos = expr->tok->pos,
-                               .line = expr->tok->line,
-                               .msg = strdup("assignment lhs isn't an lvalue"),
-                               .err = ERRORTYPE_BAD_ASSIGNMENT,
-                               .is_err = true,
-                           }));
+        gen_dynpush(
+            diags,
+            ((struct Diag){
+                .pos = expr->tok->pos,
+                .line = expr->tok->line,
+                .msg = Print_fmt_to_str("can't assign to %s",
+                                        lhs->valtype == PARSER_EXPRVALUE_XVALUE
+                                            ? "an xvalue"
+                                            : "a prvalue"),
+                .err = ERRORTYPE_BAD_ASSIGNMENT,
+                .is_err = true,
+            }));
 
     expr->ret = Parser_copy_type(&lhs->ret);
 }
