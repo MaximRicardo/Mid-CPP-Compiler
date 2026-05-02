@@ -32,20 +32,20 @@ constexpr bool Types_wchar_signed = false;
 
 constexpr i64 Types_char_smax = INT8_MAX;
 constexpr i64 Types_char_smin = INT8_MIN;
-constexpr u64 Types_char_umin = UINT8_MAX;
+constexpr u64 Types_char_umax = UINT8_MAX;
 
 constexpr i64 Types_short_smax = INT16_MAX;
 constexpr i64 Types_short_smin = INT16_MIN;
-constexpr u64 Types_short_umin = UINT16_MAX;
+constexpr u64 Types_short_umax = UINT16_MAX;
 
 constexpr i64 Types_int_smax = INT32_MAX;
 constexpr i64 Types_int_smin = INT32_MIN;
-constexpr u64 Types_int_umin = UINT32_MAX;
+constexpr u64 Types_int_umax = UINT32_MAX;
 
 constexpr i64 Types_long_smax = INT64_MAX;
 constexpr i64 Types_long_smin = INT64_MIN;
-constexpr u64 Types_long_umin = UINT64_MAX;
+constexpr u64 Types_long_umax = UINT64_MAX;
 
 constexpr i64 Types_longlong_smax = INT64_MAX;
 constexpr i64 Types_longlong_smin = INT64_MIN;
-constexpr u64 Types_longlong_umin = UINT64_MAX;
+constexpr u64 Types_longlong_umax = UINT64_MAX;

@@ -44,6 +44,7 @@ bool Parser_is_typespec_named(enum Parser_TypeSpec spec);
 enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type);
 const char *Parser_typespec_to_str(enum Parser_TypeSpec spec);
 bool Parser_is_integral_typespec(enum Parser_TypeSpec spec);
+bool Parser_is_floating_typespec(enum Parser_TypeSpec spec);
 
 struct Parser_TypeStorQual {
     bool is_static;
@@ -112,3 +113,6 @@ bool Parser_valid_type_start(const struct Lexer_Token *tok,
 enum Parser_TypeSpec Parser_uint_type_of_width(i32 bytes);
 enum Parser_TypeSpec Parser_sint_type_of_width(i32 bytes);
 i32 Parser_typespec_conv_rank(enum Parser_TypeSpec spec);
+u64 Parser_integral_max(enum Parser_TypeSpec spec);
+i64 Parser_integral_min(enum Parser_TypeSpec spec);
+enum Parser_TypeSpec Parser_integral_prom(enum Parser_TypeSpec spec);

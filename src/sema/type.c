@@ -439,13 +439,8 @@ static void typecheck_conditional_expr(struct Parser_Expr *expr,
 #endif
 }
 
-static bool is_ptr_arith_op(enum Parser_ExprType op)
-{
-    return op == PARSER_EXPRTYPE_ADD || op == PARSER_EXPRTYPE_SUB;
-}
-
-static struct Diag bad_binop_operands(const struct Parser_Expr *expr,
-                                      const char *type, enum ErrorType err_type)
+static struct Diag bad_operands(const struct Parser_Expr *expr,
+                                const char *type, enum ErrorType err_type)
 {
     bool unary = expr->info.args.len == 1;
 
@@ -481,6 +476,28 @@ static struct Diag bad_binop_operands(const struct Parser_Expr *expr,
     return ret;
 }
 
+static enum Parser_TypeSpec op_prom_typespec(enum Parser_TypeSpec spec)
+{
+    if (Parser_is_integral_typespec(spec))
+        return Parser_integral_prom(spec);
+    else if (Parser_is_floating_typespec(spec))
+        return spec;
+    else
+        CRASH("can't promote type spec");
+}
+
+static struct Parser_Type op_prom_type(struct Parser_Type *type)
+{
+    auto ret = Parser_copy_type(type);
+    ret.spec = op_prom_typespec(ret.spec);
+    return ret;
+}
+
+static bool is_ptr_arith_op(enum Parser_ExprType op)
+{
+    return op == PARSER_EXPRTYPE_ADD || op == PARSER_EXPRTYPE_SUB;
+}
+
 static void typecheck_arith_bin_op_expr(struct Parser_Expr *expr,
                                         struct DiagVec *diags)
 {
@@ -505,18 +522,20 @@ static void typecheck_arith_bin_op_expr(struct Parser_Expr *expr,
     }
 
     if (bad_op_types) {
-        gen_dynpush(diags, bad_binop_operands(expr, "arithmetic",
-                                              ERRORTYPE_BAD_ARITHMETIC_OP));
+        gen_dynpush(diags, bad_operands(expr, "arithmetic",
+                                        ERRORTYPE_BAD_ARITHMETIC_OP));
         expr->ret = Parser_copy_type(&lhs->ret);
     } else if (lhs_ptr) {
         expr->ret = Parser_copy_type(&lhs->ret);
     } else if (rhs_ptr) {
         expr->ret = Parser_copy_type(&rhs->ret);
     } else {
-        i32 lhs_rank = Parser_typespec_conv_rank(lhs->ret.spec);
-        i32 rhs_rank = Parser_typespec_conv_rank(rhs->ret.spec);
-        expr->ret = lhs_rank > rhs_rank ? Parser_copy_type(&lhs->ret)
-                                        : Parser_copy_type(&rhs->ret);
+        i32 lhs_rank =
+            Parser_typespec_conv_rank(op_prom_typespec(lhs->ret.spec));
+        i32 rhs_rank =
+            Parser_typespec_conv_rank(op_prom_typespec(rhs->ret.spec));
+        expr->ret = lhs_rank > rhs_rank ? op_prom_type(&lhs->ret)
+                                        : op_prom_type(&rhs->ret);
     }
 }
 
@@ -524,15 +543,15 @@ static void typecheck_arith_unary_op_expr(struct Parser_Expr *expr,
                                           struct DiagVec *diags)
 {
     auto arg = &expr->info.args.arr[0];
-    expr->ret = Parser_copy_type(&arg->ret);
+    expr->ret = op_prom_type(&arg->ret);
 
     bool arg_ptr = Parser_n_indir(&arg->ret) > 0;
 
     bool bad_op_types = arg_ptr;
 
     if (bad_op_types) {
-        gen_dynpush(diags, bad_binop_operands(expr, "arithmetic",
-                                              ERRORTYPE_BAD_ARITHMETIC_OP));
+        gen_dynpush(diags, bad_operands(expr, "arithmetic",
+                                        ERRORTYPE_BAD_ARITHMETIC_OP));
     }
 }
 
@@ -545,6 +564,33 @@ static void typecheck_arith_op_expr(struct Parser_Expr *expr,
         typecheck_arith_unary_op_expr(expr, diags);
     else
         typecheck_arith_bin_op_expr(expr, diags);
+}
+
+// TODO: implement these
+static void typecheck_logical_unary_op_expr(struct Parser_Expr *expr,
+                                            struct DiagVec *diags)
+{
+    (void)expr;
+    (void)diags;
+}
+
+static void typecheck_logical_bin_op_expr(struct Parser_Expr *expr,
+                                          struct DiagVec *diags)
+{
+    (void)expr;
+    (void)diags;
+}
+
+static void typecheck_logical_op_expr(struct Parser_Expr *expr,
+                                      struct DiagVec *diags)
+{
+    expr->valtype = PARSER_EXPRVALUE_PRVALUE;
+    expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_BOOL, NULL);
+
+    if (Parser_is_unaryop(expr->type))
+        typecheck_logical_unary_op_expr(expr, diags);
+    else
+        typecheck_logical_bin_op_expr(expr, diags);
 }
 
 static void typecheck_comp_op_expr(struct Parser_Expr *expr,
@@ -572,8 +618,8 @@ static void typecheck_comp_op_expr(struct Parser_Expr *expr,
         (lhs_ptr || rhs_ptr) && (!eq && (!lhs_void_ptr && !rhs_void_ptr));
 
     if (bad_op_types) {
-        gen_dynpush(diags, bad_binop_operands(expr, "comp",
-                                              ERRORTYPE_BAD_COMPARISON_OP));
+        gen_dynpush(diags,
+                    bad_operands(expr, "comp", ERRORTYPE_BAD_COMPARISON_OP));
     }
 }
 
@@ -602,6 +648,8 @@ static void typecheck_op_expr(struct Parser_Expr *expr,
         typecheck_conditional_expr(expr, diags);
     else if (Parser_is_arith_op(expr->type))
         typecheck_arith_op_expr(expr, diags);
+    else if (Parser_is_logical_op(expr->type))
+        typecheck_logical_op_expr(expr, diags);
     else if (Parser_is_comp_op(expr->type))
         typecheck_comp_op_expr(expr, diags);
     else {

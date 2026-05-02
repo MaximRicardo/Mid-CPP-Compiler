@@ -137,6 +137,12 @@ bool Parser_is_integral_typespec(enum Parser_TypeSpec spec)
            spec == PARSER_TYPESPEC_ULONGLONG || spec == PARSER_TYPESPEC_BOOL;
 }
 
+bool Parser_is_floating_typespec(enum Parser_TypeSpec spec)
+{
+    return spec == PARSER_TYPESPEC_FLOAT || spec == PARSER_TYPESPEC_DOUBLE ||
+           spec == PARSER_TYPESPEC_LONGDOUBLE;
+}
+
 void Parser_Type_deinit(struct Parser_Type *self)
 {
     if (self->spec == PARSER_TYPESPEC_FPTR) {
@@ -1046,5 +1052,127 @@ i32 Parser_typespec_conv_rank(enum Parser_TypeSpec spec)
 
     default:
         CRASH("type doesn't have a rank");
+    }
+}
+
+u64 Parser_integral_max(enum Parser_TypeSpec spec)
+{
+    switch (spec) {
+    case PARSER_TYPESPEC_CHAR:
+        return Types_char_signed ? Types_char_smax : Types_char_umax;
+    case PARSER_TYPESPEC_SCHAR:
+        return Types_char_smax;
+    case PARSER_TYPESPEC_UCHAR:
+        return Types_char_umax;
+    case PARSER_TYPESPEC_WCHAR:
+        if (Types_wchar_signed)
+            return Parser_integral_max(
+                Parser_sint_type_of_width(Types_wchar_signed));
+        else
+            return Parser_integral_max(
+                Parser_uint_type_of_width(Types_wchar_signed));
+    case PARSER_TYPESPEC_CHAR16:
+        return Parser_integral_max(Parser_uint_type_of_width(16));
+    case PARSER_TYPESPEC_CHAR32:
+        return Parser_integral_max(Parser_uint_type_of_width(32));
+
+    case PARSER_TYPESPEC_SHORT:
+        return Types_short_smax;
+    case PARSER_TYPESPEC_USHORT:
+        return Types_short_umax;
+
+    case PARSER_TYPESPEC_INT:
+        return Types_int_smax;
+    case PARSER_TYPESPEC_UINT:
+        return Types_int_umax;
+
+    case PARSER_TYPESPEC_LONG:
+        return Types_long_smax;
+    case PARSER_TYPESPEC_ULONG:
+        return Types_long_umax;
+
+    case PARSER_TYPESPEC_LONGLONG:
+        return Types_longlong_smax;
+    case PARSER_TYPESPEC_ULONGLONG:
+        return Types_longlong_umax;
+
+    case PARSER_TYPESPEC_BOOL:
+        return 1;
+
+    default:
+        assert(!Parser_is_integral_typespec(spec));
+        CRASH("spec isn't integral");
+    }
+}
+
+i64 Parser_integral_min(enum Parser_TypeSpec spec)
+{
+    switch (spec) {
+    case PARSER_TYPESPEC_CHAR:
+        return Types_char_signed ? Types_char_smin : 0;
+    case PARSER_TYPESPEC_SCHAR:
+        return Types_char_smin;
+    case PARSER_TYPESPEC_UCHAR:
+        return 0;
+    case PARSER_TYPESPEC_WCHAR:
+        if (Types_wchar_signed)
+            return Parser_integral_min(
+                Parser_sint_type_of_width(Types_wchar_signed));
+        else
+            return 0;
+    case PARSER_TYPESPEC_CHAR16:
+        return 0;
+    case PARSER_TYPESPEC_CHAR32:
+        return 0;
+
+    case PARSER_TYPESPEC_SHORT:
+        return Types_short_smin;
+    case PARSER_TYPESPEC_USHORT:
+        return 0;
+
+    case PARSER_TYPESPEC_INT:
+        return Types_int_smin;
+    case PARSER_TYPESPEC_UINT:
+        return 0;
+
+    case PARSER_TYPESPEC_LONG:
+        return Types_long_smin;
+    case PARSER_TYPESPEC_ULONG:
+        return 0;
+
+    case PARSER_TYPESPEC_LONGLONG:
+        return Types_longlong_smin;
+    case PARSER_TYPESPEC_ULONGLONG:
+        return 0;
+
+    case PARSER_TYPESPEC_BOOL:
+        return 0;
+
+    default:
+        assert(!Parser_is_integral_typespec(spec));
+        CRASH("spec isn't integral");
+    }
+}
+
+enum Parser_TypeSpec Parser_integral_prom(enum Parser_TypeSpec spec)
+{
+    assert(Parser_is_integral_typespec(spec));
+
+    if (spec == PARSER_TYPESPEC_BOOL)
+        return PARSER_TYPESPEC_INT;
+
+    i32 spec_rank = Parser_typespec_conv_rank(spec);
+    i32 int_rank = Parser_typespec_conv_rank(PARSER_TYPESPEC_INT);
+
+    if (spec_rank < int_rank) {
+        if (Parser_integral_max(PARSER_TYPESPEC_INT) >=
+                Parser_integral_max(spec) &&
+            Parser_integral_min(PARSER_TYPESPEC_INT) <=
+                Parser_integral_min(spec))
+            return PARSER_TYPESPEC_INT;
+        else
+            return PARSER_TYPESPEC_UINT;
+    } else {
+        return spec;
     }
 }
