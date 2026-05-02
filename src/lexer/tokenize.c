@@ -438,6 +438,37 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
                                     .ident = id};
 }
 
+static isize_t skip_to_line_end(const char *src, isize_t start,
+                                struct Position *pos)
+{
+    isize_t i = start;
+    while (src[++i] != '\n')
+        ++pos->column;
+    return i - 1;
+}
+
+// c style comment: /* ... */
+//                  ^
+//                start
+//                          ^
+//                        return
+static isize_t skip_c_comment(const char *src, isize_t start,
+                              struct Position *pos)
+{
+    isize_t i = start + 2;
+
+    while (src[i] != '*' || src[i + 1] != '/') {
+        if (src[i] == '\n') {
+            ++pos->line;
+            pos->column = 1;
+        }
+
+        ++i, ++pos->column;
+    }
+
+    return i + 1;
+}
+
 static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 {
     struct Lexer_TokenVec toks = gen_dyninit();
@@ -447,7 +478,15 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 
     const char *line_start = src;
 
-    for (isize_t i = 0; src[i] != '\0'; ++i) {
+    for (isize_t i = 0; src[i] != '\0'; ++i, ++pos.column) {
+        if (src[i] == '/' && src[i + 1] == '/') {
+            i = skip_to_line_end(src, i, &pos);
+            continue;
+        } else if (src[i] == '/' && src[i + 1] == '*') {
+            i = skip_c_comment(src, i, &pos);
+            continue;
+        }
+
         switch (src[i]) {
         case '\n':
             line_start = &src[i + 1];
@@ -775,8 +814,6 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
             gen_dynpush(&diags, err);
             break;
         }
-
-        ++pos.column;
     }
     gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_END, pos, line_start));
 

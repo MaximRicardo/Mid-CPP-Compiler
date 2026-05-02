@@ -3,6 +3,8 @@ int operator-(int x, int y)
     0 + x;
 }
 
+// c++ style comment test
+
 float &operator-(float x)
 {
     0.f - x;
@@ -12,6 +14,14 @@ char32_t &&operator()(char32_t x, char32_t y)
 {
     x + y;
 }
+
+/*
+ * c style comment test
+ * blah blah blah
+ * blah blah blah
+ * blah blah blah
+ * blah blah blah
+ */
 
 int main()
 {
