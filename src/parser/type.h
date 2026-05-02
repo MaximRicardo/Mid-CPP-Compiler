@@ -13,6 +13,9 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_CHAR,
     PARSER_TYPESPEC_SCHAR,
     PARSER_TYPESPEC_UCHAR,
+    PARSER_TYPESPEC_WCHAR,
+    PARSER_TYPESPEC_CHAR16,
+    PARSER_TYPESPEC_CHAR32,
     PARSER_TYPESPEC_SHORT,
     PARSER_TYPESPEC_USHORT,
     PARSER_TYPESPEC_INT,
@@ -25,9 +28,6 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_DOUBLE,
     PARSER_TYPESPEC_LONGDOUBLE,
     PARSER_TYPESPEC_BOOL,
-    PARSER_TYPESPEC_WCHAR,
-    PARSER_TYPESPEC_CHAR16,
-    PARSER_TYPESPEC_CHAR32,
 
     // the weird kids
     PARSER_TYPESPEC_FPTR,
@@ -43,6 +43,7 @@ enum Parser_TypeSpec {
 bool Parser_is_typespec_named(enum Parser_TypeSpec spec);
 enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type);
 const char *Parser_typespec_to_str(enum Parser_TypeSpec spec);
+bool Parser_is_integral_typespec(enum Parser_TypeSpec spec);
 
 struct Parser_TypeStorQual {
     bool is_static;

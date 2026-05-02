@@ -28,6 +28,7 @@ bool Sema_is_typespec(const struct Lexer_Token *tok,
 struct Parser_Type Sema_typespec_type(const struct Lexer_Token *tok,
                                       const struct Parser_ASTNode *parent)
 {
+
     if (tok->type == LEXER_TOKENTYPE_STRUCT ||
         tok->type == LEXER_TOKENTYPE_CLASS ||
         tok->type == LEXER_TOKENTYPE_ENUM ||
@@ -194,7 +195,7 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
     const struct Parser_Type *type =
         Sema_ident_type_const(expr->tok->ident, parent, expr->tok);
 
-    if (!type)
+    if (!type) {
         gen_dynpush(diags,
                     ((struct Diag){
                         .pos = expr->tok->pos,
@@ -204,8 +205,10 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
                         .err = ERRORTYPE_UNDECLARED_IDENTIFIER,
                         .is_err = true,
                     }));
-    else
+        expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT, NULL);
+    } else {
         expr->ret = Parser_copy_type(type);
+    }
 }
 
 static void set_func_call_node(struct Parser_Expr *expr,
@@ -231,7 +234,7 @@ static void set_func_call_node(struct Parser_Expr *expr,
         CRASH("calling function ptrs not implemented");
 }
 
-static void typecheck_func_call(struct Parser_Expr *expr,
+static void typecheck_call_expr(struct Parser_Expr *expr,
                                 struct Parser_ASTNode *parent,
                                 struct DiagVec *diags)
 {
@@ -249,6 +252,363 @@ static void typecheck_func_call(struct Parser_Expr *expr,
         expr->valtype = PARSER_EXPRVALUE_PRVALUE;
 }
 
+static void typecheck_assignment_expr(struct Parser_Expr *expr,
+                                      struct DiagVec *diags)
+{
+    auto lhs = &expr->info.args.arr[0];
+
+    if (lhs->valtype != PARSER_EXPRVALUE_LVALUE)
+        gen_dynpush(diags, ((struct Diag){
+                               .pos = expr->tok->pos,
+                               .line = expr->tok->line,
+                               .msg = strdup("assignment lhs isn't an lvalue"),
+                               .err = ERRORTYPE_BAD_ASSIGNMENT,
+                               .is_err = true,
+                           }));
+
+    expr->ret = Parser_copy_type(&lhs->ret);
+}
+
+static void typecheck_inc_dec_expr(struct Parser_Expr *expr,
+                                   struct DiagVec *diags)
+{
+    bool is_prefix = expr->type == PARSER_EXPRTYPE_PREFIX_INC ||
+                     expr->type == PARSER_EXPRTYPE_PREFIX_DEC;
+    bool is_inc = expr->type == PARSER_EXPRTYPE_PREFIX_INC ||
+                  expr->type == PARSER_EXPRTYPE_POSTFIX_INC;
+
+    expr->valtype =
+        is_prefix ? PARSER_EXPRVALUE_LVALUE : PARSER_EXPRVALUE_PRVALUE;
+
+    if (expr->info.args.arr[0].valtype != PARSER_EXPRVALUE_LVALUE)
+        gen_dynpush(
+            diags,
+            ((struct Diag){
+                .pos = expr->tok->pos,
+                .line = expr->tok->line,
+                .msg = Print_fmt_to_str("%s %s requires an lvalue",
+                                        is_prefix ? "prefix" : "postfix",
+                                        is_inc ? "increment" : "decrement"),
+                .err = ERRORTYPE_BAD_ASSIGNMENT,
+                .is_err = true,
+            }));
+
+    expr->ret = Parser_copy_type(&expr->info.args.arr[0].ret);
+}
+
+static void typecheck_deref_expr(struct Parser_Expr *expr,
+                                 struct DiagVec *diags)
+{
+    expr->valtype = PARSER_EXPRVALUE_LVALUE;
+
+    auto arg = &expr->info.args.arr[0];
+
+    if (Parser_n_indir(&arg->ret) == 0) {
+        char *tname = Parser_type_to_str(&arg->ret);
+        gen_dynpush(
+            diags,
+            ((struct Diag){
+                .pos = expr->tok->pos,
+                .line = expr->tok->line,
+                .msg = Print_fmt_to_str("cannot dereference type '%s'", tname),
+                .err = ERRORTYPE_BAD_DEREF,
+                .is_err = true,
+            }));
+        free(tname);
+        expr->ret = Parser_copy_type(&arg->ret);
+    } else {
+        bool failed;
+        expr->ret = Parser_deref_type(&arg->ret, &failed);
+        assert(!failed);
+    }
+}
+
+static void typecheck_ref_expr(struct Parser_Expr *expr, struct DiagVec *diags)
+{
+    expr->valtype = PARSER_EXPRVALUE_PRVALUE;
+
+    if (expr->info.args.arr[0].valtype != PARSER_EXPRVALUE_LVALUE)
+        gen_dynpush(diags,
+                    ((struct Diag){
+                        .pos = expr->tok->pos,
+                        .line = expr->tok->line,
+                        .msg = Print_fmt_to_str("cannot reference rvalue"),
+                        .err = ERRORTYPE_BAD_REF,
+                        .is_err = true,
+                    }));
+
+    bool failed;
+    expr->ret = Parser_ref_type(&expr->info.args.arr[0].ret, &failed);
+    assert(!failed);
+}
+
+static void typecheck_arr_subscr_expr(struct Parser_Expr *expr,
+                                      struct DiagVec *diags)
+{
+    auto lhs = &expr->info.args.arr[0];
+    auto rhs = &expr->info.args.arr[1];
+
+    bool lhs_valid =
+        lhs->ret.spec == PARSER_TYPESPEC_ARRAY || Parser_n_indir(&lhs->ret) > 0;
+    bool rhs_valid =
+        rhs->ret.spec == PARSER_TYPESPEC_ARRAY || Parser_n_indir(&rhs->ret) > 0;
+
+    bool lhs_int = Parser_is_integral_typespec(lhs->ret.spec) &&
+                   Parser_n_indir(&lhs->ret) == 0;
+    bool rhs_int = Parser_is_integral_typespec(rhs->ret.spec) &&
+                   Parser_n_indir(&rhs->ret) == 0;
+
+    if (!(lhs_valid && lhs_int) && !(rhs_valid && rhs_int)) {
+        char *lhs_tname = Parser_type_to_str(&lhs->ret);
+        char *rhs_tname = Parser_type_to_str(&lhs->ret);
+        gen_dynpush(
+            diags,
+            ((struct Diag){
+                .pos = expr->tok->pos,
+                .line = expr->tok->line,
+                .msg = Print_fmt_to_str("cannot subscript types '%s' and '%s'",
+                                        lhs_tname, rhs_tname),
+                .err = ERRORTYPE_BAD_ARRAY_SUBSCRIPT,
+                .is_err = true,
+            }));
+        free(lhs_tname);
+        free(rhs_tname);
+    } else if ((lhs_valid && lhs->valtype == PARSER_EXPRVALUE_LVALUE) ||
+               (rhs_valid && rhs->valtype == PARSER_EXPRVALUE_LVALUE) ||
+               Parser_n_indir(&lhs->ret) > 0 || Parser_n_indir(&rhs->ret) > 0) {
+        expr->valtype = PARSER_EXPRVALUE_LVALUE;
+    } else {
+        expr->valtype = PARSER_EXPRVALUE_XVALUE;
+    }
+}
+
+static void typecheck_comma_expr(struct Parser_Expr *expr)
+{
+    auto rhs = &expr->info.args.arr[1];
+
+    expr->valtype = rhs->valtype;
+    expr->ret = Parser_copy_type(&rhs->ret);
+}
+
+static struct Diag cond_one_result_void_err(const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = strdup("only one result of conditional '?' expression is void"),
+        .err = ERRORTYPE_BAD_CONDITIONAL,
+        .is_err = true,
+    };
+}
+
+static void typecheck_conditional_expr(struct Parser_Expr *expr,
+                                       struct DiagVec *diags)
+{
+    // e1 ? e2 : e3
+
+    (void)cond_one_result_void_err(expr->tok);
+    (void)expr;
+    (void)diags;
+    CRASH("haven't implemented typechecking the conditional operator");
+
+#if 0
+    auto e2 = &expr->info.args.arr[1];
+    auto e3 = &expr->info.args.arr[2];
+
+    bool e2_void =
+        e2->ret.spec == PARSER_TYPESPEC_VOID && Parser_n_indir(&e2->ret) == 0;
+    bool e3_void =
+        e3->ret.spec == PARSER_TYPESPEC_VOID && Parser_n_indir(&e3->ret) == 0;
+
+    if (e2_void && e3_void) {
+        expr->valtype = PARSER_EXPRVALUE_PRVALUE;
+        expr->ret = Parser_copy_type(&e2->ret);
+    } else if (e2_void) {
+        if (e3->type != PARSER_EXPRTYPE_THROW)
+            gen_dynpush(diags, cond_one_result_void_err(e3->tok));
+        expr->valtype = e3->valtype;
+        expr->ret = Parser_copy_type(&e3->ret);
+    } else if (e3_void) {
+        if (e2->type != PARSER_EXPRTYPE_THROW)
+            gen_dynpush(diags, cond_one_result_void_err(e2->tok));
+        expr->valtype = e2->valtype;
+        expr->ret = Parser_copy_type(&e2->ret);
+    }
+#endif
+}
+
+static bool is_ptr_arith_op(enum Parser_ExprType op)
+{
+    return op == PARSER_EXPRTYPE_ADD || op == PARSER_EXPRTYPE_SUB;
+}
+
+static struct Diag bad_binop_operands(const struct Parser_Expr *expr,
+                                      const char *type, enum ErrorType err_type)
+{
+    bool unary = expr->info.args.len == 1;
+
+    auto lhs = &expr->info.args.arr[0];
+    auto rhs = &expr->info.args.arr[1];
+
+    char *lhs_tname = Parser_type_to_str(&lhs->ret);
+    char *rhs_tname = unary ? NULL : Parser_type_to_str(&rhs->ret);
+    struct Diag ret;
+    if (unary) {
+        ret = (struct Diag){
+            .pos = expr->tok->pos,
+            .line = expr->tok->line,
+            .msg = Print_fmt_to_str("%s operator can not operate on '%s'", type,
+                                    lhs_tname),
+            .err = err_type,
+            .is_err = true,
+        };
+    } else {
+        ret = (struct Diag){
+            .pos = expr->tok->pos,
+            .line = expr->tok->line,
+            .msg =
+                Print_fmt_to_str("%s operator can not operate on '%s' and '%s'",
+                                 type, lhs_tname, rhs_tname),
+            .err = err_type,
+            .is_err = true,
+        };
+    }
+    free(lhs_tname);
+    free(rhs_tname);
+
+    return ret;
+}
+
+static void typecheck_arith_bin_op_expr(struct Parser_Expr *expr,
+                                        struct DiagVec *diags)
+{
+    auto lhs = &expr->info.args.arr[0];
+    auto rhs = &expr->info.args.arr[1];
+
+    bool lhs_ptr = Parser_n_indir(&lhs->ret) > 0;
+    bool rhs_ptr = Parser_n_indir(&rhs->ret) > 0;
+
+    bool bad_op_types;
+    if (is_ptr_arith_op(expr->type)) {
+        if (lhs_ptr && rhs_ptr)
+            bad_op_types = true;
+        else if (lhs_ptr)
+            bad_op_types = !Parser_is_integral_typespec(rhs->ret.spec);
+        else if (rhs_ptr)
+            bad_op_types = Parser_is_integral_typespec(lhs->ret.spec);
+        else
+            bad_op_types = false;
+    } else {
+        bad_op_types = lhs_ptr || rhs_ptr;
+    }
+
+    if (bad_op_types) {
+        gen_dynpush(diags, bad_binop_operands(expr, "arithmetic",
+                                              ERRORTYPE_BAD_ARITHMETIC_OP));
+        expr->ret = Parser_copy_type(&lhs->ret);
+    } else if (lhs_ptr) {
+        expr->ret = Parser_copy_type(&lhs->ret);
+    } else if (rhs_ptr) {
+        expr->ret = Parser_copy_type(&rhs->ret);
+    } else {
+        i32 lhs_rank = Parser_typespec_conv_rank(lhs->ret.spec);
+        i32 rhs_rank = Parser_typespec_conv_rank(rhs->ret.spec);
+        expr->ret = lhs_rank > rhs_rank ? Parser_copy_type(&lhs->ret)
+                                        : Parser_copy_type(&rhs->ret);
+    }
+}
+
+static void typecheck_arith_unary_op_expr(struct Parser_Expr *expr,
+                                          struct DiagVec *diags)
+{
+    auto arg = &expr->info.args.arr[0];
+    expr->ret = Parser_copy_type(&arg->ret);
+
+    bool arg_ptr = Parser_n_indir(&arg->ret) > 0;
+
+    bool bad_op_types = arg_ptr;
+
+    if (bad_op_types) {
+        gen_dynpush(diags, bad_binop_operands(expr, "arithmetic",
+                                              ERRORTYPE_BAD_ARITHMETIC_OP));
+    }
+}
+
+static void typecheck_arith_op_expr(struct Parser_Expr *expr,
+                                    struct DiagVec *diags)
+{
+    expr->valtype = PARSER_EXPRVALUE_PRVALUE;
+
+    if (Parser_is_unaryop(expr->type))
+        typecheck_arith_unary_op_expr(expr, diags);
+    else
+        typecheck_arith_bin_op_expr(expr, diags);
+}
+
+static void typecheck_comp_op_expr(struct Parser_Expr *expr,
+                                   struct DiagVec *diags)
+{
+    expr->valtype = PARSER_EXPRVALUE_PRVALUE;
+    expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_BOOL, NULL);
+
+    auto lhs = &expr->info.args.arr[0];
+    auto rhs = &expr->info.args.arr[1];
+
+    bool lhs_ptr = Parser_n_indir(&lhs->ret) > 0;
+    bool lhs_void_ptr =
+        lhs->ret.spec == PARSER_TYPESPEC_VOID && Parser_n_indir(&lhs->ret);
+    bool rhs_ptr = Parser_n_indir(&rhs->ret) > 0;
+    bool rhs_void_ptr =
+        rhs->ret.spec == PARSER_TYPESPEC_VOID && Parser_n_indir(&rhs->ret);
+
+    bool eq = lhs->ret.spec == rhs->ret.spec && Parser_n_indir(&lhs->ret) &&
+              Parser_n_indir(&rhs->ret);
+
+    // an arithmetic operator can operate on primitives, ptrs of the same type,
+    // or a ptr and a void ptr
+    bool bad_op_types =
+        (lhs_ptr || rhs_ptr) && (!eq && (!lhs_void_ptr && !rhs_void_ptr));
+
+    if (bad_op_types) {
+        gen_dynpush(diags, bad_binop_operands(expr, "comp",
+                                              ERRORTYPE_BAD_COMPARISON_OP));
+    }
+}
+
+static void typecheck_op_expr(struct Parser_Expr *expr,
+                              struct Parser_ASTNode *parent,
+                              struct DiagVec *diags)
+{
+    if (expr->type == PARSER_EXPRTYPE_FUNC_CALL)
+        typecheck_call_expr(expr, parent, diags);
+    else if (Parser_is_assignment(expr->type))
+        typecheck_assignment_expr(expr, diags);
+    else if (expr->type == PARSER_EXPRTYPE_PREFIX_INC ||
+             expr->type == PARSER_EXPRTYPE_PREFIX_DEC ||
+             expr->type == PARSER_EXPRTYPE_POSTFIX_INC ||
+             expr->type == PARSER_EXPRTYPE_POSTFIX_DEC)
+        typecheck_inc_dec_expr(expr, diags);
+    else if (expr->type == PARSER_EXPRTYPE_DEREF)
+        typecheck_deref_expr(expr, diags);
+    else if (expr->type == PARSER_EXPRTYPE_REF)
+        typecheck_ref_expr(expr, diags);
+    else if (expr->type == PARSER_EXPRTYPE_ARRAY_SUBSCR)
+        typecheck_arr_subscr_expr(expr, diags);
+    else if (expr->type == PARSER_EXPRTYPE_COMMA)
+        typecheck_comma_expr(expr);
+    else if (expr->type == PARSER_EXPRTYPE_CONDITIONAL)
+        typecheck_conditional_expr(expr, diags);
+    else if (Parser_is_arith_op(expr->type))
+        typecheck_arith_op_expr(expr, diags);
+    else if (Parser_is_comp_op(expr->type))
+        typecheck_comp_op_expr(expr, diags);
+    else {
+        printf("op at %d:%d\n", expr->tok->pos.line, expr->tok->pos.column);
+        printf("op type = %d\n", expr->type);
+        CRASH("typechecking op not implemented");
+    }
+}
+
 void Sema_typecheck_expr(struct Parser_Expr *expr,
                          struct Parser_ASTNode *parent, struct DiagVec *diags)
 {
@@ -261,8 +621,7 @@ void Sema_typecheck_expr(struct Parser_Expr *expr,
             Sema_typecheck_expr(&expr->info.args.arr[i], parent, diags);
         }
 
-        if (expr->type == PARSER_EXPRTYPE_FUNC_CALL)
-            typecheck_func_call(expr, parent, diags);
+        typecheck_op_expr(expr, parent, diags);
     }
 }
 

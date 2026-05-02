@@ -25,8 +25,20 @@ bool Parser_is_typespec_named(enum Parser_TypeSpec spec)
 enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type)
 {
     switch (type) {
+    case LEXER_TOKENTYPE_VOID:
+        return PARSER_TYPESPEC_VOID;
+
     case LEXER_TOKENTYPE_CHAR:
         return PARSER_TYPESPEC_CHAR;
+
+    case LEXER_TOKENTYPE_WCHAR:
+        return PARSER_TYPESPEC_WCHAR;
+
+    case LEXER_TOKENTYPE_CHAR16:
+        return PARSER_TYPESPEC_CHAR16;
+
+    case LEXER_TOKENTYPE_CHAR32:
+        return PARSER_TYPESPEC_CHAR32;
 
     case LEXER_TOKENTYPE_INT:
         return PARSER_TYPESPEC_INT;
@@ -36,6 +48,9 @@ enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type)
 
     case LEXER_TOKENTYPE_DOUBLE:
         return PARSER_TYPESPEC_DOUBLE;
+
+    case LEXER_TOKENTYPE_BOOL:
+        return PARSER_TYPESPEC_BOOL;
 
     default:
         assert(false);
@@ -104,9 +119,22 @@ const char *Parser_typespec_to_str(enum Parser_TypeSpec spec)
     case PARSER_TYPESPEC_INVALID:
     case PARSER_TYPESPEC_FPTR:
     case PARSER_TYPESPEC_ARRAY:
-        assert(false);
+        printf("spec = %d\n", spec);
+        CRASH("can't convert type spec to str");
         return "INVALID-TYPE";
     }
+}
+
+bool Parser_is_integral_typespec(enum Parser_TypeSpec spec)
+{
+    return spec == PARSER_TYPESPEC_CHAR || spec == PARSER_TYPESPEC_SCHAR ||
+           spec == PARSER_TYPESPEC_UCHAR || spec == PARSER_TYPESPEC_WCHAR ||
+           spec == PARSER_TYPESPEC_CHAR16 || spec == PARSER_TYPESPEC_CHAR32 ||
+           spec == PARSER_TYPESPEC_SHORT || spec == PARSER_TYPESPEC_USHORT ||
+           spec == PARSER_TYPESPEC_INT || spec == PARSER_TYPESPEC_UINT ||
+           spec == PARSER_TYPESPEC_LONG || spec == PARSER_TYPESPEC_ULONG ||
+           spec == PARSER_TYPESPEC_LONGLONG ||
+           spec == PARSER_TYPESPEC_ULONGLONG || spec == PARSER_TYPESPEC_BOOL;
 }
 
 void Parser_Type_deinit(struct Parser_Type *self)
@@ -770,6 +798,10 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
     gen_dynpush(&ret.dquals, (struct Parser_TypeDataQual){});
 
     switch (type) {
+    case LEXER_TOKENTYPE_VOID:
+        ret.spec = PARSER_TYPESPEC_VOID;
+        break;
+
     case LEXER_TOKENTYPE_CHAR:
         ret.spec = PARSER_TYPESPEC_CHAR;
         break;

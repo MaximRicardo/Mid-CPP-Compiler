@@ -321,7 +321,10 @@ static char *read_identifier(const char *src, isize_t start, isize_t *end)
 static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
                                                 const char *line)
 {
-    if (!strcmp(id, "char"))
+    if (!strcmp(id, "void"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_VOID};
+    else if (!strcmp(id, "char"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR};
     else if (!strcmp(id, "wchar_t"))

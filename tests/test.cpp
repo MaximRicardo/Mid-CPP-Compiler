@@ -1,4 +1,4 @@
-int func(int x = 20, float y = 3.141592f)
+float func(int x = 20, float y = 3.141592f)
 {
     typedef int i32;
     i32 foo = x / y;

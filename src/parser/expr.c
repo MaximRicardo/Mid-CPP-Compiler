@@ -65,6 +65,49 @@ bool Parser_is_op(enum Parser_ExprType type)
     return Parser_is_binop(type) || Parser_is_unaryop(type);
 }
 
+bool Parser_is_arith_op(enum Parser_ExprType type)
+{
+    return type == PARSER_EXPRTYPE_MUL || type == PARSER_EXPRTYPE_DIV ||
+           type == PARSER_EXPRTYPE_MOD || type == PARSER_EXPRTYPE_ADD ||
+           type == PARSER_EXPRTYPE_SUB || type == PARSER_EXPRTYPE_LEFT_SHIFT ||
+           type == PARSER_EXPRTYPE_RIGHT_SHIFT ||
+           type == PARSER_EXPRTYPE_BITWISE_AND ||
+           type == PARSER_EXPRTYPE_BITWISE_XOR ||
+           type == PARSER_EXPRTYPE_BITWISE_OR ||
+           type == PARSER_EXPRTYPE_BITWISE_NOT ||
+           type == PARSER_EXPRTYPE_UNARY_PLUS ||
+           type == PARSER_EXPRTYPE_UNARY_MINUS;
+}
+
+bool Parser_is_logical_op(enum Parser_ExprType type)
+{
+    return type == PARSER_EXPRTYPE_LOGICAL_AND ||
+           type == PARSER_EXPRTYPE_LOGICAL_OR ||
+           type == PARSER_EXPRTYPE_LOGICAL_NOT;
+}
+
+bool Parser_is_comp_op(enum Parser_ExprType type)
+{
+    return type == PARSER_EXPRTYPE_LT || type == PARSER_EXPRTYPE_GT ||
+           type == PARSER_EXPRTYPE_LTEQ || type == PARSER_EXPRTYPE_GTEQ ||
+           type == PARSER_EXPRTYPE_EQ || type == PARSER_EXPRTYPE_NEQ;
+}
+
+bool Parser_is_assignment(enum Parser_ExprType type)
+{
+    return type == PARSER_EXPRTYPE_ASSIGN ||
+           type == PARSER_EXPRTYPE_MUL_ASSIGN ||
+           type == PARSER_EXPRTYPE_DIV_ASSIGN ||
+           type == PARSER_EXPRTYPE_MOD_ASSIGN ||
+           type == PARSER_EXPRTYPE_SUB_ASSIGN ||
+           type == PARSER_EXPRTYPE_ADD_ASSIGN ||
+           type == PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN ||
+           type == PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN ||
+           type == PARSER_EXPRTYPE_AND_ASSIGN ||
+           type == PARSER_EXPRTYPE_OR_ASSIGN ||
+           type == PARSER_EXPRTYPE_XOR_ASSIGN;
+}
+
 i32 Parser_op_precedence(enum Parser_ExprType op)
 {
     // goes from 16 to 1

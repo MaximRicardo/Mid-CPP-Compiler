@@ -109,6 +109,11 @@ bool Parser_is_ternaryop(enum Parser_ExprType type);
 bool Parser_is_binop(enum Parser_ExprType type);
 bool Parser_is_unaryop(enum Parser_ExprType type);
 bool Parser_is_op(enum Parser_ExprType type);
+bool Parser_is_arith_op(enum Parser_ExprType type);
+bool Parser_is_logical_op(enum Parser_ExprType type);
+bool Parser_is_comp_op(enum Parser_ExprType type);
+// checks for both regular and compound assignment
+bool Parser_is_assignment(enum Parser_ExprType type);
 
 // goes from 0 to 15, where 15 is the highest precedence
 i32 Parser_op_precedence(enum Parser_ExprType op);
@@ -117,7 +122,6 @@ bool Parser_op_ltr_assoc(enum Parser_ExprType op);
 bool Parser_expr_uses_args(enum Parser_ExprType type);
 
 enum Parser_ExprValueType {
-    PARSER_EXPRVALUE_UNKNOWN,
     PARSER_EXPRVALUE_LVALUE,
     PARSER_EXPRVALUE_PRVALUE,
     PARSER_EXPRVALUE_XVALUE,
