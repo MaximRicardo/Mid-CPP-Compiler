@@ -23,8 +23,8 @@ void Parser_VarDecl_deinit(struct Parser_VarDecl *self);
 //             still be set to the first token of the initializer if there is
 //             one. used by classes, which parse declarations first then
 //             definitions
-struct Parser_VarDecl
-Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
-                      isize_t *out_end, const enum Lexer_TokenType *end_types,
-                      isize_t n_end_types, const struct Parser_ASTNode *parent,
-                      bool skip_init, struct DiagVec *diags);
+isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
+                              const enum Lexer_TokenType *end_types,
+                              isize_t n_end_types, struct Parser_VarDecl *decl,
+                              const struct Parser_ASTNode *node, bool skip_init,
+                              struct DiagVec *diags);

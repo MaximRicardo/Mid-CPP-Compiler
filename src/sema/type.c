@@ -88,8 +88,6 @@ const struct Parser_ASTNode *
 Sema_find_type_const(const char *name, const struct Parser_ASTNode *node,
                      const struct Lexer_Token *end)
 {
-    printf("got here, name = %s\n", name);
-
     if (Sema_node_is_type(node) && !strcmp(Sema_node_type_name(node), name))
         return node;
 

@@ -5,10 +5,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(mcppc)
 
-# add_compile_options(-Wall -Wextra -Wpedantic -std=c23)
+# add_compile_options(-Wall -Wextra -Wpedantic -std=c23 -fno-strict-aliasing)
 
 #For debugging
- add_compile_options(-Wall -Wextra -Wpedantic -std=c23 -ggdb3 -fsanitize=address)
+ add_compile_options(-Wall -Wextra -Wpedantic -std=c23 -ggdb3 -fsanitize=address -fno-strict-aliasing)
  add_link_options(-fsanitize=address)
 
 file(GLOB_RECURSE Sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")

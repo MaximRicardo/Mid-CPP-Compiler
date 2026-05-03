@@ -35,7 +35,7 @@ void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self)
 
 struct Parser_VarDeclVec
 Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
-                         isize_t *out_rparen, struct Parser_ASTNode *parent,
+                         isize_t *out_rparen, struct Parser_ASTNode *node,
                          struct DiagVec *diags)
 {
     struct Parser_VarDeclVec params = {};
@@ -54,17 +54,19 @@ Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
         return params;
     }
 
-    for (isize_t i = lparen + 1; i < rparen; ++i)
-        gen_dynpush(&params,
-                    Parser_parse_var_decl(toks, i, &i, PARSER_PARAM_ENDTYPES,
-                                          parent, false, diags));
+    for (isize_t i = lparen + 1; i < rparen; ++i) {
+        struct Parser_VarDecl child = {};
+        i = Parser_parse_var_decl(toks, i, PARSER_PARAM_ENDTYPES, &child, node,
+                                  false, diags);
+        gen_dynpush(&params, child);
+    }
 
     return params;
 }
 
-isize_t Parser_parse_func_body(struct Parser_FuncDecl *func,
-                               const struct Lexer_Token *toks, isize_t lcurly,
-                               struct Parser_ASTNode *func_node,
+isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
+                               struct Parser_FuncDecl *decl,
+                               struct Parser_ASTNode *node,
                                struct DiagVec *diags)
 {
     isize_t rcurly = Parser_find_twin_curly(toks, lcurly, ISIZE_MAX);
@@ -82,8 +84,8 @@ isize_t Parser_parse_func_body(struct Parser_FuncDecl *func,
     }
 
     for (isize_t i = lcurly + 1; i < rcurly;) {
-        auto node = Parser_parse_node(toks, i, &i, func_node, false, diags);
-        gen_dynpush(&func->nodes, node);
+        auto child = Parser_parse_node(toks, i, &i, node, false, diags);
+        gen_dynpush(&decl->nodes, child);
     }
 
     return rcurly;
@@ -276,11 +278,11 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
 
 static void parse_func_type(struct Parser_FuncDecl *decl,
                             const struct Lexer_Token *toks, isize_t start,
-                            isize_t *out_end, struct Parser_ASTNode *func_node,
+                            isize_t *out_end, struct Parser_ASTNode *node,
                             struct DiagVec *diags)
 {
     isize_t type_end;
-    decl->type = Parser_parse_type(toks, start, &type_end, func_node->parent,
+    decl->type = Parser_parse_type(toks, start, &type_end, node->parent,
                                    &decl->name, diags);
 
     if (!decl->name) {
@@ -334,42 +336,39 @@ static void disambig_operator_overload(struct Parser_FuncDecl *decl)
     }
 }
 
-void Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
-                            isize_t *out_end, struct Parser_ASTNode *func_node,
-                            bool skip_def, struct DiagVec *diags)
+isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
+                               struct Parser_FuncDecl *decl,
+                               struct Parser_ASTNode *node, bool skip_def,
+                               struct DiagVec *diags)
 {
-    struct Parser_FuncDecl *decl = &func_node->func_decl;
+    *decl = (struct Parser_FuncDecl){};
+
     isize_t type_end;
-    parse_func_type(decl, toks, start, &type_end, func_node, diags);
+    parse_func_type(decl, toks, start, &type_end, node, diags);
 
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN)
         CRASH("function missing left paren");
 
     isize_t lparen = type_end;
     isize_t rparen;
-    decl->params = Parser_parse_func_params(toks, lparen, &rparen,
-                                            func_node->parent, diags);
+    decl->params =
+        Parser_parse_func_params(toks, lparen, &rparen, node->parent, diags);
     if (decl->is_op_overload)
         disambig_operator_overload(decl);
 
     isize_t lcurly = rparen + 1;
-    if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY) {
-        if (out_end)
-            *out_end = lcurly;
-        return;
-    }
+    printf("lcurly at %d:%d\n", toks[lcurly].pos.line, toks[lcurly].pos.column);
+    if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY)
+        return lcurly;
     decl->def_start = &toks[lcurly];
     decl->has_def = true;
 
     if (skip_def) {
         isize_t rcurly = Parser_find_twin_curly(toks, lcurly, ISIZE_MAX);
-        if (out_end)
-            *out_end = rcurly == -1 ? lcurly + 1 : rcurly + 1;
+        return rcurly == -1 ? lcurly + 1 : rcurly + 1;
     } else {
         isize_t rcurly =
-            Parser_parse_func_body(decl, toks, lcurly, func_node, diags);
-
-        if (out_end)
-            *out_end = rcurly + 1;
+            Parser_parse_func_body(toks, lcurly, decl, node, diags);
+        return rcurly + 1;
     }
 }

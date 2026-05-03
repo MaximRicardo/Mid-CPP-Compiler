@@ -87,20 +87,21 @@ struct Parser_ASTNode *Parser_parse_node(const struct Lexer_Token *toks,
     if (is_class_start(toks[start].type)) {
         printf("CLASS NODE\n");
         ret->type = PARSER_ASTNODETYPE_CLASS;
-        end = Parser_parse_class(ret, toks, start, diags);
+        end =
+            Parser_parse_class(&ret->class_, ret, toks, start, skip_def, diags);
     } else if (Parser_valid_type_start(&toks[start], parent)) {
         printf("DECL NODE\n");
         bool mvp;
         if (Parser_decl_is_func(toks, start, parent, diags, &mvp)) {
             printf("mvp = %d\n", mvp);
             ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
-            Parser_parse_func_decl(toks, start, &end, ret, skip_def, diags);
+            end = Parser_parse_func_decl(toks, start, &ret->func_decl, ret,
+                                         skip_def, diags);
             check_semi = !ret->func_decl.has_def;
         } else {
             ret->type = PARSER_ASTNODETYPE_VAR_DECL;
-            ret->var_decl = Parser_parse_var_decl(toks, start, &end,
-                                                  PARSER_DEFAULT_ENDTYPES,
-                                                  parent, skip_def, diags);
+            end = Parser_parse_var_decl(toks, start, PARSER_DEFAULT_ENDTYPES,
+                                        &ret->var_decl, ret, skip_def, diags);
         }
     } else {
         printf("EXPR NODE\n");

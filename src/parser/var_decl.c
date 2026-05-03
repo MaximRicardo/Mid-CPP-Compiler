@@ -19,18 +19,19 @@ void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
     }
 }
 
-struct Parser_VarDecl
-Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
-                      isize_t *out_end, const enum Lexer_TokenType *end_types,
-                      isize_t n_end_types, const struct Parser_ASTNode *parent,
-                      bool skip_init, struct DiagVec *diags)
+isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
+                              const enum Lexer_TokenType *end_types,
+                              isize_t n_end_types, struct Parser_VarDecl *decl,
+                              const struct Parser_ASTNode *node, bool skip_init,
+                              struct DiagVec *diags)
 {
-    struct Parser_VarDecl ret = {};
-    isize_t type_end;
-    ret.type =
-        Parser_parse_type(toks, start, &type_end, parent, &ret.name, diags);
+    *decl = (struct Parser_VarDecl){};
 
-    if (!ret.name) {
+    isize_t type_end;
+    decl->type =
+        Parser_parse_type(toks, start, &type_end, node, &decl->name, diags);
+
+    if (!decl->name) {
         struct Diag err = {.pos = toks[start].pos,
                            .line = toks[start].line,
                            .msg = Print_fmt_to_str("expected identifier"),
@@ -44,19 +45,18 @@ Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
 
     if (has_init) {
         isize_t expr_start = assign_idx + 1;
-        ret.init_start = &toks[expr_start];
+        decl->init_start = &toks[expr_start];
         if (skip_init) {
-            if (out_end)
-                *out_end = Parser_skip_expr(toks, expr_start, end_types,
-                                            n_end_types, NULL);
+            return Parser_skip_expr(toks, expr_start, end_types, n_end_types,
+                                    NULL);
         } else {
-            ret.init = malloc(sizeof(*ret.init));
-            *ret.init = Parser_parse_expr(toks, expr_start, end_types,
-                                          n_end_types, out_end, diags);
+            decl->init = malloc(sizeof(*decl->init));
+            isize_t end;
+            *decl->init = Parser_parse_expr(toks, expr_start, end_types,
+                                            n_end_types, &end, diags);
+            return end;
         }
-    } else if (out_end) {
-        *out_end = type_end;
     }
 
-    return ret;
+    return type_end;
 }

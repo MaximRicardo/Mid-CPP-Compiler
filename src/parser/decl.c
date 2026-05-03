@@ -6,6 +6,7 @@
 #include "parser/end_types.h"
 #include "parser/find_twin.h"
 #include "parser/type.h"
+#include "parser/var_decl.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,8 +22,11 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
 {
     assert(Parser_valid_type_start(&toks[start], parent));
 
-    auto decl = Parser_parse_var_decl(
-        toks, start, out_end, PARSER_PARAM_ENDTYPES, parent, false, diags);
+    struct Parser_VarDecl decl;
+    isize_t end = Parser_parse_var_decl(toks, start, PARSER_PARAM_ENDTYPES,
+                                        &decl, parent, false, diags);
+    if (out_end)
+        *out_end = end;
 
     bool has_dquals =
         memcmp(&decl.type.dquals.arr[0], &(struct Parser_TypeDataQual){},

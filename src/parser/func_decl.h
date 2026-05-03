@@ -20,17 +20,18 @@ struct Parser_FuncDecl {
 void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self);
 struct Parser_VarDeclVec
 Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
-                         isize_t *out_rparen, struct Parser_ASTNode *func_node,
+                         isize_t *out_rparen, struct Parser_ASTNode *node,
                          struct DiagVec *diags);
 // skip_def -  if true, the func definition won't be parsed, but def_start will
 //             still be set to the first token of the definition and has_def
 //             will still be set to true if there is a definition. used by
 //             classes, which parse declarations first then definitions
-void Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
-                            isize_t *out_end, struct Parser_ASTNode *func_node,
-                            bool skip_def, struct DiagVec *diags);
+isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
+                               struct Parser_FuncDecl *decl,
+                               struct Parser_ASTNode *node, bool skip_def,
+                               struct DiagVec *diags);
 // returns the idx of the closing curly bracket
-isize_t Parser_parse_func_body(struct Parser_FuncDecl *func,
-                               const struct Lexer_Token *toks, isize_t lcurly,
-                               struct Parser_ASTNode *func_node,
+isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
+                               struct Parser_FuncDecl *decl,
+                               struct Parser_ASTNode *node,
                                struct DiagVec *diags);

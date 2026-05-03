@@ -70,12 +70,11 @@ static isize_t parse_class_inheritance(struct Parser_ASTNode *node,
     return ident + 1;
 }
 
-static isize_t parse_class_entry(struct Parser_ASTNode *node,
+static isize_t parse_class_entry(struct Parser_Class *self,
+                                 struct Parser_ASTNode *node,
                                  const struct Lexer_Token *toks, isize_t start,
                                  bool *out_is_struct, struct DiagVec *diags)
 {
-    struct Parser_Class *self = &node->class_;
-
     if (toks[start].type == LEXER_TOKENTYPE_UNION) {
         self->is_union = false;
     } else if (toks[start].type == LEXER_TOKENTYPE_STRUCT) {
@@ -114,16 +113,28 @@ static void parse_node_def(struct Parser_ASTNode *node,
         }
     } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         if (node->func_decl.def_start) {
-            Parser_parse_func_body(&node->func_decl, toks,
-                                   node->func_decl.def_start - toks, node,
-                                   diags);
+            Parser_parse_func_body(toks, node->func_decl.def_start - toks,
+                                   &node->func_decl, node, diags);
+        }
+    } else if (node->type == PARSER_ASTNODETYPE_CLASS) {
+        if (node->class_.def_start) {
+            Parser_parse_class_body(&node->class_, node, toks,
+                                    toks - node->class_.def_start, diags);
         }
     }
 }
 
-static void parse_class_body(struct Parser_ASTNode *node,
-                             const struct Lexer_Token *toks, isize_t l_curly,
-                             isize_t r_curly, struct DiagVec *diags)
+static isize_t find_rcurly(isize_t lcurly, const struct Lexer_Token *toks)
+{
+    isize_t rcurly = Parser_find_twin_curly(toks, lcurly, ISIZE_MAX);
+
+    return rcurly == -1 ? lcurly : rcurly;
+}
+
+isize_t Parser_parse_class_body(struct Parser_Class *self,
+                                struct Parser_ASTNode *node,
+                                const struct Lexer_Token *toks, isize_t l_curly,
+                                struct DiagVec *diags)
 {
     // classes are parsed in 2 passes, the first pass gets all the declarations
     // while the second pass gets their definitions
@@ -134,7 +145,7 @@ static void parse_class_body(struct Parser_ASTNode *node,
     // };
     // among other stuff
 
-    struct Parser_Class *self = &node->class_;
+    isize_t r_curly = find_rcurly(l_curly, toks);
 
     printf("CLASS DECLS PASS\n");
 
@@ -151,17 +162,20 @@ static void parse_class_body(struct Parser_ASTNode *node,
     for (isize_t i = 0; i < self->nodes.len; ++i) {
         parse_node_def(self->nodes.arr[i], toks, diags);
     }
+
+    return r_curly + 1;
 }
 
-isize_t Parser_parse_class(struct Parser_ASTNode *node,
+isize_t Parser_parse_class(struct Parser_Class *self,
+                           struct Parser_ASTNode *node,
                            const struct Lexer_Token *toks, isize_t start,
-                           struct DiagVec *diags)
+                           bool skip_def, struct DiagVec *diags)
 {
-    struct Parser_Class *self = &node->class_;
     *self = (struct Parser_Class){};
 
     bool is_struct;
-    isize_t l_curly = parse_class_entry(node, toks, start, &is_struct, diags);
+    isize_t l_curly =
+        parse_class_entry(self, node, toks, start, &is_struct, diags);
 
     if (toks[l_curly].type == LEXER_TOKENTYPE_SEMICOLON) {
         return l_curly;
@@ -170,12 +184,12 @@ isize_t Parser_parse_class(struct Parser_ASTNode *node,
         return l_curly;
     }
 
-    isize_t r_curly = Parser_find_twin_curly(toks, l_curly, ISIZE_MAX);
-    if (r_curly == -1) {
-        gen_dynpush(diags, expected_token("'}'", &toks[start]));
-        r_curly = l_curly;
-    }
+    self->has_def = true;
+    self->def_start = &toks[l_curly];
 
-    parse_class_body(node, toks, l_curly, r_curly, diags);
-    return r_curly + 1;
+    if (skip_def) {
+        return find_rcurly(l_curly, toks) + 1;
+    } else {
+        return Parser_parse_class_body(self, node, toks, l_curly, diags);
+    }
 }
