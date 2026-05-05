@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 // all identifiers are put in a symbol table to reduce memory load
+// TODO: make this a hashmap for faster lookup during lexing
 struct SymbolTable {
     char **arr;
     isize_t len, cap;

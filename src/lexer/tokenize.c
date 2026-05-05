@@ -469,6 +469,16 @@ static isize_t skip_c_comment(const char *src, isize_t start,
     return i + 1;
 }
 
+static char *symb_in_tbl(struct SymbolTable *tbl, const char *symb)
+{
+    for (isize_t i = 0; i < tbl->len; ++i) {
+        if (!strcmp(tbl->arr[i], symb))
+            return tbl->arr[i];
+    }
+
+    return NULL;
+}
+
 static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 {
     struct Lexer_TokenVec toks = gen_dyninit();
@@ -792,13 +802,18 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
             auto old_i = i;
             char *id = read_identifier(src, i, &i);
             --i;
+            char *in_tbl = symb_in_tbl(&symbtbl, id);
+            if (in_tbl) {
+                free(id);
+                id = in_tbl;
+            }
             auto tok = create_identifier_tok(id, pos, line_start);
             gen_dynpush(&toks, tok);
             // if the symbol is an actual identifier then it needs to be added
             // to the symbol table, otherwise the identifier can be discarded
-            if (tok.type == LEXER_TOKENTYPE_IDENTIFIER)
+            if (!in_tbl && tok.type == LEXER_TOKENTYPE_IDENTIFIER)
                 gen_dynpush(&symbtbl, id);
-            else
+            else if (!in_tbl)
                 free(id);
             pos.column += i - old_i;
             break;
