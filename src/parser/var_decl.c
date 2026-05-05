@@ -4,7 +4,7 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
-#include "parser/bump.h"
+#include "parser/allocator.h"
 #include "parser/expr.h"
 #include "parser/type.h"
 #include "print.h"
@@ -16,10 +16,6 @@
 void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
 {
     Parser_Type_deinit(&self->type);
-    if (self->init) {
-        Parser_Expr_deinit(self->init);
-        free(self->init);
-    }
 }
 
 static struct Diag expected_ident_err(const struct Lexer_Token *tok)
@@ -46,7 +42,8 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
                               isize_t n_end_types, struct Parser_VarDecl *decl,
                               struct Parser_ASTNode *node,
                               struct Sema_Scope *scope, bool add_to_scope,
-                              bool skip_init, struct DiagVec *diags)
+                              bool skip_init, struct Parser_Allocators *allocs,
+                              struct DiagVec *diags)
 {
     *decl = (struct Parser_VarDecl){};
 
@@ -77,7 +74,7 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
             return Parser_skip_expr(toks, expr_start, end_types, n_end_types,
                                     NULL);
         } else {
-            gen_bumpmalloc(&Parser_bumps.expr, &decl->init);
+            gen_bumpmalloc(&allocs->expr, &decl->init);
             isize_t end;
             *decl->init = Parser_parse_expr(toks, expr_start, end_types,
                                             n_end_types, &end, diags);

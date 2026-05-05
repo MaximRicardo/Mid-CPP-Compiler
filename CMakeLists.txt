@@ -18,4 +18,4 @@ add_executable(mcppc "${Sources}")
 target_link_libraries(mcppc -lm)
 target_include_directories(mcppc
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_compile_definitions(mcppc PRIVATE GEN_DYNARRAY_DEFAULT_SIZE_TYPE=isize_t)
+target_compile_definitions(mcppc PRIVATE GEN_DYNARRAY_DEFAULT_SIZE_TYPE=isize_t GEN_BUMPALLOC_DEFAULT_SIZE_TYPE=isize_t)

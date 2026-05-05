@@ -10,15 +10,17 @@
 #include "sema/type.h"
 #include <string.h>
 
+/*
 static void scope_ptr_deinit(struct Sema_Scope **ptr)
 {
     Sema_Scope_deinit(*ptr);
     // free(*ptr);
 }
+*/
 
 void Sema_Scope_deinit(struct Sema_Scope *self)
 {
-    gen_dyndeinit(&self->childs, scope_ptr_deinit);
+    gen_dyndeinit(&self->childs);
     gen_dyndeinit(&self->idents);
 }
 

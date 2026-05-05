@@ -5,8 +5,8 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "macros.h"
+#include "parser/allocator.h"
 #include "parser/ast.h"
-#include "parser/bump.h"
 #include "parser/end_types.h"
 #include "parser/expr.h"
 #include "parser/find_twin.h"
@@ -109,11 +109,12 @@ static isize_t parse_class_entry(struct Parser_Class *self,
 static void parse_node_def(struct Parser_ASTNode *node,
                            struct Sema_Scope *scope,
                            const struct Lexer_Token *toks,
+                           struct Parser_Allocators *allocs,
                            struct DiagVec *diags)
 {
     if (node->type == PARSER_ASTNODETYPE_VAR_DECL) {
         if (node->var_decl.init_start) {
-            gen_bumpmalloc(&Parser_bumps.expr, &node->var_decl.init);
+            gen_bumpmalloc(&allocs->expr, &node->var_decl.init);
             *node->var_decl.init =
                 Parser_parse_expr(toks, node->var_decl.init_start - toks,
                                   PARSER_DEFAULT_ENDTYPES, NULL, diags);
@@ -121,12 +122,13 @@ static void parse_node_def(struct Parser_ASTNode *node,
     } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         if (node->func_decl.def_start) {
             Parser_parse_func_body(toks, node->func_decl.def_start - toks,
-                                   &node->func_decl, node, diags);
+                                   &node->func_decl, node, allocs, diags);
         }
     } else if (node->type == PARSER_ASTNODETYPE_CLASS) {
         if (node->class_.def_start) {
             Parser_parse_class_body(&node->class_, node, scope, toks,
-                                    toks - node->class_.def_start, diags);
+                                    toks - node->class_.def_start, allocs,
+                                    diags);
         }
     }
 }
@@ -148,10 +150,11 @@ static isize_t find_rcurly(isize_t lcurly, const struct Lexer_Token *toks,
 }
 
 static struct Sema_Scope *create_class_scope(struct Sema_Scope *scope,
-                                             struct Parser_ASTNode *node)
+                                             struct Parser_ASTNode *node,
+                                             struct Parser_Allocators *allocs)
 {
     struct Sema_Scope *child;
-    gen_bumpmalloc(&Parser_bumps.scope, &child);
+    gen_bumpmalloc(&allocs->scope, &child);
     *child = (struct Sema_Scope){
         .parent = scope, .node = node, .type = SEMA_SCOPETYPE_CLASS};
     gen_dynpush(&scope->childs, child);
@@ -181,6 +184,7 @@ isize_t Parser_parse_class_body(struct Parser_Class *self,
                                 struct Parser_ASTNode *node,
                                 struct Sema_Scope *parent_scope,
                                 const struct Lexer_Token *toks, isize_t l_curly,
+                                struct Parser_Allocators *allocs,
                                 struct DiagVec *diags)
 {
     // classes are parsed in 2 passes, the first pass gets all the declarations
@@ -192,7 +196,7 @@ isize_t Parser_parse_class_body(struct Parser_Class *self,
     // };
     // among other stuff
 
-    self->scope = create_class_scope(parent_scope, node);
+    self->scope = create_class_scope(parent_scope, node, allocs);
     add_class_def(self, node, diags);
 
     isize_t r_curly = find_rcurly(l_curly, toks, diags);
@@ -200,8 +204,8 @@ isize_t Parser_parse_class_body(struct Parser_Class *self,
     printf("CLASS DECLS PASS\n");
 
     for (isize_t i = l_curly + 1; i < r_curly;) {
-        struct Parser_ASTNode *child =
-            Parser_parse_node(toks, i, &i, node, self->scope, true, diags);
+        struct Parser_ASTNode *child = Parser_parse_node(
+            toks, i, &i, node, self->scope, true, allocs, diags);
 
         gen_dynpush(&self->nodes, child);
     }
@@ -212,7 +216,7 @@ isize_t Parser_parse_class_body(struct Parser_Class *self,
     printf("n idents = %" PRIisz "\n", self->scope->idents.len);
 
     for (isize_t i = 0; i < self->nodes.len; ++i) {
-        parse_node_def(self->nodes.arr[i], self->scope, toks, diags);
+        parse_node_def(self->nodes.arr[i], self->scope, toks, allocs, diags);
     }
 
     return r_curly + 1;
@@ -230,7 +234,8 @@ isize_t Parser_parse_class(struct Parser_Class *self,
                            struct Parser_ASTNode *node,
                            struct Sema_Scope *scope,
                            const struct Lexer_Token *toks, isize_t start,
-                           bool skip_def, struct DiagVec *diags)
+                           bool skip_def, struct Parser_Allocators *allocs,
+                           struct DiagVec *diags)
 {
     *self = (struct Parser_Class){};
 
@@ -254,6 +259,7 @@ isize_t Parser_parse_class(struct Parser_Class *self,
     if (skip_def) {
         return find_rcurly(l_curly, toks, diags) + 1;
     } else {
-        return Parser_parse_class_body(self, node, scope, toks, l_curly, diags);
+        return Parser_parse_class_body(self, node, scope, toks, l_curly, allocs,
+                                       diags);
     }
 }

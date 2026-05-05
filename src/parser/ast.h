@@ -1,5 +1,6 @@
 #pragma once
 
+#include "allocator.h"
 #include "class.h"
 #include "diag.h"
 #include "enum.h"
@@ -40,11 +41,11 @@ struct Parser_ASTNode {
 void Parser_ASTNode_deinit(struct Parser_ASTNode *self);
 // skip_def - if true and the node has a definition / initializer, then it
 //            won't be parsed and rather be skipped
-struct Parser_ASTNode *Parser_parse_node(const struct Lexer_Token *toks,
-                                         isize_t start, isize_t *out_end,
-                                         struct Parser_ASTNode *parent,
-                                         struct Sema_Scope *scope,
-                                         bool skip_def, struct DiagVec *diags);
+struct Parser_ASTNode *
+Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
+                  isize_t *out_end, struct Parser_ASTNode *parent,
+                  struct Sema_Scope *scope, bool skip_def,
+                  struct Parser_Allocators *allocs, struct DiagVec *diags);
 // returns NULL if the node doesn't have a vector of children
 const struct Parser_ASTNodePVec *
 Parser_node_subs_const(const struct Parser_ASTNode *node);

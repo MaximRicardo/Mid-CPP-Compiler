@@ -3,8 +3,8 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/tokenize.h"
+#include "parser/allocator.h"
 #include "parser/ast.h"
-#include "parser/astvec.h"
 #include "parser/type.h"
 #include "sema/scope.h"
 #include "sema/type.h"
@@ -74,12 +74,16 @@ int main(int argc, char **argv)
 {
     int ret = 0;
 
+    struct Parser_Allocators allocs = {};
+
     assert(argc >= 2);
     char *src = read_file(argv[1]);
 
     auto lex = Lexer_tokenize(src, argv[1]);
-    if (print_diags(&lex.diags))
+    if (print_diags(&lex.diags)) {
+        ret = 1;
         goto tokenize_failed;
+    }
 
     for (isize_t i = 0; i < lex.toks.len; ++i) {
         printf("i = %" PRIisz ", pos = (%d, %d), type = %d", i,
@@ -120,20 +124,26 @@ int main(int argc, char **argv)
                lex.toks.arr[i].pos.line, lex.toks.arr[i].pos.column, i,
                lex.toks.len - 1);
         auto node = Parser_parse_node(lex.toks.arr, i, &i, &root, &scope, false,
-                                      &parser_diags);
+                                      &allocs, &parser_diags);
         gen_dynpush(&root.root, node);
     }
-    if (print_diags(&parser_diags))
+    if (print_diags(&parser_diags)) {
+        ret = 1;
         goto parser_failed;
+    }
 
     struct DiagVec sema_diags = gen_dyninit();
     Sema_typecheck_root(&root, &scope, &sema_diags);
-    if (print_diags(&sema_diags))
+    if (print_diags(&sema_diags)) {
+        ret = 1;
         goto sema_failed;
+    }
 
 sema_failed:
     gen_dyndeinit(&sema_diags, Diag_deinit);
 parser_failed:
+    // the root scope and root node need to be deallocated manually cuz they
+    // weren't dynamically allocated
     Sema_Scope_deinit(&scope);
     Parser_ASTNode_deinit(&root);
     gen_dyndeinit(&parser_diags, Diag_deinit);
@@ -141,5 +151,6 @@ tokenize_failed:
     Lexer_Tokenize_deinit(&lex);
     free(src);
 
+    Parser_Allocators_deinit(&allocs);
     return ret;
 }

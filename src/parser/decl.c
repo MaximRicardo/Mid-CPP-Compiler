@@ -15,8 +15,10 @@
 // function impossible, like:
 // A foo(B());
 //       ^^^
+// TODO: make this not use bump allocation to save on memory usage
 static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
                            isize_t *out_end, struct Sema_Scope *scope,
+                           struct Parser_Allocators *allocs,
                            struct DiagVec *diags)
 {
     assert(Parser_valid_type_start(&toks[start], scope));
@@ -24,7 +26,7 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
     struct Parser_VarDecl decl;
     isize_t end =
         Parser_parse_var_decl(toks, start, PARSER_PARAM_ENDTYPES, &decl, NULL,
-                              scope, false, false, diags);
+                              scope, false, false, allocs, diags);
     if (out_end)
         *out_end = end;
 
@@ -41,10 +43,12 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
 }
 
 static bool are_params_ambig(const struct Lexer_Token *toks, isize_t lparen,
-                             struct Sema_Scope *scope, struct DiagVec *diags)
+                             struct Sema_Scope *scope,
+                             struct Parser_Allocators *allocs,
+                             struct DiagVec *diags)
 {
     for (isize_t i = lparen + 1; toks[i].type != LEXER_TOKENTYPE_END; ++i) {
-        if (!is_ambig_param(toks, i, &i, scope, diags))
+        if (!is_ambig_param(toks, i, &i, scope, allocs, diags))
             return false;
 
         if (toks[i].type == LEXER_TOKENTYPE_R_PAREN ||
@@ -73,8 +77,9 @@ static isize_t skip_operator_overload(const struct Lexer_Token *toks,
 }
 
 bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
-                         struct Sema_Scope *scope, struct DiagVec *diags,
-                         bool *out_mvp)
+                         struct Sema_Scope *scope,
+                         struct Parser_Allocators *allocs,
+                         struct DiagVec *diags, bool *out_mvp)
 {
     assert(Parser_valid_type_start(&toks[start], scope));
 
@@ -98,7 +103,7 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
         mvp = true;
         ret = true;
     } else if (Parser_valid_type_start(&toks[lparen + 1], scope)) {
-        mvp = are_params_ambig(toks, lparen, scope, diags);
+        mvp = are_params_ambig(toks, lparen, scope, allocs, diags);
         ret = true;
     } else {
         ret = false;

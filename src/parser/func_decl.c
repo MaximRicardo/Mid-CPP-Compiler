@@ -5,9 +5,9 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "macros.h"
+#include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/astvec.h"
-#include "parser/bump.h"
 #include "parser/end_types.h"
 #include "parser/expr.h"
 #include "parser/find_twin.h"
@@ -37,11 +37,10 @@ void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self)
     Parser_Type_deinit(&self->type);
 }
 
-struct Parser_ASTNodePVec
-Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
-                         isize_t *out_rparen, struct Parser_ASTNode *parent,
-                         struct Sema_Scope *scope, bool add_to_scope,
-                         struct DiagVec *diags)
+struct Parser_ASTNodePVec Parser_parse_func_params(
+    const struct Lexer_Token *toks, isize_t lparen, isize_t *out_rparen,
+    struct Parser_ASTNode *parent, struct Sema_Scope *scope, bool add_to_scope,
+    struct Parser_Allocators *allocs, struct DiagVec *diags)
 {
     struct Parser_ASTNodePVec params = {};
 
@@ -61,13 +60,13 @@ Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
 
     for (isize_t i = lparen + 1; i < rparen; ++i) {
         struct Parser_ASTNode *child;
-        gen_bumpmalloc(&Parser_bumps.ast, &child);
+        gen_bumpmalloc(&allocs->ast, &child);
         *child = (struct Parser_ASTNode){.parent = parent,
                                          .start = &toks[i],
                                          .type = PARSER_ASTNODETYPE_VAR_DECL};
         i = Parser_parse_var_decl(toks, i, PARSER_PARAM_ENDTYPES,
                                   &child->var_decl, child, scope, add_to_scope,
-                                  false, diags);
+                                  false, allocs, diags);
         gen_dynpush(&params, child);
     }
 
@@ -75,10 +74,11 @@ Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
 }
 
 static struct Sema_Scope *create_func_scope(struct Sema_Scope *scope,
-                                            struct Parser_ASTNode *node)
+                                            struct Parser_ASTNode *node,
+                                            struct Parser_Allocators *allocs)
 {
     struct Sema_Scope *child;
-    gen_bumpmalloc(&Parser_bumps.scope, &child);
+    gen_bumpmalloc(&allocs->scope, &child);
     *child = (struct Sema_Scope){
         .parent = scope, .node = node, .type = SEMA_SCOPETYPE_FUNC};
     gen_dynpush(&scope->childs, child);
@@ -107,6 +107,7 @@ static void add_func_def(struct Parser_FuncDecl *decl,
 isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
                                struct Parser_FuncDecl *decl,
                                struct Parser_ASTNode *node,
+                               struct Parser_Allocators *allocs,
                                struct DiagVec *diags)
 {
     add_func_def(decl, node, diags);
@@ -123,8 +124,8 @@ isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
     }
 
     for (isize_t i = lcurly + 1; i < rcurly;) {
-        auto child =
-            Parser_parse_node(toks, i, &i, node, decl->scope, false, diags);
+        auto child = Parser_parse_node(toks, i, &i, node, decl->scope, false,
+                                       allocs, diags);
         gen_dynpush(&decl->nodes, child);
     }
 
@@ -388,6 +389,7 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
                                struct Parser_FuncDecl *decl,
                                struct Parser_ASTNode *node,
                                struct Sema_Scope *scope, bool skip_def,
+                               struct Parser_Allocators *allocs,
                                struct DiagVec *diags)
 {
     *decl = (struct Parser_FuncDecl){};
@@ -400,12 +402,12 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
     if (decl->name)
         add_func_to_scope(scope, decl->name, node);
 
-    decl->scope = create_func_scope(scope, node);
+    decl->scope = create_func_scope(scope, node, allocs);
 
     isize_t lparen = type_end;
     isize_t rparen;
     decl->params = Parser_parse_func_params(toks, lparen, &rparen, node,
-                                            decl->scope, true, diags);
+                                            decl->scope, true, allocs, diags);
     if (decl->is_op_overload)
         disambig_operator_overload(decl);
 
@@ -420,7 +422,7 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
         return rcurly == -1 ? lcurly + 1 : rcurly + 1;
     } else {
         isize_t rcurly =
-            Parser_parse_func_body(toks, lcurly, decl, node, diags);
+            Parser_parse_func_body(toks, lcurly, decl, node, allocs, diags);
         return rcurly + 1;
     }
 }
