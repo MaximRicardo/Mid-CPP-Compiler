@@ -18,7 +18,9 @@
 
 void Parser_Class_deinit(struct Parser_Class *self)
 {
-    gen_dyndeinit(&self->nodes);
+    gen_dyndeinit(&self->pub_childs);
+    gen_dyndeinit(&self->priv_childs);
+    gen_dyndeinit(&self->prot_childs);
 }
 
 static struct Diag expected_token(const char *tok_name,
@@ -76,19 +78,26 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
     return ident + 1;
 }
 
+static enum Parser_ClassType parse_class_type(const struct Lexer_Token *toks,
+                                              isize_t start)
+{
+    if (toks[start].type == LEXER_TOKENTYPE_UNION) {
+        return PARSER_CLASSTYPE_UNION;
+    } else if (toks[start].type == LEXER_TOKENTYPE_STRUCT) {
+        return PARSER_CLASSTYPE_STRUCT;
+    } else if (toks[start].type == LEXER_TOKENTYPE_CLASS) {
+        return PARSER_CLASSTYPE_CLASS;
+    } else {
+        CRASH("tried to parse something that isn't a class");
+    }
+}
+
 static isize_t parse_class_entry(struct Parser_Class *self,
                                  const struct Sema_Scope *scope,
                                  const struct Lexer_Token *toks, isize_t start,
-                                 bool *out_is_struct, struct DiagVec *diags)
+                                 struct DiagVec *diags)
 {
-    if (toks[start].type == LEXER_TOKENTYPE_UNION) {
-        self->is_union = false;
-    } else if (toks[start].type == LEXER_TOKENTYPE_STRUCT) {
-        if (out_is_struct)
-            *out_is_struct = true;
-    } else if (toks[start].type != LEXER_TOKENTYPE_CLASS) {
-        CRASH("tried to parse something that isn't a class");
-    }
+    self->type = parse_class_type(toks, start);
 
     isize_t ident = start + 1;
     if (toks[ident].type != LEXER_TOKENTYPE_IDENTIFIER) {
@@ -180,10 +189,83 @@ static void add_class_def(struct Parser_Class *self,
     }
 }
 
+enum AccessSpec {
+    ACCESSSPEC_PUBLIC,
+    ACCESSSPEC_PRIVATE,
+    ACCESSSPEC_PROTECTED,
+};
+
+static isize_t parse_accessspec(const struct Lexer_Token *toks, isize_t start,
+                                enum AccessSpec *out_spec,
+                                struct DiagVec *diags)
+{
+    assert(Lexer_is_accessspec(toks[start].type));
+    if (out_spec) {
+        if (toks[start].type == LEXER_TOKENTYPE_PUBLIC)
+            *out_spec = ACCESSSPEC_PUBLIC;
+        else if (toks[start].type == LEXER_TOKENTYPE_PRIVATE)
+            *out_spec = ACCESSSPEC_PRIVATE;
+        else
+            *out_spec = ACCESSSPEC_PROTECTED;
+    }
+
+    isize_t colon = start + 1;
+    if (toks[colon].type != LEXER_TOKENTYPE_COLON) {
+        gen_dynpush(diags, expected_token("':'", &toks[start]));
+        return colon;
+    }
+    return colon + 1;
+}
+
+static void parse_decls(struct Parser_Class *self, struct Parser_ASTNode *node,
+                        const struct Lexer_Token *toks, isize_t lcurly,
+                        isize_t rcurly, struct Parser_Allocators *allocs,
+                        struct DiagVec *diags)
+{
+    // class members are private by default,
+    // struct and union members are public by default
+    enum AccessSpec mode = self->type == PARSER_CLASSTYPE_CLASS
+                               ? ACCESSSPEC_PRIVATE
+                               : ACCESSSPEC_PUBLIC;
+
+    for (isize_t i = lcurly + 1; i < rcurly;) {
+        if (Lexer_is_accessspec(toks[i].type)) {
+            i = parse_accessspec(toks, i, &mode, diags);
+        } else {
+            struct Parser_ASTNode *child = Parser_parse_node(
+                toks, i, &i, node, self->scope, true, allocs, diags);
+
+            if (mode == ACCESSSPEC_PUBLIC)
+                gen_dynpush(&self->pub_childs, child);
+            else if (mode == ACCESSSPEC_PRIVATE)
+                gen_dynpush(&self->priv_childs, child);
+            else
+                gen_dynpush(&self->prot_childs, child);
+        }
+    }
+}
+
+static void parse_defs(struct Parser_Class *self,
+                       const struct Lexer_Token *toks,
+                       struct Parser_Allocators *allocs, struct DiagVec *diags)
+{
+    for (isize_t i = 0; i < self->pub_childs.len; ++i)
+        parse_node_def(self->pub_childs.arr[i], self->scope, toks, allocs,
+                       diags);
+
+    for (isize_t i = 0; i < self->priv_childs.len; ++i)
+        parse_node_def(self->priv_childs.arr[i], self->scope, toks, allocs,
+                       diags);
+
+    for (isize_t i = 0; i < self->prot_childs.len; ++i)
+        parse_node_def(self->prot_childs.arr[i], self->scope, toks, allocs,
+                       diags);
+}
+
 isize_t Parser_parse_class_body(struct Parser_Class *self,
                                 struct Parser_ASTNode *node,
                                 struct Sema_Scope *parent_scope,
-                                const struct Lexer_Token *toks, isize_t l_curly,
+                                const struct Lexer_Token *toks, isize_t lcurly,
                                 struct Parser_Allocators *allocs,
                                 struct DiagVec *diags)
 {
@@ -199,27 +281,18 @@ isize_t Parser_parse_class_body(struct Parser_Class *self,
     self->scope = create_class_scope(parent_scope, node, allocs);
     add_class_def(self, node, diags);
 
-    isize_t r_curly = find_rcurly(l_curly, toks, diags);
+    isize_t rcurly = find_rcurly(lcurly, toks, diags);
 
     printf("CLASS DECLS PASS\n");
-
-    for (isize_t i = l_curly + 1; i < r_curly;) {
-        struct Parser_ASTNode *child = Parser_parse_node(
-            toks, i, &i, node, self->scope, true, allocs, diags);
-
-        gen_dynpush(&self->nodes, child);
-    }
+    parse_decls(self, node, toks, lcurly, rcurly, allocs, diags);
 
     printf("CLASS DEFS PASS\n");
-    printf("n diags = %" PRIisz "\n", diags->len);
-    printf("n nodes = %" PRIisz "\n", self->nodes.len);
-    printf("n idents = %" PRIisz "\n", self->scope->idents.len);
+    printf("%" PRIisz " pub childs, %" PRIisz " priv childs, %" PRIisz
+           " prot childs\n",
+           self->pub_childs.len, self->priv_childs.len, self->prot_childs.len);
+    parse_defs(self, toks, allocs, diags);
 
-    for (isize_t i = 0; i < self->nodes.len; ++i) {
-        parse_node_def(self->nodes.arr[i], self->scope, toks, allocs, diags);
-    }
-
-    return r_curly + 1;
+    return rcurly + 1;
 }
 
 static void add_class_to_scope(struct Sema_Scope *scope, const char *name,
@@ -239,27 +312,25 @@ isize_t Parser_parse_class(struct Parser_Class *self,
 {
     *self = (struct Parser_Class){};
 
-    bool is_struct;
-    isize_t l_curly =
-        parse_class_entry(self, scope, toks, start, &is_struct, diags);
+    isize_t lcurly = parse_class_entry(self, scope, toks, start, diags);
 
     if (self->name)
         add_class_to_scope(scope, self->name, node);
 
-    if (toks[l_curly].type == LEXER_TOKENTYPE_SEMICOLON) {
-        return l_curly;
-    } else if (toks[l_curly].type != LEXER_TOKENTYPE_L_CURLY) {
+    if (toks[lcurly].type == LEXER_TOKENTYPE_SEMICOLON) {
+        return lcurly;
+    } else if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY) {
         gen_dynpush(diags, expected_token("';'", &toks[start]));
-        return l_curly;
+        return lcurly;
     }
 
     self->has_def = true;
-    self->def_start = &toks[l_curly];
+    self->def_start = &toks[lcurly];
 
     if (skip_def) {
-        return find_rcurly(l_curly, toks, diags) + 1;
+        return find_rcurly(lcurly, toks, diags) + 1;
     } else {
-        return Parser_parse_class_body(self, node, scope, toks, l_curly, allocs,
+        return Parser_parse_class_body(self, node, scope, toks, lcurly, allocs,
                                        diags);
     }
 }

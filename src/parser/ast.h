@@ -46,7 +46,3 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
                   isize_t *out_end, struct Parser_ASTNode *parent,
                   struct Sema_Scope *scope, bool skip_def,
                   struct Parser_Allocators *allocs, struct DiagVec *diags);
-// returns NULL if the node doesn't have a vector of children
-const struct Parser_ASTNodePVec *
-Parser_node_subs_const(const struct Parser_ASTNode *node);
-struct Parser_ASTNodePVec *Parser_node_subs(struct Parser_ASTNode *node);

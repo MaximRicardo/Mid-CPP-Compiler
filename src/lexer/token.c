@@ -74,3 +74,9 @@ bool Lexer_is_typemod(enum Lexer_TokenType type)
     return type > LEXER_TOKENTYPE_TYPEMOD_START &&
            type < LEXER_TOKENTYPE_TYPEMOD_END;
 }
+
+bool Lexer_is_accessspec(enum Lexer_TokenType type)
+{
+    return type > LEXER_TOKENTYPE_ACCESSSPEC_START &&
+           type < LEXER_TOKENTYPE_ACCESSSPEC_END;
+}

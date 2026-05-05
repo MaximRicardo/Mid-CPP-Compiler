@@ -4,6 +4,7 @@
 #include "lexer/token.h"
 #include "macros.h"
 #include "parser/ast.h"
+#include "parser/class.h"
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "sema/ident.h"
@@ -63,7 +64,8 @@ struct Parser_Type Sema_type_name_type(const struct Sema_Scope *scope,
 
     switch (ident->type) {
     case SEMA_IDENTTYPE_CLASS:
-        return Parser_toktype_to_type(ident->decl->class_.is_union
+        return Parser_toktype_to_type(ident->decl->class_.type ==
+                                              PARSER_CLASSTYPE_UNION
                                           ? LEXER_TOKENTYPE_UNION
                                           : LEXER_TOKENTYPE_CLASS,
                                       ident->decl->class_.name);

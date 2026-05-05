@@ -124,6 +124,12 @@ enum Lexer_TokenType {
     LEXER_TOKENTYPE_TYPEDATAQUAL_START,
     LEXER_TOKENTYPE_CONST,
     LEXER_TOKENTYPE_TYPEDATAQUAL_END,
+
+    LEXER_TOKENTYPE_ACCESSSPEC_START,
+    LEXER_TOKENTYPE_PUBLIC,
+    LEXER_TOKENTYPE_PRIVATE,
+    LEXER_TOKENTYPE_PROTECTED,
+    LEXER_TOKENTYPE_ACCESSSPEC_END,
 };
 
 bool Lexer_is_numlit(enum Lexer_TokenType type);
@@ -142,6 +148,7 @@ bool Lexer_is_typedataqual(enum Lexer_TokenType type);
 bool Lexer_is_typequal(enum Lexer_TokenType type);
 // signed, unsigned, short and long
 bool Lexer_is_typemod(enum Lexer_TokenType type);
+bool Lexer_is_accessspec(enum Lexer_TokenType type);
 
 struct Lexer_Token {
     union {

@@ -431,6 +431,16 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
                                     .type = LEXER_TOKENTYPE_PTR_LIT,
                                     .val.ptr = NULL};
 
+    else if (!strcmp(id, "public"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_PUBLIC};
+    else if (!strcmp(id, "private"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_PRIVATE};
+    else if (!strcmp(id, "protected"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_PROTECTED};
+
     else
         return (struct Lexer_Token){.pos = pos,
                                     .line = line,

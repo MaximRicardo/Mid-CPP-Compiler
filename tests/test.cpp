@@ -5,8 +5,10 @@ class Test {
     int x = y;
     int y;
 
+protected:
     int operator-(int a, int b);
 
+public:
     int func(int arg)
     {
         z + arg / (x - y);

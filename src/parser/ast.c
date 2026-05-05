@@ -119,32 +119,3 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         *out_end = end;
     return ret;
 }
-
-const struct Parser_ASTNodePVec *
-Parser_node_subs_const(const struct Parser_ASTNode *node)
-{
-    switch (node->type) {
-    case PARSER_ASTNODETYPE_ROOT:
-        return &node->root;
-
-    case PARSER_ASTNODETYPE_FUNC_DECL:
-        return &node->func_decl.nodes;
-
-    case PARSER_ASTNODETYPE_ENUM:
-        return &node->enum_.nodes;
-
-    case PARSER_ASTNODETYPE_CLASS:
-        return &node->class_.nodes;
-
-    case PARSER_ASTNODETYPE_NAMESPACE:
-        return &node->nmspace.nodes;
-
-    default:
-        return NULL;
-    }
-}
-
-struct Parser_ASTNodePVec *Parser_node_subs(struct Parser_ASTNode *node)
-{
-    return (struct Parser_ASTNodePVec *)Parser_node_subs_const(node);
-}

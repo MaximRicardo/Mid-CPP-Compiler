@@ -718,8 +718,14 @@ void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
 
 void Sema_typecheck_class(struct Parser_Class *self, struct DiagVec *diags)
 {
-    for (isize_t i = 0; i < self->nodes.len; ++i)
-        Sema_typecheck_node(self->nodes.arr[i], self->scope, diags);
+    for (isize_t i = 0; i < self->pub_childs.len; ++i)
+        Sema_typecheck_node(self->pub_childs.arr[i], self->scope, diags);
+
+    for (isize_t i = 0; i < self->priv_childs.len; ++i)
+        Sema_typecheck_node(self->priv_childs.arr[i], self->scope, diags);
+
+    for (isize_t i = 0; i < self->prot_childs.len; ++i)
+        Sema_typecheck_node(self->prot_childs.arr[i], self->scope, diags);
 }
 
 void Sema_typecheck_node(struct Parser_ASTNode *node, struct Sema_Scope *scope,
