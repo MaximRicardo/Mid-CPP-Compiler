@@ -87,13 +87,13 @@
         self_super_specific_name______->arr = NULL;                            \
     } while (0)
 
-// void gen_dyndeinit(gen_dynarray(elem_type) *self,
+// void gen_dyndeinit(gen_dynarray<elem_type> *self,
 //                    /* optional */ void free_func(elem_type *))
 #define gen_dyndeinit(...)                                                     \
     GEN_EXPAND(GEN_GET_MACRO_2(__VA_ARGS__, GEN_DYNDEINIT_W_FREE,              \
                                GEN_DYNDEINIT_NO_FREE)(__VA_ARGS__))
 
-// void gen_dynpush(gen_dynarray(elem_type) *self, elem_type elem)
+// void gen_dynpush(gen_dynarray<elem_type> *self, elem_type elem)
 #define gen_dynpush(self_arg, elem_arg)                                        \
     do {                                                                       \
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
@@ -119,7 +119,7 @@
         --self_super_specific_name______->len;                                 \
     } while (0)
 
-// void gen_dynpop(gen_dynarray(elem_type) *self,
+// void gen_dynpop(gen_dynarray<elem_type> *self,
 //                 /* optional */ void free_func(elem_type *))
 #define gen_dynpop(...)                                                        \
     GEN_EXPAND(GEN_GET_MACRO_2(__VA_ARGS__, GEN_DYNPOP_W_FREE,                 \
@@ -157,13 +157,13 @@
         --self_super_specific_name______->len;                                 \
     } while (0)
 
-// void gen_dynremove(gen_dynarray(elem_type) *self, size_type idx,
+// void gen_dynremove(gen_dynarray<elem_type> *self, size_type idx,
 //                    /* optional */ void free_func(elem_type *))
 #define gen_dynremove(self, ...)                                               \
     GEN_EXPAND(GEN_GET_MACRO_2(__VA_ARGS__, GEN_DYNREMOVE_W_FREE,              \
                                GEN_DYNREMOVE_NO_FREE)(self, __VA_ARGS__))
 
-// void gen_dyninsert(gen_dynarray(elem_type) *self, size_type idx,
+// void gen_dyninsert(gen_dynarray<elem_type> *self, size_type idx,
 //                    elem_type elem)
 #define gen_dyninsert(self_arg, idx_arg, elem_arg)                             \
     do {                                                                       \

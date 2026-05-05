@@ -5,6 +5,8 @@
 #include "ints.h"
 #include "lexer/token.h"
 
+struct Sema_Scope;
+
 enum Parser_TypeSpec {
     PARSER_TYPESPEC_INVALID,
 
@@ -96,7 +98,7 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
                                           const char *name);
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
-                                     const struct Parser_ASTNode *parent,
+                                     const struct Sema_Scope *scope,
                                      const char **out_declname,
                                      struct DiagVec *diags);
 isize_t Parser_n_indir(const struct Parser_Type *type);
@@ -108,7 +110,7 @@ struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
 char *Parser_type_to_str(const struct Parser_Type *type);
 // can the token be the start of a type?
 bool Parser_valid_type_start(const struct Lexer_Token *tok,
-                             const struct Parser_ASTNode *parent);
+                             const struct Sema_Scope *scope);
 // the integral type specifier able to hold exactly the given number of bytes
 enum Parser_TypeSpec Parser_uint_type_of_width(i32 bytes);
 enum Parser_TypeSpec Parser_sint_type_of_width(i32 bytes);

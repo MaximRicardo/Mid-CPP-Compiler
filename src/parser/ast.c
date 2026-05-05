@@ -1,6 +1,8 @@
 #include "ast.h"
+#include "bump.h"
 #include "decl.h"
 #include "diag.h"
+#include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
@@ -12,6 +14,7 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
+#include "sema/scope.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -19,7 +22,7 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
 {
     switch (self->type) {
     case PARSER_ASTNODETYPE_ROOT:
-        gen_dyndeinit(&self->root, Parser_ASTNodeP_deinit);
+        gen_dyndeinit(&self->root);
         break;
 
     case PARSER_ASTNODETYPE_EXPR:
@@ -48,12 +51,6 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
     }
 }
 
-void Parser_ASTNodeP_deinit(struct Parser_ASTNode **self)
-{
-    Parser_ASTNode_deinit(*self);
-    free(*self);
-}
-
 static struct Diag missing_semi_err(const struct Lexer_Token *tok)
 {
     return (struct Diag){
@@ -74,9 +71,11 @@ static bool is_class_start(enum Lexer_TokenType type)
 struct Parser_ASTNode *Parser_parse_node(const struct Lexer_Token *toks,
                                          isize_t start, isize_t *out_end,
                                          struct Parser_ASTNode *parent,
+                                         struct Sema_Scope *scope,
                                          bool skip_def, struct DiagVec *diags)
 {
-    struct Parser_ASTNode *ret = malloc(sizeof(*ret));
+    struct Parser_ASTNode *ret;
+    gen_bumpmalloc(&Parser_bumps.ast, &ret);
     *ret = (struct Parser_ASTNode){.start = &toks[start], .parent = parent};
 
     printf("AST START AT %d:%d\n", ret->start->pos.line,
@@ -87,21 +86,22 @@ struct Parser_ASTNode *Parser_parse_node(const struct Lexer_Token *toks,
     if (is_class_start(toks[start].type)) {
         printf("CLASS NODE\n");
         ret->type = PARSER_ASTNODETYPE_CLASS;
-        end =
-            Parser_parse_class(&ret->class_, ret, toks, start, skip_def, diags);
-    } else if (Parser_valid_type_start(&toks[start], parent)) {
+        end = Parser_parse_class(&ret->class_, ret, scope, toks, start,
+                                 skip_def, diags);
+    } else if (Parser_valid_type_start(&toks[start], scope)) {
         printf("DECL NODE\n");
         bool mvp;
-        if (Parser_decl_is_func(toks, start, parent, diags, &mvp)) {
+        if (Parser_decl_is_func(toks, start, scope, diags, &mvp)) {
             printf("mvp = %d\n", mvp);
             ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
             end = Parser_parse_func_decl(toks, start, &ret->func_decl, ret,
-                                         skip_def, diags);
+                                         scope, skip_def, diags);
             check_semi = !ret->func_decl.has_def;
         } else {
             ret->type = PARSER_ASTNODETYPE_VAR_DECL;
             end = Parser_parse_var_decl(toks, start, PARSER_DEFAULT_ENDTYPES,
-                                        &ret->var_decl, ret, skip_def, diags);
+                                        &ret->var_decl, ret, scope, true,
+                                        skip_def, diags);
         }
     } else {
         printf("EXPR NODE\n");

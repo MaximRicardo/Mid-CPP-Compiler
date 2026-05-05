@@ -6,13 +6,14 @@
 #include "parser/ast.h"
 #include "parser/astvec.h"
 #include "parser/type.h"
+#include "sema/scope.h"
 #include "sema/type.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-char *read_file(const char *path)
+static char *read_file(const char *path)
 {
     FILE *f = fopen(path, "r");
 
@@ -32,7 +33,7 @@ char *read_file(const char *path)
 }
 
 // returns true if at least one of them was an error
-bool print_diags(const struct DiagVec *diags)
+static bool print_diags(const struct DiagVec *diags)
 {
     bool err = false;
     for (isize_t i = 0; i < diags->len; ++i) {
@@ -44,16 +45,30 @@ bool print_diags(const struct DiagVec *diags)
     return err;
 }
 
-isize_t find_semicolon(const struct Lexer_Token *toks, isize_t start,
-                       isize_t end)
+/*
+static void free_str(char **str)
 {
-    for (isize_t i = start; i < end; ++i) {
-        if (toks[i].type == LEXER_TOKENTYPE_SEMICOLON)
-            return i;
+    free(*str);
+}
+
+static void test()
+{
+    gen_bumpalloc_struct_named(BumpAlloc, char *);
+
+    struct BumpAlloc handle = gen_bumpinit();
+
+    char **str[1024];
+    for (size_t i = 0; i < ARRLEN(str); ++i) {
+        gen_bumpcalloc(&handle, &str[i]);
+        *str[i] = Print_fmt_to_str("string nr %zu", i);
     }
 
-    return -1;
+    for (size_t i = 0; i < ARRLEN(str); ++i)
+        printf("*str[%zu] = %s\n", i, *str[i]);
+
+    gen_bumpdeinit(&handle, free_str);
 }
+*/
 
 int main(int argc, char **argv)
 {
@@ -97,32 +112,34 @@ int main(int argc, char **argv)
 
     struct DiagVec parser_diags = gen_dyninit();
 
-    struct Parser_ASTNode root = {};
-    root.type = PARSER_ASTNODETYPE_ROOT;
+    struct Parser_ASTNode root = {.type = PARSER_ASTNODETYPE_ROOT};
+    struct Sema_Scope scope = {.type = SEMA_SCOPETYPE_ROOT, .node = &root};
 
     for (isize_t i = 0; lex.toks.arr[i].type != LEXER_TOKENTYPE_END;) {
         printf("looping at %d:%d, %" PRIisz "/%" PRIisz "\n",
                lex.toks.arr[i].pos.line, lex.toks.arr[i].pos.column, i,
                lex.toks.len - 1);
-        auto node =
-            Parser_parse_node(lex.toks.arr, i, &i, &root, false, &parser_diags);
+        auto node = Parser_parse_node(lex.toks.arr, i, &i, &root, &scope, false,
+                                      &parser_diags);
         gen_dynpush(&root.root, node);
     }
     if (print_diags(&parser_diags))
         goto parser_failed;
 
     struct DiagVec sema_diags = gen_dyninit();
-    Sema_typecheck_root(&root, &sema_diags);
+    Sema_typecheck_root(&root, &scope, &sema_diags);
     if (print_diags(&sema_diags))
         goto sema_failed;
 
 sema_failed:
     gen_dyndeinit(&sema_diags, Diag_deinit);
 parser_failed:
+    Sema_Scope_deinit(&scope);
     Parser_ASTNode_deinit(&root);
     gen_dyndeinit(&parser_diags, Diag_deinit);
 tokenize_failed:
     Lexer_Tokenize_deinit(&lex);
     free(src);
+
     return ret;
 }

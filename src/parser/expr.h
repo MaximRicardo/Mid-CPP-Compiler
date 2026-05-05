@@ -163,5 +163,3 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
 isize_t Parser_skip_expr(const struct Lexer_Token *toks, isize_t start,
                          const enum Lexer_TokenType *end_types,
                          isize_t n_end_types, struct DiagVec *diags);
-// evaluate the result of a constant expression
-union Literal_Value Parser_evaluate(const struct Parser_Expr *expr);

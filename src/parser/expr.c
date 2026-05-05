@@ -4,7 +4,6 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
-#include "literal.h"
 #include "macros.h"
 #include "parser/end_types.h"
 #include "parser/type.h"
@@ -991,7 +990,7 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                    ops.arr[ops.len - 1].type != PARSER_EXPRTYPE_POSTFIX_INC;
         } else if (toks[i].type == LEXER_TOKENTYPE_L_PAREN) {
             if (!mode)
-                // if mode is 0 a sub-expression is actually a function call
+                // if mode is 0, a sub-expression is actually a function call
                 push_operator(toks, i, &i, &out, &ops, mode, diags);
             else
                 gen_dynpush(&out, parse_subexpr(toks, i, &i, diags));
@@ -1052,47 +1051,6 @@ isize_t Parser_skip_expr(const struct Lexer_Token *toks, isize_t start,
     }
 
     return i;
-}
-
-static union Literal_Value evaluate_binop(const struct Parser_Expr *expr)
-{
-    assert(expr->info.args.len == 2);
-
-    union Literal_Value vals[2];
-    for (isize_t i = 0; i < 2; ++i) {
-        vals[i] = Parser_evaluate(&expr->info.args.arr[i]);
-    }
-
-    switch (expr->type) {
-    case PARSER_EXPRTYPE_ADD:
-        return (union Literal_Value){.sint = vals[0].sint + vals[1].sint};
-
-    case PARSER_EXPRTYPE_SUB:
-        return (union Literal_Value){.sint = vals[0].sint - vals[1].sint};
-
-    case PARSER_EXPRTYPE_MUL:
-        return (union Literal_Value){.sint = vals[0].sint * vals[1].sint};
-
-    case PARSER_EXPRTYPE_DIV:
-        return (union Literal_Value){.sint = vals[0].sint / vals[1].sint};
-
-    default:
-        assert(false);
-    }
-}
-
-union Literal_Value Parser_evaluate(const struct Parser_Expr *expr)
-{
-    if (Parser_is_numlit(expr->type))
-        return expr->info.val;
-    else if (Parser_is_unaryop(expr->type))
-        assert(false);
-    else if (Parser_is_binop(expr->type))
-        return evaluate_binop(expr);
-    else if (Parser_is_ternaryop(expr->type))
-        assert(false);
-    else
-        assert(false);
 }
 
 void Parser_Expr_deinit(struct Parser_Expr *expr)

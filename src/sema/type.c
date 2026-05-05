@@ -1,7 +1,6 @@
 #include "type.h"
 #include "diag.h"
 #include "generics/dynarray.h"
-#include "ident.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "macros.h"
@@ -12,108 +11,45 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
+#include "sema/scope.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
-bool Sema_is_typespec(const struct Lexer_Token *tok,
-                      const struct Parser_ASTNode *parent)
+const char *Sema_node_creates_type_name(const struct Parser_ASTNode *node)
 {
-    if (Lexer_is_typespec(tok->type))
-        return true;
-    else if (tok->type == LEXER_TOKENTYPE_IDENTIFIER)
-        return Sema_find_type_const(tok->ident, parent, tok);
-    else
-        return false;
-}
-
-struct Parser_Type Sema_typespec_type(const struct Lexer_Token *tok,
-                                      const struct Parser_ASTNode *parent)
-{
-
-    if (tok->type == LEXER_TOKENTYPE_STRUCT ||
-        tok->type == LEXER_TOKENTYPE_CLASS ||
-        tok->type == LEXER_TOKENTYPE_ENUM ||
-        tok->type == LEXER_TOKENTYPE_UNION) {
-        CRASH("can't convert composed types to a type spec");
-    } else if (tok->type == LEXER_TOKENTYPE_IDENTIFIER) {
-        auto node = Sema_find_type_const(tok->ident, parent, tok);
-        assert(node);
-
-        switch (node->type) {
-        case PARSER_ASTNODETYPE_CLASS:
-            return Parser_toktype_to_type(node->class_.is_union
-                                              ? LEXER_TOKENTYPE_UNION
-                                              : LEXER_TOKENTYPE_CLASS,
-                                          node->class_.name);
-
-        case PARSER_ASTNODETYPE_ENUM:
-            return Parser_toktype_to_type(LEXER_TOKENTYPE_ENUM,
-                                          node->enum_.name);
-
-        case PARSER_ASTNODETYPE_VAR_DECL:
-            // falls through to default if false
-            if (node->var_decl.type.squals.is_typedef)
-                return Parser_copy_type(&node->var_decl.type);
-        default:
-            CRASH("node doesn't hold a type");
-        }
-    } else {
-        return Parser_toktype_to_type(tok->type, NULL);
-    }
-}
-
-bool Sema_node_is_type(const struct Parser_ASTNode *node)
-{
-    return node->type == PARSER_ASTNODETYPE_ENUM ||
-           node->type == PARSER_ASTNODETYPE_CLASS ||
-           (node->type == PARSER_ASTNODETYPE_VAR_DECL &&
-            node->var_decl.type.squals.is_typedef);
-}
-
-const char *Sema_node_type_name(const struct Parser_ASTNode *node)
-{
-    if (node->type == PARSER_ASTNODETYPE_ENUM)
-        return node->enum_.name;
-    else if (node->type == PARSER_ASTNODETYPE_CLASS)
+    switch (node->type) {
+    case PARSER_ASTNODETYPE_CLASS:
         return node->class_.name;
-    else if (node->type == PARSER_ASTNODETYPE_VAR_DECL &&
-             node->var_decl.type.squals.is_typedef)
-        return node->var_decl.name;
-    else
-        CRASH("ast node doesn't have a type name");
-}
 
-const struct Parser_ASTNode *
-Sema_find_type_const(const char *name, const struct Parser_ASTNode *node,
-                     const struct Lexer_Token *end)
-{
-    if (Sema_node_is_type(node) && !strcmp(Sema_node_type_name(node), name))
-        return node;
+    case PARSER_ASTNODETYPE_ENUM:
+        return node->enum_.name;
 
-    auto subs = Parser_node_subs_const(node);
-    if (subs) {
-        for (isize_t i = 0; i < subs->len; ++i) {
-            if (subs->arr[i]->start >= end)
-                break;
+    case PARSER_ASTNODETYPE_VAR_DECL:
+        if (node->var_decl.type.squals.is_typedef)
+            return node->var_decl.name;
+        else
+            return NULL;
 
-            if (Sema_node_is_type(subs->arr[i]) &&
-                !strcmp(Sema_node_type_name(subs->arr[i]), name))
-                return subs->arr[i];
-        }
-    }
-
-    if (node->parent)
-        return Sema_find_type_const(name, node->parent, end);
-    else
+    default:
         return NULL;
+    }
 }
 
-struct Parser_ASTNode *Sema_find_type(const char *name,
-                                      struct Parser_ASTNode *node,
-                                      const struct Lexer_Token *end)
+const struct Parser_Type *
+Sema_node_type_const(const struct Parser_ASTNode *node)
 {
-    return (struct Parser_ASTNode *)Sema_find_type_const(name, node, end);
+    if (node->type == PARSER_ASTNODETYPE_VAR_DECL)
+        return &node->var_decl.type;
+    else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL)
+        return &node->func_decl.type;
+    else
+        CRASH("fetching the data type of this type of node not supported");
+}
+
+struct Parser_Type *Sema_node_type(struct Parser_ASTNode *node)
+{
+    return (struct Parser_Type *)Sema_node_type_const(node);
 }
 
 static void typecheck_lit_expr(struct Parser_Expr *expr)
@@ -193,7 +129,7 @@ static void typecheck_lit_expr(struct Parser_Expr *expr)
 }
 
 static void typecheck_ident_expr(struct Parser_Expr *expr,
-                                 const struct Parser_ASTNode *parent,
+                                 const struct Sema_Scope *scope,
                                  struct DiagVec *diags)
 {
     assert(expr->type == PARSER_EXPRTYPE_IDENTIFIER);
@@ -202,7 +138,7 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
     expr->valtype = PARSER_EXPRVALUE_LVALUE;
 
     const struct Parser_Type *type =
-        Sema_ident_type_const(expr->tok->ident, parent);
+        Sema_name_type_const(scope, expr->tok->ident);
 
     if (!type) {
         gen_dynpush(diags,
@@ -221,13 +157,12 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
 }
 
 static void set_func_call_node(struct Parser_Expr *expr,
-                               struct Parser_ASTNode *parent,
-                               struct DiagVec *diags)
+                               struct Sema_Scope *scope, struct DiagVec *diags)
 {
     const struct Parser_Expr *name_expr = &expr->info.args.arr[0];
 
     if (name_expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
-        expr->node = Sema_ident_creation(name_expr->info.ident, parent);
+        expr->node = Sema_find_ident(scope, name_expr->info.ident)->decl;
         if (!expr->node || expr->node->type != PARSER_ASTNODETYPE_FUNC_DECL)
             gen_dynpush(diags,
                         ((struct Diag){
@@ -243,10 +178,9 @@ static void set_func_call_node(struct Parser_Expr *expr,
 }
 
 static void typecheck_call_expr(struct Parser_Expr *expr,
-                                struct Parser_ASTNode *parent,
-                                struct DiagVec *diags)
+                                struct Sema_Scope *scope, struct DiagVec *diags)
 {
-    set_func_call_node(expr, parent, diags);
+    set_func_call_node(expr, scope, diags);
     if (!expr->node)
         return;
 
@@ -635,11 +569,10 @@ static void typecheck_comp_op_expr(struct Parser_Expr *expr,
 }
 
 static void typecheck_op_expr(struct Parser_Expr *expr,
-                              struct Parser_ASTNode *parent,
-                              struct DiagVec *diags)
+                              struct Sema_Scope *scope, struct DiagVec *diags)
 {
     if (expr->type == PARSER_EXPRTYPE_FUNC_CALL)
-        typecheck_call_expr(expr, parent, diags);
+        typecheck_call_expr(expr, scope, diags);
     else if (Parser_is_assignment(expr->type))
         typecheck_assignment_expr(expr, diags);
     else if (expr->type == PARSER_EXPRTYPE_PREFIX_INC ||
@@ -680,7 +613,7 @@ static isize_t best_op_overload(const struct Parser_ASTNodePVec *overloads,
 
         bool bad = false;
         for (isize_t j = 0; j < func->params.len; ++j) {
-            auto param = &func->params.arr[j];
+            auto param = &func->params.arr[j]->var_decl;
             auto arg = &expr->info.args.arr[j];
 
             isize_t param_indir = Parser_n_indir(&param->type);
@@ -709,13 +642,13 @@ static isize_t best_op_overload(const struct Parser_ASTNodePVec *overloads,
 }
 
 static void typecheck_overloaded_op(struct Parser_Expr *expr,
-                                    struct Parser_ASTNode *parent,
+                                    struct Sema_Scope *scope,
                                     const struct Parser_ASTNodePVec *overloads,
                                     struct DiagVec *diags)
 {
     isize_t best = best_op_overload(overloads, expr);
     if (best == -1)
-        typecheck_op_expr(expr, parent, diags);
+        typecheck_op_expr(expr, scope, diags);
     else {
         printf("found overload at %d:%d\n", expr->tok->pos.line,
                expr->tok->pos.column);
@@ -735,76 +668,78 @@ static void typecheck_overloaded_op(struct Parser_Expr *expr,
     }
 }
 
-void Sema_typecheck_expr(struct Parser_Expr *expr,
-                         struct Parser_ASTNode *parent, struct DiagVec *diags)
+void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
+                         struct DiagVec *diags)
 {
     if (Parser_is_numlit(expr->type)) {
         typecheck_lit_expr(expr);
     } else if (expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
-        typecheck_ident_expr(expr, parent, diags);
+        typecheck_ident_expr(expr, scope, diags);
     } else {
         for (isize_t i = 0; i < expr->info.args.len; ++i) {
-            Sema_typecheck_expr(&expr->info.args.arr[i], parent, diags);
+            Sema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
         }
 
-        auto overloads = Sema_op_overloads(expr->type, parent);
+        auto overloads = Sema_op_overloads(scope, expr->type);
         if (overloads.len == 0)
-            typecheck_op_expr(expr, parent, diags);
+            typecheck_op_expr(expr, scope, diags);
         else
-            typecheck_overloaded_op(expr, parent, &overloads, diags);
+            typecheck_overloaded_op(expr, scope, &overloads, diags);
         gen_dyndeinit(&overloads);
     }
 }
 
-void Sema_typecheck_root(struct Parser_ASTNode *node, struct DiagVec *diags)
+void Sema_typecheck_root(struct Parser_ASTNode *node, struct Sema_Scope *scope,
+                         struct DiagVec *diags)
 {
     assert(node->type == PARSER_ASTNODETYPE_ROOT);
 
     for (isize_t i = 0; i < node->root.len; ++i)
-        Sema_typecheck_node(node->root.arr[i], diags);
+        Sema_typecheck_node(node->root.arr[i], scope, diags);
 }
 
 void Sema_typecheck_var_decl(struct Parser_VarDecl *decl,
-                             struct Parser_ASTNode *node, struct DiagVec *diags)
+                             struct Sema_Scope *scope, struct DiagVec *diags)
 {
     if (decl->init)
-        Sema_typecheck_expr(decl->init, node, diags);
+        Sema_typecheck_expr(decl->init, scope, diags);
 }
 
 void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
-                              struct Parser_ASTNode *node,
                               struct DiagVec *diags)
 {
     for (isize_t i = 0; i < decl->params.len; ++i)
-        Sema_typecheck_var_decl(&decl->params.arr[i], node, diags);
+        Sema_typecheck_var_decl(&decl->params.arr[i]->var_decl, decl->scope,
+                                diags);
 
     for (isize_t i = 0; i < decl->nodes.len; ++i)
-        Sema_typecheck_node(decl->nodes.arr[i], diags);
+        Sema_typecheck_node(decl->nodes.arr[i], decl->scope, diags);
 }
 
 void Sema_typecheck_class(struct Parser_Class *self, struct DiagVec *diags)
 {
     for (isize_t i = 0; i < self->nodes.len; ++i)
-        Sema_typecheck_node(self->nodes.arr[i], diags);
+        Sema_typecheck_node(self->nodes.arr[i], self->scope, diags);
 }
 
-void Sema_typecheck_node(struct Parser_ASTNode *node, struct DiagVec *diags)
+void Sema_typecheck_node(struct Parser_ASTNode *node, struct Sema_Scope *scope,
+                         struct DiagVec *diags)
 {
     switch (node->type) {
     case PARSER_ASTNODETYPE_ROOT:
-        Sema_typecheck_root(node, diags);
+        Sema_typecheck_root(node, scope, diags);
         break;
 
     case PARSER_ASTNODETYPE_EXPR:
-        Sema_typecheck_expr(&node->expr, node, diags);
+        Sema_typecheck_expr(&node->expr, scope, diags);
         break;
 
     case PARSER_ASTNODETYPE_VAR_DECL:
-        Sema_typecheck_var_decl(&node->var_decl, node, diags);
+        Sema_typecheck_var_decl(&node->var_decl, scope, diags);
         break;
 
     case PARSER_ASTNODETYPE_FUNC_DECL:
-        Sema_typecheck_func_decl(&node->func_decl, node, diags);
+        Sema_typecheck_func_decl(&node->func_decl, diags);
         break;
 
     case PARSER_ASTNODETYPE_CLASS:
