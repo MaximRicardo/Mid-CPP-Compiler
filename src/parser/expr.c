@@ -8,6 +8,8 @@
 #include "parser/end_types.h"
 #include "parser/type.h"
 #include "print.h"
+#include "sema/scope.h"
+#include "sema/type.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -798,7 +800,8 @@ static struct Parser_Expr op_tok_to_expr_mode1(const struct Lexer_Token *tok,
 
 static void parse_func_call_args(struct Parser_Expr *f_call,
                                  const struct Lexer_Token *toks, isize_t lparen,
-                                 isize_t *out_rparen, struct DiagVec *diags)
+                                 isize_t *out_rparen, struct Sema_Scope *scope,
+                                 struct DiagVec *diags)
 {
     isize_t rparen = Parser_find_twin_paren(toks, lparen, ISIZE_MAX);
     if (rparen == -1) {
@@ -809,7 +812,8 @@ static void parse_func_call_args(struct Parser_Expr *f_call,
         *out_rparen = rparen;
 
     for (isize_t i = lparen + 1; i < rparen; ++i) {
-        auto arg = Parser_parse_expr(toks, i, PARSER_PARAM_ENDTYPES, &i, diags);
+        auto arg =
+            Parser_parse_expr(toks, i, PARSER_PARAM_ENDTYPES, &i, scope, diags);
         gen_dynpush(&f_call->info.args, arg);
 
         if (toks[i].type != LEXER_TOKENTYPE_R_PAREN &&
@@ -826,13 +830,14 @@ static void parse_func_call_args(struct Parser_Expr *f_call,
 //    idx    out_end_idx
 static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *toks,
                                          isize_t idx, isize_t *out_end_idx,
-                                         bool mode, struct DiagVec *diags)
+                                         bool mode, struct Sema_Scope *scope,
+                                         struct DiagVec *diags)
 {
     struct Parser_Expr ret = mode ? op_tok_to_expr_mode1(&toks[idx], diags)
                                   : op_tok_to_expr_mode0(&toks[idx], diags);
 
     if (ret.type == PARSER_EXPRTYPE_FUNC_CALL)
-        parse_func_call_args(&ret, toks, idx, out_end_idx, diags);
+        parse_func_call_args(&ret, toks, idx, out_end_idx, scope, diags);
     else if (out_end_idx)
         *out_end_idx = idx;
 
@@ -899,9 +904,10 @@ static void add_op_to_out(struct Parser_Expr *op, struct Parser_ExprVec *out,
 static void push_operator(const struct Lexer_Token *toks, isize_t idx,
                           isize_t *out_end_idx, struct Parser_ExprVec *out,
                           struct Parser_ExprVec *ops, bool mode,
-                          struct DiagVec *diags)
+                          struct Sema_Scope *scope, struct DiagVec *diags)
 {
-    struct Parser_Expr op = op_tok_to_expr(toks, idx, out_end_idx, mode, diags);
+    struct Parser_Expr op =
+        op_tok_to_expr(toks, idx, out_end_idx, mode, scope, diags);
 
     // remove any greater precedence operators
     struct Parser_Expr *top = &ops->arr[ops->len - 1];
@@ -925,6 +931,7 @@ static void push_operator(const struct Lexer_Token *toks, isize_t idx,
 // a sub expression is a part of an expression encased in parentheses
 static struct Parser_Expr parse_subexpr(const struct Lexer_Token *toks,
                                         isize_t l_paren, isize_t *out_end,
+                                        struct Sema_Scope *scope,
                                         struct DiagVec *diags)
 {
     if (Parser_find_twin_paren(toks, l_paren, ISIZE_MAX) == -1) {
@@ -938,7 +945,7 @@ static struct Parser_Expr parse_subexpr(const struct Lexer_Token *toks,
 
     return Parser_parse_expr(toks, l_paren + 1,
                              (enum Lexer_TokenType[]){LEXER_TOKENTYPE_R_PAREN},
-                             1, out_end, diags);
+                             1, out_end, scope, diags);
 }
 
 static bool is_end_type(enum Lexer_TokenType type,
@@ -955,6 +962,7 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                                      isize_t start,
                                      const enum Lexer_TokenType *end_types,
                                      isize_t n_end_types, isize_t *out_end,
+                                     struct Sema_Scope *scope,
                                      struct DiagVec *diags)
 {
     // uses the shunting yard algorithm
@@ -985,15 +993,15 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                 gen_dynpush(&out, ident_tok_to_expr(&toks[i]));
             mode = false;
         } else if (Lexer_is_op(toks[i].type)) {
-            push_operator(toks, i, &i, &out, &ops, mode, diags);
+            push_operator(toks, i, &i, &out, &ops, mode, scope, diags);
             mode = ops.arr[ops.len - 1].type != PARSER_EXPRTYPE_POSTFIX_DEC &&
                    ops.arr[ops.len - 1].type != PARSER_EXPRTYPE_POSTFIX_INC;
         } else if (toks[i].type == LEXER_TOKENTYPE_L_PAREN) {
             if (!mode)
                 // if mode is 0, a sub-expression is actually a function call
-                push_operator(toks, i, &i, &out, &ops, mode, diags);
+                push_operator(toks, i, &i, &out, &ops, mode, scope, diags);
             else
-                gen_dynpush(&out, parse_subexpr(toks, i, &i, diags));
+                gen_dynpush(&out, parse_subexpr(toks, i, &i, scope, diags));
             mode = false;
         }
     }
@@ -1018,6 +1026,7 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
 
     struct Parser_Expr ret = out.arr[0];
     gen_dyndeinit(&out);
+    Sema_typecheck_expr(&ret, scope, diags);
     return ret;
 }
 

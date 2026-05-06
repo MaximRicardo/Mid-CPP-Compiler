@@ -150,6 +150,7 @@ struct Parser_Expr {
     struct Parser_Type ret;
     enum Parser_ExprType type;
     enum Parser_ExprValueType valtype;
+    bool typechecked; // has this expr been typechecked yet
 };
 
 void Parser_Expr_deinit(struct Parser_Expr *expr);
@@ -158,6 +159,7 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                                      isize_t start,
                                      const enum Lexer_TokenType *end_types,
                                      isize_t n_end_types, isize_t *out_end,
+                                     struct Sema_Scope *scope,
                                      struct DiagVec *diags);
 // diags - can be NULL if you don't wanna log any errors
 isize_t Parser_skip_expr(const struct Lexer_Token *toks, isize_t start,

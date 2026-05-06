@@ -77,7 +77,7 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
             gen_bumpmalloc(&allocs->expr, &decl->init);
             isize_t end;
             *decl->init = Parser_parse_expr(toks, expr_start, end_types,
-                                            n_end_types, &end, diags);
+                                            n_end_types, &end, scope, diags);
             return end;
         }
     }

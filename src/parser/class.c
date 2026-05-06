@@ -126,7 +126,7 @@ static void parse_node_def(struct Parser_ASTNode *node,
             gen_bumpmalloc(&allocs->expr, &node->var_decl.init);
             *node->var_decl.init =
                 Parser_parse_expr(toks, node->var_decl.init_start - toks,
-                                  PARSER_DEFAULT_ENDTYPES, NULL, diags);
+                                  PARSER_DEFAULT_ENDTYPES, NULL, scope, diags);
         }
     } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         if (node->func_decl.def_start) {

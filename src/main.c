@@ -7,7 +7,6 @@
 #include "parser/ast.h"
 #include "parser/type.h"
 #include "sema/scope.h"
-#include "sema/type.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -132,6 +131,7 @@ int main(int argc, char **argv)
         goto parser_failed;
     }
 
+    /*
     struct DiagVec sema_diags = gen_dyninit();
     Sema_typecheck_root(&root, &scope, &sema_diags);
     if (print_diags(&sema_diags)) {
@@ -141,6 +141,7 @@ int main(int argc, char **argv)
 
 sema_failed:
     gen_dyndeinit(&sema_diags, Diag_deinit);
+    */
 parser_failed:
     // the root scope and root node need to be deallocated manually cuz they
     // weren't dynamically allocated

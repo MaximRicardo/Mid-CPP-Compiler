@@ -107,7 +107,7 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         printf("EXPR NODE\n");
         ret->type = PARSER_ASTNODETYPE_EXPR;
         ret->expr = Parser_parse_expr(toks, start, PARSER_DEFAULT_ENDTYPES,
-                                      &end, diags);
+                                      &end, scope, diags);
     }
 
     if (check_semi && toks[end].type != LEXER_TOKENTYPE_SEMICOLON)

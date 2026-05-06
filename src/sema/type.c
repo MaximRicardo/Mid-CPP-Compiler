@@ -671,6 +671,10 @@ static void typecheck_overloaded_op(struct Parser_Expr *expr,
 void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
                          struct DiagVec *diags)
 {
+    if (expr->typechecked)
+        return;
+    expr->typechecked = true;
+
     if (Parser_is_numlit(expr->type)) {
         typecheck_lit_expr(expr);
     } else if (expr->type == PARSER_EXPRTYPE_IDENTIFIER) {

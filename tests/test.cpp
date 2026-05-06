@@ -6,7 +6,7 @@ class Test {
     int y;
 
 protected:
-    int operator-(int a, int b);
+    int &operator-(int a, int b);
 
 public:
     int func(int arg)
