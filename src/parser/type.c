@@ -906,16 +906,30 @@ static void fptr_to_str(const struct Parser_Type *type, struct Dynstr *str)
     Dynstr_append_char(str, ')');
 }
 
+static void dquals_to_str(const struct Parser_TypeDataQual *dquals,
+                          struct Dynstr *str, bool leading_space,
+                          bool trailing_space)
+{
+    if (dquals->is_const) {
+        if (leading_space)
+            Dynstr_append_char(str, ' ');
+        Dynstr_append(str, "const");
+        if (trailing_space)
+            Dynstr_append_char(str, ' ');
+    }
+}
+
 static void regular_type_to_str(const struct Parser_Type *type,
                                 struct Dynstr *str)
 {
+    dquals_to_str(&type->dquals.arr[type->dquals.len - 1], str, false, true);
     Dynstr_append(str, Parser_typespec_to_str(type->spec));
-
     if (Parser_is_typespec_named(type->spec))
-        Dynstr_append_printf(str, " %s", type->named->name);
+        Dynstr_append_printf(str, "%s ", type->named->name);
 
-    for (isize_t i = 0; i < Parser_n_indir(type); ++i) {
+    for (isize_t i = Parser_n_indir(type); i > 0; --i) {
         Dynstr_append_char(str, '*');
+        dquals_to_str(&type->dquals.arr[i - 1], str, true, false);
     }
 
     if (type->lv_ref)

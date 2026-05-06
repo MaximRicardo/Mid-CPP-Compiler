@@ -21,7 +21,7 @@ int main()
 {
     Test x;
 
-    int *const *p = nullptr;
+    const int *const *p = nullptr;
     auto var = p;
     var * 67;
 }

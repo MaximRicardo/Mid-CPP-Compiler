@@ -75,7 +75,7 @@ static void resolve_auto(struct Parser_VarDecl *decl)
 
     // the top most CV qualifier is discarded
     for (isize_t i = 1; i <= Parser_n_indir(init_type); ++i) {
-        gen_dyninsert(&decl->type.dquals, 0, init_type->dquals.arr[i]);
+        gen_dynpush(&decl->type.dquals, init_type->dquals.arr[i]);
     }
 }
 
