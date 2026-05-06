@@ -5,12 +5,14 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "parser/allocator.h"
+#include "parser/ast.h"
 #include "parser/expr.h"
 #include "parser/type.h"
 #include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
@@ -37,6 +39,78 @@ static struct Diag redefined_ident_err(const struct Lexer_Token *tok,
                          .is_err = true};
 }
 
+static struct Sema_Ident *add_ident(const struct Parser_VarDecl *decl,
+                                    struct Parser_ASTNode *node,
+                                    struct Sema_Scope *scope)
+{
+
+    return Sema_add_ident(
+        scope, &(struct Sema_Ident){.name = decl->name,
+                                    .decl = node,
+                                    .def = NULL,
+                                    .type = decl->type.squals.is_typedef
+                                                ? SEMA_IDENTTYPE_TYPEDEF
+                                                : SEMA_IDENTTYPE_VAR});
+}
+
+static void resolve_auto(struct Parser_VarDecl *decl)
+{
+    assert(decl->init);
+    assert(decl->type.spec == PARSER_TYPESPEC_AUTO);
+    assert(Parser_n_indir(&decl->type) == 0); // "auto *" not supported yet
+
+    auto init_type = &decl->init->ret;
+
+    decl->type.spec = init_type->spec;
+    if (init_type->spec == PARSER_TYPESPEC_FPTR) {
+        decl->type.fptr = malloc(sizeof(*decl->type.fptr));
+        *decl->type.fptr = Parser_copy_fptr_type(init_type->fptr);
+    } else if (init_type->spec == PARSER_TYPESPEC_ARRAY) {
+        decl->type.array = malloc(sizeof(*decl->type.array));
+        *decl->type.array = Parser_copy_array_type(init_type->array);
+    } else if (Parser_is_typespec_named(init_type->spec)) {
+        decl->type.named = malloc(sizeof(*decl->type.named));
+        *decl->type.named = Parser_copy_named_type(init_type->named);
+    }
+
+    // the top most CV qualifier is discarded
+    for (isize_t i = 1; i <= Parser_n_indir(init_type); ++i) {
+        gen_dyninsert(&decl->type.dquals, 0, init_type->dquals.arr[i]);
+    }
+}
+
+isize_t Parser_parse_var_def(const struct Lexer_Token *toks, isize_t start,
+                             const enum Lexer_TokenType *end_types,
+                             isize_t n_end_types, struct Parser_VarDecl *decl,
+                             struct Sema_Scope *scope,
+                             struct Parser_Allocators *allocs,
+                             struct DiagVec *diags)
+{
+    gen_bumpmalloc(&allocs->expr, &decl->init);
+    isize_t end;
+    *decl->init = Parser_parse_expr(toks, start, end_types, n_end_types, &end,
+                                    scope, diags);
+
+    if (decl->type.spec == PARSER_TYPESPEC_AUTO)
+        resolve_auto(decl);
+
+    return end;
+}
+
+static struct Diag uninited_deduced_type_err(const char *name, const char *type,
+                                             const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str(
+            "declaration of '%s' as a deduced type '%s' needs an initializer",
+            name, type),
+        .err = ERRORTYPE_BAD_VAR_DECLARATION,
+        .is_err = true,
+    };
+}
+
 isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
                               const enum Lexer_TokenType *end_types,
                               isize_t n_end_types, struct Parser_VarDecl *decl,
@@ -53,14 +127,8 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
 
     if (!decl->name) {
         gen_dynpush(diags, expected_ident_err(&toks[start]));
-    } else if (add_to_scope &&
-               Sema_add_ident(scope, &(struct Sema_Ident){
-                                         .name = decl->name,
-                                         .decl = node,
-                                         .def = NULL,
-                                         .type = decl->type.squals.is_typedef
-                                                     ? SEMA_IDENTTYPE_TYPEDEF
-                                                     : SEMA_IDENTTYPE_VAR})) {
+        decl->name = "INVALID-NAME";
+    } else if (add_to_scope && add_ident(decl, node, scope)) {
         gen_dynpush(diags, redefined_ident_err(&toks[start], decl->name));
     }
 
@@ -73,13 +141,12 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
         if (skip_init) {
             return Parser_skip_expr(toks, expr_start, end_types, n_end_types,
                                     NULL);
-        } else {
-            gen_bumpmalloc(&allocs->expr, &decl->init);
-            isize_t end;
-            *decl->init = Parser_parse_expr(toks, expr_start, end_types,
-                                            n_end_types, &end, scope, diags);
-            return end;
         }
+        return Parser_parse_var_def(toks, expr_start, end_types, n_end_types,
+                                    decl, scope, allocs, diags);
+    } else if (decl->type.spec == PARSER_TYPESPEC_AUTO) {
+        gen_dynpush(
+            diags, uninited_deduced_type_err(decl->name, "auto", &toks[start]));
     }
 
     return type_end;

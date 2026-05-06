@@ -654,7 +654,7 @@ isize_t find_type_center(const struct Lexer_Token *toks, isize_t start)
     return i - 1;
 }
 
-static struct Parser_TypeFPtr copy_fptr(const struct Parser_TypeFPtr *fptr)
+struct Parser_TypeFPtr Parser_copy_fptr_type(const struct Parser_TypeFPtr *fptr)
 {
     struct Parser_TypeFPtr ret = {};
     ret.ret = Parser_copy_type(&fptr->ret);
@@ -665,11 +665,21 @@ static struct Parser_TypeFPtr copy_fptr(const struct Parser_TypeFPtr *fptr)
     return ret;
 }
 
-static struct Parser_TypeArray copy_array(const struct Parser_TypeArray *arr)
+struct Parser_TypeArray
+Parser_copy_array_type(const struct Parser_TypeArray *arr)
 {
     struct Parser_TypeArray ret = {};
     ret.elem = Parser_copy_type(&arr->elem);
     ret.len = arr->len;
+    return ret;
+}
+
+struct Parser_TypeNamed
+Parser_copy_named_type(const struct Parser_TypeNamed *named)
+{
+    struct Parser_TypeNamed ret = {};
+    ret.name = named->name;
+    ret.decl = named->decl;
     return ret;
 }
 
@@ -684,13 +694,13 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
     } else {
         if (base->spec == PARSER_TYPESPEC_FPTR) {
             type->fptr = malloc(sizeof(*type->fptr));
-            *type->fptr = copy_fptr(base->fptr);
+            *type->fptr = Parser_copy_fptr_type(base->fptr);
         } else if (base->spec == PARSER_TYPESPEC_ARRAY) {
             type->array = malloc(sizeof(*type->array));
-            *type->array = copy_array(base->array);
+            *type->array = Parser_copy_array_type(base->array);
         } else if (Parser_is_typespec_named(base->spec)) {
             type->named = malloc(sizeof(*type->named));
-            *type->named = *base->named;
+            *type->named = Parser_copy_named_type(base->named);
         }
 
         if (type->dquals.len > 0 && (base->lv_ref || base->rv_ref))
@@ -749,13 +759,13 @@ struct Parser_Type Parser_copy_type(const struct Parser_Type *type)
 
     if (type->spec == PARSER_TYPESPEC_FPTR) {
         ret.fptr = malloc(sizeof(*ret.fptr));
-        *ret.fptr = copy_fptr(type->fptr);
+        *ret.fptr = Parser_copy_fptr_type(type->fptr);
     } else if (type->spec == PARSER_TYPESPEC_ARRAY) {
         ret.array = malloc(sizeof(*ret.array));
-        *ret.array = copy_array(type->array);
+        *ret.array = Parser_copy_array_type(type->array);
     } else if (Parser_is_typespec_named(type->spec)) {
         ret.named = malloc(sizeof(*ret.named));
-        *ret.named = *type->named;
+        *ret.named = Parser_copy_named_type(type->named);
     }
 
     return ret;
@@ -857,6 +867,10 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
         ret.named = malloc(sizeof(*ret.named));
         ret.named->name = name;
         ret.named->decl = NULL;
+        break;
+
+    case LEXER_TOKENTYPE_AUTO:
+        ret.spec = PARSER_TYPESPEC_AUTO;
         break;
 
     default:

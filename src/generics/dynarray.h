@@ -173,6 +173,7 @@
         GEN_DYNARRAY_IDX_VALID(self_super_specific_name______,                 \
                                idx_super_specific_name______);                 \
         ++self_super_specific_name______->len;                                 \
+        GEN_DYNARRAY_ALLOC_SPACE(self_super_specific_name______);              \
         for (typeof(self_super_specific_name______->len) i =                   \
                  self_super_specific_name______->len - 1;                      \
              i > idx_super_specific_name______; --i) {                         \

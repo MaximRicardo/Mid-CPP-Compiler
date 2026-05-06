@@ -20,4 +20,8 @@ public:
 int main()
 {
     Test x;
+
+    int *const *p = nullptr;
+    auto var = p;
+    var * 67;
 }

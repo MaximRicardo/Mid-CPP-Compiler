@@ -360,6 +360,9 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
     else if (!strcmp(id, "enum"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_ENUM};
+    else if (!strcmp(id, "auto"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_AUTO};
 
     else if (!strcmp(id, "short"))
         return (struct Lexer_Token){

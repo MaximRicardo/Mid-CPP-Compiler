@@ -103,6 +103,12 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      struct DiagVec *diags);
 isize_t Parser_n_indir(const struct Parser_Type *type);
 struct Parser_Type Parser_copy_type(const struct Parser_Type *type);
+struct Parser_TypeFPtr
+Parser_copy_fptr_type(const struct Parser_TypeFPtr *fptr);
+struct Parser_TypeArray
+Parser_copy_array_type(const struct Parser_TypeArray *array);
+struct Parser_TypeNamed
+Parser_copy_named_type(const struct Parser_TypeNamed *named);
 struct Parser_Type Parser_ref_type(const struct Parser_Type *type,
                                    bool *out_failed);
 struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
