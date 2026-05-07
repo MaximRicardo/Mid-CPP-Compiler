@@ -11,6 +11,7 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
+#include "sema/lookup.h"
 #include "sema/scope.h"
 #include <assert.h>
 #include <stdio.h>
@@ -150,7 +151,7 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
                         .err = ERRORTYPE_UNDECLARED_IDENTIFIER,
                         .is_err = true,
                     }));
-        expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT, NULL);
+        expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT);
     } else {
         expr->ret = Parser_copy_type(type);
     }
@@ -162,8 +163,10 @@ static void set_func_call_node(struct Parser_Expr *expr,
     const struct Parser_Expr *name_expr = &expr->info.args.arr[0];
 
     if (name_expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
-        expr->node = Sema_find_ident(scope, name_expr->info.ident)->decl;
-        if (!expr->node || expr->node->type != PARSER_ASTNODETYPE_FUNC_DECL)
+        expr->node =
+            Sema_find_func_adl(name_expr->info.ident, &expr->info.args.arr[1],
+                               expr->info.args.len - 1, scope);
+        if (!expr->node)
             gen_dynpush(diags,
                         ((struct Diag){
                             .pos = name_expr->tok->pos,
@@ -173,6 +176,9 @@ static void set_func_call_node(struct Parser_Expr *expr,
                             .err = ERRORTYPE_BAD_IDENTIFIER,
                             .is_err = true,
                         }));
+        else
+            printf("calling func at %d:%d\n", expr->node->start->pos.line,
+                   expr->node->start->pos.column);
     } else
         CRASH("calling function ptrs not implemented");
 }
@@ -530,7 +536,7 @@ static void typecheck_logical_op_expr(struct Parser_Expr *expr,
                                       struct DiagVec *diags)
 {
     expr->valtype = PARSER_EXPRVALUE_PRVALUE;
-    expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_BOOL, NULL);
+    expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_BOOL);
 
     if (Parser_is_unaryop(expr->type))
         typecheck_logical_unary_op_expr(expr, diags);
@@ -542,7 +548,7 @@ static void typecheck_comp_op_expr(struct Parser_Expr *expr,
                                    struct DiagVec *diags)
 {
     expr->valtype = PARSER_EXPRVALUE_PRVALUE;
-    expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_BOOL, NULL);
+    expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_BOOL);
 
     auto lhs = &expr->info.args.arr[0];
     auto rhs = &expr->info.args.arr[1];
@@ -603,69 +609,23 @@ static void typecheck_op_expr(struct Parser_Expr *expr,
     }
 }
 
-static isize_t best_op_overload(const struct Parser_ASTNodePVec *overloads,
-                                struct Parser_Expr *expr)
-{
-    for (isize_t i = 0; i < overloads->len; ++i) {
-        const struct Parser_FuncDecl *func = &overloads->arr[i]->func_decl;
-        if (func->params.len != expr->info.args.len)
-            continue;
-
-        bool bad = false;
-        for (isize_t j = 0; j < func->params.len; ++j) {
-            auto param = &func->params.arr[j]->var_decl;
-            auto arg = &expr->info.args.arr[j];
-
-            isize_t param_indir = Parser_n_indir(&param->type);
-            isize_t arg_indir = Parser_n_indir(&arg->ret);
-
-            if (param->type.spec != arg->ret.spec || param_indir != arg_indir) {
-                bad = true;
-                break;
-            }
-
-            // rv references cannot take lvalues and non-const lv rereferences
-            // cannot take rvalues
-            if ((param->type.rv_ref && !Parser_is_rvalue(arg->valtype)) ||
-                (param->type.lv_ref && !param->type.dquals.arr[0].is_const &&
-                 Parser_is_rvalue(arg->valtype))) {
-                bad = true;
-                break;
-            }
-        }
-
-        if (!bad)
-            return i;
-    }
-
-    return -1;
-}
-
 static void typecheck_overloaded_op(struct Parser_Expr *expr,
-                                    struct Sema_Scope *scope,
-                                    const struct Parser_ASTNodePVec *overloads,
-                                    struct DiagVec *diags)
+                                    const struct Parser_ASTNode *overload)
 {
-    isize_t best = best_op_overload(overloads, expr);
-    if (best == -1)
-        typecheck_op_expr(expr, scope, diags);
-    else {
-        printf("found overload at %d:%d\n", expr->tok->pos.line,
-               expr->tok->pos.column);
-        const struct Parser_FuncDecl *func = &overloads->arr[best]->func_decl;
-        printf("overload decl at %d:%d\n",
-               overloads->arr[best]->start->pos.line,
-               overloads->arr[best]->start->pos.column);
+    printf("found overload at %d:%d\n", expr->tok->pos.line,
+           expr->tok->pos.column);
+    const struct Parser_FuncDecl *func = &overload->func_decl;
+    printf("overload decl at %d:%d\n", overload->start->pos.line,
+           overload->start->pos.column);
 
-        expr->ret = Parser_copy_type(&func->type);
+    expr->ret = Parser_copy_type(&func->type);
 
-        if (func->type.lv_ref)
-            expr->valtype = PARSER_EXPRVALUE_LVALUE;
-        else if (func->type.rv_ref)
-            expr->valtype = PARSER_EXPRVALUE_XVALUE;
-        else
-            expr->valtype = PARSER_EXPRVALUE_PRVALUE;
-    }
+    if (func->type.lv_ref)
+        expr->valtype = PARSER_EXPRVALUE_LVALUE;
+    else if (func->type.rv_ref)
+        expr->valtype = PARSER_EXPRVALUE_XVALUE;
+    else
+        expr->valtype = PARSER_EXPRVALUE_PRVALUE;
 }
 
 void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
@@ -684,12 +644,12 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
             Sema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
         }
 
-        auto overloads = Sema_op_overloads(scope, expr->type);
-        if (overloads.len == 0)
+        struct Parser_ASTNode *overload = Sema_find_op_overload(
+            expr->type, expr->info.args.arr, expr->info.args.len, scope);
+        if (!overload)
             typecheck_op_expr(expr, scope, diags);
         else
-            typecheck_overloaded_op(expr, scope, &overloads, diags);
-        gen_dyndeinit(&overloads);
+            typecheck_overloaded_op(expr, overload);
     }
 }
 
@@ -759,4 +719,43 @@ void Sema_typecheck_node(struct Parser_ASTNode *node, struct Sema_Scope *scope,
     default:
         CRASH("can't typecheck node");
     }
+}
+
+bool Sema_can_convert(const struct Parser_Type *src,
+                      enum Parser_ExprValueType src_valtype,
+                      const struct Parser_Type *dest)
+{
+    // rv references cannot take lvalues and non-const lv rereferences
+    // cannot take rvalues
+    if ((dest->rv_ref && !Parser_is_rvalue(src_valtype)) ||
+        (dest->lv_ref && !dest->dquals.arr[0].is_const &&
+         Parser_is_rvalue(src_valtype)))
+        return false;
+
+    if (Parser_is_fundamental_type(src) && Parser_is_fundamental_type(dest))
+        return true;
+    else if (Parser_n_indir(src) == Parser_n_indir(dest) &&
+             src->spec == dest->spec)
+        return true;
+
+    return false;
+}
+
+int Sema_conversion_rank(const struct Parser_Type *src,
+                         const struct Parser_Type *dest)
+{
+    bool same_indir = Parser_n_indir(src) == Parser_n_indir(dest);
+    bool no_indir = Parser_n_indir(src) == 0 && Parser_n_indir(dest) == 0;
+
+    bool src_int = Parser_is_integral_typespec(src->spec);
+    bool dest_int = Parser_is_integral_typespec(dest->spec);
+    bool src_flt = Parser_is_floating_typespec(src->spec);
+    bool dest_flt = Parser_is_floating_typespec(dest->spec);
+
+    if (same_indir && src->spec == dest->spec)
+        return 1;
+    else if (no_indir && ((src_int && dest_int) || (src_flt && dest_flt)))
+        return 2;
+    else
+        return 3;
 }

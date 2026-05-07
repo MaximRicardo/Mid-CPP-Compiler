@@ -25,3 +25,13 @@ void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
 void Sema_typecheck_class(struct Parser_Class *self, struct DiagVec *diags);
 void Sema_typecheck_node(struct Parser_ASTNode *node, struct Sema_Scope *scope,
                          struct DiagVec *diags);
+
+bool Sema_can_convert(const struct Parser_Type *src,
+                      enum Parser_ExprValueType src_valtype,
+                      const struct Parser_Type *dest);
+// a conversion sequence can have 1 of 3 ranks:
+// 1) exact match,
+// 2) promotion,
+// 3) conversion,
+int Sema_conversion_rank(const struct Parser_Type *src,
+                         const struct Parser_Type *dest);

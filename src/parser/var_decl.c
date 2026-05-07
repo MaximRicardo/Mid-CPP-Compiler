@@ -69,8 +69,7 @@ static void resolve_auto(struct Parser_VarDecl *decl)
         decl->type.array = malloc(sizeof(*decl->type.array));
         *decl->type.array = Parser_copy_array_type(init_type->array);
     } else if (Parser_is_typespec_named(init_type->spec)) {
-        decl->type.named = malloc(sizeof(*decl->type.named));
-        *decl->type.named = Parser_copy_named_type(init_type->named);
+        decl->type.ident = init_type->ident;
     }
 
     // the top most CV qualifier is discarded

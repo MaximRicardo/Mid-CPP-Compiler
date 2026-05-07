@@ -73,7 +73,7 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
                                .is_err = true,
                            }));
     else
-        self->super = super;
+        gen_dynpush(&self->supers, super);
 
     return ident + 1;
 }

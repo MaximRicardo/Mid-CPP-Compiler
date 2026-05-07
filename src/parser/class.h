@@ -20,7 +20,7 @@ struct Parser_Class {
     struct Parser_ASTNodePVec prot_childs; // protected
     const char *name;
     struct Sema_Scope *scope;
-    struct Parser_ASTNode *super;        // class this class inherits from
+    struct Parser_ASTNodePVec supers;    // classes this class inherits from
     const struct Lexer_Token *def_start; // the left curly '{'
     enum Parser_ClassType type;
     bool has_def;

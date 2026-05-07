@@ -151,8 +151,6 @@ void Parser_Type_deinit(struct Parser_Type *self)
     } else if (self->spec == PARSER_TYPESPEC_ARRAY) {
         Parser_Type_deinit(&self->array->elem);
         free(self->array);
-    } else if (Parser_is_typespec_named(self->spec)) {
-        free(self->named);
     }
 
     gen_dyndeinit(&self->dquals);
@@ -408,8 +406,7 @@ static void set_dqual_flag(struct Parser_TypeDataQual *qual,
 // static const int *const &x
 // ^^^^^^^^^^^^^^^^
 struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
-                                  isize_t *out_end,
-                                  const struct Sema_Scope *scope,
+                                  isize_t *out_end, struct Sema_Scope *scope,
                                   struct DiagVec *diags)
 {
     struct Parser_Type ret = {};
@@ -674,15 +671,6 @@ Parser_copy_array_type(const struct Parser_TypeArray *arr)
     return ret;
 }
 
-struct Parser_TypeNamed
-Parser_copy_named_type(const struct Parser_TypeNamed *named)
-{
-    struct Parser_TypeNamed ret = {};
-    ret.name = named->name;
-    ret.decl = named->decl;
-    return ret;
-}
-
 static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
                      const struct Lexer_Token *type_start,
                      struct DiagVec *diags)
@@ -699,8 +687,7 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
             type->array = malloc(sizeof(*type->array));
             *type->array = Parser_copy_array_type(base->array);
         } else if (Parser_is_typespec_named(base->spec)) {
-            type->named = malloc(sizeof(*type->named));
-            *type->named = Parser_copy_named_type(base->named);
+            type->ident = base->ident;
         }
 
         if (type->dquals.len > 0 && (base->lv_ref || base->rv_ref))
@@ -717,7 +704,7 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
 
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
-                                     const struct Sema_Scope *scope,
+                                     struct Sema_Scope *scope,
                                      const char **out_declname,
                                      struct DiagVec *diags)
 {
@@ -764,8 +751,7 @@ struct Parser_Type Parser_copy_type(const struct Parser_Type *type)
         ret.array = malloc(sizeof(*ret.array));
         *ret.array = Parser_copy_array_type(type->array);
     } else if (Parser_is_typespec_named(type->spec)) {
-        ret.named = malloc(sizeof(*ret.named));
-        *ret.named = Parser_copy_named_type(type->named);
+        ret.ident = type->ident;
     }
 
     return ret;
@@ -804,8 +790,7 @@ struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
     return ret;
 }
 
-struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
-                                          const char *name)
+struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type)
 {
     struct Parser_Type ret = {};
     gen_dynpush(&ret.dquals, (struct Parser_TypeDataQual){});
@@ -850,23 +835,14 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
     case LEXER_TOKENTYPE_STRUCT:
     case LEXER_TOKENTYPE_CLASS:
         ret.spec = PARSER_TYPESPEC_CLASS;
-        ret.named = malloc(sizeof(*ret.named));
-        ret.named->name = name;
-        ret.named->decl = NULL;
         break;
 
     case LEXER_TOKENTYPE_UNION:
         ret.spec = PARSER_TYPESPEC_UNION;
-        ret.named = malloc(sizeof(*ret.named));
-        ret.named->name = name;
-        ret.named->decl = NULL;
         break;
 
     case LEXER_TOKENTYPE_ENUM:
         ret.spec = PARSER_TYPESPEC_ENUM;
-        ret.named = malloc(sizeof(*ret.named));
-        ret.named->name = name;
-        ret.named->decl = NULL;
         break;
 
     case LEXER_TOKENTYPE_AUTO:
@@ -925,7 +901,7 @@ static void regular_type_to_str(const struct Parser_Type *type,
     dquals_to_str(&type->dquals.arr[type->dquals.len - 1], str, false, true);
     Dynstr_append(str, Parser_typespec_to_str(type->spec));
     if (Parser_is_typespec_named(type->spec))
-        Dynstr_append_printf(str, "%s ", type->named->name);
+        Dynstr_append_printf(str, "%s ", type->ident->name);
 
     for (isize_t i = Parser_n_indir(type); i > 0; --i) {
         Dynstr_append_char(str, '*');
@@ -1201,4 +1177,11 @@ enum Parser_TypeSpec Parser_integral_prom(enum Parser_TypeSpec spec)
     } else {
         return spec;
     }
+}
+
+bool Parser_is_fundamental_type(const struct Parser_Type *type)
+{
+    return Parser_n_indir(type) == 0 &&
+           (Parser_is_integral_typespec(type->spec) ||
+            Parser_is_floating_typespec(type->spec));
 }

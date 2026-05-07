@@ -31,7 +31,7 @@ struct Sema_Ident *Sema_find_ident(struct Sema_Scope *scope, const char *name);
 
 bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name);
 // type of a type-name.
-struct Parser_Type Sema_type_name_type(const struct Sema_Scope *scope,
+struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
                                        const char *name);
 // type of a declared identifier
 const struct Parser_Type *Sema_name_type_const(const struct Sema_Scope *scope,
@@ -39,7 +39,7 @@ const struct Parser_Type *Sema_name_type_const(const struct Sema_Scope *scope,
 struct Parser_Type *Sema_name_type(struct Sema_Scope *scope, const char *name);
 bool Sema_tok_is_type(const struct Sema_Scope *scope,
                       const struct Lexer_Token *tok);
-struct Parser_Type Sema_tok_type(const struct Sema_Scope *scope,
+struct Parser_Type Sema_tok_type(struct Sema_Scope *scope,
                                  const struct Lexer_Token *tok);
 
 // if the scope already has an identifier of the same name, nothing is added and

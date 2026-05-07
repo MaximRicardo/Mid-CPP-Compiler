@@ -17,6 +17,7 @@ struct Parser_FuncDecl {
     enum Parser_ExprType op_overload;    // the operator that got overloaded
     bool is_op_overload;
     bool has_def; // does this node hold the definition of the func?
+    bool has_ellipsis;
 };
 
 void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self);

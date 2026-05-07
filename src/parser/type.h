@@ -63,7 +63,7 @@ struct Parser_Type {
     union {
         struct Parser_TypeFPtr *fptr;
         struct Parser_TypeArray *array;
-        struct Parser_TypeNamed *named; // used by classes, structs, enums, etc.
+        struct Sema_Ident *ident; // used by classes, structs, enums, etc.
     };
     struct Parser_TypeDataQualVec dquals; // one element for each level of
                                           // indirection, including 0.
@@ -85,20 +85,14 @@ struct Parser_TypeArray {
     isize_t len;
 };
 
-struct Parser_TypeNamed {
-    const char *name;
-    const struct Parser_ASTNode *decl;
-};
-
 struct Parser_ASTNode;
 
 void Parser_Type_deinit(struct Parser_Type *self);
 // if the type is named then a name must be provided
-struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type,
-                                          const char *name);
+struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type);
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
-                                     const struct Sema_Scope *scope,
+                                     struct Sema_Scope *scope,
                                      const char **out_declname,
                                      struct DiagVec *diags);
 isize_t Parser_n_indir(const struct Parser_Type *type);
@@ -107,8 +101,6 @@ struct Parser_TypeFPtr
 Parser_copy_fptr_type(const struct Parser_TypeFPtr *fptr);
 struct Parser_TypeArray
 Parser_copy_array_type(const struct Parser_TypeArray *array);
-struct Parser_TypeNamed
-Parser_copy_named_type(const struct Parser_TypeNamed *named);
 struct Parser_Type Parser_ref_type(const struct Parser_Type *type,
                                    bool *out_failed);
 struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
@@ -124,3 +116,4 @@ i32 Parser_typespec_conv_rank(enum Parser_TypeSpec spec);
 u64 Parser_integral_max(enum Parser_TypeSpec spec);
 i64 Parser_integral_min(enum Parser_TypeSpec spec);
 enum Parser_TypeSpec Parser_integral_prom(enum Parser_TypeSpec spec);
+bool Parser_is_fundamental_type(const struct Parser_Type *type);

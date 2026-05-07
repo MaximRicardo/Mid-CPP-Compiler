@@ -319,7 +319,7 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
 
 static void parse_func_type(struct Parser_FuncDecl *decl,
                             const struct Lexer_Token *toks, isize_t start,
-                            isize_t *out_end, const struct Sema_Scope *scope,
+                            isize_t *out_end, struct Sema_Scope *scope,
                             struct DiagVec *diags)
 {
     isize_t type_end;
@@ -380,9 +380,9 @@ static void disambig_operator_overload(struct Parser_FuncDecl *decl)
 static void add_func_to_scope(struct Sema_Scope *scope, const char *name,
                               struct Parser_ASTNode *node)
 {
-    Sema_add_ident(scope, &(struct Sema_Ident){.name = name,
-                                               .decl = node,
-                                               .type = SEMA_IDENTTYPE_FUNC});
+    gen_dynpush(&scope->idents,
+                ((struct Sema_Ident){
+                    .name = name, .decl = node, .type = SEMA_IDENTTYPE_FUNC}));
 }
 
 isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,

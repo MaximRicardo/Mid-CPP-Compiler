@@ -5,9 +5,6 @@ class Test {
     int x = y;
     int y;
 
-protected:
-    int &operator-(int a, int b);
-
 public:
     int func(int arg)
     {
@@ -17,11 +14,18 @@ public:
     float z;
 };
 
+Test operator*(const Test &a, int scale);
+
+void func(int x);
+void func(int x, int y);
+void func(int x, float y);
+
 int main()
 {
     Test x;
+    x * 10;
 
-    const int *const *p = nullptr;
-    auto var = p;
-    var * 67;
+    func(10);
+    func(10, 20.f);
+    func(10, 20);
 }

@@ -55,24 +55,28 @@ bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name)
     return NULL;
 }
 
-struct Parser_Type Sema_type_name_type(const struct Sema_Scope *scope,
+struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
                                        const char *name)
 {
-    auto ident = Sema_find_ident_const(scope, name);
+    auto ident = Sema_find_ident(scope, name);
     if (!ident->decl)
         CRASH("identifier doesn't exist");
 
     switch (ident->type) {
-    case SEMA_IDENTTYPE_CLASS:
-        return Parser_toktype_to_type(ident->decl->class_.type ==
-                                              PARSER_CLASSTYPE_UNION
-                                          ? LEXER_TOKENTYPE_UNION
-                                          : LEXER_TOKENTYPE_CLASS,
-                                      ident->decl->class_.name);
+    case SEMA_IDENTTYPE_CLASS: {
+        auto type = Parser_toktype_to_type(ident->decl->class_.type ==
+                                                   PARSER_CLASSTYPE_UNION
+                                               ? LEXER_TOKENTYPE_UNION
+                                               : LEXER_TOKENTYPE_CLASS);
+        type.ident = ident;
+        return type;
+    }
 
-    case SEMA_IDENTTYPE_ENUM:
-        return Parser_toktype_to_type(LEXER_TOKENTYPE_ENUM,
-                                      ident->decl->enum_.name);
+    case SEMA_IDENTTYPE_ENUM: {
+        auto type = Parser_toktype_to_type(LEXER_TOKENTYPE_ENUM);
+        type.ident = ident;
+        return type;
+    }
 
     case SEMA_IDENTTYPE_TYPEDEF:
         return Parser_copy_type(&ident->decl->var_decl.type);
@@ -113,13 +117,13 @@ bool Sema_tok_is_type(const struct Sema_Scope *scope,
         return false;
 }
 
-struct Parser_Type Sema_tok_type(const struct Sema_Scope *scope,
+struct Parser_Type Sema_tok_type(struct Sema_Scope *scope,
                                  const struct Lexer_Token *tok)
 {
     if (tok->type == LEXER_TOKENTYPE_IDENTIFIER)
         return Sema_type_name_type(scope, tok->ident);
     else
-        return Parser_toktype_to_type(tok->type, NULL);
+        return Parser_toktype_to_type(tok->type);
 }
 
 // only checks the scope itself and not its parents
