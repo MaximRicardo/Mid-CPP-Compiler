@@ -345,7 +345,9 @@ static void disambig_operator_overload(struct Parser_FuncDecl *decl)
 {
     assert(decl->is_op_overload);
 
-    if (decl->params.len == 1) {
+    bool implicit_this = decl->scope->parent->type == SEMA_SCOPETYPE_CLASS;
+    isize_t n_params = decl->params.len + implicit_this;
+    if (n_params == 1) {
         switch (decl->op_overload) {
         case PARSER_EXPRTYPE_ADD:
             decl->op_overload = PARSER_EXPRTYPE_UNARY_PLUS;

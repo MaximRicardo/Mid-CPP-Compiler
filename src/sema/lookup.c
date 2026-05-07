@@ -12,6 +12,7 @@
 #include "sema/scope.h"
 #include "sort.h"
 #include "type.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -123,7 +124,7 @@ static void find_op_overloads_in_scope(enum Parser_ExprType op,
 
 struct Parser_ASTNode *Sema_find_func_adl(const char *name,
                                           const struct Parser_Expr *args,
-                                          isize_t n_args,
+                                          isize_t n_args, bool this_passed,
                                           struct Sema_Scope *scope)
 {
     struct Sema_ScopePVec scopes = {};
@@ -136,7 +137,7 @@ struct Parser_ASTNode *Sema_find_func_adl(const char *name,
 
     struct Parser_ASTNode *ret = NULL;
     if (funcs.len > 0)
-        ret = Sema_best_viable_func(args, n_args, &funcs);
+        ret = Sema_best_viable_func(args, n_args, &funcs, this_passed);
 
     gen_dyndeinit(&funcs);
     gen_dyndeinit(&scopes);
@@ -159,7 +160,7 @@ struct Parser_ASTNode *Sema_find_op_overload(enum Parser_ExprType op,
 
     struct Parser_ASTNode *ret = NULL;
     if (funcs.len > 0)
-        ret = Sema_best_viable_func(args, n_args, &funcs);
+        ret = Sema_best_viable_func(args, n_args, &funcs, true);
 
     gen_dyndeinit(&funcs);
     gen_dyndeinit(&scopes);
@@ -171,27 +172,46 @@ static bool param_has_default(const struct Parser_FuncDecl *func, isize_t param)
     return func->params.arr[param]->var_decl.init != NULL;
 }
 
-static bool func_params_viable(isize_t n_args,
-                               const struct Parser_FuncDecl *func)
+static bool func_is_method(const struct Parser_FuncDecl *func)
 {
-    if (func->params.len == n_args)
+    return func->scope->parent->type == SEMA_SCOPETYPE_CLASS;
+}
+
+// non-static methods take an implicit this parameter
+static bool func_takes_this(const struct Parser_FuncDecl *func)
+{
+    return func_is_method(func) && !func->type.squals.is_static;
+}
+
+static bool func_params_viable(isize_t n_args,
+                               const struct Parser_FuncDecl *func,
+                               bool this_passed)
+{
+    isize_t n_params = this_passed && func_takes_this(func)
+                           ? func->params.len + 1
+                           : func->params.len;
+
+    if (n_params == n_args)
         return true;
-    else if (func->has_ellipsis && func->params.len < n_args)
+    else if (func->has_ellipsis && n_params < n_args)
         return true;
-    else if (func->params.len > n_args && param_has_default(func, n_args))
+    else if (n_params > n_args && param_has_default(func, n_args))
         return true;
     return false;
 }
 
 bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
-                         const struct Parser_FuncDecl *func)
+                         const struct Parser_FuncDecl *func, bool this_passed)
 {
-    if (!func_params_viable(n_args, func))
+    if (!func_params_viable(n_args, func, this_passed))
         return false;
 
     isize_t n = MIN(n_args, func->params.len);
     for (isize_t i = 0; i < n; ++i) {
-        if (!Sema_can_convert(&args[i].ret, args[i].valtype,
+        // if this is passed and the function implicitly takes this we can skip
+        // the first arg
+        isize_t j = this_passed && func_takes_this(func) ? i + 1 : i;
+        if (!Sema_can_convert(&args[j].ret, args[j].valtype,
                               &func->params.arr[i]->var_decl.type))
             return false;
     }
@@ -201,13 +221,13 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
 
 struct Parser_ASTNodePVec
 Sema_viable_funcs(const struct Parser_Expr *args, isize_t n_args,
-                  const struct Parser_ASTNodePVec *funcs)
+                  const struct Parser_ASTNodePVec *funcs, bool this_passed)
 {
     struct Parser_ASTNodePVec ret = {};
 
     for (isize_t i = 0; i < funcs->len; ++i) {
         auto func = funcs->arr[i];
-        if (Sema_is_func_viable(args, n_args, &func->func_decl))
+        if (Sema_is_func_viable(args, n_args, &func->func_decl, this_passed))
             gen_dynpush(&ret, func);
     }
 
@@ -251,9 +271,9 @@ static int compare_viable_funcs(const void *a_raw, const void *b_raw,
 
 struct Parser_ASTNode *
 Sema_best_viable_func(const struct Parser_Expr *args, isize_t n_args,
-                      const struct Parser_ASTNodePVec *funcs)
+                      const struct Parser_ASTNodePVec *funcs, bool this_passed)
 {
-    auto viable = Sema_viable_funcs(args, n_args, funcs);
+    auto viable = Sema_viable_funcs(args, n_args, funcs, this_passed);
 
     better_qsort(viable.arr, viable.len, sizeof(*viable.arr),
                  compare_viable_funcs,

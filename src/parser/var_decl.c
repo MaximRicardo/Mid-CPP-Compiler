@@ -20,6 +20,7 @@ void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
     Parser_Type_deinit(&self->type);
 }
 
+/*
 static struct Diag expected_ident_err(const struct Lexer_Token *tok)
 {
     return (struct Diag){.pos = tok->pos,
@@ -28,6 +29,7 @@ static struct Diag expected_ident_err(const struct Lexer_Token *tok)
                          .err = ERRORTYPE_MISSING_IDENTIFIER,
                          .is_err = true};
 }
+*/
 
 static struct Diag redefined_ident_err(const struct Lexer_Token *tok,
                                        const char *name)
@@ -124,12 +126,8 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
     decl->type =
         Parser_parse_type(toks, start, &type_end, scope, &decl->name, diags);
 
-    if (!decl->name) {
-        gen_dynpush(diags, expected_ident_err(&toks[start]));
-        decl->name = "INVALID-NAME";
-    } else if (add_to_scope && add_ident(decl, node, scope)) {
+    if (decl->name && add_to_scope && add_ident(decl, node, scope))
         gen_dynpush(diags, redefined_ident_err(&toks[start], decl->name));
-    }
 
     isize_t assign_idx = type_end;
     bool has_init = toks[assign_idx].type == LEXER_TOKENTYPE_ASSIGN;

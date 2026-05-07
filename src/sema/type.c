@@ -165,7 +165,7 @@ static void set_func_call_node(struct Parser_Expr *expr,
     if (name_expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
         expr->node =
             Sema_find_func_adl(name_expr->info.ident, &expr->info.args.arr[1],
-                               expr->info.args.len - 1, scope);
+                               expr->info.args.len - 1, false, scope);
         if (!expr->node)
             gen_dynpush(diags,
                         ((struct Diag){

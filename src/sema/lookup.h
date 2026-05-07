@@ -7,17 +7,17 @@
 #include "sema/scope.h"
 
 bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
-                         const struct Parser_FuncDecl *func);
+                         const struct Parser_FuncDecl *func, bool this_passed);
 struct Parser_ASTNodePVec
 Sema_viable_funcs(const struct Parser_Expr *args, isize_t n_args,
-                  const struct Parser_ASTNodePVec *funcs);
+                  const struct Parser_ASTNodePVec *funcs, bool this_passed);
 struct Parser_ASTNode *
 Sema_best_viable_func(const struct Parser_Expr *args, isize_t n_args,
-                      const struct Parser_ASTNodePVec *funcs);
+                      const struct Parser_ASTNodePVec *funcs, bool this_passed);
 // accounts for argument dependent lookup
 struct Parser_ASTNode *Sema_find_func_adl(const char *name,
                                           const struct Parser_Expr *args,
-                                          isize_t n_args,
+                                          isize_t n_args, bool this_passed,
                                           struct Sema_Scope *scope);
 struct Parser_ASTNode *Sema_find_op_overload(enum Parser_ExprType op,
                                              const struct Parser_Expr *args,
