@@ -612,10 +612,10 @@ static void typecheck_op_expr(struct Parser_Expr *expr,
 static void typecheck_overloaded_op(struct Parser_Expr *expr,
                                     const struct Parser_ASTNode *overload)
 {
-    printf("found overload at %d:%d\n", expr->tok->pos.line,
+    printf("found op overload at %d:%d\n", expr->tok->pos.line,
            expr->tok->pos.column);
     const struct Parser_FuncDecl *func = &overload->func_decl;
-    printf("overload decl at %d:%d\n", overload->start->pos.line,
+    printf("op overload decl at %d:%d\n", overload->start->pos.line,
            overload->start->pos.column);
 
     expr->ret = Parser_copy_type(&func->type);

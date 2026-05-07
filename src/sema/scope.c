@@ -163,39 +163,3 @@ i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,
     ident->def = def;
     return 0;
 }
-
-static bool func_is_op_overload(const struct Parser_FuncDecl *decl,
-                                enum Parser_ExprType op)
-{
-    return decl->is_op_overload && decl->op_overload == op &&
-           !strcmp(decl->name, "operator");
-}
-
-static void find_op_overloads_impl(enum Parser_ExprType op,
-                                   struct Sema_Scope *scope,
-                                   struct Parser_ASTNodePVec *result)
-{
-    if (scope->type == SEMA_SCOPETYPE_FUNC)
-        if (func_is_op_overload(&scope->node->func_decl, op))
-            gen_dynpush(result, scope->node);
-
-    for (isize_t i = 0; i < scope->idents.len; ++i) {
-        auto ident = &scope->idents.arr[i];
-        if (ident->type != SEMA_IDENTTYPE_FUNC)
-            continue;
-
-        if (func_is_op_overload(&ident->decl->func_decl, op))
-            gen_dynpush(result, ident->decl);
-    }
-
-    if (scope->parent)
-        find_op_overloads_impl(op, scope->parent, result);
-}
-
-struct Parser_ASTNodePVec Sema_op_overloads(struct Sema_Scope *scope,
-                                            enum Parser_ExprType op)
-{
-    struct Parser_ASTNodePVec ret = {};
-    find_op_overloads_impl(op, scope, &ret);
-    return ret;
-}

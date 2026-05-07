@@ -505,9 +505,9 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
     return ret;
 }
 
-struct Parser_Type
+static struct Parser_Type
 parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
-                     isize_t *out_end, const struct Sema_Scope *scope,
+                     isize_t *out_end, struct Sema_Scope *scope,
                      const struct Parser_TypeStorQual *squals,
                      struct DiagVec *diags);
 
@@ -517,8 +517,8 @@ parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
 //    lparen    rparen      return
 static isize_t parse_fptr(struct Parser_Type *type,
                           const struct Lexer_Token *toks, isize_t lparen,
-                          isize_t rparen, isize_t min,
-                          const struct Sema_Scope *scope, struct DiagVec *diags)
+                          isize_t rparen, isize_t min, struct Sema_Scope *scope,
+                          struct DiagVec *diags)
 {
     isize_t p_lparen = rparen + 1;
     isize_t p_rparen = Parser_find_twin_paren(toks, p_lparen, ISIZE_MAX);
@@ -554,8 +554,7 @@ static isize_t parse_fptr(struct Parser_Type *type,
 static isize_t parse_array(struct Parser_Type *type,
                            const struct Lexer_Token *toks, isize_t lparen,
                            isize_t rparen, isize_t min,
-                           const struct Sema_Scope *scope,
-                           struct DiagVec *diags)
+                           struct Sema_Scope *scope, struct DiagVec *diags)
 {
     // TODO: implement this
     assert(false);
@@ -568,9 +567,9 @@ static isize_t parse_array(struct Parser_Type *type,
     (void)diags;
 }
 
-struct Parser_Type
+static struct Parser_Type
 parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
-                     isize_t *out_end, const struct Sema_Scope *scope,
+                     isize_t *out_end, struct Sema_Scope *scope,
                      const struct Parser_TypeStorQual *squals,
                      struct DiagVec *diags)
 {

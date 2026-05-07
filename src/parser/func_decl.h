@@ -4,6 +4,7 @@
 #include "lexer/token.h"
 #include "parser/allocator.h"
 #include "parser/astvec.h"
+#include "parser/expr.h"
 #include "parser/type.h"
 #include "sema/scope.h"
 

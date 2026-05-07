@@ -2,7 +2,6 @@
 
 #include "ident.h"
 #include "lexer/token.h"
-#include "parser/expr.h"
 
 struct Parser_ASTNode;
 
@@ -49,6 +48,3 @@ struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
 // returns 0 on success, returns 1 if the identifier already has a declaration
 i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,
                        struct Parser_ASTNode *def);
-
-struct Parser_ASTNodePVec Sema_op_overloads(struct Sema_Scope *scope,
-                                            enum Parser_ExprType op);
