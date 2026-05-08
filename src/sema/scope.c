@@ -22,7 +22,7 @@ static void scope_ptr_deinit(struct Sema_Scope **ptr)
 void Sema_Scope_deinit(struct Sema_Scope *self)
 {
     gen_dyndeinit(&self->childs);
-    gen_dyndeinit(&self->idents);
+    gen_dyndeinit(&self->idents, Sema_Ident_deinit);
 }
 
 const struct Sema_Ident *Sema_find_ident_const(const struct Sema_Scope *scope,

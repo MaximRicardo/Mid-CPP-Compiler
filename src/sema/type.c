@@ -673,11 +673,13 @@ void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
                               struct DiagVec *diags)
 {
     for (isize_t i = 0; i < decl->params.len; ++i)
-        Sema_typecheck_var_decl(&decl->params.arr[i]->var_decl, decl->scope,
-                                diags);
+        Sema_typecheck_var_decl(&decl->params.arr[i]->var_decl,
+                                decl->param_scope, diags);
 
     for (isize_t i = 0; i < decl->nodes.len; ++i)
-        Sema_typecheck_node(decl->nodes.arr[i], decl->scope, diags);
+        Sema_typecheck_node(decl->nodes.arr[i],
+                            Parser_func_ident(decl)->func_info.def_scope,
+                            diags);
 }
 
 void Sema_typecheck_class(struct Parser_Class *self, struct DiagVec *diags)

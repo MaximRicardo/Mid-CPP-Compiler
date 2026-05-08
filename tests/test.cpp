@@ -13,6 +13,10 @@ void func(int x);
 void func(int x, int y);
 void func(int x, float y);
 
+void f(int x, int y, int z);
+void f(int x, int y = 2, int z);
+void f(int x = 3, int y = 2, int z);
+
 int main()
 {
     Vec3 x;

@@ -174,7 +174,7 @@ static bool param_has_default(const struct Parser_FuncDecl *func, isize_t param)
 
 static bool func_is_method(const struct Parser_FuncDecl *func)
 {
-    return func->scope->parent->type == SEMA_SCOPETYPE_CLASS;
+    return Parser_func_parent(func)->type == SEMA_SCOPETYPE_CLASS;
 }
 
 // non-static methods take an implicit this parameter

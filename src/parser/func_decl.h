@@ -6,22 +6,25 @@
 #include "parser/astvec.h"
 #include "parser/expr.h"
 #include "parser/type.h"
-#include "sema/scope.h"
 
 struct Parser_FuncDecl {
     struct Parser_Type type;
     struct Parser_ASTNodePVec params;
     struct Parser_ASTNodePVec nodes;
     const char *name;
-    struct Sema_Scope *scope;
+    struct Sema_Scope *param_scope;
     const struct Lexer_Token *def_start; // points to the left curly '{'
-    enum Parser_ExprType op_overload;    // the operator that got overloaded
+    i32 ident_idx; // index of the identifier holding the function overload
+                   // in the parent scope. -1 if there is no identifier
+    enum Parser_ExprType op_overload; // the operator that got overloaded
     bool is_op_overload;
     bool has_def; // does this node hold the definition of the func?
     bool has_ellipsis;
 };
 
 void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self);
+struct Sema_Scope *Parser_func_parent(const struct Parser_FuncDecl *func);
+struct Sema_Ident *Parser_func_ident(const struct Parser_FuncDecl *func);
 struct Parser_ASTNodePVec Parser_parse_func_params(
     const struct Lexer_Token *toks, isize_t lparen, isize_t *out_rparen,
     struct Parser_ASTNode *parent, struct Sema_Scope *scope, bool add_to_scope,
