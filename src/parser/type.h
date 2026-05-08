@@ -54,8 +54,10 @@ struct Parser_TypeStorQual {
     bool is_typedef;
 };
 
+// also called a CV-qualifier
 struct Parser_TypeDataQual {
     bool is_const;
+    bool is_volatile;
 };
 gen_dynarray_struct_named(Parser_TypeDataQualVec, struct Parser_TypeDataQual);
 
@@ -78,11 +80,12 @@ gen_dynarray_struct_named(Parser_TypeVec, struct Parser_Type);
 struct Parser_TypeFPtr {
     struct Parser_TypeVec params;
     struct Parser_Type ret;
+    bool has_ellipsis;
 };
 
 struct Parser_TypeArray {
     struct Parser_Type elem;
-    isize_t len;
+    u64 len;
 };
 
 struct Parser_ASTNode;
@@ -117,3 +120,5 @@ u64 Parser_integral_max(enum Parser_TypeSpec spec);
 i64 Parser_integral_min(enum Parser_TypeSpec spec);
 enum Parser_TypeSpec Parser_integral_prom(enum Parser_TypeSpec spec);
 bool Parser_is_fundamental_type(const struct Parser_Type *type);
+bool Parser_are_types_same(const struct Parser_Type *a,
+                           const struct Parser_Type *b);

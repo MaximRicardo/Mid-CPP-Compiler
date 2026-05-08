@@ -382,9 +382,9 @@ static void disambig_operator_overload(struct Parser_FuncDecl *decl)
 static void add_func_to_scope(struct Sema_Scope *scope, const char *name,
                               struct Parser_ASTNode *node)
 {
-    gen_dynpush(&scope->idents,
-                ((struct Sema_Ident){
-                    .name = name, .decl = node, .type = SEMA_IDENTTYPE_FUNC}));
+    Sema_add_ident(scope, &(struct Sema_Ident){.name = name,
+                                               .decl = node,
+                                               .type = SEMA_IDENTTYPE_FUNC});
 }
 
 isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,

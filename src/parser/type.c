@@ -652,7 +652,7 @@ isize_t find_type_center(const struct Lexer_Token *toks, isize_t start)
 
 struct Parser_TypeFPtr Parser_copy_fptr_type(const struct Parser_TypeFPtr *fptr)
 {
-    struct Parser_TypeFPtr ret = {};
+    struct Parser_TypeFPtr ret = {.has_ellipsis = fptr->has_ellipsis};
     ret.ret = Parser_copy_type(&fptr->ret);
 
     for (isize_t i = 0; i < fptr->params.len; ++i)
@@ -1183,4 +1183,75 @@ bool Parser_is_fundamental_type(const struct Parser_Type *type)
     return Parser_n_indir(type) == 0 &&
            (Parser_is_integral_typespec(type->spec) ||
             Parser_is_floating_typespec(type->spec));
+}
+
+static bool are_fptrs_same(const struct Parser_TypeFPtr *a,
+                           const struct Parser_TypeFPtr *b)
+{
+    if (a->params.len != b->params.len)
+        return false;
+    else if (a->has_ellipsis != b->has_ellipsis)
+        return false;
+    else if (!Parser_are_types_same(&a->ret, &b->ret))
+        return false;
+
+    for (isize_t i = 0; i < a->params.len; ++i) {
+        if (!Parser_are_types_same(&a->params.arr[i], &b->params.arr[i]))
+            return false;
+    }
+
+    return true;
+}
+
+static bool are_arrays_same(const struct Parser_TypeArray *a,
+                            const struct Parser_TypeArray *b)
+{
+    if (a->len != b->len)
+        return false;
+
+    return Parser_are_types_same(&a->elem, &b->elem);
+}
+
+static bool are_dquals_same(const struct Parser_Type *a,
+                            const struct Parser_Type *b)
+{
+    if (a->dquals.len != b->dquals.len)
+        return false;
+
+    for (isize_t i = 0; i < a->dquals.len; ++i) {
+        auto aq = &a->dquals.arr[i];
+        auto bq = &b->dquals.arr[i];
+
+        if (aq->is_const != bq->is_const || aq->is_volatile != bq->is_volatile)
+            return false;
+    }
+
+    return true;
+}
+
+static bool are_squals_same(const struct Parser_TypeStorQual *a,
+                            const struct Parser_TypeStorQual *b)
+{
+    return memcmp(a, b, sizeof(*a)) == 0;
+}
+
+bool Parser_are_types_same(const struct Parser_Type *a,
+                           const struct Parser_Type *b)
+{
+    if (a->spec != b->spec)
+        return false;
+    else if (a->lv_ref != b->lv_ref || a->rv_ref != b->rv_ref)
+        return false;
+    else if (!are_squals_same(&a->squals, &b->squals))
+        return false;
+    else if (!are_dquals_same(a, b))
+        return false;
+    else if (a->spec == PARSER_TYPESPEC_FPTR)
+        return are_fptrs_same(a->fptr, b->fptr);
+    else if (a->spec == PARSER_TYPESPEC_ARRAY)
+        return are_arrays_same(a->array, b->array);
+    else if (Parser_is_typespec_named(a->spec))
+        return a->ident == b->ident;
+    else
+        return true;
 }

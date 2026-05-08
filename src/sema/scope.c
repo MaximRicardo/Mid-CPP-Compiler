@@ -126,14 +126,52 @@ struct Parser_Type Sema_tok_type(struct Sema_Scope *scope,
         return Parser_toktype_to_type(tok->type);
 }
 
+static bool are_params_same(const struct Parser_FuncDecl *a,
+                            const struct Parser_FuncDecl *b)
+{
+    if (a->params.len != b->params.len || a->has_ellipsis != b->has_ellipsis)
+        return false;
+
+    for (isize_t i = 0; i < a->params.len; ++i) {
+        if (!Parser_are_types_same(&a->params.arr[i]->var_decl.type,
+                                   &b->params.arr[i]->var_decl.type))
+            return false;
+    }
+
+    return true;
+}
+
+static bool are_func_decls_same(const struct Parser_FuncDecl *a,
+                                const struct Parser_FuncDecl *b)
+{
+    if (a->is_op_overload != b->is_op_overload)
+        return false;
+    else if (a->is_op_overload && a->op_overload != b->op_overload)
+        return false;
+    else if (!a->is_op_overload && strcmp(a->name, b->name))
+        return false;
+
+    return are_params_same(a, b);
+}
+
 // only checks the scope itself and not its parents
 static struct Sema_Ident *
-scope_find_ident_shallow(const struct Sema_Scope *scope, const char *name)
+scope_find_ident_shallow(const struct Sema_Scope *scope,
+                         const struct Sema_Ident *search)
 {
     for (isize_t i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
 
-        if (!strcmp(ident->name, name))
+        if (strcmp(ident->name, search->name))
+            continue;
+
+        bool same_type = ident->type == search->type;
+        if (!same_type)
+            continue;
+
+        if (search->type != SEMA_IDENTTYPE_FUNC ||
+            are_func_decls_same(&search->decl->func_decl,
+                                &ident->decl->func_decl))
             return ident;
     }
 
@@ -143,7 +181,7 @@ scope_find_ident_shallow(const struct Sema_Scope *scope, const char *name)
 struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
                                   const struct Sema_Ident *ident)
 {
-    auto old_ident = scope_find_ident_shallow(scope, ident->name);
+    auto old_ident = scope_find_ident_shallow(scope, ident);
     if (old_ident)
         return old_ident;
 

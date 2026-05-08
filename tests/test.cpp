@@ -6,6 +6,7 @@ public:
 
     Vec3 operator*(float scale);
     Vec3 operator*(const Vec3 &);
+    Vec3 operator+(const Vec3 &);
 };
 
 void func(int x);
@@ -18,6 +19,7 @@ int main()
     Vec3 y;
     auto z = x * 10;
     auto w = x * y;
+    auto a = x + y;
 
     func(10);
     func(10, 20.f);
