@@ -133,11 +133,11 @@ static void add_func_def(struct Parser_FuncDecl *decl,
     if (!decl->name)
         return;
 
-    // FIXME: account for overloading
-    if (Sema_add_ident_def(Parser_func_parent(decl), decl->name, node) != 0) {
+    auto ident = Parser_func_ident(decl);
+    if (ident->def)
         gen_dynpush(diags, ident_redefined_err(decl->name, decl->def_start,
                                                ERRORTYPE_BAD_IDENTIFIER));
-    }
+    ident->def = node;
 }
 
 static void copy_params_to_scope(struct Parser_FuncDecl *src,
