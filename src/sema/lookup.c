@@ -169,7 +169,7 @@ struct Parser_ASTNode *Sema_find_op_overload(enum Parser_ExprType op,
 
 static bool param_has_default(const struct Parser_FuncDecl *func, isize_t param)
 {
-    return func->params.arr[param]->var_decl.init != NULL;
+    return Parser_func_ident(func)->func_info.default_args[param] != NULL;
 }
 
 static bool func_is_method(const struct Parser_FuncDecl *func)
