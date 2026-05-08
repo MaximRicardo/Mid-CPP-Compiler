@@ -14,19 +14,19 @@ While I'm planning on fully supporting C++11, right now the compiler only
 partially / fully supports:
 
 * Data Types
- * Every Built-In Data Type
- * Every Built-In Literal Type
- * Function Pointers
- * auto
+    * Every Built-In Data Type
+    * Every Built-In Literal Type
+    * Function Pointers
+    * auto
 * Functions
- * Argument Dependent Lookup
- * Overload Resolution
- * Operator Overloading
- * Default Parameters
+    * Argument Dependent Lookup
+    * Overload Resolution
+    * Operator Overloading
+    * Default Parameters
 * Classes
- * Static and Non-Static Member Functions
- * public, private and protected
- * 2-Pass Parsing
+    * Static and Non-Static Member Functions
+    * public, private and protected
+    * 2-Pass Parsing
 
 ### C Support
 
