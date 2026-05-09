@@ -9,6 +9,7 @@
 #include "position.h"
 #include "print.h"
 #include "symbol.h"
+#include "utf8.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -832,15 +833,20 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
             break;
         }
 
-        default:
-            struct Diag err = {
-                .is_err = true,
-                .err = ERRORTYPE_UNKNOWN_SYMBOL,
-                .msg = Print_fmt_to_str("unknown symbol '%c'", src[i]),
-                .pos = pos,
-                .line = line_start};
+        default: {
+            // column isn't updated cuz it's still one character
+            char *c = UTF8_to_str(UTF8_read_char(src, i, &i));
+            --i;
+            struct Diag err = {.is_err = true,
+                               .err = ERRORTYPE_UNKNOWN_SYMBOL,
+                               .msg =
+                                   Print_fmt_to_str("unknown symbol '%s'", c),
+                               .pos = pos,
+                               .line = line_start};
             gen_dynpush(&diags, err);
+            free(c);
             break;
+        }
         }
     }
     gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_END, pos, line_start));

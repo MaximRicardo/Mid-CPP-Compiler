@@ -9,6 +9,7 @@
 #include "parser/type.h"
 #include "sema/scope.h"
 #include <assert.h>
+#include <locale.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +48,9 @@ static bool print_diags(const struct DiagVec *diags)
 
 int main(int argc, char **argv)
 {
+    // enables unicode
+    setlocale(LC_CTYPE, "en_US.UTF-8");
+
     int ret = 0;
 
     struct Parser_Allocators allocs = {};

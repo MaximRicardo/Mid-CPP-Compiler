@@ -1,6 +1,8 @@
 #pragma once
 
+#include "ints.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 #define CRASH(msg)                                                             \
     do {                                                                       \
@@ -16,6 +18,7 @@
     } while (0)
 
 #define ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define SARRLEN(arr) ((isize_t)(sizeof(arr) / sizeof((arr)[0])))
 
 #define MAX(x, y) ((x) < (y) ? (y) : (x))
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
