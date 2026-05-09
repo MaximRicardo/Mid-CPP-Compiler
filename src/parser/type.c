@@ -5,6 +5,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "macros.h"
+#include "mid_alloc.h"
 #include "parser/find_twin.h"
 #include "print.h"
 #include "sema/scope.h"
@@ -524,7 +525,7 @@ static isize_t parse_fptr(struct Parser_Type *type,
     isize_t p_rparen = Parser_find_twin_paren(toks, p_lparen, ISIZE_MAX);
 
     type->spec = PARSER_TYPESPEC_FPTR;
-    type->fptr = malloc(sizeof(*type->fptr));
+    type->fptr = mid_malloc(sizeof(*type->fptr));
     type->fptr->ret =
         parse_recursive_part(toks, lparen - 1, min, NULL, scope,
                              &(struct Parser_TypeStorQual){}, diags);
@@ -680,10 +681,10 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
         add_base(&type->array->elem, base, type_start, diags);
     } else {
         if (base->spec == PARSER_TYPESPEC_FPTR) {
-            type->fptr = malloc(sizeof(*type->fptr));
+            type->fptr = mid_malloc(sizeof(*type->fptr));
             *type->fptr = Parser_copy_fptr_type(base->fptr);
         } else if (base->spec == PARSER_TYPESPEC_ARRAY) {
-            type->array = malloc(sizeof(*type->array));
+            type->array = mid_malloc(sizeof(*type->array));
             *type->array = Parser_copy_array_type(base->array);
         } else if (Parser_is_typespec_named(base->spec)) {
             type->ident = base->ident;
@@ -744,10 +745,10 @@ struct Parser_Type Parser_copy_type(const struct Parser_Type *type)
         gen_dynpush(&ret.dquals, type->dquals.arr[i]);
 
     if (type->spec == PARSER_TYPESPEC_FPTR) {
-        ret.fptr = malloc(sizeof(*ret.fptr));
+        ret.fptr = mid_malloc(sizeof(*ret.fptr));
         *ret.fptr = Parser_copy_fptr_type(type->fptr);
     } else if (type->spec == PARSER_TYPESPEC_ARRAY) {
-        ret.array = malloc(sizeof(*ret.array));
+        ret.array = mid_malloc(sizeof(*ret.array));
         *ret.array = Parser_copy_array_type(type->array);
     } else if (Parser_is_typespec_named(type->spec)) {
         ret.ident = type->ident;

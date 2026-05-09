@@ -16,7 +16,6 @@
 #include "print.h"
 #include "sema/scope.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
 {

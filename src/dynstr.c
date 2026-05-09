@@ -1,4 +1,5 @@
 #include "dynstr.h"
+#include "mid_alloc.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -9,7 +10,7 @@ static void grow_to_fit(struct Dynstr *self, u32 min_cap)
 {
     if (self->cap < min_cap) {
         self->cap = min_cap;
-        self->str = realloc(self->str, self->cap * sizeof(*self->str));
+        self->str = mid_realloc(self->str, self->cap * sizeof(*self->str));
     }
 }
 
@@ -24,7 +25,7 @@ struct Dynstr Dynstr(void)
     struct Dynstr str;
     str.len = 0;
     str.cap = dynstr_start_cap;
-    str.str = malloc(str.cap * sizeof(*str.str));
+    str.str = mid_malloc(str.cap * sizeof(*str.str));
     str.str[0] = '\0';
     return str;
 }
@@ -61,7 +62,7 @@ void Dynstr_append_printf(struct Dynstr *self, const char *fmt, ...)
     va_start(argscpy, fmt);
 
     int new_len = vsnprintf(new_str, 0, fmt, args);
-    new_str = malloc((new_len + 1) * sizeof(*new_str));
+    new_str = mid_malloc((new_len + 1) * sizeof(*new_str));
     vsprintf(new_str, fmt, argscpy);
 
     Dynstr_append(self, new_str);
@@ -74,7 +75,7 @@ void Dynstr_append_printf(struct Dynstr *self, const char *fmt, ...)
 
 void Dynstr_shrink_to_fit(struct Dynstr *self)
 {
-    self->str = realloc(self->str, (self->len + 1) * sizeof(*self->str));
+    self->str = mid_realloc(self->str, (self->len + 1) * sizeof(*self->str));
 }
 
 void Dynstr_pop(struct Dynstr *self)

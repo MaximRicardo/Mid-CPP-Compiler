@@ -25,11 +25,11 @@
 #define GEN_BUMPALLOC_CREATE_NEW_CHUNK(self)                                   \
     do {                                                                       \
         ++(self)->n_chunks;                                                    \
-        (self)->chunks = realloc((self)->chunks,                               \
-                                 (self)->n_chunks * sizeof(*(self)->chunks));  \
+        (self)->chunks = GEN_REALLOC(                                          \
+            (self)->chunks, (self)->n_chunks * sizeof(*(self)->chunks));       \
         (self)->chunks[(self)->n_chunks - 1] =                                 \
-            malloc(GEN_BUMPALLOC_DEFAULT_CHUNK_SIZE *                          \
-                   sizeof(*(self)->chunks[(self)->n_chunks - 1]));             \
+            GEN_MALLOC(GEN_BUMPALLOC_DEFAULT_CHUNK_SIZE *                      \
+                       sizeof(*(self)->chunks[(self)->n_chunks - 1]));         \
     } while (0)
 
 #define gen_bumpinit() {};

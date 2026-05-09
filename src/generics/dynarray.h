@@ -52,7 +52,7 @@
 #define GEN_DYNARRAY_REALLOC(self)                                             \
     do {                                                                       \
         (self)->arr =                                                          \
-            realloc((self)->arr, (self)->cap * sizeof(*(self)->arr));          \
+            GEN_REALLOC((self)->arr, (self)->cap * sizeof(*(self)->arr));      \
     } while (0)
 
 #define GEN_DYNARRAY_ALLOC_SPACE(self)                                         \

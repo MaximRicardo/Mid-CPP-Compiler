@@ -5,6 +5,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "literal.h"
+#include "mid_alloc.h"
 #include "position.h"
 #include "print.h"
 #include "symbol.h"
@@ -309,7 +310,7 @@ static char *read_identifier(const char *src, isize_t start, isize_t *end)
         *end = id_end;
 
     isize_t len = id_end - start;
-    char *str = malloc((len + 1) * sizeof(*str));
+    char *str = mid_malloc((len + 1) * sizeof(*str));
     str[len] = '\0';
 
     for (isize_t i = 0; i < len; ++i)

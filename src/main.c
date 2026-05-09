@@ -3,6 +3,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/tokenize.h"
+#include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/type.h"
@@ -20,7 +21,7 @@ static char *read_file(const char *path)
     isize_t len = ftell(f);
     rewind(f);
 
-    char *str = malloc((len + 1) * sizeof(*str));
+    char *str = mid_malloc((len + 1) * sizeof(*str));
     str[len] = '\0';
 
     for (isize_t i = 0; i < len; ++i)
@@ -43,31 +44,6 @@ static bool print_diags(const struct DiagVec *diags)
 
     return err;
 }
-
-/*
-static void free_str(char **str)
-{
-    free(*str);
-}
-
-static void test()
-{
-    gen_bumpalloc_struct_named(BumpAlloc, char *);
-
-    struct BumpAlloc handle = gen_bumpinit();
-
-    char **str[1024];
-    for (size_t i = 0; i < ARRLEN(str); ++i) {
-        gen_bumpcalloc(&handle, &str[i]);
-        *str[i] = Print_fmt_to_str("string nr %zu", i);
-    }
-
-    for (size_t i = 0; i < ARRLEN(str); ++i)
-        printf("*str[%zu] = %s\n", i, *str[i]);
-
-    gen_bumpdeinit(&handle, free_str);
-}
-*/
 
 int main(int argc, char **argv)
 {

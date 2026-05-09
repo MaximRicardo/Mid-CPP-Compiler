@@ -5,6 +5,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "macros.h"
+#include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/astvec.h"
@@ -488,7 +489,7 @@ static void register_default_args(struct Parser_FuncDecl *decl,
 {
     auto default_args = &Parser_func_ident(decl)->func_info.default_args;
     if (!*default_args)
-        *default_args = calloc(decl->params.len, sizeof(*default_args));
+        *default_args = mid_calloc(decl->params.len, sizeof(*default_args));
 
     for (isize_t i = 0; i < decl->params.len; ++i) {
         auto default_arg = (*default_args)[i];

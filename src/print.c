@@ -1,5 +1,6 @@
 #include "print.h"
 #include "ints.h"
+#include "mid_alloc.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +21,7 @@ char *Print_fmt_to_str(const char *fmt, ...)
     va_start(argscpy, fmt);
 
     int len = vsnprintf(str, 0, fmt, args);
-    str = malloc((len + 1) * sizeof(*str));
+    str = mid_malloc((len + 1) * sizeof(*str));
     vsprintf(str, fmt, argscpy);
 
     va_end(argscpy);

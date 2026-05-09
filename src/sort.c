@@ -1,7 +1,7 @@
 #include "sort.h"
 #include "ints.h"
+#include "mid_alloc.h"
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -60,7 +60,7 @@ void better_qsort(void *v, isize_t nmemb, isize_t size,
                   int comp(const void *, const void *, const void *),
                   const void *info)
 {
-    char *buffer = malloc(size);
+    char *buffer = mid_malloc(size);
     better_qsort_impl(v, size, 0, nmemb - 1, comp, info, buffer);
     free(buffer);
 }

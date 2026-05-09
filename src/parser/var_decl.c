@@ -4,6 +4,7 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/expr.h"
@@ -65,10 +66,10 @@ static void resolve_auto(struct Parser_VarDecl *decl)
 
     decl->type.spec = init_type->spec;
     if (init_type->spec == PARSER_TYPESPEC_FPTR) {
-        decl->type.fptr = malloc(sizeof(*decl->type.fptr));
+        decl->type.fptr = mid_malloc(sizeof(*decl->type.fptr));
         *decl->type.fptr = Parser_copy_fptr_type(init_type->fptr);
     } else if (init_type->spec == PARSER_TYPESPEC_ARRAY) {
-        decl->type.array = malloc(sizeof(*decl->type.array));
+        decl->type.array = mid_malloc(sizeof(*decl->type.array));
         *decl->type.array = Parser_copy_array_type(init_type->array);
     } else if (Parser_is_typespec_named(init_type->spec)) {
         decl->type.ident = init_type->ident;
