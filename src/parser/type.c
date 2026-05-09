@@ -53,7 +53,7 @@ enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type)
         return PARSER_TYPESPEC_BOOL;
 
     default:
-        assert(false);
+        CRASH("token is not a type spec");
     }
 }
 
@@ -386,7 +386,7 @@ static void set_squal_flag(struct Parser_TypeStorQual *qual,
         break;
 
     default:
-        assert(false);
+        CRASH("token is not a storage qualifier");
     }
 }
 
@@ -399,7 +399,7 @@ static void set_dqual_flag(struct Parser_TypeDataQual *qual,
         break;
 
     default:
-        assert(false);
+        CRASH("token is not a data qualifier");
     }
 }
 
@@ -558,7 +558,7 @@ static isize_t parse_array(struct Parser_Type *type,
                            struct Sema_Scope *scope, struct DiagVec *diags)
 {
     // TODO: implement this
-    assert(false);
+    CRASH("parse_array not implemented yet");
     (void)type;
     (void)toks;
     (void)lparen;

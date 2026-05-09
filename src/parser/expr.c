@@ -295,8 +295,7 @@ static struct Parser_Expr numlit_tok_to_expr(const struct Lexer_Token *tok)
         break;
 
     default:
-        assert(false);
-        break;
+        CRASH("token is not literal");
     }
 
     return ret;
@@ -853,7 +852,7 @@ static bool has_enough_operands(enum Parser_ExprType op, int n)
     else if (Parser_is_ternaryop(op))
         return n >= 3;
     else
-        assert(false);
+        CRASH("bad expression type");
 }
 
 static void add_op_to_out(struct Parser_Expr *op, struct Parser_ExprVec *out,
