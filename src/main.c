@@ -77,11 +77,11 @@ int main(int argc, char **argv)
         else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_ULONGLONG_LIT)
             printf(", value u long long = %" PRId64, lex.toks.arr[i].val.uint);
         else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_FLOAT_LIT)
-            printf(", value f = %f", lex.toks.arr[i].val.flt);
+            printf(", value f = %Lf", lex.toks.arr[i].val.flt);
         else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_DOUBLE_LIT)
-            printf(", value d = %lf", lex.toks.arr[i].val.dbl);
+            printf(", value d = %Lf", lex.toks.arr[i].val.flt);
         else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_LONGDOUBLE_LIT)
-            printf(", value ld = %Lf", lex.toks.arr[i].val.l_dbl);
+            printf(", value ld = %Lf", lex.toks.arr[i].val.flt);
         printf("\n");
     }
 

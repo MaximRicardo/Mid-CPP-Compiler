@@ -6,10 +6,7 @@
 union Literal_Value {
     i64 sint;
     u64 uint;
-    float flt;
-    double dbl;
-    long double l_dbl;
-    bool bl;
+    long double flt;
     void *ptr;
 };
 

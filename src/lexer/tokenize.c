@@ -219,15 +219,9 @@ static struct NumLit read_numlit(const char *src, isize_t start, isize_t *end)
         break;
 
     case NUMLIT_FLOAT:
-        ret.val.flt = strtof(&src[start], NULL);
-        break;
-
     case NUMLIT_DOUBLE:
-        ret.val.dbl = strtod(&src[start], NULL);
-        break;
-
     case NUMLIT_LONGDOUBLE:
-        ret.val.l_dbl = strtold(&src[start], NULL);
+        ret.val.flt = strtold(&src[start], NULL);
         break;
     }
 
@@ -423,12 +417,12 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
         return (struct Lexer_Token){.pos = pos,
                                     .line = line,
                                     .type = LEXER_TOKENTYPE_BOOL_LIT,
-                                    .val.bl = true};
+                                    .val.sint = true};
     else if (!strcmp(id, "false"))
         return (struct Lexer_Token){.pos = pos,
                                     .line = line,
                                     .type = LEXER_TOKENTYPE_BOOL_LIT,
-                                    .val.bl = false};
+                                    .val.sint = false};
     else if (!strcmp(id, "nullptr"))
         return (struct Lexer_Token){.pos = pos,
                                     .line = line,
