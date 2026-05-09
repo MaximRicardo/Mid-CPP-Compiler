@@ -82,7 +82,7 @@ struct Sema_Ident *Parser_func_ident(const struct Parser_FuncDecl *func)
 struct Parser_ASTNodePVec Parser_parse_func_params(
     const struct Lexer_Token *toks, isize_t lparen, isize_t *out_rparen,
     struct Parser_ASTNode *parent, struct Sema_Scope *scope, bool add_to_scope,
-    struct Parser_Allocators *allocs, struct DiagVec *diags)
+    bool *out_variadic, struct Parser_Allocators *allocs, struct DiagVec *diags)
 {
     struct Parser_ASTNodePVec params = {};
 
@@ -91,25 +91,34 @@ struct Parser_ASTNodePVec Parser_parse_func_params(
         *out_rparen = rparen;
 
     if (rparen == -1) {
-        gen_dynpush(diags,
-                    ((struct Diag){.pos = toks[lparen].pos,
-                                   .line = toks[lparen].line,
-                                   .msg = Print_fmt_to_str("expected ')'"),
-                                   .err = ERRORTYPE_MISSING_PAREN,
-                                   .is_err = true}));
+        gen_dynpush(diags, expected_token_err("')'", &toks[lparen],
+                                              ERRORTYPE_MISSING_PAREN));
         return params;
     }
 
+    if (out_variadic)
+        *out_variadic = false;
+
     for (isize_t i = lparen + 1; i < rparen; ++i) {
-        struct Parser_ASTNode *child;
-        gen_bumpmalloc(&allocs->ast, &child);
-        *child = (struct Parser_ASTNode){.parent = parent,
-                                         .start = &toks[i],
-                                         .type = PARSER_ASTNODETYPE_VAR_DECL};
-        i = Parser_parse_var_decl(toks, i, PARSER_PARAM_ENDTYPES,
-                                  &child->var_decl, child, scope, add_to_scope,
-                                  false, allocs, diags);
-        gen_dynpush(&params, child);
+        if (toks[i].type == LEXER_TOKENTYPE_ELLIPSIS) {
+            if (out_variadic)
+                *out_variadic = true;
+            if (i + 1 < rparen)
+                gen_dynpush(diags, expected_token_err("')'", &toks[lparen],
+                                                      ERRORTYPE_MISSING_PAREN));
+            break;
+        } else {
+            struct Parser_ASTNode *child;
+            gen_bumpmalloc(&allocs->ast, &child);
+            *child =
+                (struct Parser_ASTNode){.parent = parent,
+                                        .start = &toks[i],
+                                        .type = PARSER_ASTNODETYPE_VAR_DECL};
+            i = Parser_parse_var_decl(toks, i, PARSER_PARAM_ENDTYPES,
+                                      &child->var_decl, child, scope,
+                                      add_to_scope, false, allocs, diags);
+            gen_dynpush(&params, child);
+        }
     }
 
     return params;
@@ -535,8 +544,9 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
 
     isize_t lparen = type_end;
     isize_t rparen;
-    decl->params = Parser_parse_func_params(
-        toks, lparen, &rparen, node, decl->param_scope, true, allocs, diags);
+    decl->params =
+        Parser_parse_func_params(toks, lparen, &rparen, node, decl->param_scope,
+                                 true, &decl->variadic, allocs, diags);
     if (decl->is_op_overload)
         disambig_operator_overload(decl);
     if (decl->name)

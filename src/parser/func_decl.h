@@ -19,16 +19,18 @@ struct Parser_FuncDecl {
     enum Parser_ExprType op_overload; // the operator that got overloaded
     bool is_op_overload;
     bool has_def; // does this node hold the definition of the func?
-    bool has_ellipsis;
+    bool variadic;
 };
 
 void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self);
 struct Sema_Scope *Parser_func_parent(const struct Parser_FuncDecl *func);
 struct Sema_Ident *Parser_func_ident(const struct Parser_FuncDecl *func);
-struct Parser_ASTNodePVec Parser_parse_func_params(
-    const struct Lexer_Token *toks, isize_t lparen, isize_t *out_rparen,
-    struct Parser_ASTNode *parent, struct Sema_Scope *scope, bool add_to_scope,
-    struct Parser_Allocators *allocs, struct DiagVec *diags);
+struct Parser_ASTNodePVec
+Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
+                         isize_t *out_rparen, struct Parser_ASTNode *parent,
+                         struct Sema_Scope *scope, bool add_to_scope,
+                         bool *out_variadic, struct Parser_Allocators *allocs,
+                         struct DiagVec *diags);
 // skip_def -  if true, the func definition won't be parsed, but def_start will
 //             still be set to the first token of the definition and has_def
 //             will still be set to true if there is a definition. used by

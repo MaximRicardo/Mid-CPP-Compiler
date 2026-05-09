@@ -193,7 +193,7 @@ static bool func_params_viable(isize_t n_args,
 
     if (n_params == n_args)
         return true;
-    else if (func->has_ellipsis && n_params < n_args)
+    else if (func->variadic && n_params < n_args)
         return true;
     else if (n_params > n_args && param_has_default(func, n_args))
         return true;
@@ -239,6 +239,7 @@ struct CmpViableFuncsInfo {
     isize_t n_args;
 };
 
+// returns 1 if a is better, -1 if b is better, and 0 if they're equal
 static int compare_viable_funcs(const void *a_raw, const void *b_raw,
                                 const void *info_raw)
 {
@@ -248,8 +249,17 @@ static int compare_viable_funcs(const void *a_raw, const void *b_raw,
 
     bool has_better = false;
     for (isize_t i = 0; i < info->n_args; ++i) {
-        assert(a->func_decl.params.len > i);
-        assert(b->func_decl.params.len > i);
+        // keep in mind that variadic params have the lowest conversion rank
+        bool in_a_variadic = i >= a->func_decl.params.len;
+        bool in_b_variadic = i >= b->func_decl.params.len;
+        if (in_a_variadic && in_b_variadic) {
+            break;
+        } else if (in_b_variadic) {
+            return -1;
+        } else if (in_a_variadic) {
+            has_better = true;
+            continue;
+        }
 
         auto arg = &info->args[i];
         auto a_param = a->func_decl.params.arr[i];
@@ -264,9 +274,7 @@ static int compare_viable_funcs(const void *a_raw, const void *b_raw,
             has_better = true;
     }
 
-    if (has_better)
-        return 1;
-    return 0;
+    return has_better;
 }
 
 struct Parser_ASTNode *
@@ -274,6 +282,8 @@ Sema_best_viable_func(const struct Parser_Expr *args, isize_t n_args,
                       const struct Parser_ASTNodePVec *funcs, bool this_passed)
 {
     auto viable = Sema_viable_funcs(args, n_args, funcs, this_passed);
+    if (viable.len == 0)
+        return NULL;
 
     better_qsort(viable.arr, viable.len, sizeof(*viable.arr),
                  compare_viable_funcs,

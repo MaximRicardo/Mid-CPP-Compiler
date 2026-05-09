@@ -48,7 +48,9 @@ static bool are_params_ambig(const struct Lexer_Token *toks, isize_t lparen,
                              struct DiagVec *diags)
 {
     for (isize_t i = lparen + 1; toks[i].type != LEXER_TOKENTYPE_END; ++i) {
-        if (!is_ambig_param(toks, i, &i, scope, allocs, diags))
+        if (toks[i].type == LEXER_TOKENTYPE_ELLIPSIS)
+            return false;
+        else if (!is_ambig_param(toks, i, &i, scope, allocs, diags))
             return false;
 
         if (toks[i].type == LEXER_TOKENTYPE_R_PAREN ||

@@ -129,7 +129,7 @@ struct Parser_Type Sema_tok_type(struct Sema_Scope *scope,
 static bool are_params_same(const struct Parser_FuncDecl *a,
                             const struct Parser_FuncDecl *b)
 {
-    if (a->params.len != b->params.len || a->has_ellipsis != b->has_ellipsis)
+    if (a->params.len != b->params.len || a->variadic != b->variadic)
         return false;
 
     for (isize_t i = 0; i < a->params.len; ++i) {

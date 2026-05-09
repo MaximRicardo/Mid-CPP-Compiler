@@ -545,6 +545,11 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
                                              pos, line_start));
                 ++i;
                 ++pos.column;
+            } else if (src[i + 1] == '.' && src[i + 2] == '.') {
+                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ELLIPSIS,
+                                                    pos, line_start));
+                i += 2;
+                pos.column += 2;
             } else {
                 gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MEMB_SEL,
                                                     pos, line_start));
