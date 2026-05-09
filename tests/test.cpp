@@ -1,3 +1,5 @@
+class Vec3;
+
 class Vec3 {
 public:
     float x;
@@ -8,6 +10,8 @@ public:
     Vec3 operator*(const Vec3 &);
     Vec3 operator+(const Vec3 &);
 };
+
+class Vec3;
 
 void func(int x);
 void func(int x, int y);

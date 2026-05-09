@@ -6,6 +6,7 @@
 #include "macros.h"
 #include "parser/ast.h"
 #include "parser/astvec.h"
+#include "parser/class.h"
 #include "parser/expr.h"
 #include "parser/func_decl.h"
 #include "parser/type.h"
@@ -684,14 +685,16 @@ void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
 
 void Sema_typecheck_class(struct Parser_Class *self, struct DiagVec *diags)
 {
+    auto scope = Parser_class_ident(self)->class_info.def_scope;
+
     for (isize_t i = 0; i < self->pub_childs.len; ++i)
-        Sema_typecheck_node(self->pub_childs.arr[i], self->scope, diags);
+        Sema_typecheck_node(self->pub_childs.arr[i], scope, diags);
 
     for (isize_t i = 0; i < self->priv_childs.len; ++i)
-        Sema_typecheck_node(self->priv_childs.arr[i], self->scope, diags);
+        Sema_typecheck_node(self->priv_childs.arr[i], scope, diags);
 
     for (isize_t i = 0; i < self->prot_childs.len; ++i)
-        Sema_typecheck_node(self->prot_childs.arr[i], self->scope, diags);
+        Sema_typecheck_node(self->prot_childs.arr[i], scope, diags);
 }
 
 void Sema_typecheck_node(struct Parser_ASTNode *node, struct Sema_Scope *scope,

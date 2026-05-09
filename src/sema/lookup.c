@@ -54,8 +54,11 @@ static void add_super_classes(const struct Parser_Class *self,
         assert(super);
         assert(super->type == PARSER_ASTNODETYPE_CLASS);
 
-        add_scope(scopes, super->class_.scope);
-        add_nmspace_scope(super->class_.scope, scopes);
+        auto scope = Parser_class_ident(&super->class_)->class_info.def_scope;
+        if (scope) {
+            add_scope(scopes, scope);
+            add_nmspace_scope(scope, scopes);
+        }
         add_super_classes(&super->class_, scopes);
     }
 }
@@ -70,8 +73,11 @@ static void get_assoc_scopes_class(const struct Parser_Expr *arg,
     auto class_ = &node->class_;
     assert(class_);
 
-    add_scope(scopes, class_->scope);
-    add_nmspace_scope(class_->scope, scopes);
+    auto scope = Parser_class_ident(class_)->class_info.def_scope;
+    if (scope) {
+        add_scope(scopes, scope);
+        add_nmspace_scope(scope, scopes);
+    }
     add_super_classes(class_, scopes);
 }
 

@@ -23,6 +23,25 @@ void Parser_Class_deinit(struct Parser_Class *self)
     gen_dyndeinit(&self->prot_childs);
 }
 
+static struct Diag ident_redefined_err(const char *name,
+                                       const struct Lexer_Token *tok,
+                                       enum ErrorType err_type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("'%s' redefined", name),
+        .err = err_type,
+        .is_err = true,
+    };
+}
+
+struct Sema_Ident *Parser_class_ident(const struct Parser_Class *self)
+{
+    assert(self->ident_idx != -1);
+    return &self->parent->idents.arr[self->ident_idx];
+}
+
 static struct Diag expected_token(const char *tok_name,
                                   const struct Lexer_Token *tok)
 {
@@ -40,7 +59,6 @@ static struct Diag expected_token(const char *tok_name,
 //                  ^       ^
 //                colon   return
 static isize_t parse_class_inheritance(struct Parser_Class *self,
-                                       const struct Sema_Scope *scope,
                                        const struct Lexer_Token *toks,
                                        isize_t colon, struct DiagVec *diags)
 {
@@ -52,7 +70,7 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
 
     const char *super_name = toks[ident].ident;
     struct Parser_ASTNode *super =
-        Sema_find_ident_const(scope, super_name)->def;
+        Sema_find_ident_const(self->parent, super_name)->def;
 
     if (!super)
         gen_dynpush(
@@ -93,7 +111,6 @@ static enum Parser_ClassType parse_class_type(const struct Lexer_Token *toks,
 }
 
 static isize_t parse_class_entry(struct Parser_Class *self,
-                                 const struct Sema_Scope *scope,
                                  const struct Lexer_Token *toks, isize_t start,
                                  struct DiagVec *diags)
 {
@@ -110,7 +127,7 @@ static isize_t parse_class_entry(struct Parser_Class *self,
 
     isize_t end = ident + 1;
     if (toks[end].type == LEXER_TOKENTYPE_COLON)
-        end = parse_class_inheritance(self, scope, toks, end, diags);
+        end = parse_class_inheritance(self, toks, end, diags);
 
     return end;
 }
@@ -135,7 +152,7 @@ static void parse_node_def(struct Parser_ASTNode *node,
         }
     } else if (node->type == PARSER_ASTNODETYPE_CLASS) {
         if (node->class_.def_start) {
-            Parser_parse_class_body(&node->class_, node, scope, toks,
+            Parser_parse_class_body(&node->class_, node, toks,
                                     toks - node->class_.def_start, allocs,
                                     diags);
         }
@@ -158,35 +175,17 @@ static isize_t find_rcurly(isize_t lcurly, const struct Lexer_Token *toks,
     return rcurly == -1 ? lcurly : rcurly;
 }
 
-static struct Sema_Scope *create_class_scope(struct Sema_Scope *scope,
-                                             struct Parser_ASTNode *node,
-                                             struct Parser_Allocators *allocs)
+static struct Sema_Scope *create_scope(struct Sema_Scope *scope,
+                                       struct Parser_ASTNode *node,
+                                       struct Parser_Allocators *allocs,
+                                       enum Sema_ScopeType type)
 {
     struct Sema_Scope *child;
     gen_bumpmalloc(&allocs->scope, &child);
-    *child = (struct Sema_Scope){
-        .parent = scope, .node = node, .type = SEMA_SCOPETYPE_CLASS};
+    *child = (struct Sema_Scope){.parent = scope, .node = node, .type = type};
     gen_dynpush(&scope->childs, child);
 
     return child;
-}
-
-static void add_class_def(struct Parser_Class *self,
-                          struct Parser_ASTNode *node, struct DiagVec *diags)
-{
-    if (!self->name)
-        return;
-
-    if (Sema_add_ident_def(self->scope, self->name, node) != 0) {
-        gen_dynpush(diags,
-                    ((struct Diag){
-                        .pos = self->def_start->pos,
-                        .line = self->def_start->line,
-                        .msg = Print_fmt_to_str("'%s' redefined", self->name),
-                        .err = ERRORTYPE_BAD_IDENTIFIER,
-                        .is_err = true,
-                    }));
-    }
 }
 
 enum AccessSpec {
@@ -217,6 +216,36 @@ static isize_t parse_accessspec(const struct Lexer_Token *toks, isize_t start,
     return colon + 1;
 }
 
+static void add_class_def(struct Parser_Class *self,
+                          struct Parser_ASTNode *node, struct DiagVec *diags)
+{
+    if (!self->name)
+        return;
+
+    auto ident = Parser_class_ident(self);
+    if (ident->def)
+        gen_dynpush(diags, ident_redefined_err(self->name, self->def_start,
+                                               ERRORTYPE_BAD_IDENTIFIER));
+
+    ident->def = node;
+}
+
+static struct Sema_Scope *setup_def_scope(struct Parser_Class *self,
+                                          struct Parser_ASTNode *node,
+                                          struct Parser_Allocators *allocs,
+                                          struct DiagVec *diags)
+{
+    auto def = &Parser_class_ident(self)->class_info.def_scope;
+    if (*def) {
+        gen_dynpush(diags, ident_redefined_err(self->name, node->start,
+                                               ERRORTYPE_BAD_IDENTIFIER));
+    }
+
+    *def = create_scope(self->parent, node, allocs, SEMA_SCOPETYPE_CLASS);
+
+    return *def;
+}
+
 static void parse_decls(struct Parser_Class *self, struct Parser_ASTNode *node,
                         const struct Lexer_Token *toks, isize_t lcurly,
                         isize_t rcurly, struct Parser_Allocators *allocs,
@@ -228,12 +257,14 @@ static void parse_decls(struct Parser_Class *self, struct Parser_ASTNode *node,
                                ? ACCESSSPEC_PRIVATE
                                : ACCESSSPEC_PUBLIC;
 
+    auto def_scope = Parser_class_ident(self)->class_info.def_scope;
+
     for (isize_t i = lcurly + 1; i < rcurly;) {
         if (Lexer_is_accessspec(toks[i].type)) {
             i = parse_accessspec(toks, i, &mode, diags);
         } else {
             struct Parser_ASTNode *child = Parser_parse_node(
-                toks, i, &i, node, self->scope, true, allocs, diags);
+                toks, i, &i, node, def_scope, true, allocs, diags);
 
             if (mode == ACCESSSPEC_PUBLIC)
                 gen_dynpush(&self->pub_childs, child);
@@ -249,22 +280,22 @@ static void parse_defs(struct Parser_Class *self,
                        const struct Lexer_Token *toks,
                        struct Parser_Allocators *allocs, struct DiagVec *diags)
 {
+    auto def_scope = Parser_class_ident(self)->class_info.def_scope;
+
     for (isize_t i = 0; i < self->pub_childs.len; ++i)
-        parse_node_def(self->pub_childs.arr[i], self->scope, toks, allocs,
-                       diags);
+        parse_node_def(self->pub_childs.arr[i], def_scope, toks, allocs, diags);
 
     for (isize_t i = 0; i < self->priv_childs.len; ++i)
-        parse_node_def(self->priv_childs.arr[i], self->scope, toks, allocs,
+        parse_node_def(self->priv_childs.arr[i], def_scope, toks, allocs,
                        diags);
 
     for (isize_t i = 0; i < self->prot_childs.len; ++i)
-        parse_node_def(self->prot_childs.arr[i], self->scope, toks, allocs,
+        parse_node_def(self->prot_childs.arr[i], def_scope, toks, allocs,
                        diags);
 }
 
 isize_t Parser_parse_class_body(struct Parser_Class *self,
                                 struct Parser_ASTNode *node,
-                                struct Sema_Scope *parent_scope,
                                 const struct Lexer_Token *toks, isize_t lcurly,
                                 struct Parser_Allocators *allocs,
                                 struct DiagVec *diags)
@@ -278,8 +309,8 @@ isize_t Parser_parse_class_body(struct Parser_Class *self,
     // };
     // among other stuff
 
-    self->scope = create_class_scope(parent_scope, node, allocs);
     add_class_def(self, node, diags);
+    setup_def_scope(self, node, allocs, diags);
 
     isize_t rcurly = find_rcurly(lcurly, toks, diags);
 
@@ -295,27 +326,34 @@ isize_t Parser_parse_class_body(struct Parser_Class *self,
     return rcurly + 1;
 }
 
-static void add_class_to_scope(struct Sema_Scope *scope, const char *name,
+static void add_class_to_scope(struct Sema_Scope *scope,
+                               struct Parser_Class *self,
                                struct Parser_ASTNode *node)
 {
-    Sema_add_ident(scope, &(struct Sema_Ident){.name = name,
-                                               .decl = node,
-                                               .type = SEMA_IDENTTYPE_CLASS});
+    const struct Sema_Ident *old = Sema_add_ident(
+        scope, &(struct Sema_Ident){.name = self->name,
+                                    .decl = node,
+                                    .type = SEMA_IDENTTYPE_CLASS});
+
+    if (old)
+        self->ident_idx = old - scope->idents.arr;
+    else
+        self->ident_idx = scope->idents.len - 1;
 }
 
 isize_t Parser_parse_class(struct Parser_Class *self,
                            struct Parser_ASTNode *node,
-                           struct Sema_Scope *scope,
+                           struct Sema_Scope *parent_scope,
                            const struct Lexer_Token *toks, isize_t start,
                            bool skip_def, struct Parser_Allocators *allocs,
                            struct DiagVec *diags)
 {
-    *self = (struct Parser_Class){};
+    *self = (struct Parser_Class){.ident_idx = -1, .parent = parent_scope};
 
-    isize_t lcurly = parse_class_entry(self, scope, toks, start, diags);
+    isize_t lcurly = parse_class_entry(self, toks, start, diags);
 
     if (self->name)
-        add_class_to_scope(scope, self->name, node);
+        add_class_to_scope(self->parent, self, node);
 
     if (toks[lcurly].type == LEXER_TOKENTYPE_SEMICOLON) {
         return lcurly;
@@ -330,7 +368,6 @@ isize_t Parser_parse_class(struct Parser_Class *self,
     if (skip_def) {
         return find_rcurly(lcurly, toks, diags) + 1;
     } else {
-        return Parser_parse_class_body(self, node, scope, toks, lcurly, allocs,
-                                       diags);
+        return Parser_parse_class_body(self, node, toks, lcurly, allocs, diags);
     }
 }

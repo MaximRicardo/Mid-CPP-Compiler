@@ -22,9 +22,14 @@ struct Sema_IdentFuncInfo {
 
 void Sema_IdentFuncInfo_deinit(struct Sema_IdentFuncInfo *self);
 
+struct Sema_IdentClassInfo {
+    struct Sema_Scope *def_scope;
+};
+
 struct Sema_Ident {
     union {
         struct Sema_IdentFuncInfo func_info;
+        struct Sema_IdentClassInfo class_info;
     };
 
     const char *name;
