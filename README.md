@@ -23,6 +23,7 @@ partially / fully supports:
     * Overload Resolution
     * Operator Overloading
     * Default Parameters
+    * Variadic Functions
 * Classes
     * Static and Non-Static Member Functions
     * public, private and protected
