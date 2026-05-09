@@ -68,7 +68,8 @@ static void get_assoc_scopes_class(const struct Parser_Expr *arg,
 {
     assert(Parser_is_typespec_named(arg->ret.spec));
 
-    auto node = arg->ret.ident->decl;
+    auto ident = &arg->ret.named.parent->idents.arr[arg->ret.named.ident];
+    auto node = ident->decl;
     assert(node);
     auto class_ = &node->class_;
     assert(class_);

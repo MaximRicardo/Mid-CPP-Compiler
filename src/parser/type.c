@@ -687,7 +687,7 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
             type->array = mid_malloc(sizeof(*type->array));
             *type->array = Parser_copy_array_type(base->array);
         } else if (Parser_is_typespec_named(base->spec)) {
-            type->ident = base->ident;
+            type->named = base->named;
         }
 
         if (type->dquals.len > 0 && (base->lv_ref || base->rv_ref))
@@ -751,7 +751,7 @@ struct Parser_Type Parser_copy_type(const struct Parser_Type *type)
         ret.array = mid_malloc(sizeof(*ret.array));
         *ret.array = Parser_copy_array_type(type->array);
     } else if (Parser_is_typespec_named(type->spec)) {
-        ret.ident = type->ident;
+        ret.named = type->named;
     }
 
     return ret;
@@ -901,7 +901,8 @@ static void regular_type_to_str(const struct Parser_Type *type,
     dquals_to_str(&type->dquals.arr[type->dquals.len - 1], str, false, true);
     Dynstr_append(str, Parser_typespec_to_str(type->spec));
     if (Parser_is_typespec_named(type->spec))
-        Dynstr_append_printf(str, "%s ", type->ident->name);
+        Dynstr_append_printf(
+            str, "%s ", type->named.parent->idents.arr[type->named.ident].name);
 
     for (isize_t i = Parser_n_indir(type); i > 0; --i) {
         Dynstr_append_char(str, '*');
@@ -1252,7 +1253,8 @@ bool Parser_are_types_same(const struct Parser_Type *a,
     else if (a->spec == PARSER_TYPESPEC_ARRAY)
         return are_arrays_same(a->array, b->array);
     else if (Parser_is_typespec_named(a->spec))
-        return a->ident == b->ident;
+        return a->named.parent == b->named.parent &&
+               a->named.ident == b->named.ident;
     else
         return true;
 }

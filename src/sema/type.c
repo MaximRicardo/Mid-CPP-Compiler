@@ -641,9 +641,8 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
     } else if (expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
         typecheck_ident_expr(expr, scope, diags);
     } else {
-        for (isize_t i = 0; i < expr->info.args.len; ++i) {
+        for (isize_t i = 0; i < expr->info.args.len; ++i)
             Sema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
-        }
 
         struct Parser_ASTNode *overload = Sema_find_op_overload(
             expr->type, expr->info.args.arr, expr->info.args.len, scope);

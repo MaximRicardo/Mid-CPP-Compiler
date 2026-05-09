@@ -21,17 +21,6 @@ void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
     Parser_Type_deinit(&self->type);
 }
 
-/*
-static struct Diag expected_ident_err(const struct Lexer_Token *tok)
-{
-    return (struct Diag){.pos = tok->pos,
-                         .line = tok->line,
-                         .msg = Print_fmt_to_str("expected identifier"),
-                         .err = ERRORTYPE_MISSING_IDENTIFIER,
-                         .is_err = true};
-}
-*/
-
 static struct Diag redefined_ident_err(const struct Lexer_Token *tok,
                                        const char *name)
 {
@@ -72,7 +61,7 @@ static void resolve_auto(struct Parser_VarDecl *decl)
         decl->type.array = mid_malloc(sizeof(*decl->type.array));
         *decl->type.array = Parser_copy_array_type(init_type->array);
     } else if (Parser_is_typespec_named(init_type->spec)) {
-        decl->type.ident = init_type->ident;
+        decl->type.named = init_type->named;
     }
 
     // the top most CV qualifier is discarded

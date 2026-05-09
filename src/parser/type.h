@@ -61,11 +61,16 @@ struct Parser_TypeDataQual {
 };
 gen_dynarray_struct_named(Parser_TypeDataQualVec, struct Parser_TypeDataQual);
 
+struct Parser_TypeNamed {
+    struct Sema_Scope *parent;
+    i32 ident;
+};
+
 struct Parser_Type {
     union {
         struct Parser_TypeFPtr *fptr;
         struct Parser_TypeArray *array;
-        struct Sema_Ident *ident; // used by classes, structs, enums, etc.
+        struct Parser_TypeNamed named; // used by classes, structs, enums, etc.
     };
     struct Parser_TypeDataQualVec dquals; // one element for each level of
                                           // indirection, including 0.

@@ -20,14 +20,16 @@ struct Sema_Scope {
     struct Sema_ScopePVec childs;
     struct Sema_Scope *parent;
     struct Parser_ASTNode *node;
-    struct Sema_IdentVec idents;
+    struct Sema_IdentVec idents; // NOTE: be careful about ptr invalidation
     enum Sema_ScopeType type;
 };
 
 void Sema_Scope_deinit(struct Sema_Scope *self);
-const struct Sema_Ident *Sema_find_ident_const(const struct Sema_Scope *scope,
-                                               const char *name);
-struct Sema_Ident *Sema_find_ident(struct Sema_Scope *scope, const char *name);
+const struct Sema_Ident *
+Sema_find_ident_const(const struct Sema_Scope *scope, const char *name,
+                      const struct Sema_Scope **out_ident_scope);
+struct Sema_Ident *Sema_find_ident(struct Sema_Scope *scope, const char *name,
+                                   struct Sema_Scope **out_ident_scope);
 
 bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name);
 // type of a type-name.

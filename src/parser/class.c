@@ -70,7 +70,7 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
 
     const char *super_name = toks[ident].ident;
     struct Parser_ASTNode *super =
-        Sema_find_ident_const(self->parent, super_name)->def;
+        Sema_find_ident_const(self->parent, super_name, NULL)->def;
 
     if (!super)
         gen_dynpush(
