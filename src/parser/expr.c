@@ -250,6 +250,22 @@ static struct Parser_Expr numlit_tok_to_expr(const struct Lexer_Token *tok)
         .tok = tok, .info.val = tok->val, .valtype = PARSER_EXPRVALUE_PRVALUE};
 
     switch (tok->type) {
+    case LEXER_TOKENTYPE_CHAR_LIT:
+        ret.type = PARSER_EXPRTYPE_CHAR_LIT;
+        break;
+
+    case LEXER_TOKENTYPE_WCHAR_LIT:
+        ret.type = PARSER_EXPRTYPE_WCHAR_LIT;
+        break;
+
+    case LEXER_TOKENTYPE_CHAR16_LIT:
+        ret.type = PARSER_EXPRTYPE_CHAR16_LIT;
+        break;
+
+    case LEXER_TOKENTYPE_CHAR32_LIT:
+        ret.type = PARSER_EXPRTYPE_CHAR32_LIT;
+        break;
+
     case LEXER_TOKENTYPE_INT_LIT:
         ret.type = PARSER_EXPRTYPE_INT_LIT;
         break;

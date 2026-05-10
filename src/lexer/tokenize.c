@@ -9,6 +9,7 @@
 #include "position.h"
 #include "print.h"
 #include "symbol.h"
+#include "types.h"
 #include "utf8.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -189,15 +190,16 @@ struct NumLit {
 };
 
 // end - out variable and can be NULL
-static struct NumLit read_numlit(const char *src, isize_t start, isize_t *end)
+static struct NumLit read_numlit(const char *src, isize_t start,
+                                 isize_t *out_end)
 {
     isize_t digits_end = find_numlit_digits_end(src, start);
     isize_t lit_end;
     auto is_decimal = numlit_is_decimal(src, start, digits_end);
     auto type = numlit_type(src, digits_end, is_decimal, &lit_end);
 
-    if (end)
-        *end = lit_end;
+    if (out_end)
+        *out_end = lit_end;
 
     struct Dynstr str = Dynstr();
     for (isize_t i = start; i < lit_end; ++i)
@@ -231,54 +233,192 @@ static struct NumLit read_numlit(const char *src, isize_t start, isize_t *end)
     return ret;
 }
 
+static enum Lexer_TokenType numlit_type_to_tok_type(enum NumLitType type)
+{
+    switch (type) {
+    case NUMLIT_INT:
+        return LEXER_TOKENTYPE_INT_LIT;
+
+    case NUMLIT_UINT:
+        return LEXER_TOKENTYPE_UINT_LIT;
+
+    case NUMLIT_LONG:
+        return LEXER_TOKENTYPE_LONG_LIT;
+
+    case NUMLIT_ULONG:
+        return LEXER_TOKENTYPE_ULONG_LIT;
+
+    case NUMLIT_LONGLONG:
+        return LEXER_TOKENTYPE_LONGLONG_LIT;
+
+    case NUMLIT_ULONGLONG:
+        return LEXER_TOKENTYPE_ULONGLONG_LIT;
+
+    case NUMLIT_FLOAT:
+        return LEXER_TOKENTYPE_FLOAT_LIT;
+
+    case NUMLIT_DOUBLE:
+        return LEXER_TOKENTYPE_DOUBLE_LIT;
+
+    case NUMLIT_LONGDOUBLE:
+        return LEXER_TOKENTYPE_LONGDOUBLE_LIT;
+    }
+}
+
 // end - out variable and can be NULL
 static struct Lexer_Token create_numlit_tok(const char *src, isize_t start,
-                                            isize_t *end, struct Position pos,
+                                            isize_t *out_end,
+                                            struct Position pos,
                                             const char *line)
 {
-    auto info = read_numlit(src, start, end);
+    auto info = read_numlit(src, start, out_end);
 
     struct Lexer_Token ret;
     ret.pos = pos;
     ret.line = line;
     ret.val = info.val;
+    ret.type = numlit_type_to_tok_type(info.type);
+    return ret;
+}
 
-    switch (info.type) {
-    case NUMLIT_INT:
-        ret.type = LEXER_TOKENTYPE_INT_LIT;
+enum CharLitType {
+    CHARLIT_CHAR,
+    CHARLIT_WCHAR,
+    CHARLIT_CHAR16,
+    CHARLIT_CHAR32,
+};
+
+enum CharLitType charlit_type(const char *src, isize_t start,
+                              isize_t *prefix_end, struct Position pos,
+                              const char *line, struct DiagVec *diags)
+{
+    if (prefix_end)
+        *prefix_end = start + 1;
+
+    switch (src[start]) {
+    case '\'':
+        if (prefix_end)
+            *prefix_end = start;
+        return CHARLIT_CHAR;
+
+    case 'u':
+        if (prefix_end)
+            *prefix_end = start + 1;
+        return CHARLIT_CHAR16;
+
+    case 'U':
+        if (prefix_end)
+            *prefix_end = start + 1;
+        return CHARLIT_CHAR32;
+
+    case 'L':
+        if (prefix_end)
+            *prefix_end = start + 1;
+        return CHARLIT_WCHAR;
+
+    default:
+        gen_dynpush(diags,
+                    ((struct Diag){
+                        .pos = pos,
+                        .line = line,
+                        .msg = Print_fmt_to_str(
+                            "unknown char literal prefix '%c'", src[start]),
+                        .err = ERRORTYPE_BAD_LITERAL,
+                        .is_err = true,
+                    }));
+        return CHARLIT_CHAR;
+    }
+}
+
+static struct Diag expected_tok_err(const char *name, struct Position pos,
+                                    const char *line, enum ErrorType type)
+{
+    return (struct Diag){
+        .pos = pos,
+        .line = line,
+        .msg = Print_fmt_to_str("expected %s", name),
+        .err = type,
+        .is_err = true,
+    };
+}
+
+static enum Lexer_TokenType charlit_type_to_tok_type(enum CharLitType type)
+{
+    switch (type) {
+    case CHARLIT_CHAR:
+        return LEXER_TOKENTYPE_CHAR_LIT;
+
+    case CHARLIT_WCHAR:
+        return LEXER_TOKENTYPE_WCHAR_LIT;
+
+    case CHARLIT_CHAR16:
+        return LEXER_TOKENTYPE_CHAR16_LIT;
+
+    case CHARLIT_CHAR32:
+        return LEXER_TOKENTYPE_CHAR32_LIT;
+    }
+}
+
+void verify_charlit_value(u32 val, enum CharLitType type, struct Position pos,
+                          const char *line, struct DiagVec *diags)
+{
+    bool too_big = false;
+
+    switch (type) {
+    case CHARLIT_CHAR:
+        too_big = val > Types_char_umax;
         break;
 
-    case NUMLIT_UINT:
-        ret.type = LEXER_TOKENTYPE_UINT_LIT;
+    case CHARLIT_WCHAR:
+        too_big = val > Types_wchar_umax;
         break;
 
-    case NUMLIT_LONG:
-        ret.type = LEXER_TOKENTYPE_LONG_LIT;
+    case CHARLIT_CHAR16:
+        too_big = val > UINT16_MAX;
         break;
 
-    case NUMLIT_ULONG:
-        ret.type = LEXER_TOKENTYPE_ULONG_LIT;
+    case CHARLIT_CHAR32:
+        // val is exactly 32 bits
         break;
+    }
 
-    case NUMLIT_LONGLONG:
-        ret.type = LEXER_TOKENTYPE_LONGLONG_LIT;
-        break;
+    if (too_big)
+        gen_dynpush(diags,
+                    ((struct Diag){
+                        .pos = pos,
+                        .line = line,
+                        .msg = Print_fmt_to_str(
+                            "character to big to fit in character literal"),
+                        .err = ERRORTYPE_BAD_LITERAL,
+                        .is_err = true,
+                    }));
+}
 
-    case NUMLIT_ULONGLONG:
-        ret.type = LEXER_TOKENTYPE_ULONGLONG_LIT;
-        break;
+static struct Lexer_Token
+create_charlit_tok(const char *src, isize_t start, isize_t *out_end,
+                   struct Position pos, const char *line, struct DiagVec *diags)
+{
+    isize_t lquote;
+    auto type = charlit_type(src, start, &lquote, pos, line, diags);
+    // control flow shouldn't get here otherwise but better safe than sorry
+    assert(src[lquote] == '\'');
 
-    case NUMLIT_FLOAT:
-        ret.type = LEXER_TOKENTYPE_FLOAT_LIT;
-        break;
+    struct Lexer_Token ret = {};
+    ret.pos = pos;
+    ret.line = line;
+    ret.type = charlit_type_to_tok_type(type);
+    isize_t rquote;
+    ret.val.uint = UTF8_read_char(src, lquote + 1, &rquote);
 
-    case NUMLIT_DOUBLE:
-        ret.type = LEXER_TOKENTYPE_DOUBLE_LIT;
-        break;
+    verify_charlit_value(ret.val.uint, type, pos, line, diags);
 
-    case NUMLIT_LONGDOUBLE:
-        ret.type = LEXER_TOKENTYPE_LONGDOUBLE_LIT;
-        break;
+    if (src[rquote] != '\'') {
+        gen_dynpush(diags,
+                    expected_tok_err("'", pos, line, ERRORTYPE_MISSING_QUOTE));
+        if (out_end)
+            *out_end = rquote;
+    } else if (out_end) {
+        *out_end = rquote + 1;
     }
 
     return ret;
@@ -478,6 +618,7 @@ static isize_t skip_c_comment(const char *src, isize_t start,
     return i + 1;
 }
 
+// very ugly function
 static char *symb_in_tbl(struct SymbolTable *tbl, const char *symb)
 {
     for (isize_t i = 0; i < tbl->len; ++i) {
@@ -811,24 +952,40 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
                                                 line_start));
             break;
 
+        // ew
         CASE_ISALPHA:
         case '_': {
-            auto old_i = i;
-            char *id = read_identifier(src, i, &i);
-            --i;
-            char *in_tbl = symb_in_tbl(&symbtbl, id);
-            if (in_tbl) {
-                free(id);
-                id = in_tbl;
+            if (src[i + 1] == '\'') {
+                goto parse_char_lit;
+            } else {
+                auto old_i = i;
+                char *id = read_identifier(src, i, &i);
+                --i;
+                char *in_tbl = symb_in_tbl(&symbtbl, id);
+                if (in_tbl) {
+                    free(id);
+                    id = in_tbl;
+                }
+                auto tok = create_identifier_tok(id, pos, line_start);
+                gen_dynpush(&toks, tok);
+                // if the symbol is an actual identifier then it needs to be
+                // added to the symbol table, otherwise the identifier can be
+                // discarded
+                if (!in_tbl && tok.type == LEXER_TOKENTYPE_IDENTIFIER)
+                    gen_dynpush(&symbtbl, id);
+                else if (!in_tbl)
+                    free(id);
+                pos.column += i - old_i;
+                break;
             }
-            auto tok = create_identifier_tok(id, pos, line_start);
-            gen_dynpush(&toks, tok);
-            // if the symbol is an actual identifier then it needs to be added
-            // to the symbol table, otherwise the identifier can be discarded
-            if (!in_tbl && tok.type == LEXER_TOKENTYPE_IDENTIFIER)
-                gen_dynpush(&symbtbl, id);
-            else if (!in_tbl)
-                free(id);
+        }
+
+        case '\'': {
+        parse_char_lit:
+            auto old_i = i;
+            gen_dynpush(
+                &toks, create_charlit_tok(src, i, &i, pos, line_start, &diags));
+            --i;
             pos.column += i - old_i;
             break;
         }
