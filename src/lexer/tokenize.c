@@ -359,7 +359,7 @@ static enum Lexer_TokenType charlit_type_to_tok_type(enum CharLitType type)
     }
 }
 
-void verify_charlit_value(u32 val, enum CharLitType type, struct Position pos,
+bool verify_charlit_value(u32 val, enum CharLitType type, struct Position pos,
                           const char *line, struct DiagVec *diags)
 {
     bool too_big = false;
@@ -392,6 +392,8 @@ void verify_charlit_value(u32 val, enum CharLitType type, struct Position pos,
                         .err = ERRORTYPE_BAD_LITERAL,
                         .is_err = true,
                     }));
+
+    return !too_big;
 }
 
 static struct Lexer_Token
@@ -410,7 +412,8 @@ create_charlit_tok(const char *src, isize_t start, isize_t *out_end,
     isize_t rquote;
     ret.val.uint = UTF8_read_char(src, lquote + 1, &rquote);
 
-    verify_charlit_value(ret.val.uint, type, pos, line, diags);
+    if (!verify_charlit_value(ret.val.uint, type, pos, line, diags))
+        ret.val.uint = '\0';
 
     if (src[rquote] != '\'') {
         gen_dynpush(diags,
