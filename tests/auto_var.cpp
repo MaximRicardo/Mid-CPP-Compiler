@@ -26,4 +26,13 @@ int main()
     auto c_c = U'x';
     // c_d is a wchar_t
     auto c_d = L'x';
+
+    // s_a is a const char[2]
+    auto s_a = "x";
+    // s_b is a const char16_t[2]
+    auto s_b = u"x";
+    // s_c is a const char32_t[2]
+    auto s_c = U"x";
+    // s_d is a const wchar_t[2]
+    auto s_d = L"x";
 }

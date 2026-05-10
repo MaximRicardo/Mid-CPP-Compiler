@@ -1214,25 +1214,23 @@ static bool are_arrays_same(const struct Parser_TypeArray *a,
     return Parser_are_types_same(&a->elem, &b->elem);
 }
 
-static bool are_dquals_same(const struct Parser_Type *a,
-                            const struct Parser_Type *b)
+bool Parser_dquals_same(const struct Parser_TypeDataQual *a, isize_t n_a,
+                        const struct Parser_TypeDataQual *b, isize_t n_b)
 {
-    if (a->dquals.len != b->dquals.len)
+    if (n_a != n_b)
         return false;
 
-    for (isize_t i = 0; i < a->dquals.len; ++i) {
-        auto aq = &a->dquals.arr[i];
-        auto bq = &b->dquals.arr[i];
-
-        if (aq->is_const != bq->is_const || aq->is_volatile != bq->is_volatile)
+    for (isize_t i = 0; i < n_a; ++i) {
+        if (a[i].is_const != b[i].is_const ||
+            a[i].is_volatile != b[i].is_volatile)
             return false;
     }
 
     return true;
 }
 
-static bool are_squals_same(const struct Parser_TypeStorQual *a,
-                            const struct Parser_TypeStorQual *b)
+bool Parser_squals_same(const struct Parser_TypeStorQual *a,
+                        const struct Parser_TypeStorQual *b)
 {
     return memcmp(a, b, sizeof(*a)) == 0;
 }
@@ -1244,9 +1242,10 @@ bool Parser_are_types_same(const struct Parser_Type *a,
         return false;
     else if (a->lv_ref != b->lv_ref || a->rv_ref != b->rv_ref)
         return false;
-    else if (!are_squals_same(&a->squals, &b->squals))
+    else if (!Parser_squals_same(&a->squals, &b->squals))
         return false;
-    else if (!are_dquals_same(a, b))
+    else if (!Parser_dquals_same(a->dquals.arr, a->dquals.len, b->dquals.arr,
+                                 b->dquals.len))
         return false;
     else if (a->spec == PARSER_TYPESPEC_FPTR)
         return are_fptrs_same(a->fptr, b->fptr);

@@ -152,9 +152,9 @@ static enum NumLitType numlit_type(const char *src, isize_t end,
         return NUMLIT_UINT;
     } else if (c0 == 'l') {
         if (c1 == 'l') {
-            return NUMLIT_LONGLONG;
             if (suffix_end)
                 *suffix_end = end + 2;
+            return NUMLIT_LONGLONG;
         }
         if (suffix_end)
             *suffix_end = end + 1;
@@ -163,10 +163,6 @@ static enum NumLitType numlit_type(const char *src, isize_t end,
         if (suffix_end)
             *suffix_end = end + 1;
         return NUMLIT_FLOAT;
-    } else if (c0 == 'd') {
-        if (suffix_end)
-            *suffix_end = end + 1;
-        return NUMLIT_DOUBLE;
     } else {
         if (suffix_end)
             *suffix_end = end;
@@ -281,40 +277,34 @@ static struct Lexer_Token create_numlit_tok(const char *src, isize_t start,
     return ret;
 }
 
-enum CharLitType {
-    CHARLIT_CHAR,
-    CHARLIT_WCHAR,
-    CHARLIT_CHAR16,
-    CHARLIT_CHAR32,
-};
-
-enum CharLitType charlit_type(const char *src, isize_t start,
-                              isize_t *prefix_end, struct Position pos,
-                              const char *line, struct DiagVec *diags)
+enum Literal_StringType charlit_type(const char *src, isize_t start,
+                                     isize_t *prefix_end, struct Position pos,
+                                     const char *line, struct DiagVec *diags)
 {
     if (prefix_end)
         *prefix_end = start + 1;
 
     switch (src[start]) {
     case '\'':
+    case '"':
         if (prefix_end)
             *prefix_end = start;
-        return CHARLIT_CHAR;
+        return LITERAL_STRINGTYPE_CHAR;
 
     case 'u':
         if (prefix_end)
             *prefix_end = start + 1;
-        return CHARLIT_CHAR16;
+        return LITERAL_STRINGTYPE_CHAR16;
 
     case 'U':
         if (prefix_end)
             *prefix_end = start + 1;
-        return CHARLIT_CHAR32;
+        return LITERAL_STRINGTYPE_CHAR32;
 
     case 'L':
         if (prefix_end)
             *prefix_end = start + 1;
-        return CHARLIT_WCHAR;
+        return LITERAL_STRINGTYPE_WCHAR;
 
     default:
         gen_dynpush(diags,
@@ -326,7 +316,7 @@ enum CharLitType charlit_type(const char *src, isize_t start,
                         .err = ERRORTYPE_BAD_LITERAL,
                         .is_err = true,
                     }));
-        return CHARLIT_CHAR;
+        return LITERAL_STRINGTYPE_CHAR;
     }
 }
 
@@ -342,42 +332,62 @@ static struct Diag expected_tok_err(const char *name, struct Position pos,
     };
 }
 
-static enum Lexer_TokenType charlit_type_to_tok_type(enum CharLitType type)
+static enum Lexer_TokenType
+charlit_type_to_tok_type(enum Literal_StringType type)
 {
     switch (type) {
-    case CHARLIT_CHAR:
+    case LITERAL_STRINGTYPE_CHAR:
         return LEXER_TOKENTYPE_CHAR_LIT;
 
-    case CHARLIT_WCHAR:
+    case LITERAL_STRINGTYPE_WCHAR:
         return LEXER_TOKENTYPE_WCHAR_LIT;
 
-    case CHARLIT_CHAR16:
+    case LITERAL_STRINGTYPE_CHAR16:
         return LEXER_TOKENTYPE_CHAR16_LIT;
 
-    case CHARLIT_CHAR32:
+    case LITERAL_STRINGTYPE_CHAR32:
         return LEXER_TOKENTYPE_CHAR32_LIT;
     }
 }
 
-bool verify_charlit_value(u32 val, enum CharLitType type, struct Position pos,
-                          const char *line, struct DiagVec *diags)
+static enum Lexer_TokenType
+charlit_type_to_str_tok_type(enum Literal_StringType type)
+{
+    switch (type) {
+    case LITERAL_STRINGTYPE_CHAR:
+        return LEXER_TOKENTYPE_STRING_LIT;
+
+    case LITERAL_STRINGTYPE_WCHAR:
+        return LEXER_TOKENTYPE_WSTRING_LIT;
+
+    case LITERAL_STRINGTYPE_CHAR16:
+        return LEXER_TOKENTYPE_STRING16_LIT;
+
+    case LITERAL_STRINGTYPE_CHAR32:
+        return LEXER_TOKENTYPE_STRING32_LIT;
+    }
+}
+
+bool verify_charlit_value(u32 val, enum Literal_StringType type,
+                          struct Position pos, const char *line,
+                          struct DiagVec *diags)
 {
     bool too_big = false;
 
     switch (type) {
-    case CHARLIT_CHAR:
+    case LITERAL_STRINGTYPE_CHAR:
         too_big = val > Types_char_umax;
         break;
 
-    case CHARLIT_WCHAR:
+    case LITERAL_STRINGTYPE_WCHAR:
         too_big = val > Types_wchar_umax;
         break;
 
-    case CHARLIT_CHAR16:
+    case LITERAL_STRINGTYPE_CHAR16:
         too_big = val > UINT16_MAX;
         break;
 
-    case CHARLIT_CHAR32:
+    case LITERAL_STRINGTYPE_CHAR32:
         // val is exactly 32 bits
         break;
     }
@@ -423,6 +433,101 @@ create_charlit_tok(const char *src, isize_t start, isize_t *out_end,
     } else if (out_end) {
         *out_end = rquote + 1;
     }
+
+    return ret;
+}
+
+void realloc_strlit(struct Literal_String *str, isize_t cap)
+{
+    switch (str->type) {
+    case LITERAL_STRINGTYPE_CHAR:
+        str->c = mid_realloc(str->c, cap * sizeof(*str->c));
+        break;
+
+    case LITERAL_STRINGTYPE_WCHAR:
+        str->wc = mid_realloc(str->wc, cap * sizeof(*str->wc));
+        break;
+
+    case LITERAL_STRINGTYPE_CHAR16:
+        str->c16 = mid_realloc(str->c16, cap * sizeof(*str->c16));
+        break;
+
+    case LITERAL_STRINGTYPE_CHAR32:
+        str->c32 = mid_realloc(str->c32, cap * sizeof(*str->c32));
+        break;
+    }
+}
+
+static void strlit_add(struct Literal_String *str, isize_t idx, u32 c)
+{
+    switch (str->type) {
+    case LITERAL_STRINGTYPE_CHAR:
+        str->c[idx] = c;
+        break;
+
+    case LITERAL_STRINGTYPE_WCHAR:
+        str->wc[idx] = c;
+        break;
+
+    case LITERAL_STRINGTYPE_CHAR16:
+        str->c16[idx] = c;
+        break;
+
+    case LITERAL_STRINGTYPE_CHAR32:
+        str->c32[idx] = c;
+        break;
+    }
+}
+
+struct Literal_String read_strlit(const char *src, isize_t lquote,
+                                  isize_t *out_end,
+                                  enum Literal_StringType type,
+                                  struct Position pos, const char *line,
+                                  struct DiagVec *diags)
+{
+    isize_t len = 0;
+    isize_t cap = 128;
+    struct Literal_String str = {.type = type};
+    realloc_strlit(&str, cap);
+
+    isize_t i;
+    for (i = lquote + 1; src[i] != '"' && src[i] != '\n';) {
+        u32 c = UTF8_read_char(src, i, &i);
+        verify_charlit_value(c, type, pos, line, diags);
+
+        strlit_add(&str, len++, c);
+        if (len == cap)
+            realloc_strlit(&str, cap += 128);
+    }
+
+    strlit_add(&str, len, '\0');
+
+    if (src[i] != '"')
+        gen_dynpush(diags,
+                    expected_tok_err("\"", pos, line, ERRORTYPE_BAD_LITERAL));
+
+    if (out_end)
+        *out_end = i + (src[i] == '"');
+    return str;
+}
+
+static struct Lexer_Token
+create_strlit_tok(const char *src, struct Literal_StringVec *str_lits,
+                  isize_t start, isize_t *out_end, struct Position pos,
+                  const char *line, struct DiagVec *diags)
+{
+    isize_t lquote;
+    auto type = charlit_type(src, start, &lquote, pos, line, diags);
+    assert(src[lquote] == '"');
+
+    struct Lexer_Token ret = {};
+    ret.pos = pos;
+    ret.line = line;
+    ret.type = charlit_type_to_str_tok_type(type);
+
+    auto lit = read_strlit(src, lquote, out_end, type, pos, line, diags);
+    gen_dynpush(str_lits, lit);
+    ret.val.str = lit;
 
     return ret;
 }
@@ -634,9 +739,10 @@ static char *symb_in_tbl(struct SymbolTable *tbl, const char *symb)
 
 static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 {
-    struct Lexer_TokenVec toks = gen_dyninit();
-    struct SymbolTable symbtbl = gen_dyninit();
-    struct DiagVec diags = gen_dyninit();
+    struct Lexer_TokenVec toks = {};
+    struct SymbolTable symbtbl = {};
+    struct Literal_StringVec str_lits = {};
+    struct DiagVec diags = {};
     struct Position pos = {.file = file, .line = 1, .column = 1};
 
     const char *line_start = src;
@@ -960,6 +1066,8 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '_': {
             if (src[i + 1] == '\'') {
                 goto parse_char_lit;
+            } else if (src[i + 1] == '"') {
+                goto parse_str_lit;
             } else {
                 auto old_i = i;
                 char *id = read_identifier(src, i, &i);
@@ -993,9 +1101,19 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
             break;
         }
 
+        case '"': {
+        parse_str_lit:
+            auto old_i = i;
+            gen_dynpush(&toks, create_strlit_tok(src, &str_lits, i, &i, pos,
+                                                 line_start, &diags));
+            --i;
+            pos.column += i - old_i;
+            break;
+        }
+
         default: {
             // column isn't updated cuz it's still one character
-            char *c = UTF8_to_str(UTF8_read_char(src, i, &i));
+            char *c = UTF8_char_to_str(UTF8_read_char(src, i, &i));
             --i;
             struct Diag err = {.is_err = true,
                                .err = ERRORTYPE_UNKNOWN_SYMBOL,
@@ -1014,6 +1132,7 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
     struct Lexer_Tokenize ret;
     ret.toks = toks;
     ret.symtbl = symbtbl;
+    ret.str_lits = str_lits;
     ret.diags = diags;
     return ret;
 }
@@ -1029,5 +1148,6 @@ void Lexer_Tokenize_deinit(struct Lexer_Tokenize *self)
 {
     gen_dyndeinit(&self->toks);
     gen_dyndeinit(&self->symtbl, Symbol_deinit_symbol);
+    gen_dyndeinit(&self->str_lits, Literal_String_deinit);
     gen_dyndeinit(&self->diags, Diag_deinit);
 }

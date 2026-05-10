@@ -1,4 +1,5 @@
 #include "token.h"
+#include "lexer/token_type.h"
 
 bool Lexer_is_numlit(enum Lexer_TokenType type)
 {
@@ -6,9 +7,15 @@ bool Lexer_is_numlit(enum Lexer_TokenType type)
            type < LEXER_TOKENTYPE_NUMLIT_END;
 }
 
+bool Lexer_is_strlit(enum Lexer_TokenType type)
+{
+    return type > LEXER_TOKENTYPE_STRLIT_START &&
+           type < LEXER_TOKENTYPE_STRLIT_END;
+}
+
 bool Lexer_is_lit(enum Lexer_TokenType type)
 {
-    return Lexer_is_numlit(type);
+    return Lexer_is_numlit(type) || Lexer_is_strlit(type);
 }
 
 bool Lexer_is_ternaryop(enum Lexer_TokenType type)

@@ -3,11 +3,13 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "literal.h"
 #include "macros.h"
 #include "parser/ast.h"
 #include "parser/astvec.h"
 #include "parser/class.h"
 #include "parser/expr.h"
+#include "parser/expr_type.h"
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
@@ -16,6 +18,7 @@
 #include "sema/scope.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 const char *Sema_node_creates_type_name(const struct Parser_ASTNode *node)
@@ -54,6 +57,42 @@ struct Parser_Type *Sema_node_type(struct Parser_ASTNode *node)
     return (struct Parser_Type *)Sema_node_type_const(node);
 }
 
+static void typecheck_strlit_expr(struct Parser_Expr *expr)
+{
+    // str literals are of type const char[]
+    enum Parser_TypeSpec elem_spec;
+    switch (expr->type) {
+    case PARSER_EXPRTYPE_STRING_LIT:
+        elem_spec = PARSER_TYPESPEC_CHAR;
+        break;
+
+    case PARSER_EXPRTYPE_WSTRING_LIT:
+        elem_spec = PARSER_TYPESPEC_WCHAR;
+        break;
+
+    case PARSER_EXPRTYPE_STRING16_LIT:
+        elem_spec = PARSER_TYPESPEC_CHAR16;
+        break;
+
+    case PARSER_EXPRTYPE_STRING32_LIT:
+        elem_spec = PARSER_TYPESPEC_CHAR32;
+        break;
+
+    default:
+        CRASH("expr isn't a str lit");
+    }
+
+    expr->ret.spec = PARSER_TYPESPEC_ARRAY;
+    expr->ret.dquals.arr[0].is_const = true;
+
+    expr->ret.array = malloc(sizeof(*expr->ret.array));
+    // account for '\0'
+    expr->ret.array->len = Literal_strlit_len(&expr->info.val.str) + 1;
+    expr->ret.array->elem = (struct Parser_Type){.spec = elem_spec};
+    gen_dynpush(&expr->ret.array->elem.dquals,
+                (struct Parser_TypeDataQual){.is_const = true});
+}
+
 static void typecheck_lit_expr(struct Parser_Expr *expr)
 {
     if (expr->type == PARSER_EXPRTYPE_STRING_LIT ||
@@ -81,6 +120,13 @@ static void typecheck_lit_expr(struct Parser_Expr *expr)
 
     case PARSER_EXPRTYPE_CHAR32_LIT:
         expr->ret.spec = PARSER_TYPESPEC_CHAR32;
+        break;
+
+    case PARSER_EXPRTYPE_STRING_LIT:
+    case PARSER_EXPRTYPE_WSTRING_LIT:
+    case PARSER_EXPRTYPE_STRING16_LIT:
+    case PARSER_EXPRTYPE_STRING32_LIT:
+        typecheck_strlit_expr(expr);
         break;
 
     case PARSER_EXPRTYPE_INT_LIT:
@@ -725,6 +771,35 @@ void Sema_typecheck_node(struct Parser_ASTNode *node, struct Sema_Scope *scope,
     }
 }
 
+static bool is_valid_array_to_ptr(const struct Parser_Type *src,
+                                  const struct Parser_Type *dest)
+{
+    if (src->spec != PARSER_TYPESPEC_ARRAY)
+        return false;
+
+    // an array to ptr conversion becomes a prvalue so it can't be passed to a
+    // non-const lvalue reference
+    if (dest->lv_ref && !dest->dquals.arr[0].is_const)
+        return false;
+
+    isize_t src_indir = Parser_n_indir(src);
+    isize_t elem_indir = Parser_n_indir(&src->array->elem);
+    isize_t dest_indir = Parser_n_indir(dest);
+
+    if (src_indir != 0 || elem_indir + 1 != dest_indir)
+        return false;
+    else if (src->array->elem.spec != dest->spec)
+        return false;
+    else if (!Parser_dquals_same(src->array->elem.dquals.arr,
+                                 src->array->elem.dquals.len,
+                                 &dest->dquals.arr[1], dest->dquals.len - 1))
+        return false;
+
+    printf("valid array to ptr\n");
+
+    return true;
+}
+
 bool Sema_can_convert(const struct Parser_Type *src,
                       enum Parser_ExprValueType src_valtype,
                       const struct Parser_Type *dest)
@@ -740,6 +815,8 @@ bool Sema_can_convert(const struct Parser_Type *src,
         return true;
     else if (Parser_n_indir(src) == Parser_n_indir(dest) &&
              src->spec == dest->spec)
+        return true;
+    else if (is_valid_array_to_ptr(src, dest))
         return true;
 
     return false;

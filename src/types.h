@@ -20,12 +20,14 @@ constexpr i32 Types_float_size = 4;
 constexpr i32 Types_double_size = 8;
 constexpr i32 Types_longdouble_size = 8;
 
+typedef i8 TypesCharType;
 constexpr i32 Types_char_size = 1;
 constexpr bool Types_char_signed = true;
 constexpr i64 Types_char_smax = INT8_MAX;
 constexpr i64 Types_char_smin = INT8_MIN;
 constexpr u64 Types_char_umax = UINT8_MAX;
 
+typedef u32 TypesWCharType;
 constexpr i32 Types_wchar_size = 4;
 constexpr bool Types_wchar_signed = false;
 // limits if wchar_t were signed

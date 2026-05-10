@@ -125,5 +125,9 @@ u64 Parser_integral_max(enum Parser_TypeSpec spec);
 i64 Parser_integral_min(enum Parser_TypeSpec spec);
 enum Parser_TypeSpec Parser_integral_prom(enum Parser_TypeSpec spec);
 bool Parser_is_fundamental_type(const struct Parser_Type *type);
+bool Parser_dquals_same(const struct Parser_TypeDataQual *a, isize_t n_a,
+                        const struct Parser_TypeDataQual *b, isize_t n_b);
+bool Parser_squals_same(const struct Parser_TypeStorQual *a,
+                        const struct Parser_TypeStorQual *b);
 bool Parser_are_types_same(const struct Parser_Type *a,
                            const struct Parser_Type *b);

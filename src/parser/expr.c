@@ -4,8 +4,10 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "lexer/token_type.h"
 #include "macros.h"
 #include "parser/end_types.h"
+#include "parser/expr_type.h"
 #include "parser/type.h"
 #include "print.h"
 #include "sema/scope.h"
@@ -242,9 +244,9 @@ bool Parser_is_rvalue(enum Parser_ExprValueType type)
 
 bool Parser_is_rvalue(enum Parser_ExprValueType type);
 
-static struct Parser_Expr numlit_tok_to_expr(const struct Lexer_Token *tok)
+static struct Parser_Expr lit_tok_to_expr(const struct Lexer_Token *tok)
 {
-    assert(Lexer_is_numlit(tok->type));
+    assert(Lexer_is_lit(tok->type));
 
     struct Parser_Expr ret = {
         .tok = tok, .info.val = tok->val, .valtype = PARSER_EXPRVALUE_PRVALUE};
@@ -264,6 +266,22 @@ static struct Parser_Expr numlit_tok_to_expr(const struct Lexer_Token *tok)
 
     case LEXER_TOKENTYPE_CHAR32_LIT:
         ret.type = PARSER_EXPRTYPE_CHAR32_LIT;
+        break;
+
+    case LEXER_TOKENTYPE_STRING_LIT:
+        ret.type = PARSER_EXPRTYPE_STRING_LIT;
+        break;
+
+    case LEXER_TOKENTYPE_WSTRING_LIT:
+        ret.type = PARSER_EXPRTYPE_WSTRING_LIT;
+        break;
+
+    case LEXER_TOKENTYPE_STRING16_LIT:
+        ret.type = PARSER_EXPRTYPE_STRING16_LIT;
+        break;
+
+    case LEXER_TOKENTYPE_STRING32_LIT:
+        ret.type = PARSER_EXPRTYPE_STRING32_LIT;
         break;
 
     case LEXER_TOKENTYPE_INT_LIT:
@@ -995,11 +1013,11 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
 
     isize_t i;
     for (i = start; !is_end_type(toks[i].type, end_types, n_end_types); ++i) {
-        if (Lexer_is_numlit(toks[i].type)) {
+        if (Lexer_is_lit(toks[i].type)) {
             if (!mode)
                 gen_dynpush(diags, unexpected_token("literal", &toks[i]));
             else
-                gen_dynpush(&out, numlit_tok_to_expr(&toks[i]));
+                gen_dynpush(&out, lit_tok_to_expr(&toks[i]));
             mode = false;
         } else if (toks[i].type == LEXER_TOKENTYPE_IDENTIFIER) {
             if (!mode)

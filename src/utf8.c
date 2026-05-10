@@ -1,4 +1,5 @@
 #include "utf8.h"
+#include "dynstr.h"
 #include "ints.h"
 #include "macros.h"
 #include <limits.h>
@@ -128,7 +129,7 @@ void UTF8_print_char(u32 c)
     printf("%s", buf);
 }
 
-char *UTF8_to_str(u32 c)
+char *UTF8_char_to_str(u32 c)
 {
     char *ret = calloc(MB_LEN_MAX + 1, 1);
     mbstate_t ps;
@@ -137,4 +138,42 @@ char *UTF8_to_str(u32 c)
     c32rtomb(ret, c, &ps);
 
     return ret;
+}
+
+void UTF8_print_str32(u32 *str)
+{
+    for (isize_t i = 0; str[i] != '\0'; ++i)
+        UTF8_print_char(str[i]);
+}
+
+void UTF8_print_str16(u16 *str)
+{
+    for (isize_t i = 0; str[i] != '\0'; ++i)
+        UTF8_print_char(str[i]);
+}
+
+char *UTF8_str32_to_str(u32 *str)
+{
+    struct Dynstr ret = {};
+
+    for (isize_t i = 0; str[i] != '\0'; ++i) {
+        char *c = UTF8_char_to_str(str[i]);
+        Dynstr_append(&ret, c);
+        free(c);
+    }
+
+    return ret.str;
+}
+
+char *UTF8_str16_to_str(u16 *str)
+{
+    struct Dynstr ret = {};
+
+    for (isize_t i = 0; str[i] != '\0'; ++i) {
+        char *c = UTF8_char_to_str(str[i]);
+        Dynstr_append(&ret, c);
+        free(c);
+    }
+
+    return ret.str;
 }
