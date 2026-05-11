@@ -4,7 +4,7 @@ public:
 
     class NestedClass {
     public:
-        static int y;
+        static float y;
     };
 };
 

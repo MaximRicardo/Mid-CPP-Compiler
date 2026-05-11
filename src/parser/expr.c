@@ -229,7 +229,7 @@ i32 Parser_op_precedence(enum Parser_ExprType op)
 bool Parser_op_ltr_assoc(enum Parser_ExprType op)
 {
     i32 prec = Parser_op_precedence(op);
-    return prec != 13 && prec != 1;
+    return prec != 15 && prec != 13 && prec != 1;
 }
 
 bool Parser_is_glvalue(enum Parser_ExprValueType type)
