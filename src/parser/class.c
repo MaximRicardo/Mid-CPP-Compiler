@@ -153,7 +153,7 @@ static void parse_node_def(struct Parser_ASTNode *node,
     } else if (node->type == PARSER_ASTNODETYPE_CLASS) {
         if (node->class_.def_start) {
             Parser_parse_class_body(&node->class_, node, toks,
-                                    toks - node->class_.def_start, allocs,
+                                    node->class_.def_start - toks, allocs,
                                     diags);
         }
     }
