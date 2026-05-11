@@ -33,7 +33,7 @@ enum Parser_ExprType {
 
     // binary ops
     PARSER_EXPRTYPE_BINOP_START,
-    PARSER_EXPRTYPE_SCOPE_RES,
+    PARSER_EXPRTYPE_BIN_SCOPE_RES, // example: A::X
     PARSER_EXPRTYPE_MEMB_SEL,
     PARSER_EXPRTYPE_PTR_MEMB_SEL,
     PARSER_EXPRTYPE_ARRAY_SUBSCR,
@@ -75,6 +75,7 @@ enum Parser_ExprType {
 
     // unary ops
     PARSER_EXPRTYPE_UNARYOP_START,
+    PARSER_EXPRTYPE_UNARY_SCOPE_RES, // example: ::X
     PARSER_EXPRTYPE_FUNC_CALL, // not really a unary operator but close enough
     PARSER_EXPRTYPE_POSTFIX_INC,
     PARSER_EXPRTYPE_POSTFIX_DEC,

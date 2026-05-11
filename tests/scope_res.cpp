@@ -11,8 +11,13 @@ public:
 void f(int x);
 void f(float x);
 
+int var = 67;
+
 int main()
 {
     f(Class::x);
     f(Class::NestedClass::y);
+
+    float var = 420;
+    f(::var);
 }

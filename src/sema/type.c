@@ -622,12 +622,10 @@ static void typecheck_comp_op_expr(struct Parser_Expr *expr,
     }
 }
 
-static void typecheck_bin_scope_res_expr(struct Parser_Expr *expr,
-                                         struct Sema_Scope *scope,
-                                         struct DiagVec *diags)
+static struct Sema_Scope *bin_scope_res_scope(struct Parser_Expr *expr,
+                                              struct Sema_Scope *scope)
 {
     auto lhs = &expr->info.args.arr[0];
-    auto rhs = &expr->info.args.arr[1];
     assert(lhs->type == PARSER_EXPRTYPE_IDENTIFIER);
 
     struct Sema_Scope *base = Sema_closest_rnce_scope(scope);
@@ -644,11 +642,36 @@ static void typecheck_bin_scope_res_expr(struct Parser_Expr *expr,
         res = Sema_ident_scope(ident);
         break;
     }
-    assert(res);
 
-    Sema_typecheck_expr(rhs, res, diags);
-    expr->ret = Parser_copy_type(&rhs->ret);
-    expr->valtype = rhs->valtype;
+    assert(res);
+    return res;
+}
+
+static struct Sema_Scope *unary_scope_res_scope(struct Sema_Scope *scope)
+{
+    struct Sema_Scope *base = Sema_closest_rnce_scope(scope);
+    struct Sema_Scope *res =
+        base->parent ? Sema_closest_rnce_scope(base) : base;
+    return res;
+}
+
+static void typecheck_scope_res_expr(struct Parser_Expr *expr,
+                                     struct Sema_Scope *scope,
+                                     struct DiagVec *diags)
+{
+    struct Sema_Scope *res;
+    struct Parser_Expr *arg;
+    if (expr->type == PARSER_EXPRTYPE_BIN_SCOPE_RES) {
+        res = bin_scope_res_scope(expr, scope);
+        arg = &expr->info.args.arr[1];
+    } else {
+        res = unary_scope_res_scope(scope);
+        arg = &expr->info.args.arr[0];
+    }
+
+    Sema_typecheck_expr(arg, res, diags);
+    expr->ret = Parser_copy_type(&arg->ret);
+    expr->valtype = arg->valtype;
 }
 
 static void typecheck_op_expr(struct Parser_Expr *expr,
@@ -679,8 +702,8 @@ static void typecheck_op_expr(struct Parser_Expr *expr,
         typecheck_logical_op_expr(expr, diags);
     else if (Parser_is_comp_op(expr->type))
         typecheck_comp_op_expr(expr, diags);
-    else if (expr->type == PARSER_EXPRTYPE_SCOPE_RES)
-        typecheck_bin_scope_res_expr(expr, scope, diags);
+    else if (Parser_is_scope_res(expr->type))
+        typecheck_scope_res_expr(expr, scope, diags);
     else {
         printf("op at %d:%d\n", expr->tok->pos.line, expr->tok->pos.column);
         printf("op type = %d\n", expr->type);
@@ -720,7 +743,7 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
         typecheck_ident_expr(expr, scope, diags);
     } else {
         // the scope resolution operator is weird
-        if (expr->type != PARSER_EXPRTYPE_SCOPE_RES) {
+        if (!Parser_is_scope_res(expr->type)) {
             for (isize_t i = 0; i < expr->info.args.len; ++i)
                 Sema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
         }

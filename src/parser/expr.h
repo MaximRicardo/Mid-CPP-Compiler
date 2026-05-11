@@ -12,6 +12,7 @@ bool Parser_is_numlit(enum Parser_ExprType type);
 bool Parser_is_ternaryop(enum Parser_ExprType type);
 bool Parser_is_binop(enum Parser_ExprType type);
 bool Parser_is_unaryop(enum Parser_ExprType type);
+bool Parser_is_scope_res(enum Parser_ExprType type);
 bool Parser_is_op(enum Parser_ExprType type);
 bool Parser_is_arith_op(enum Parser_ExprType type);
 bool Parser_is_logical_op(enum Parser_ExprType type);

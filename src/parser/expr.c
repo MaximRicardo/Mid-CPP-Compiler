@@ -63,6 +63,12 @@ bool Parser_is_unaryop(enum Parser_ExprType type)
            type < PARSER_EXPRTYPE_UNARYOP_END;
 }
 
+bool Parser_is_scope_res(enum Parser_ExprType type)
+{
+    return type == PARSER_EXPRTYPE_BIN_SCOPE_RES ||
+           type == PARSER_EXPRTYPE_UNARY_SCOPE_RES;
+}
+
 bool Parser_is_op(enum Parser_ExprType type)
 {
     return Parser_is_binop(type) || Parser_is_unaryop(type);
@@ -117,7 +123,8 @@ i32 Parser_op_precedence(enum Parser_ExprType op)
     i32 flipped;
 
     switch (op) {
-    case PARSER_EXPRTYPE_SCOPE_RES:
+    case PARSER_EXPRTYPE_BIN_SCOPE_RES:
+    case PARSER_EXPRTYPE_UNARY_SCOPE_RES:
         flipped = 1;
         break;
 
@@ -352,7 +359,7 @@ static struct Parser_Expr op_tok_to_expr_mode0(const struct Lexer_Token *tok,
 
     switch (tok->type) {
     case LEXER_TOKENTYPE_SCOPE_RES:
-        ret.type = PARSER_EXPRTYPE_SCOPE_RES;
+        ret.type = PARSER_EXPRTYPE_BIN_SCOPE_RES;
         break;
 
     case LEXER_TOKENTYPE_MEMB_SEL:
@@ -580,8 +587,7 @@ static struct Parser_Expr op_tok_to_expr_mode1(const struct Lexer_Token *tok,
 
     switch (tok->type) {
     case LEXER_TOKENTYPE_SCOPE_RES:
-        gen_dynpush(diags, unexpected_token("scope resolution '::'", tok));
-        ret.type = PARSER_EXPRTYPE_SCOPE_RES;
+        ret.type = PARSER_EXPRTYPE_UNARY_SCOPE_RES;
         break;
 
     case LEXER_TOKENTYPE_MEMB_SEL:
