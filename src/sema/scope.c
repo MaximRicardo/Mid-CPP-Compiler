@@ -11,18 +11,32 @@
 #include "sema/type.h"
 #include <string.h>
 
-/*
-static void scope_ptr_deinit(struct Sema_Scope **ptr)
-{
-    Sema_Scope_deinit(*ptr);
-    // free(*ptr);
-}
-*/
-
 void Sema_Scope_deinit(struct Sema_Scope *self)
 {
     gen_dyndeinit(&self->childs);
     gen_dyndeinit(&self->idents, Sema_Ident_deinit);
+}
+
+bool Sema_is_rnce_scope(enum Sema_ScopeType type)
+{
+    return type == SEMA_SCOPETYPE_ROOT || type == SEMA_SCOPETYPE_NAMESPACE ||
+           type == SEMA_SCOPETYPE_CLASS || type == SEMA_SCOPETYPE_ENUM;
+}
+
+const struct Sema_Scope *
+Sema_closest_rnce_scope_const(const struct Sema_Scope *self)
+{
+    if (Sema_is_rnce_scope(self->type))
+        return self;
+    else if (self->parent)
+        return Sema_closest_rnce_scope_const(self->parent);
+    else
+        return NULL;
+}
+
+struct Sema_Scope *Sema_closest_rnce_scope(struct Sema_Scope *self)
+{
+    return (struct Sema_Scope *)Sema_closest_rnce_scope_const(self);
 }
 
 const struct Sema_Ident *

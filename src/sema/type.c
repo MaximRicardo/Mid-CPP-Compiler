@@ -14,6 +14,7 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
+#include "sema/ident.h"
 #include "sema/lookup.h"
 #include "sema/scope.h"
 #include <assert.h>
@@ -621,6 +622,35 @@ static void typecheck_comp_op_expr(struct Parser_Expr *expr,
     }
 }
 
+static void typecheck_bin_scope_res_expr(struct Parser_Expr *expr,
+                                         struct Sema_Scope *scope,
+                                         struct DiagVec *diags)
+{
+    auto lhs = &expr->info.args.arr[0];
+    auto rhs = &expr->info.args.arr[1];
+    assert(lhs->type == PARSER_EXPRTYPE_IDENTIFIER);
+
+    struct Sema_Scope *base = Sema_closest_rnce_scope(scope);
+    struct Sema_Scope *res = NULL;
+
+    const char *name = lhs->info.ident;
+    for (isize_t i = 0; i < base->idents.len; ++i) {
+        auto ident = &base->idents.arr[i];
+        if (!Sema_is_nce_ident(ident->type))
+            continue;
+        if (strcmp(ident->name, name))
+            continue;
+
+        res = Sema_ident_scope(ident);
+        break;
+    }
+    assert(res);
+
+    Sema_typecheck_expr(rhs, res, diags);
+    expr->ret = Parser_copy_type(&rhs->ret);
+    expr->valtype = rhs->valtype;
+}
+
 static void typecheck_op_expr(struct Parser_Expr *expr,
                               struct Sema_Scope *scope, struct DiagVec *diags)
 {
@@ -649,6 +679,8 @@ static void typecheck_op_expr(struct Parser_Expr *expr,
         typecheck_logical_op_expr(expr, diags);
     else if (Parser_is_comp_op(expr->type))
         typecheck_comp_op_expr(expr, diags);
+    else if (expr->type == PARSER_EXPRTYPE_SCOPE_RES)
+        typecheck_bin_scope_res_expr(expr, scope, diags);
     else {
         printf("op at %d:%d\n", expr->tok->pos.line, expr->tok->pos.column);
         printf("op type = %d\n", expr->type);
@@ -687,8 +719,11 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
     } else if (expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
         typecheck_ident_expr(expr, scope, diags);
     } else {
-        for (isize_t i = 0; i < expr->info.args.len; ++i)
-            Sema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
+        // the scope resolution operator is weird
+        if (expr->type != PARSER_EXPRTYPE_SCOPE_RES) {
+            for (isize_t i = 0; i < expr->info.args.len; ++i)
+                Sema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
+        }
 
         struct Parser_ASTNode *overload = Sema_find_op_overload(
             expr->type, expr->info.args.arr, expr->info.args.len, scope);

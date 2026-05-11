@@ -25,6 +25,14 @@ struct Sema_Scope {
 };
 
 void Sema_Scope_deinit(struct Sema_Scope *self);
+
+// RNCE - Root, Namespace, Class, or Enum
+bool Sema_is_rnce_scope(enum Sema_ScopeType type);
+// returns self if it itself is an RNCE scope
+const struct Sema_Scope *
+Sema_closest_rnce_scope_const(const struct Sema_Scope *self);
+struct Sema_Scope *Sema_closest_rnce_scope(struct Sema_Scope *self);
+
 const struct Sema_Ident *
 Sema_find_ident_const(const struct Sema_Scope *scope, const char *name,
                       const struct Sema_Scope **out_ident_scope);

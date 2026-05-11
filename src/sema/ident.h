@@ -13,6 +13,9 @@ enum Sema_IdentType {
     SEMA_IDENTTYPE_NAMESPACE,
 };
 
+// NCE - Namespace, Class, or Enum
+bool Sema_is_nce_ident(enum Sema_IdentType type);
+
 struct Sema_IdentFuncInfo {
     struct Sema_Scope *def_scope;
     struct Parser_Expr **default_args; // one element for each parameter,
@@ -37,10 +40,10 @@ struct Sema_Ident {
     struct Parser_ASTNode *def;
     enum Sema_IdentType type;
 };
-
 gen_dynarray_struct_named(Sema_IdentVec, struct Sema_Ident);
 
 void Sema_Ident_deinit(struct Sema_Ident *self);
+struct Sema_Scope *Sema_ident_scope(const struct Sema_Ident *self);
 
 // this is here in case i eventually need to make a more complex copy function
 static inline struct Sema_Ident
