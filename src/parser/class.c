@@ -10,6 +10,7 @@
 #include "parser/end_types.h"
 #include "parser/expr.h"
 #include "parser/find_twin.h"
+#include "parser/scope.h"
 #include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
@@ -88,11 +89,14 @@ static enum Parser_ClassType parse_class_type(const struct Lexer_Token *toks,
 
 static isize_t parse_class_entry(struct Parser_Class *self,
                                  const struct Lexer_Token *toks, isize_t start,
+                                 struct Sema_Scope *parent_scope,
                                  struct DiagVec *diags)
 {
     self->type = parse_class_type(toks, start);
 
     isize_t ident = start + 1;
+    self->parent =
+        Parser_parse_scope_res(toks, ident, &ident, parent_scope, diags);
     if (toks[ident].type != LEXER_TOKENTYPE_IDENTIFIER) {
         gen_dynpush(diags, Diag_expected_token_err("identifier", &toks[start],
                                                    ERRORTYPE_MISSING_TOKEN));
@@ -326,9 +330,8 @@ isize_t Parser_parse_class(struct Parser_Class *self,
                            bool skip_def, struct Parser_Allocators *allocs,
                            struct DiagVec *diags)
 {
-    *self = (struct Parser_Class){.ident_idx = -1, .parent = parent_scope};
-
-    isize_t lcurly = parse_class_entry(self, toks, start, diags);
+    *self = (struct Parser_Class){.ident_idx = -1};
+    isize_t lcurly = parse_class_entry(self, toks, start, parent_scope, diags);
 
     if (self->name)
         add_class_to_scope(self->parent, self, node);
