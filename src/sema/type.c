@@ -254,11 +254,14 @@ static void set_func_call_node(struct Parser_Expr *expr,
     const char *func_name = scope_res_ident(lhs);
     bool qualified = Parser_is_scope_res(lhs->type);
 
+    struct Sema_Scope *res =
+        Parser_is_scope_res(lhs->type) ? lhs->res_scope : scope;
+
     if (lhs->type == PARSER_EXPRTYPE_IDENTIFIER ||
         Parser_is_scope_res(lhs->type)) {
-        expr->node = Sema_find_func_adl(func_name, &expr->info.args.arr[1],
-                                        expr->info.args.len - 1, false, scope,
-                                        !qualified);
+        expr->node =
+            Sema_find_func(func_name, &expr->info.args.arr[1],
+                           expr->info.args.len - 1, false, res, qualified);
 
         if (!expr->node)
             gen_dynpush(diags, ((struct Diag){
@@ -709,6 +712,7 @@ static void typecheck_scope_res_expr(struct Parser_Expr *expr,
     Sema_typecheck_expr(arg, res, diags);
     expr->ret = Parser_copy_type(&arg->ret);
     expr->valtype = arg->valtype;
+    expr->res_scope = res;
 }
 
 static void typecheck_op_expr(struct Parser_Expr *expr,

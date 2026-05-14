@@ -129,15 +129,17 @@ static void find_op_overloads_in_scope(enum Parser_ExprType op,
     }
 }
 
-struct Parser_ASTNode *Sema_find_func_adl(const char *name,
-                                          const struct Parser_Expr *args,
-                                          isize_t n_args, bool this_passed,
-                                          struct Sema_Scope *scope, bool do_adl)
+struct Parser_ASTNode *
+Sema_find_func(const char *name, const struct Parser_Expr *args, isize_t n_args,
+               bool this_passed, struct Sema_Scope *scope, bool is_qualified)
 {
     struct Sema_ScopePVec scopes = {};
-    add_nmspace_scope(scope, &scopes);
-    if (do_adl)
+    if (is_qualified) {
+        gen_dynpush(&scopes, scope);
+    } else {
+        add_nmspace_scope(scope, &scopes);
         get_assoc_scopes(args, n_args, &scopes);
+    }
 
     struct Parser_ASTNodePVec funcs;
     for (isize_t i = 0; i < scopes.len; ++i)

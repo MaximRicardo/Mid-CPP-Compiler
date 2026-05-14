@@ -43,6 +43,6 @@ int main()
 
     Class::NestedClass2 c_nc2_instance;
 
-    Class::f(5);
-    Class::f(5.f);
+    Class::f(5);   // should call line 19
+    Class::f(5.f); // should call line 20
 }

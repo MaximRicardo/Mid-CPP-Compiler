@@ -46,6 +46,8 @@ struct Parser_Expr {
         const char *ident;
     } info;
 
+    struct Sema_Scope *res_scope; // used by scope resolutions
+
     const struct Parser_ASTNode *node; // some expressions may have nodes
                                        // associated with them, like function
                                        // calls referencing the function being
