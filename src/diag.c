@@ -1,5 +1,6 @@
 #include "diag.h"
 #include "ints.h"
+#include "lexer/token.h"
 #include "macros.h"
 #include "print.h"
 #include <math.h>
@@ -30,4 +31,30 @@ void Diag_print(const struct Diag *diag)
         putchar(' ');
     printf(" | ");
     Print_column_arrow(diag->pos.column);
+}
+
+struct Diag Diag_expected_token_err(const char *tok_name,
+                                    const struct Lexer_Token *tok,
+                                    enum ErrorType err)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("expected %s", tok_name),
+        .err = err,
+        .is_err = true,
+    };
+}
+
+struct Diag Diag_expected_token_warn(const char *tok_name,
+                                     const struct Lexer_Token *tok,
+                                     enum WarnType warn)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("expected %s", tok_name),
+        .warn = warn,
+        .is_err = false,
+    };
 }

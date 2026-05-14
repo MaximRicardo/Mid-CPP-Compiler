@@ -55,3 +55,12 @@ gen_dynarray_struct_named(DiagVec, struct Diag);
 
 void Diag_deinit(struct Diag *self);
 void Diag_print(const struct Diag *diag);
+
+struct Lexer_Token;
+
+struct Diag Diag_expected_token_err(const char *tok_name,
+                                    const struct Lexer_Token *tok,
+                                    enum ErrorType err);
+struct Diag Diag_expected_token_warn(const char *tok_name,
+                                     const struct Lexer_Token *tok,
+                                     enum WarnType warn);
