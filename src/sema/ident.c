@@ -1,5 +1,6 @@
 #include "ident.h"
 #include "macros.h"
+#include "parser/ast.h"
 
 bool Sema_is_nce_ident(enum Sema_IdentType type)
 {
@@ -31,7 +32,7 @@ struct Sema_Scope *Sema_ident_scope(const struct Sema_Ident *self)
         CRASH("scope of enum ident not implemented yet");
 
     case SEMA_IDENTTYPE_NAMESPACE:
-        CRASH("scope of namespace ident not implemented yet");
+        return self->decl->nmspace.scope;
 
     default:
         CRASH("ident doesn't have it's own scope");

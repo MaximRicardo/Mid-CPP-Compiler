@@ -4,6 +4,7 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "lexer/token_type.h"
 #include "literal.h"
 #include "mid_alloc.h"
 #include "position.h"
@@ -687,6 +688,10 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
     else if (!strcmp(id, "protected"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_PROTECTED};
+
+    else if (!strcmp(id, "namespace"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_NAMESPACE};
 
     else
         return (struct Lexer_Token){.pos = pos,

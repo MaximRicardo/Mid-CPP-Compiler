@@ -246,6 +246,18 @@ static const char *scope_res_ident(const struct Parser_Expr *expr)
         CRASH("expr is not a scope resolution");
 }
 
+static struct Diag not_a_func_err(const char *name,
+                                  const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("'%s' is not a function", name),
+        .err = ERRORTYPE_BAD_IDENTIFIER,
+        .is_err = true,
+    };
+}
+
 static void set_func_call_node(struct Parser_Expr *expr,
                                struct Sema_Scope *scope, struct DiagVec *diags)
 {
@@ -264,19 +276,13 @@ static void set_func_call_node(struct Parser_Expr *expr,
                            expr->info.args.len - 1, false, res, qualified);
 
         if (!expr->node)
-            gen_dynpush(diags, ((struct Diag){
-                                   .pos = lhs->tok->pos,
-                                   .line = lhs->tok->line,
-                                   .msg = Print_fmt_to_str(
-                                       "'%s' is not a function", qual_name),
-                                   .err = ERRORTYPE_BAD_IDENTIFIER,
-                                   .is_err = true,
-                               }));
+            gen_dynpush(diags, not_a_func_err(qual_name, lhs->tok));
         else
             printf("calling func at %d:%d\n", expr->node->start->pos.line,
                    expr->node->start->pos.column);
-    } else
+    } else {
         CRASH("calling function ptrs not implemented");
+    }
 
     free(qual_name);
 }
@@ -710,9 +716,10 @@ static void typecheck_scope_res_expr(struct Parser_Expr *expr,
     }
 
     Sema_typecheck_expr(arg, res, diags);
+
     expr->ret = Parser_copy_type(&arg->ret);
     expr->valtype = arg->valtype;
-    expr->res_scope = res;
+    expr->res_scope = Parser_is_scope_res(arg->type) ? arg->res_scope : res;
 }
 
 static void typecheck_op_expr(struct Parser_Expr *expr,

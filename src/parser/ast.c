@@ -11,6 +11,7 @@
 #include "parser/enum.h"
 #include "parser/expr.h"
 #include "parser/func_decl.h"
+#include "parser/namespace.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "sema/scope.h"
@@ -75,6 +76,13 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         ret->type = PARSER_ASTNODETYPE_CLASS;
         end = Parser_parse_class(&ret->class_, ret, scope, toks, start,
                                  skip_def, allocs, diags);
+    } else if (toks[start].type == LEXER_TOKENTYPE_NAMESPACE) {
+        printf("NAMESPACE NODE\n");
+        check_semi = false;
+        ret->type = PARSER_ASTNODETYPE_NAMESPACE;
+        ret->type = PARSER_ASTNODETYPE_NAMESPACE;
+        end = Parser_parse_namespace(&ret->nmspace, ret, scope, toks, start,
+                                     allocs, diags);
     } else if (Parser_valid_type_start(toks, start, scope)) {
         printf("DECL NODE\n");
         bool mvp;

@@ -145,13 +145,8 @@ static isize_t find_rcurly(isize_t lcurly, const struct Lexer_Token *toks,
 {
     isize_t rcurly = Parser_find_twin_curly(toks, lcurly, ISIZE_MAX);
     if (rcurly == -1)
-        gen_dynpush(diags, ((struct Diag){
-                               .pos = toks[lcurly].pos,
-                               .line = toks[lcurly].line,
-                               .msg = strdup("expected '}'"),
-                               .err = ERRORTYPE_MISSING_CURLY,
-                               .is_err = true,
-                           }));
+        gen_dynpush(diags, Diag_expected_token_err("'}'", &toks[lcurly],
+                                                   ERRORTYPE_MISSING_CURLY));
 
     return rcurly == -1 ? lcurly : rcurly;
 }
