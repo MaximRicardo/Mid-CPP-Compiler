@@ -21,7 +21,7 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
                            struct Parser_Allocators *allocs,
                            struct DiagVec *diags)
 {
-    assert(Parser_valid_type_start(&toks[start], scope));
+    assert(Parser_valid_type_start(toks, start, scope));
 
     struct Parser_VarDecl decl;
     isize_t end =
@@ -83,7 +83,7 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
                          struct Parser_Allocators *allocs,
                          struct DiagVec *diags, bool *out_mvp)
 {
-    assert(Parser_valid_type_start(&toks[start], scope));
+    assert(Parser_valid_type_start(toks, start, scope));
 
     bool mvp = false;
     bool ret;
@@ -104,7 +104,7 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
     if (toks[lparen + 1].type == LEXER_TOKENTYPE_R_PAREN) {
         mvp = true;
         ret = true;
-    } else if (Parser_valid_type_start(&toks[lparen + 1], scope)) {
+    } else if (Parser_valid_type_start(toks, lparen + 1, scope)) {
         mvp = are_params_ambig(toks, lparen, scope, allocs, diags);
         ret = true;
     } else {

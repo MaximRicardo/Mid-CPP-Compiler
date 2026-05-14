@@ -14,11 +14,11 @@ Sema_viable_funcs(const struct Parser_Expr *args, isize_t n_args,
 struct Parser_ASTNode *
 Sema_best_viable_func(const struct Parser_Expr *args, isize_t n_args,
                       const struct Parser_ASTNodePVec *funcs, bool this_passed);
-// accounts for argument dependent lookup
 struct Parser_ASTNode *Sema_find_func_adl(const char *name,
                                           const struct Parser_Expr *args,
                                           isize_t n_args, bool this_passed,
-                                          struct Sema_Scope *scope);
+                                          struct Sema_Scope *scope,
+                                          bool do_adl);
 struct Parser_ASTNode *Sema_find_op_overload(enum Parser_ExprType op,
                                              const struct Parser_Expr *args,
                                              isize_t n_args,

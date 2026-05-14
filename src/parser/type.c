@@ -934,11 +934,18 @@ char *Parser_type_to_str(const struct Parser_Type *type)
     return str.str;
 }
 
-bool Parser_valid_type_start(const struct Lexer_Token *tok,
+bool Parser_valid_type_start(const struct Lexer_Token *toks, isize_t idx,
                              const struct Sema_Scope *scope)
 {
-    return Lexer_is_typemod(tok->type) || Lexer_is_typequal(tok->type) ||
-           Sema_tok_is_type(scope, tok);
+    if (Lexer_is_typemod(toks[idx].type) || Lexer_is_typequal(toks[idx].type))
+        return true;
+
+    struct DiagVec tmp = {};
+    isize_t res_end;
+    auto res = Parser_parse_scope_res_const(toks, idx, &res_end, scope, &tmp);
+    gen_dyndeinit(&tmp);
+
+    return Sema_tok_is_type(res, &toks[res_end]);
 }
 
 enum Parser_TypeSpec Parser_uint_type_of_width(i32 bytes)

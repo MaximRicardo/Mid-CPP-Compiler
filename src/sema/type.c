@@ -1,5 +1,6 @@
 #include "type.h"
 #include "diag.h"
+#include "dynstr.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
@@ -205,30 +206,76 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
     }
 }
 
+static void scope_res_name_impl(const struct Parser_Expr *expr,
+                                struct Dynstr *str)
+{
+    if (expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
+        Dynstr_append(str, expr->info.ident);
+    } else {
+        struct Parser_Expr *scope = expr->type == PARSER_EXPRTYPE_BIN_SCOPE_RES
+                                        ? &expr->info.args.arr[0]
+                                        : NULL;
+        struct Parser_Expr *child = expr->type == PARSER_EXPRTYPE_BIN_SCOPE_RES
+                                        ? &expr->info.args.arr[1]
+                                        : &expr->info.args.arr[0];
+
+        if (scope && scope->type == PARSER_EXPRTYPE_IDENTIFIER)
+            Dynstr_append(str, scope->info.ident);
+        Dynstr_append(str, "::");
+
+        scope_res_name_impl(child, str);
+    }
+}
+
+static char *scope_res_name(const struct Parser_Expr *expr)
+{
+    struct Dynstr ret = {};
+    scope_res_name_impl(expr, &ret);
+    return ret.str;
+}
+
+static const char *scope_res_ident(const struct Parser_Expr *expr)
+{
+    if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
+        return expr->info.ident;
+    else if (expr->type == PARSER_EXPRTYPE_BIN_SCOPE_RES)
+        return scope_res_ident(&expr->info.args.arr[1]);
+    else if (expr->type == PARSER_EXPRTYPE_UNARY_SCOPE_RES)
+        return scope_res_ident(&expr->info.args.arr[1]);
+    else
+        CRASH("expr is not a scope resolution");
+}
+
 static void set_func_call_node(struct Parser_Expr *expr,
                                struct Sema_Scope *scope, struct DiagVec *diags)
 {
-    const struct Parser_Expr *name_expr = &expr->info.args.arr[0];
+    const struct Parser_Expr *lhs = &expr->info.args.arr[0];
+    char *qual_name = scope_res_name(lhs);
+    const char *func_name = scope_res_ident(lhs);
+    bool qualified = Parser_is_scope_res(lhs->type);
 
-    if (name_expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
-        expr->node =
-            Sema_find_func_adl(name_expr->info.ident, &expr->info.args.arr[1],
-                               expr->info.args.len - 1, false, scope);
+    if (lhs->type == PARSER_EXPRTYPE_IDENTIFIER ||
+        Parser_is_scope_res(lhs->type)) {
+        expr->node = Sema_find_func_adl(func_name, &expr->info.args.arr[1],
+                                        expr->info.args.len - 1, false, scope,
+                                        !qualified);
+
         if (!expr->node)
-            gen_dynpush(diags,
-                        ((struct Diag){
-                            .pos = name_expr->tok->pos,
-                            .line = name_expr->tok->line,
-                            .msg = Print_fmt_to_str("'%s' is not a function",
-                                                    name_expr->info.ident),
-                            .err = ERRORTYPE_BAD_IDENTIFIER,
-                            .is_err = true,
-                        }));
+            gen_dynpush(diags, ((struct Diag){
+                                   .pos = lhs->tok->pos,
+                                   .line = lhs->tok->line,
+                                   .msg = Print_fmt_to_str(
+                                       "'%s' is not a function", qual_name),
+                                   .err = ERRORTYPE_BAD_IDENTIFIER,
+                                   .is_err = true,
+                               }));
         else
             printf("calling func at %d:%d\n", expr->node->start->pos.line,
                    expr->node->start->pos.column);
     } else
         CRASH("calling function ptrs not implemented");
+
+    free(qual_name);
 }
 
 static void typecheck_call_expr(struct Parser_Expr *expr,

@@ -62,5 +62,7 @@ i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,
 
 // finds an RNCE scope in scope
 // returns NULL if the scope name couldn't be resolved
+const struct Sema_Scope *
+Sema_resolve_scope_const(const char *name, const struct Sema_Scope *scope);
 struct Sema_Scope *Sema_resolve_scope(const char *name,
                                       struct Sema_Scope *scope);

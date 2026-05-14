@@ -19,24 +19,24 @@ static struct Diag not_a_nmpace_err(const char *tok_name,
     };
 }
 
-static struct Sema_Scope *unary_scope_res(isize_t start, isize_t *out_end,
-                                          struct Sema_Scope *scope)
+static const struct Sema_Scope *unary_scope_res(isize_t start, isize_t *out_end,
+                                                const struct Sema_Scope *scope)
 {
     if (out_end)
         *out_end = start + 1;
 
-    struct Sema_Scope *ret = scope;
+    auto ret = scope;
     while (ret->parent)
         ret = ret->parent;
     return ret;
 }
 
-static struct Sema_Scope *bin_scope_res(const struct Lexer_Token *toks,
-                                        isize_t start, isize_t *out_end,
-                                        struct Sema_Scope *scope,
-                                        struct DiagVec *diags)
+static const struct Sema_Scope *bin_scope_res(const struct Lexer_Token *toks,
+                                              isize_t start, isize_t *out_end,
+                                              const struct Sema_Scope *scope,
+                                              struct DiagVec *diags)
 {
-    struct Sema_Scope *ret = Sema_closest_rnce_scope(scope);
+    const struct Sema_Scope *ret = Sema_closest_rnce_scope_const(scope);
     isize_t i;
     bool name_err = false;
     for (i = start + 1; toks[i].type == LEXER_TOKENTYPE_SCOPE_RES; i += 2) {
@@ -48,7 +48,7 @@ static struct Sema_Scope *bin_scope_res(const struct Lexer_Token *toks,
                                                 ERRORTYPE_MISSING_TOKEN));
         const char *name = toks[ident].ident;
 
-        auto res = Sema_resolve_scope(name, ret);
+        auto res = Sema_resolve_scope_const(name, ret);
         if (res) {
             ret = res;
         } else if (!name_err) {
@@ -64,13 +64,33 @@ static struct Sema_Scope *bin_scope_res(const struct Lexer_Token *toks,
     return ret;
 }
 
-struct Sema_Scope *Parser_parse_scope_res(const struct Lexer_Token *toks,
-                                          isize_t start, isize_t *out_end,
-                                          struct Sema_Scope *scope,
-                                          struct DiagVec *diags)
+const struct Sema_Scope *
+Parser_parse_scope_res_const(const struct Lexer_Token *toks, isize_t start,
+                             isize_t *out_end, const struct Sema_Scope *scope,
+                             struct DiagVec *diags)
 {
     if (toks[start].type == LEXER_TOKENTYPE_SCOPE_RES)
         return unary_scope_res(start, out_end, scope);
     else
         return bin_scope_res(toks, start, out_end, scope, diags);
+}
+
+struct Sema_Scope *Parser_parse_scope_res(const struct Lexer_Token *toks,
+                                          isize_t start, isize_t *out_end,
+                                          struct Sema_Scope *scope,
+                                          struct DiagVec *diags)
+{
+    return (struct Sema_Scope *)Parser_parse_scope_res_const(
+        toks, start, out_end, scope, diags);
+}
+
+isize_t Parser_skip_scope_res(const struct Lexer_Token *toks, isize_t start)
+{
+    isize_t i =
+        toks[start].type == LEXER_TOKENTYPE_SCOPE_RES ? start : start + 1;
+
+    for (; toks[i].type == LEXER_TOKENTYPE_SCOPE_RES; i += 2)
+        ;
+
+    return i - 1;
 }

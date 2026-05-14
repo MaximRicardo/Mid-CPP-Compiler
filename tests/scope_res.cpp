@@ -15,6 +15,9 @@ public:
     class NestedClass2;
 
     typedef int Type;
+
+    static void f(int x);
+    static void f(float x);
 };
 
 class Class::NestedClass2 {
@@ -39,4 +42,7 @@ int main()
     f(b); // should call line 1
 
     Class::NestedClass2 c_nc2_instance;
+
+    Class::f(5);
+    Class::f(5.f);
 }

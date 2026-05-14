@@ -75,7 +75,7 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         ret->type = PARSER_ASTNODETYPE_CLASS;
         end = Parser_parse_class(&ret->class_, ret, scope, toks, start,
                                  skip_def, allocs, diags);
-    } else if (Parser_valid_type_start(&toks[start], scope)) {
+    } else if (Parser_valid_type_start(toks, start, scope)) {
         printf("DECL NODE\n");
         bool mvp;
         if (Parser_decl_is_func(toks, start, scope, allocs, diags, &mvp)) {

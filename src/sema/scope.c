@@ -68,11 +68,11 @@ bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name)
 {
     auto ident = Sema_find_ident_const(scope, name, NULL);
     if (!ident)
-        return NULL;
+        return false;
 
     if (ident->decl && Sema_node_creates_type_name(ident->decl))
-        return ident->decl;
-    return NULL;
+        return true;
+    return false;
 }
 
 struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
@@ -225,8 +225,8 @@ i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,
     return 0;
 }
 
-struct Sema_Scope *Sema_resolve_scope(const char *name,
-                                      struct Sema_Scope *scope)
+const struct Sema_Scope *
+Sema_resolve_scope_const(const char *name, const struct Sema_Scope *scope)
 {
     for (isize_t i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
@@ -239,4 +239,10 @@ struct Sema_Scope *Sema_resolve_scope(const char *name,
     }
 
     return NULL;
+}
+
+struct Sema_Scope *Sema_resolve_scope(const char *name,
+                                      struct Sema_Scope *scope)
+{
+    return (struct Sema_Scope *)Sema_resolve_scope_const(name, scope);
 }

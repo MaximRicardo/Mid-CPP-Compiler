@@ -115,7 +115,7 @@ struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
                                      bool *out_failed);
 char *Parser_type_to_str(const struct Parser_Type *type);
 // can the token be the start of a type?
-bool Parser_valid_type_start(const struct Lexer_Token *tok,
+bool Parser_valid_type_start(const struct Lexer_Token *toks, isize_t idx,
                              const struct Sema_Scope *scope);
 // the integral type specifier able to hold exactly the given number of bytes
 enum Parser_TypeSpec Parser_uint_type_of_width(i32 bytes);
