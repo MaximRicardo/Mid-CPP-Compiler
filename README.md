@@ -18,16 +18,20 @@ partially / fully supports:
     * Every Built-In Literal Type
     * Function Pointers
     * auto
+    * typedef
 * Functions
     * Argument Dependent Lookup
     * Overload Resolution
     * Operator Overloading
     * Default Parameters
     * Variadic Functions
+    * Forward Declaration
 * Classes
     * Static and Non-Static Member Functions
     * public, private and protected
     * 2-Pass Parsing
+    * Forward Declaration
+* Namespaces
 
 ### C Support
 
