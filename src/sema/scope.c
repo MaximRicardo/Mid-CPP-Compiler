@@ -184,7 +184,6 @@ scope_find_ident_shallow(const struct Sema_Scope *scope,
 {
     for (isize_t i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
-
         if (strcmp(ident->name, search->name))
             continue;
 

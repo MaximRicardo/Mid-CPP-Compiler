@@ -106,5 +106,6 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
 
     if (out_end)
         *out_end = end;
+    printf("AST END\n");
     return ret;
 }

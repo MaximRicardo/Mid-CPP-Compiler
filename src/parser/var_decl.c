@@ -4,10 +4,12 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "lexer/token_type.h"
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/expr.h"
+#include "parser/scope.h"
 #include "parser/type.h"
 #include "print.h"
 #include "sema/ident.h"
@@ -96,19 +98,29 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
                               const enum Lexer_TokenType *end_types,
                               isize_t n_end_types, struct Parser_VarDecl *decl,
                               struct Parser_ASTNode *node,
-                              struct Sema_Scope *scope, bool add_to_scope,
-                              bool skip_init, struct Parser_Allocators *allocs,
+                              struct Sema_Scope *parent_scope,
+                              bool add_to_scope, bool skip_init,
+                              struct Parser_Allocators *allocs,
                               struct DiagVec *diags)
 {
     *decl = (struct Parser_VarDecl){};
 
     isize_t type_end;
+    isize_t name;
     decl->type =
-        Parser_parse_type(toks, start, &type_end, scope, &decl->name, diags);
+        Parser_parse_type(toks, start, &type_end, parent_scope, &name, diags);
 
-    if (decl->name && add_to_scope && add_ident(decl, node, scope))
+    auto res = name == -1 ? parent_scope
+                          : Parser_parse_scope_res(toks, name, &name,
+                                                   parent_scope, diags);
+    decl->name = name == -1 || toks[name].type != LEXER_TOKENTYPE_IDENTIFIER
+                     ? NULL
+                     : toks[name].ident;
+
+    if (decl->name && add_to_scope && add_ident(decl, node, res)) {
         gen_dynpush(diags, Diag_ident_redefined_err(decl->name, &toks[start],
                                                     ERRORTYPE_BAD_IDENTIFIER));
+    }
 
     isize_t assign_idx = type_end;
     bool has_init = toks[assign_idx].type == LEXER_TOKENTYPE_ASSIGN;
@@ -121,7 +133,7 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
                                     NULL);
         }
         return Parser_parse_var_def(toks, expr_start, end_types, n_end_types,
-                                    decl, scope, allocs, diags);
+                                    decl, res, allocs, diags);
     } else if (decl->type.spec == PARSER_TYPESPEC_AUTO) {
         gen_dynpush(
             diags, uninited_deduced_type_err(decl->name, "auto", &toks[start]));

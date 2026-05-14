@@ -69,10 +69,14 @@ Parser_parse_scope_res_const(const struct Lexer_Token *toks, isize_t start,
                              isize_t *out_end, const struct Sema_Scope *scope,
                              struct DiagVec *diags)
 {
-    if (toks[start].type == LEXER_TOKENTYPE_SCOPE_RES)
+    if (toks[start].type == LEXER_TOKENTYPE_SCOPE_RES) {
         return unary_scope_res(start, out_end, scope);
-    else
+    } else if (toks[start + 1].type == LEXER_TOKENTYPE_SCOPE_RES) {
         return bin_scope_res(toks, start, out_end, scope, diags);
+    } else {
+        *out_end = start;
+        return scope;
+    }
 }
 
 struct Sema_Scope *Parser_parse_scope_res(const struct Lexer_Token *toks,

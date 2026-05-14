@@ -241,7 +241,7 @@ static const char *scope_res_ident(const struct Parser_Expr *expr)
     else if (expr->type == PARSER_EXPRTYPE_BIN_SCOPE_RES)
         return scope_res_ident(&expr->info.args.arr[1]);
     else if (expr->type == PARSER_EXPRTYPE_UNARY_SCOPE_RES)
-        return scope_res_ident(&expr->info.args.arr[1]);
+        return scope_res_ident(&expr->info.args.arr[0]);
     else
         CRASH("expr is not a scope resolution");
 }

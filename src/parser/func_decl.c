@@ -4,6 +4,7 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "lexer/token_type.h"
 #include "macros.h"
 #include "mid_alloc.h"
 #include "parser/allocator.h"
@@ -12,6 +13,7 @@
 #include "parser/end_types.h"
 #include "parser/expr.h"
 #include "parser/find_twin.h"
+#include "parser/scope.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
@@ -165,12 +167,8 @@ isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
 
     isize_t rcurly = Parser_find_twin_curly(toks, lcurly, ISIZE_MAX);
     if (rcurly == -1) {
-        gen_dynpush(diags,
-                    ((struct Diag){.pos = toks[lcurly].pos,
-                                   .line = toks[lcurly].line,
-                                   .msg = Print_fmt_to_str("expected '}'"),
-                                   .err = ERRORTYPE_MISSING_CURLY,
-                                   .is_err = true}));
+        gen_dynpush(diags, Diag_expected_token_err("'}'", &toks[lcurly],
+                                                   ERRORTYPE_MISSING_CURLY));
         return lcurly + 1;
     }
 
@@ -374,12 +372,23 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
 
 static void parse_func_type(struct Parser_FuncDecl *decl,
                             const struct Lexer_Token *toks, isize_t start,
-                            isize_t *out_end, struct Sema_Scope *scope,
-                            struct DiagVec *diags)
+                            isize_t *out_end, struct Sema_Scope *parent_scope,
+                            struct Sema_Scope **out_res, struct DiagVec *diags)
 {
     isize_t type_end;
+    isize_t name;
     decl->type =
-        Parser_parse_type(toks, start, &type_end, scope, &decl->name, diags);
+        Parser_parse_type(toks, start, &type_end, parent_scope, &name, diags);
+
+    auto res = name == -1 ? parent_scope
+                          : Parser_parse_scope_res(toks, name, &name,
+                                                   parent_scope, diags);
+    if (out_res)
+        *out_res = res;
+
+    decl->name = name == -1 || toks[name].type != LEXER_TOKENTYPE_IDENTIFIER
+                     ? NULL
+                     : toks[name].ident;
 
     if (!decl->name) {
         gen_dynpush(diags, Diag_expected_token_err("identifier", &toks[start],
@@ -503,19 +512,24 @@ static void register_default_args(struct Parser_FuncDecl *decl,
 isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
                                struct Parser_FuncDecl *decl,
                                struct Parser_ASTNode *node,
-                               struct Sema_Scope *scope, bool skip_def,
+                               struct Sema_Scope *parent_scope, bool skip_def,
                                struct Parser_Allocators *allocs,
                                struct DiagVec *diags)
 {
     *decl = (struct Parser_FuncDecl){.ident_idx = -1};
 
+    struct Sema_Scope *res;
     isize_t type_end;
-    parse_func_type(decl, toks, start, &type_end, scope, diags);
+    parse_func_type(decl, toks, start, &type_end, parent_scope, &res, diags);
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN)
         CRASH("function missing left paren");
 
+    assert(res == parent_scope);
+
     decl->param_scope =
-        create_scope(scope, node, allocs, SEMA_SCOPETYPE_FUNC_PARAMS);
+        create_scope(res, node, allocs, SEMA_SCOPETYPE_FUNC_PARAMS);
+    assert(decl->param_scope != parent_scope && decl->param_scope != res);
+    assert(decl->param_scope->parent == res);
 
     isize_t lparen = type_end;
     isize_t rparen;
@@ -525,7 +539,7 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
     if (decl->is_op_overload)
         disambig_operator_overload(decl);
     if (decl->name)
-        add_func_to_scope(scope, decl, node);
+        add_func_to_scope(res, decl, node);
     register_default_args(decl, diags);
 
     isize_t lcurly = rparen + 1;

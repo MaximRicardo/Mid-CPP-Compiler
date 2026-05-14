@@ -101,7 +101,7 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type);
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
                                      struct Sema_Scope *scope,
-                                     const char **out_declname,
+                                     isize_t *out_declname,
                                      struct DiagVec *diags);
 isize_t Parser_n_indir(const struct Parser_Type *type);
 struct Parser_Type Parser_copy_type(const struct Parser_Type *type);

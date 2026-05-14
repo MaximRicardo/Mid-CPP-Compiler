@@ -471,6 +471,8 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
             auto res = Parser_parse_scope_res(toks, i, &i, scope, diags);
             ret = Sema_tok_type(res, &toks[i]);
             spec_is_typedef = ret.squals.is_typedef;
+        } else {
+            break;
         }
     }
     ret.squals = squals;
@@ -709,24 +711,22 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
                                      struct Sema_Scope *scope,
-                                     const char **out_declname,
+                                     isize_t *out_declname,
                                      struct DiagVec *diags)
 {
     isize_t i;
     auto base = parse_typespec(toks, start, &i, scope, diags);
 
     isize_t c = find_type_center(toks, i);
-    printf("c at %d:%d\n", toks[c].pos.line, toks[c].pos.column);
 
-    const char *declname =
-        toks[c].type == LEXER_TOKENTYPE_IDENTIFIER ? toks[c].ident : NULL;
+    bool has_declname = toks[c].type == LEXER_TOKENTYPE_IDENTIFIER;
 
-    auto ret = parse_recursive_part(toks, c - (declname != NULL), i, out_end,
-                                    scope, &base.squals, diags);
+    auto ret = parse_recursive_part(toks, c - has_declname, i, out_end, scope,
+                                    &base.squals, diags);
     add_base(&ret, &base, &toks[start], diags);
 
     if (out_declname)
-        *out_declname = declname;
+        *out_declname = has_declname ? c : -1;
     Parser_Type_deinit(&base);
     return ret;
 }

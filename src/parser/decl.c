@@ -2,8 +2,10 @@
 #include "diag.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "lexer/token_type.h"
 #include "parser/end_types.h"
 #include "parser/find_twin.h"
+#include "parser/scope.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "sema/scope.h"
@@ -89,29 +91,34 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
     bool ret;
 
     isize_t type_end;
-    const char *name;
-    auto type = Parser_parse_type(toks, start, &type_end, scope, &name, diags);
-    if (name && !strcmp(name, "operator"))
+    isize_t name_idx;
+    auto type =
+        Parser_parse_type(toks, start, &type_end, scope, &name_idx, diags);
+
+    auto res = name_idx == -1 ? scope
+                              : Parser_parse_scope_res(toks, name_idx,
+                                                       &name_idx, scope, diags);
+
+    if (name_idx != -1 && toks[name_idx].type == LEXER_TOKENTYPE_IDENTIFIER &&
+        !strcmp(toks[name_idx].ident, "operator"))
         type_end = skip_operator_overload(toks, type_end);
 
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN) {
         ret = false;
-        goto finish;
-    }
-
-    isize_t lparen = type_end;
-
-    if (toks[lparen + 1].type == LEXER_TOKENTYPE_R_PAREN) {
-        mvp = true;
-        ret = true;
-    } else if (Parser_valid_type_start(toks, lparen + 1, scope)) {
-        mvp = are_params_ambig(toks, lparen, scope, allocs, diags);
-        ret = true;
     } else {
-        ret = false;
+        isize_t lparen = type_end;
+
+        if (toks[lparen + 1].type == LEXER_TOKENTYPE_R_PAREN) {
+            mvp = true;
+            ret = true;
+        } else if (Parser_valid_type_start(toks, lparen + 1, res)) {
+            mvp = are_params_ambig(toks, lparen, res, allocs, diags);
+            ret = true;
+        } else {
+            ret = false;
+        }
     }
 
-finish:
     if (out_mvp)
         *out_mvp = mvp;
     Parser_Type_deinit(&type);
