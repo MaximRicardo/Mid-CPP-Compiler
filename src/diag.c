@@ -33,28 +33,80 @@ void Diag_print(const struct Diag *diag)
     Print_column_arrow(diag->pos.column);
 }
 
-struct Diag Diag_expected_token_err(const char *tok_name,
+struct Diag Diag_expected_token_err(const char *name,
                                     const struct Lexer_Token *tok,
-                                    enum ErrorType err)
+                                    enum ErrorType type)
 {
     return (struct Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = Print_fmt_to_str("expected %s", tok_name),
-        .err = err,
+        .msg = Print_fmt_to_str("expected %s", name),
+        .err = type,
         .is_err = true,
     };
 }
 
-struct Diag Diag_expected_token_warn(const char *tok_name,
+struct Diag Diag_expected_token_warn(const char *name,
                                      const struct Lexer_Token *tok,
-                                     enum WarnType warn)
+                                     enum WarnType type)
 {
     return (struct Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = Print_fmt_to_str("expected %s", tok_name),
-        .warn = warn,
+        .msg = Print_fmt_to_str("expected %s", name),
+        .warn = type,
+        .is_err = false,
+    };
+}
+
+struct Diag Diag_unexpected_token_err(const char *name,
+                                      const struct Lexer_Token *tok,
+                                      enum ErrorType type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("unexpected %s", name),
+        .err = type,
+        .is_err = true,
+    };
+}
+
+struct Diag Diag_unexpected_token_warn(const char *name,
+                                       const struct Lexer_Token *tok,
+                                       enum WarnType type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("unexpected %s", name),
+        .warn = type,
+        .is_err = false,
+    };
+}
+
+struct Diag Diag_ident_redefined_err(const char *name,
+                                     const struct Lexer_Token *tok,
+                                     enum ErrorType type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("'%s' redefined", name),
+        .err = type,
+        .is_err = true,
+    };
+}
+
+struct Diag Diag_ident_redefined_warn(const char *name,
+                                      const struct Lexer_Token *tok,
+                                      enum WarnType type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("'%s' redefined", name),
+        .warn = type,
         .is_err = false,
     };
 }

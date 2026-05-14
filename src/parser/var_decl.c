@@ -21,16 +21,6 @@ void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
     Parser_Type_deinit(&self->type);
 }
 
-static struct Diag redefined_ident_err(const struct Lexer_Token *tok,
-                                       const char *name)
-{
-    return (struct Diag){.pos = tok->pos,
-                         .line = tok->line,
-                         .msg = Print_fmt_to_str("'%s' redefined", name),
-                         .err = ERRORTYPE_BAD_IDENTIFIER,
-                         .is_err = true};
-}
-
 static struct Sema_Ident *add_ident(const struct Parser_VarDecl *decl,
                                     struct Parser_ASTNode *node,
                                     struct Sema_Scope *scope)
@@ -117,7 +107,8 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
         Parser_parse_type(toks, start, &type_end, scope, &decl->name, diags);
 
     if (decl->name && add_to_scope && add_ident(decl, node, scope))
-        gen_dynpush(diags, redefined_ident_err(&toks[start], decl->name));
+        gen_dynpush(diags, Diag_ident_redefined_err(decl->name, &toks[start],
+                                                    ERRORTYPE_BAD_IDENTIFIER));
 
     isize_t assign_idx = type_end;
     bool has_init = toks[assign_idx].type == LEXER_TOKENTYPE_ASSIGN;

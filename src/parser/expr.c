@@ -15,30 +15,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-static struct Diag expected_token(const char *tok_name,
-                                  const struct Lexer_Token *tok)
-{
-    return (struct Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = Print_fmt_to_str("expected %s", tok_name),
-        .err = ERRORTYPE_MISSING_TOKEN,
-        .is_err = true,
-    };
-}
-
-static struct Diag unexpected_token(const char *tok_name,
-                                    const struct Lexer_Token *tok)
-{
-    return (struct Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = Print_fmt_to_str("unexpected %s", tok_name),
-        .err = ERRORTYPE_UNEXPECTED_TOKEN,
-        .is_err = true,
-    };
-}
-
 bool Parser_is_numlit(enum Parser_ExprType type)
 {
     return type > PARSER_EXPRTYPE_NUMLIT_START &&
@@ -387,42 +363,54 @@ static struct Parser_Expr op_tok_to_expr_mode0(const struct Lexer_Token *tok,
         break;
 
     case LEXER_TOKENTYPE_TYPEID:
-        gen_dynpush(diags, unexpected_token("typeid", tok));
+        gen_dynpush(diags, Diag_unexpected_token_err(
+                               "typeid", tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_TYPEID;
         break;
 
     case LEXER_TOKENTYPE_CONSTCAST:
-        gen_dynpush(diags, unexpected_token("const_cast", tok));
+        gen_dynpush(diags, Diag_unexpected_token_err(
+                               "const_cast", tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_CONSTCAST;
         break;
 
     case LEXER_TOKENTYPE_DYNAMICCAST:
-        gen_dynpush(diags, unexpected_token("dynamic_cast", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("dynamic_cast", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_DYNAMICCAST;
         break;
 
     case LEXER_TOKENTYPE_REINTERPRETCAST:
-        gen_dynpush(diags, unexpected_token("reinterpret_cast", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("reinterpret_cast", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_REINTERPRETCAST;
         break;
 
     case LEXER_TOKENTYPE_STATICCAST:
-        gen_dynpush(diags, unexpected_token("static_cast", tok));
+        gen_dynpush(diags, Diag_unexpected_token_err(
+                               "static_cast", tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_STATICCAST;
         break;
 
     case LEXER_TOKENTYPE_SIZEOF:
-        gen_dynpush(diags, unexpected_token("sizeof", tok));
+        gen_dynpush(diags, Diag_unexpected_token_err(
+                               "sizeof", tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_SIZEOF;
         break;
 
     case LEXER_TOKENTYPE_BITWISE_NOT:
-        gen_dynpush(diags, unexpected_token("bitwise NOT '~'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("bitwise NOT '~'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_BITWISE_NOT;
         break;
 
     case LEXER_TOKENTYPE_LOGICAL_NOT:
-        gen_dynpush(diags, unexpected_token("logical NOT '!'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("logical NOT '!'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_LOGICAL_NOT;
         break;
 
@@ -443,12 +431,14 @@ static struct Parser_Expr op_tok_to_expr_mode0(const struct Lexer_Token *tok,
         break;
 
     case LEXER_TOKENTYPE_NEW:
-        gen_dynpush(diags, unexpected_token("new", tok));
+        gen_dynpush(diags, Diag_unexpected_token_err(
+                               "new", tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_NEW;
         break;
 
     case LEXER_TOKENTYPE_DELETE:
-        gen_dynpush(diags, unexpected_token("delete", tok));
+        gen_dynpush(diags, Diag_unexpected_token_err(
+                               "delete", tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_DELETE;
         break;
 
@@ -565,7 +555,8 @@ static struct Parser_Expr op_tok_to_expr_mode0(const struct Lexer_Token *tok,
         break;
 
     case LEXER_TOKENTYPE_THROW:
-        gen_dynpush(diags, unexpected_token("throw", tok));
+        gen_dynpush(diags, Diag_unexpected_token_err(
+                               "throw", tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_THROW;
         break;
 
@@ -591,22 +582,30 @@ static struct Parser_Expr op_tok_to_expr_mode1(const struct Lexer_Token *tok,
         break;
 
     case LEXER_TOKENTYPE_MEMB_SEL:
-        gen_dynpush(diags, unexpected_token("member select '.'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("member select '.'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_MEMB_SEL;
         break;
 
     case LEXER_TOKENTYPE_PTR_MEMB_SEL:
-        gen_dynpush(diags, unexpected_token("ptr to member select '->'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("ptr to member select '->'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_PTR_MEMB_SEL;
         break;
 
     case LEXER_TOKENTYPE_L_SQBRACKET:
-        gen_dynpush(diags, unexpected_token("array subscript '[]'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("array subscript '[]'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_ARRAY_SUBSCR;
         break;
 
     case LEXER_TOKENTYPE_L_PAREN:
-        gen_dynpush(diags, unexpected_token("function call '()'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("function call '()'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_FUNC_CALL;
         break;
 
@@ -675,149 +674,197 @@ static struct Parser_Expr op_tok_to_expr_mode1(const struct Lexer_Token *tok,
         break;
 
     case LEXER_TOKENTYPE_PTR_TO_MEMB_SEL:
-        gen_dynpush(diags, unexpected_token("ptr to member select '.*'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("ptr to member select '.*'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_PTR_TO_MEMB_SEL;
         break;
 
     case LEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL:
         gen_dynpush(diags,
-                    unexpected_token("ptr to ptr member select '->*'", tok));
+                    Diag_unexpected_token_err("ptr to ptr member select '->*'",
+                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
         break;
 
     case LEXER_TOKENTYPE_DIV:
-        gen_dynpush(diags, unexpected_token("division '/'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("division '/'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_DIV;
         break;
 
     case LEXER_TOKENTYPE_MOD:
-        gen_dynpush(diags, unexpected_token("modulo '%'", tok));
+        gen_dynpush(diags, Diag_unexpected_token_err(
+                               "modulo '%'", tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_MOD;
         break;
 
     case LEXER_TOKENTYPE_LEFT_SHIFT:
-        gen_dynpush(diags, unexpected_token("left shift '<<'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("left shift '<<'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_LEFT_SHIFT;
         break;
 
     case LEXER_TOKENTYPE_RIGHT_SHIFT:
-        gen_dynpush(diags, unexpected_token("right shift '>>'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("right shift '>>'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT;
         break;
 
     case LEXER_TOKENTYPE_LT:
-        gen_dynpush(diags, unexpected_token("less than '<'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("less than '<'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_LT;
         break;
 
     case LEXER_TOKENTYPE_GT:
-        gen_dynpush(diags, unexpected_token("greater than '>'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("greater than '>'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_GT;
         break;
 
     case LEXER_TOKENTYPE_LTEQ:
-        gen_dynpush(diags, unexpected_token("less than or equal '<='", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("less than or equal '<='", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_LTEQ;
         break;
 
     case LEXER_TOKENTYPE_GTEQ:
-        gen_dynpush(diags, unexpected_token("greater than or equal '>='", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("greater than or equal '>='", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_GTEQ;
         break;
 
     case LEXER_TOKENTYPE_EQ:
-        gen_dynpush(diags, unexpected_token("equality '=='", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("equality '=='", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_EQ;
         break;
 
     case LEXER_TOKENTYPE_NEQ:
-        gen_dynpush(diags, unexpected_token("inequality '!='", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("inequality '!='", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_NEQ;
         break;
 
     case LEXER_TOKENTYPE_BITWISE_XOR:
-        gen_dynpush(diags, unexpected_token("bitwise XOR '^'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("bitwise XOR '^'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_BITWISE_XOR;
         break;
 
     case LEXER_TOKENTYPE_BITWISE_OR:
-        gen_dynpush(diags, unexpected_token("bitwise OR '|'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("bitwise OR '|'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_BITWISE_OR;
         break;
 
     case LEXER_TOKENTYPE_LOGICAL_AND:
-        gen_dynpush(diags, unexpected_token("logical AND '&&'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("logical AND '&&'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_LOGICAL_AND;
         break;
 
     case LEXER_TOKENTYPE_LOGICAL_OR:
-        gen_dynpush(diags, unexpected_token("logical OR '||'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("logical OR '||'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_LOGICAL_OR;
         break;
 
     case LEXER_TOKENTYPE_CONDITIONAL:
-        gen_dynpush(diags, unexpected_token("conditional operator '?'", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("conditional operator '?'", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_CONDITIONAL;
         break;
 
     case LEXER_TOKENTYPE_ASSIGN:
-        gen_dynpush(diags, unexpected_token("assignment '=='", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("assignment '=='", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_MUL_ASSIGN:
         gen_dynpush(diags,
-                    unexpected_token("multiplication assignment '*='", tok));
+                    Diag_unexpected_token_err("multiplication assignment '*='",
+                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_MUL_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_DIV_ASSIGN:
-        gen_dynpush(diags, unexpected_token("division assignment '/='", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("division assignment '/='", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_DIV_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_MOD_ASSIGN:
-        gen_dynpush(diags, unexpected_token("modulus assignment '%='", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("modulus assignment '%='", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_MOD_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_ADD_ASSIGN:
-        gen_dynpush(diags, unexpected_token("addition assignment '+='", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("addition assignment '+='", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_ADD_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_SUB_ASSIGN:
         gen_dynpush(diags,
-                    unexpected_token("subtraction assignment '-='", tok));
+                    Diag_unexpected_token_err("subtraction assignment '-='",
+                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_SUB_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN:
         gen_dynpush(diags,
-                    unexpected_token("left shift assignment '<<='", tok));
+                    Diag_unexpected_token_err("left shift assignment '<<='",
+                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN:
         gen_dynpush(diags,
-                    unexpected_token("right shift assignment '>>='", tok));
+                    Diag_unexpected_token_err("right shift assignment '>>='",
+                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_AND_ASSIGN:
         gen_dynpush(diags,
-                    unexpected_token("bitwise AND assignment '&='", tok));
+                    Diag_unexpected_token_err("bitwise AND assignment '&='",
+                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_AND_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_OR_ASSIGN:
-        gen_dynpush(diags, unexpected_token("bitwise OR assignment '|='", tok));
+        gen_dynpush(diags,
+                    Diag_unexpected_token_err("bitwise OR assignment '|='", tok,
+                                              ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_OR_ASSIGN;
         break;
 
     case LEXER_TOKENTYPE_XOR_ASSIGN:
         gen_dynpush(diags,
-                    unexpected_token("bitwise XOR assignment '^='", tok));
+                    Diag_unexpected_token_err("bitwise XOR assignment '^='",
+                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_XOR_ASSIGN;
         break;
 
@@ -826,7 +873,8 @@ static struct Parser_Expr op_tok_to_expr_mode1(const struct Lexer_Token *tok,
         break;
 
     case LEXER_TOKENTYPE_COMMA:
-        gen_dynpush(diags, unexpected_token("comma ','", tok));
+        gen_dynpush(diags, Diag_unexpected_token_err(
+                               "comma ','", tok, ERRORTYPE_UNEXPECTED_TOKEN));
         ret.type = PARSER_EXPRTYPE_COMMA;
         break;
 
@@ -844,7 +892,8 @@ static void parse_func_call_args(struct Parser_Expr *f_call,
 {
     isize_t rparen = Parser_find_twin_paren(toks, lparen, ISIZE_MAX);
     if (rparen == -1) {
-        gen_dynpush(diags, expected_token("')'", &toks[lparen]));
+        gen_dynpush(diags, Diag_expected_token_err("')'", &toks[lparen],
+                                                   ERRORTYPE_MISSING_PAREN));
         rparen = lparen;
     }
     if (out_rparen)
@@ -857,7 +906,9 @@ static void parse_func_call_args(struct Parser_Expr *f_call,
 
         if (toks[i].type != LEXER_TOKENTYPE_R_PAREN &&
             toks[i].type != LEXER_TOKENTYPE_COMMA) {
-            gen_dynpush(diags, expected_token("')'", &toks[lparen]));
+            gen_dynpush(diags,
+                        Diag_expected_token_err("')'", &toks[lparen],
+                                                ERRORTYPE_MISSING_PAREN));
         }
     }
 }
@@ -1021,13 +1072,17 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
     for (i = start; !is_end_type(toks[i].type, end_types, n_end_types); ++i) {
         if (Lexer_is_lit(toks[i].type)) {
             if (!mode)
-                gen_dynpush(diags, unexpected_token("literal", &toks[i]));
+                gen_dynpush(diags, Diag_unexpected_token_err(
+                                       "literal", &toks[i],
+                                       ERRORTYPE_UNEXPECTED_TOKEN));
             else
                 gen_dynpush(&out, lit_tok_to_expr(&toks[i]));
             mode = false;
         } else if (toks[i].type == LEXER_TOKENTYPE_IDENTIFIER) {
             if (!mode)
-                gen_dynpush(diags, unexpected_token("identifier", &toks[i]));
+                gen_dynpush(diags, Diag_unexpected_token_err(
+                                       "identifier", &toks[i],
+                                       ERRORTYPE_UNEXPECTED_TOKEN));
             else
                 gen_dynpush(&out, ident_tok_to_expr(&toks[i]));
             mode = false;
@@ -1078,22 +1133,30 @@ isize_t Parser_skip_expr(const struct Lexer_Token *toks, isize_t start,
         if (toks[i].type == LEXER_TOKENTYPE_L_PAREN) {
             isize_t rparen = Parser_find_twin_paren(toks, i, ISIZE_MAX);
             if (rparen == -1 && diags)
-                gen_dynpush(diags, expected_token("')'", &toks[i]));
+                gen_dynpush(diags,
+                            Diag_expected_token_err("')'", &toks[i],
+                                                    ERRORTYPE_MISSING_PAREN));
             i = rparen == -1 ? i : rparen;
         } else if (toks[i].type == LEXER_TOKENTYPE_L_CURLY) {
             isize_t rcurly = Parser_find_twin_curly(toks, i, ISIZE_MAX);
             if (rcurly == -1 && diags)
-                gen_dynpush(diags, expected_token("'}'", &toks[i]));
+                gen_dynpush(diags,
+                            Diag_expected_token_err("'}'", &toks[i],
+                                                    ERRORTYPE_MISSING_CURLY));
             i = rcurly == -1 ? i : rcurly;
         } else if (toks[i].type == LEXER_TOKENTYPE_L_SQBRACKET) {
             isize_t rsqbracket = Parser_find_twin_sqbracket(toks, i, ISIZE_MAX);
             if (rsqbracket == -1 && diags)
-                gen_dynpush(diags, expected_token("']'", &toks[i]));
+                gen_dynpush(diags,
+                            Diag_expected_token_err(
+                                "']'", &toks[i], ERRORTYPE_MISSING_SQBRACKET));
             i = rsqbracket == -1 ? i : rsqbracket;
         } else if (toks[i].type == LEXER_TOKENTYPE_LT) {
             isize_t rangle = Parser_find_twin_angle(toks, i, ISIZE_MAX);
             if (rangle == -1 && diags)
-                gen_dynpush(diags, expected_token("'>'", &toks[i]));
+                gen_dynpush(diags,
+                            Diag_expected_token_err("'>'", &toks[i],
+                                                    ERRORTYPE_MISSING_ANGLE));
             i = rangle == -1 ? i : rangle;
         }
     }

@@ -13,7 +13,6 @@
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
-#include "print.h"
 #include "sema/scope.h"
 #include <stdio.h>
 
@@ -48,17 +47,6 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
         Parser_Namespace_deinit(&self->nmspace);
         break;
     }
-}
-
-static struct Diag missing_semi_err(const struct Lexer_Token *tok)
-{
-    return (struct Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = Print_fmt_to_str("missing semicolon"),
-        .err = ERRORTYPE_MISSING_SEMICOLON,
-        .is_err = true,
-    };
 }
 
 static bool is_class_start(enum Lexer_TokenType type)
@@ -110,7 +98,9 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
     }
 
     if (check_semi && toks[end].type != LEXER_TOKENTYPE_SEMICOLON)
-        gen_dynpush(diags, missing_semi_err(&toks[start]));
+        gen_dynpush(diags,
+                    Diag_expected_token_err("';'", &toks[start],
+                                            ERRORTYPE_MISSING_SEMICOLON));
     else if (check_semi)
         ++end;
 

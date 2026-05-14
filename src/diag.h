@@ -7,6 +7,7 @@ enum ErrorType {
     ERRORTYPE_UNKNOWN_SYMBOL,
     ERRORTYPE_MISSING_PAREN,
     ERRORTYPE_MISSING_SQBRACKET,
+    ERRORTYPE_MISSING_ANGLE,
     ERRORTYPE_MISSING_CURLY,
     ERRORTYPE_MISSING_IDENTIFIER,
     ERRORTYPE_MISSING_TOKEN,
@@ -58,9 +59,21 @@ void Diag_print(const struct Diag *diag);
 
 struct Lexer_Token;
 
-struct Diag Diag_expected_token_err(const char *tok_name,
+struct Diag Diag_expected_token_err(const char *name,
                                     const struct Lexer_Token *tok,
-                                    enum ErrorType err);
-struct Diag Diag_expected_token_warn(const char *tok_name,
+                                    enum ErrorType type);
+struct Diag Diag_expected_token_warn(const char *name,
                                      const struct Lexer_Token *tok,
-                                     enum WarnType warn);
+                                     enum WarnType type);
+struct Diag Diag_unexpected_token_err(const char *name,
+                                      const struct Lexer_Token *tok,
+                                      enum ErrorType type);
+struct Diag Diag_unexpected_token_warn(const char *name,
+                                       const struct Lexer_Token *tok,
+                                       enum WarnType type);
+struct Diag Diag_ident_redefined_err(const char *name,
+                                     const struct Lexer_Token *tok,
+                                     enum ErrorType type);
+struct Diag Diag_ident_redefined_warn(const char *name,
+                                      const struct Lexer_Token *tok,
+                                      enum WarnType type);

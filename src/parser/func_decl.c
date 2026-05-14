@@ -19,32 +19,6 @@
 #include "sema/scope.h"
 #include <string.h>
 
-static struct Diag expected_token_err(const char *name,
-                                      const struct Lexer_Token *tok,
-                                      enum ErrorType err_type)
-{
-    return (struct Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = Print_fmt_to_str("expected '%s'", name),
-        .err = err_type,
-        .is_err = true,
-    };
-}
-
-static struct Diag ident_redefined_err(const char *name,
-                                       const struct Lexer_Token *tok,
-                                       enum ErrorType err_type)
-{
-    return (struct Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = Print_fmt_to_str("'%s' redefined", name),
-        .err = err_type,
-        .is_err = true,
-    };
-}
-
 static struct Diag missing_default_arg_err(const char *func,
                                            const struct Lexer_Token *tok,
                                            enum ErrorType err_type)
@@ -91,8 +65,8 @@ struct Parser_ASTNodePVec Parser_parse_func_params(
         *out_rparen = rparen;
 
     if (rparen == -1) {
-        gen_dynpush(diags, expected_token_err("')'", &toks[lparen],
-                                              ERRORTYPE_MISSING_PAREN));
+        gen_dynpush(diags, Diag_expected_token_err("')'", &toks[lparen],
+                                                   ERRORTYPE_MISSING_PAREN));
         return params;
     }
 
@@ -104,8 +78,9 @@ struct Parser_ASTNodePVec Parser_parse_func_params(
             if (out_variadic)
                 *out_variadic = true;
             if (i + 1 < rparen)
-                gen_dynpush(diags, expected_token_err("')'", &toks[lparen],
-                                                      ERRORTYPE_MISSING_PAREN));
+                gen_dynpush(diags,
+                            Diag_expected_token_err("')'", &toks[lparen],
+                                                    ERRORTYPE_MISSING_PAREN));
             break;
         } else {
             struct Parser_ASTNode *child;
@@ -145,8 +120,8 @@ static void add_func_def(struct Parser_FuncDecl *decl,
 
     auto ident = Parser_func_ident(decl);
     if (ident->def)
-        gen_dynpush(diags, ident_redefined_err(decl->name, decl->def_start,
-                                               ERRORTYPE_BAD_IDENTIFIER));
+        gen_dynpush(diags, Diag_ident_redefined_err(decl->name, decl->def_start,
+                                                    ERRORTYPE_BAD_IDENTIFIER));
     ident->def = node;
 }
 
@@ -168,8 +143,8 @@ static struct Sema_Scope *setup_def_scope(struct Parser_FuncDecl *decl,
 {
     auto def = &Parser_func_ident(decl)->func_info.def_scope;
     if (*def) {
-        gen_dynpush(diags, ident_redefined_err(decl->name, node->start,
-                                               ERRORTYPE_BAD_IDENTIFIER));
+        gen_dynpush(diags, Diag_ident_redefined_err(decl->name, node->start,
+                                                    ERRORTYPE_BAD_IDENTIFIER));
     }
 
     *def = create_scope(Parser_func_parent(decl), node, allocs,
@@ -327,8 +302,8 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
 
     case LEXER_TOKENTYPE_L_SQBRACKET:
         if (toks[op + 1].type != LEXER_TOKENTYPE_R_SQBRACKET)
-            gen_dynpush(diags, expected_token_err("]", &toks[op],
-                                                  ERRORTYPE_BAD_OP_OVERLOAD));
+            gen_dynpush(diags, Diag_expected_token_err(
+                                   "]", &toks[op], ERRORTYPE_BAD_OP_OVERLOAD));
         else if (out_end)
             ++*out_end;
         return PARSER_EXPRTYPE_ARRAY_SUBSCR;
@@ -341,8 +316,8 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
 
     case LEXER_TOKENTYPE_L_PAREN:
         if (toks[op + 1].type != LEXER_TOKENTYPE_R_PAREN)
-            gen_dynpush(diags, expected_token_err(")", &toks[op],
-                                                  ERRORTYPE_BAD_OP_OVERLOAD));
+            gen_dynpush(diags, Diag_expected_token_err(
+                                   ")", &toks[op], ERRORTYPE_BAD_OP_OVERLOAD));
         else if (out_end)
             ++*out_end;
         return PARSER_EXPRTYPE_FUNC_CALL;
@@ -357,8 +332,8 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
 
             if (toks[op + 2].type != LEXER_TOKENTYPE_R_SQBRACKET)
                 gen_dynpush(diags,
-                            expected_token_err("]", &toks[op + 1],
-                                               ERRORTYPE_BAD_OP_OVERLOAD));
+                            Diag_expected_token_err("]", &toks[op + 1],
+                                                    ERRORTYPE_BAD_OP_OVERLOAD));
             else if (out_end)
                 ++*out_end;
             return PARSER_EXPRTYPE_NEW_ARR;
@@ -373,8 +348,8 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
 
             if (toks[op + 2].type != LEXER_TOKENTYPE_R_SQBRACKET)
                 gen_dynpush(diags,
-                            expected_token_err("]", &toks[op + 1],
-                                               ERRORTYPE_BAD_OP_OVERLOAD));
+                            Diag_expected_token_err("]", &toks[op + 1],
+                                                    ERRORTYPE_BAD_OP_OVERLOAD));
             else if (out_end)
                 ++*out_end;
             return PARSER_EXPRTYPE_DELETE_ARR;
@@ -407,8 +382,8 @@ static void parse_func_type(struct Parser_FuncDecl *decl,
         Parser_parse_type(toks, start, &type_end, scope, &decl->name, diags);
 
     if (!decl->name) {
-        gen_dynpush(diags, expected_token_err("identifier", &toks[start],
-                                              ERRORTYPE_MISSING_TOKEN));
+        gen_dynpush(diags, Diag_expected_token_err("identifier", &toks[start],
+                                                   ERRORTYPE_MISSING_TOKEN));
         decl->name = "INVALID-FUNC-NAME";
     } else if (!strcmp(decl->name, "operator")) {
         decl->is_op_overload = true;
@@ -509,9 +484,9 @@ static void register_default_args(struct Parser_FuncDecl *decl,
             continue;
 
         if (default_arg) {
-            gen_dynpush(diags,
-                        ident_redefined_err(param->name, node->start,
-                                            ERRORTYPE_BAD_DEFAULT_ARGUMENT));
+            gen_dynpush(diags, Diag_ident_redefined_err(
+                                   param->name, node->start,
+                                   ERRORTYPE_BAD_DEFAULT_ARGUMENT));
             continue;
         }
 

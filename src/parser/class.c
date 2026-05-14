@@ -23,35 +23,10 @@ void Parser_Class_deinit(struct Parser_Class *self)
     gen_dyndeinit(&self->prot_childs);
 }
 
-static struct Diag ident_redefined_err(const char *name,
-                                       const struct Lexer_Token *tok,
-                                       enum ErrorType err_type)
-{
-    return (struct Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = Print_fmt_to_str("'%s' redefined", name),
-        .err = err_type,
-        .is_err = true,
-    };
-}
-
 struct Sema_Ident *Parser_class_ident(const struct Parser_Class *self)
 {
     assert(self->ident_idx != -1);
     return &self->parent->idents.arr[self->ident_idx];
-}
-
-static struct Diag expected_token(const char *tok_name,
-                                  const struct Lexer_Token *tok)
-{
-    return (struct Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = Print_fmt_to_str("expected %s", tok_name),
-        .err = ERRORTYPE_MISSING_TOKEN,
-        .is_err = true,
-    };
 }
 
 // parses the inheritance part of a class
@@ -64,7 +39,8 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
 {
     isize_t ident = colon + 1;
     if (toks[ident].type != LEXER_TOKENTYPE_IDENTIFIER) {
-        gen_dynpush(diags, expected_token("identifier", &toks[colon]));
+        gen_dynpush(diags, Diag_expected_token_err("identifier", &toks[colon],
+                                                   ERRORTYPE_MISSING_TOKEN));
         return ident;
     }
 
@@ -118,7 +94,8 @@ static isize_t parse_class_entry(struct Parser_Class *self,
 
     isize_t ident = start + 1;
     if (toks[ident].type != LEXER_TOKENTYPE_IDENTIFIER) {
-        gen_dynpush(diags, expected_token("identifier", &toks[start]));
+        gen_dynpush(diags, Diag_expected_token_err("identifier", &toks[start],
+                                                   ERRORTYPE_MISSING_TOKEN));
         --ident;
         self->name = "INVALID-NAME";
     } else {
@@ -210,7 +187,8 @@ static isize_t parse_accessspec(const struct Lexer_Token *toks, isize_t start,
 
     isize_t colon = start + 1;
     if (toks[colon].type != LEXER_TOKENTYPE_COLON) {
-        gen_dynpush(diags, expected_token("':'", &toks[start]));
+        gen_dynpush(diags, Diag_expected_token_err("':'", &toks[start],
+                                                   ERRORTYPE_MISSING_TOKEN));
         return colon;
     }
     return colon + 1;
@@ -224,8 +202,8 @@ static void add_class_def(struct Parser_Class *self,
 
     auto ident = Parser_class_ident(self);
     if (ident->def)
-        gen_dynpush(diags, ident_redefined_err(self->name, self->def_start,
-                                               ERRORTYPE_BAD_IDENTIFIER));
+        gen_dynpush(diags, Diag_ident_redefined_err(self->name, self->def_start,
+                                                    ERRORTYPE_BAD_IDENTIFIER));
 
     ident->def = node;
 }
@@ -237,8 +215,8 @@ static struct Sema_Scope *setup_def_scope(struct Parser_Class *self,
 {
     auto def = &Parser_class_ident(self)->class_info.def_scope;
     if (*def) {
-        gen_dynpush(diags, ident_redefined_err(self->name, node->start,
-                                               ERRORTYPE_BAD_IDENTIFIER));
+        gen_dynpush(diags, Diag_ident_redefined_err(self->name, node->start,
+                                                    ERRORTYPE_BAD_IDENTIFIER));
     }
 
     *def = create_scope(self->parent, node, allocs, SEMA_SCOPETYPE_CLASS);
@@ -358,7 +336,8 @@ isize_t Parser_parse_class(struct Parser_Class *self,
     if (toks[lcurly].type == LEXER_TOKENTYPE_SEMICOLON) {
         return lcurly;
     } else if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY) {
-        gen_dynpush(diags, expected_token("';'", &toks[start]));
+        gen_dynpush(diags, Diag_expected_token_err("';'", &toks[start],
+                                                   ERRORTYPE_MISSING_TOKEN));
         return lcurly;
     }
 
