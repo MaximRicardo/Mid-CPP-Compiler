@@ -59,3 +59,8 @@ struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
 // returns 0 on success, returns 1 if the identifier already has a declaration
 i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,
                        struct Parser_ASTNode *def);
+
+// finds an RNCE scope in scope
+// returns NULL if the scope name couldn't be resolved
+struct Sema_Scope *Sema_resolve_scope(const char *name,
+                                      struct Sema_Scope *scope);

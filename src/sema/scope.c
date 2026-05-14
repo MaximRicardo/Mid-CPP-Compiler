@@ -224,3 +224,19 @@ i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,
     ident->def = def;
     return 0;
 }
+
+struct Sema_Scope *Sema_resolve_scope(const char *name,
+                                      struct Sema_Scope *scope)
+{
+    for (isize_t i = 0; i < scope->idents.len; ++i) {
+        auto ident = &scope->idents.arr[i];
+        if (!Sema_is_nce_ident(ident->type))
+            continue;
+        if (strcmp(ident->name, name))
+            continue;
+
+        return Sema_ident_scope(ident);
+    }
+
+    return NULL;
+}

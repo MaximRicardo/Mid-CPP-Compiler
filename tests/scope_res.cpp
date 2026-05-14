@@ -6,6 +6,8 @@ public:
     public:
         static float y;
     };
+
+    typedef int Type;
 };
 
 void f(int x);
@@ -21,4 +23,6 @@ int main()
     float var = 420;
     f(::var); // should call line 11
     f(var);   // should call line 12
+
+    Class::Type a = 5;
 }

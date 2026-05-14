@@ -4,10 +4,12 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "lexer/token_type.h"
 #include "macros.h"
 #include "mid_alloc.h"
 #include "parser/find_twin.h"
 #include "print.h"
+#include "scope.h"
 #include "sema/scope.h"
 #include "types.h"
 #include <assert.h>
@@ -430,7 +432,8 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
     bool missing_spec = true;
 
     for (; Lexer_is_typequal(toks[i].type) || Lexer_is_typemod(toks[i].type) ||
-           Sema_tok_is_type(scope, &toks[i]);
+           Sema_tok_is_type(scope, &toks[i]) ||
+           toks[i].type == LEXER_TOKENTYPE_SCOPE_RES;
          ++i) {
         if (Lexer_is_typedataqual(toks[i].type)) {
             set_dqual_flag(&dquals, toks[i].type);
@@ -465,7 +468,8 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
             set_squal_flag(&squals, toks[i].type);
         } else {
             missing_spec = false;
-            ret = Sema_tok_type(scope, &toks[i]);
+            auto res = Parser_parse_scope_res(toks, i, &i, scope, diags);
+            ret = Sema_tok_type(res, &toks[i]);
             spec_is_typedef = ret.squals.is_typedef;
         }
     }

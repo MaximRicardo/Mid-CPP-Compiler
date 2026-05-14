@@ -629,19 +629,9 @@ static struct Sema_Scope *bin_scope_res_scope(struct Parser_Expr *expr,
     assert(lhs->type == PARSER_EXPRTYPE_IDENTIFIER);
 
     struct Sema_Scope *base = Sema_closest_rnce_scope(scope);
-    struct Sema_Scope *res = NULL;
 
     const char *name = lhs->info.ident;
-    for (isize_t i = 0; i < base->idents.len; ++i) {
-        auto ident = &base->idents.arr[i];
-        if (!Sema_is_nce_ident(ident->type))
-            continue;
-        if (strcmp(ident->name, name))
-            continue;
-
-        res = Sema_ident_scope(ident);
-        break;
-    }
+    struct Sema_Scope *res = Sema_resolve_scope(name, base);
 
     assert(res);
     return res;
@@ -649,9 +639,9 @@ static struct Sema_Scope *bin_scope_res_scope(struct Parser_Expr *expr,
 
 static struct Sema_Scope *unary_scope_res_scope(struct Sema_Scope *scope)
 {
-    struct Sema_Scope *base = Sema_closest_rnce_scope(scope);
-    struct Sema_Scope *res =
-        base->parent ? Sema_closest_rnce_scope(base) : base;
+    auto res = scope;
+    while (res->parent)
+        res = res->parent;
     return res;
 }
 
