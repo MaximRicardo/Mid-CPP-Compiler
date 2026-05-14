@@ -466,7 +466,7 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
             }
         } else if (Lexer_is_typequal(toks[i].type)) {
             set_squal_flag(&squals, toks[i].type);
-        } else {
+        } else if (missing_spec) {
             missing_spec = false;
             auto res = Parser_parse_scope_res(toks, i, &i, scope, diags);
             ret = Sema_tok_type(res, &toks[i]);
