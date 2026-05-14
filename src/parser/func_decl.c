@@ -524,12 +524,8 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN)
         CRASH("function missing left paren");
 
-    assert(res == parent_scope);
-
     decl->param_scope =
         create_scope(res, node, allocs, SEMA_SCOPETYPE_FUNC_PARAMS);
-    assert(decl->param_scope != parent_scope && decl->param_scope != res);
-    assert(decl->param_scope->parent == res);
 
     isize_t lparen = type_end;
     isize_t rparen;

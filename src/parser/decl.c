@@ -80,6 +80,11 @@ static isize_t skip_operator_overload(const struct Lexer_Token *toks,
         return start;
 }
 
+static bool valid_name_idx(isize_t idx, const struct Lexer_Token *toks)
+{
+    return idx != -1 && toks[idx].type == LEXER_TOKENTYPE_IDENTIFIER;
+}
+
 bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
                          struct Sema_Scope *scope,
                          struct Parser_Allocators *allocs,
@@ -91,16 +96,14 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
     bool ret;
 
     isize_t type_end;
-    isize_t name_idx;
-    auto type =
-        Parser_parse_type(toks, start, &type_end, scope, &name_idx, diags);
+    isize_t name;
+    auto type = Parser_parse_type(toks, start, &type_end, scope, &name, diags);
 
-    auto res = name_idx == -1 ? scope
-                              : Parser_parse_scope_res(toks, name_idx,
-                                                       &name_idx, scope, diags);
+    auto res = name == -1
+                   ? scope
+                   : Parser_parse_scope_res(toks, name, &name, scope, diags);
 
-    if (name_idx != -1 && toks[name_idx].type == LEXER_TOKENTYPE_IDENTIFIER &&
-        !strcmp(toks[name_idx].ident, "operator"))
+    if (valid_name_idx(name, toks) && !strcmp(toks[name].ident, "operator"))
         type_end = skip_operator_overload(toks, type_end);
 
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN) {
