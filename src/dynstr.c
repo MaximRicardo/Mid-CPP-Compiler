@@ -41,6 +41,9 @@ void Dynstr_deinit(struct Dynstr *self)
 void Dynstr_append(struct Dynstr *self, const char *src)
 {
     grow_to_fit_new_str(self, src);
+    // add a null terminator in case the str was previously NULL
+    self->str[self->len] = '\0';
+
     strcat(self->str, src);
     self->len += strlen(src);
 }
