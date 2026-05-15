@@ -19,6 +19,7 @@
 
 void Parser_Class_deinit(struct Parser_Class *self)
 {
+    gen_dyndeinit(&self->childs);
     gen_dyndeinit(&self->pub_childs);
     gen_dyndeinit(&self->priv_childs);
     gen_dyndeinit(&self->prot_childs);
@@ -164,24 +165,18 @@ static struct Sema_Scope *create_scope(struct Sema_Scope *scope,
     return child;
 }
 
-enum AccessSpec {
-    ACCESSSPEC_PUBLIC,
-    ACCESSSPEC_PRIVATE,
-    ACCESSSPEC_PROTECTED,
-};
-
 static isize_t parse_accessspec(const struct Lexer_Token *toks, isize_t start,
-                                enum AccessSpec *out_spec,
+                                enum Parser_ClassAccess *out_spec,
                                 struct DiagVec *diags)
 {
     assert(Lexer_is_accessspec(toks[start].type));
     if (out_spec) {
         if (toks[start].type == LEXER_TOKENTYPE_PUBLIC)
-            *out_spec = ACCESSSPEC_PUBLIC;
+            *out_spec = PARSER_CLASSACCESS_PUBLIC;
         else if (toks[start].type == LEXER_TOKENTYPE_PRIVATE)
-            *out_spec = ACCESSSPEC_PRIVATE;
+            *out_spec = PARSER_CLASSACCESS_PRIVATE;
         else
-            *out_spec = ACCESSSPEC_PROTECTED;
+            *out_spec = PARSER_CLASSACCESS_PROTECTED;
     }
 
     isize_t colon = start + 1;
@@ -230,9 +225,9 @@ static void parse_decls(struct Parser_Class *self, struct Parser_ASTNode *node,
 {
     // class members are private by default,
     // struct and union members are public by default
-    enum AccessSpec mode = self->type == PARSER_CLASSTYPE_CLASS
-                               ? ACCESSSPEC_PRIVATE
-                               : ACCESSSPEC_PUBLIC;
+    enum Parser_ClassAccess mode = self->type == PARSER_CLASSTYPE_CLASS
+                                       ? PARSER_CLASSACCESS_PRIVATE
+                                       : PARSER_CLASSACCESS_PUBLIC;
 
     auto def_scope = Parser_class_ident(self)->class_info.def_scope;
 
@@ -243,9 +238,11 @@ static void parse_decls(struct Parser_Class *self, struct Parser_ASTNode *node,
             struct Parser_ASTNode *child = Parser_parse_node(
                 toks, i, &i, node, def_scope, true, allocs, diags);
 
-            if (mode == ACCESSSPEC_PUBLIC)
+            gen_dynpush(&self->childs, child);
+
+            if (mode == PARSER_CLASSACCESS_PUBLIC)
                 gen_dynpush(&self->pub_childs, child);
-            else if (mode == ACCESSSPEC_PRIVATE)
+            else if (mode == PARSER_CLASSACCESS_PRIVATE)
                 gen_dynpush(&self->priv_childs, child);
             else
                 gen_dynpush(&self->prot_childs, child);
@@ -259,16 +256,8 @@ static void parse_defs(struct Parser_Class *self,
 {
     auto def_scope = Parser_class_ident(self)->class_info.def_scope;
 
-    for (isize_t i = 0; i < self->pub_childs.len; ++i)
-        parse_node_def(self->pub_childs.arr[i], def_scope, toks, allocs, diags);
-
-    for (isize_t i = 0; i < self->priv_childs.len; ++i)
-        parse_node_def(self->priv_childs.arr[i], def_scope, toks, allocs,
-                       diags);
-
-    for (isize_t i = 0; i < self->prot_childs.len; ++i)
-        parse_node_def(self->prot_childs.arr[i], def_scope, toks, allocs,
-                       diags);
+    for (isize_t i = 0; i < self->childs.len; ++i)
+        parse_node_def(self->childs.arr[i], def_scope, toks, allocs, diags);
 }
 
 isize_t Parser_parse_class_body(struct Parser_Class *self,
@@ -347,4 +336,50 @@ isize_t Parser_parse_class(struct Parser_Class *self,
     } else {
         return Parser_parse_class_body(self, node, toks, lcurly, allocs, diags);
     }
+}
+
+bool Parser_is_field_pub(const struct Parser_Class *self,
+                         const struct Parser_ASTNode *child)
+{
+    for (isize_t i = 0; i < self->pub_childs.len; ++i) {
+        if (child == self->pub_childs.arr[i])
+            return true;
+    }
+
+    return false;
+}
+
+bool Parser_is_field_priv(const struct Parser_Class *self,
+                          const struct Parser_ASTNode *child)
+{
+    for (isize_t i = 0; i < self->priv_childs.len; ++i) {
+        if (child == self->priv_childs.arr[i])
+            return true;
+    }
+
+    return false;
+}
+
+bool Parser_is_field_prot(const struct Parser_Class *self,
+                          const struct Parser_ASTNode *child)
+{
+    for (isize_t i = 0; i < self->prot_childs.len; ++i) {
+        if (child == self->prot_childs.arr[i])
+            return true;
+    }
+
+    return false;
+}
+
+enum Parser_ClassAccess Parser_field_access(const struct Parser_Class *self,
+                                            const struct Parser_ASTNode *child)
+{
+    if (Parser_is_field_pub(self, child))
+        return PARSER_CLASSACCESS_PUBLIC;
+    else if (Parser_is_field_priv(self, child))
+        return PARSER_CLASSACCESS_PRIVATE;
+    else if (Parser_is_field_prot(self, child))
+        return PARSER_CLASSACCESS_PROTECTED;
+    else
+        CRASH("child isn't in class");
 }

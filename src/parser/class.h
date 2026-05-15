@@ -13,8 +13,15 @@ enum Parser_ClassType {
     PARSER_CLASSTYPE_UNION,
 };
 
+enum Parser_ClassAccess {
+    PARSER_CLASSACCESS_PUBLIC,
+    PARSER_CLASSACCESS_PRIVATE,
+    PARSER_CLASSACCESS_PROTECTED,
+};
+
 // classes, structs and unions
 struct Parser_Class {
+    struct Parser_ASTNodePVec childs;
     struct Parser_ASTNodePVec pub_childs;  // public
     struct Parser_ASTNodePVec priv_childs; // private
     struct Parser_ASTNodePVec prot_childs; // protected
@@ -43,3 +50,11 @@ isize_t Parser_parse_class_body(struct Parser_Class *self,
                                 const struct Lexer_Token *toks, isize_t l_curly,
                                 struct Parser_Allocators *allocs,
                                 struct DiagVec *diags);
+bool Parser_is_field_pub(const struct Parser_Class *self,
+                         const struct Parser_ASTNode *child);
+bool Parser_is_field_priv(const struct Parser_Class *self,
+                          const struct Parser_ASTNode *child);
+bool Parser_is_field_prot(const struct Parser_Class *self,
+                          const struct Parser_ASTNode *child);
+enum Parser_ClassAccess Parser_field_access(const struct Parser_Class *self,
+                                            const struct Parser_ASTNode *child);

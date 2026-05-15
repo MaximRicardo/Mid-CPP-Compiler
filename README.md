@@ -52,7 +52,7 @@ make
 The binary should then be in the "bin/" folder:
 
 ```
-bin/mcppc PATH-TO-CPP-FILE
+bin/mcppc --help
 ```
 
 Note that I have only tested this codebase with CLang 20.1.8 on Linux Mint,
