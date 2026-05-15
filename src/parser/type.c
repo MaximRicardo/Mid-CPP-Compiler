@@ -886,6 +886,12 @@ static void fptr_to_str(const struct Parser_Type *type, struct Dynstr *str)
     Dynstr_append_char(str, ')');
 }
 
+static void array_to_str(const struct Parser_Type *type, struct Dynstr *str)
+{
+    type_to_str_impl(&type->array->elem, str);
+    Dynstr_append_printf(str, "[%" PRIu64 "]", type->array->len);
+}
+
 static void dquals_to_str(const struct Parser_TypeDataQual *dquals,
                           struct Dynstr *str, bool leading_space,
                           bool trailing_space)
@@ -906,7 +912,7 @@ static void regular_type_to_str(const struct Parser_Type *type,
     Dynstr_append(str, Parser_typespec_to_str(type->spec));
     if (Parser_is_typespec_named(type->spec))
         Dynstr_append_printf(
-            str, "%s ", type->named.parent->idents.arr[type->named.ident].name);
+            str, " %s", type->named.parent->idents.arr[type->named.ident].name);
 
     for (isize_t i = Parser_n_indir(type); i > 0; --i) {
         Dynstr_append_char(str, '*');
@@ -923,6 +929,8 @@ static void type_to_str_impl(const struct Parser_Type *type, struct Dynstr *str)
 {
     if (type->spec == PARSER_TYPESPEC_FPTR)
         fptr_to_str(type, str);
+    else if (type->spec == PARSER_TYPESPEC_ARRAY)
+        array_to_str(type, str);
     else
         regular_type_to_str(type, str);
 }
