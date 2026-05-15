@@ -39,5 +39,9 @@ void Literal_String_deinit(struct Literal_String *self);
 
 gen_dynarray_struct_named(Literal_StringVec, struct Literal_String);
 
+void Literal_fprint(FILE *out, union Literal_Value val,
+                    enum Parser_ExprType type);
+void Literal_fprint_toktype(FILE *out, union Literal_Value val,
+                            enum Lexer_TokenType type);
 void Literal_print(union Literal_Value val, enum Parser_ExprType type);
 void Literal_print_toktype(union Literal_Value val, enum Lexer_TokenType type);

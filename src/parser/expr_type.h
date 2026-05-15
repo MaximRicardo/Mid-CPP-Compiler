@@ -99,3 +99,5 @@ enum Parser_ExprType {
     PARSER_EXPRTYPE_THROW,
     PARSER_EXPRTYPE_UNARYOP_END,
 };
+
+const char *Parser_exprtype_name(enum Parser_ExprType type);

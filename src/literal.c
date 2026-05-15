@@ -78,73 +78,75 @@ isize_t Literal_strlit_len(const struct Literal_String *strlit)
     }
 }
 
-void Literal_print(union Literal_Value val, enum Parser_ExprType type)
+void Literal_fprint(FILE *out, union Literal_Value val,
+                    enum Parser_ExprType type)
 {
     switch (type) {
     case PARSER_EXPRTYPE_CHAR_LIT:
-        printf("'%c'", (char)val.sint);
+        fprintf(out, "'%c'", (char)val.sint);
         break;
 
     case PARSER_EXPRTYPE_WCHAR_LIT:
-        printf("'%c'", (wchar_t)val.sint);
+        fprintf(out, "'%C'", (wchar_t)val.sint);
         break;
 
     case PARSER_EXPRTYPE_CHAR16_LIT:
     case PARSER_EXPRTYPE_CHAR32_LIT:
-        putchar('\'');
-        UTF8_print_char(val.uint);
-        putchar('\'');
+        fputc('\'', out);
+        UTF8_fprint_char(out, val.uint);
+        fputc('\'', out);
         break;
 
     case PARSER_EXPRTYPE_STRING_LIT:
-        printf("\"%s\"", val.str.c);
+        fprintf(out, "\"%s\"", val.str.c);
         break;
 
     case PARSER_EXPRTYPE_WSTRING_LIT:
-        putchar('"');
+        fputc('"', out);
         static_assert(Types_wchar_size == 2 || Types_wchar_size == 4);
         if (Types_wchar_size == 2)
-            UTF8_print_str16((void *)val.str.wc);
+            UTF8_fprint_str16(out, (void *)val.str.wc);
         else
-            UTF8_print_str32((void *)val.str.wc);
-        putchar('"');
+            UTF8_fprint_str32(out, (void *)val.str.wc);
+        fputc('"', out);
         break;
 
     case PARSER_EXPRTYPE_STRING16_LIT:
-        putchar('"');
-        UTF8_print_str16(val.str.c16);
-        putchar('"');
+        fputc('"', out);
+        UTF8_fprint_str16(out, val.str.c16);
+        fputc('"', out);
+        break;
 
     case PARSER_EXPRTYPE_STRING32_LIT:
-        putchar('"');
-        UTF8_print_str32(val.str.c32);
-        putchar('"');
+        fputc('"', out);
+        UTF8_fprint_str32(out, val.str.c32);
+        fputc('"', out);
         break;
 
     case PARSER_EXPRTYPE_INT_LIT:
     case PARSER_EXPRTYPE_LONG_LIT:
     case PARSER_EXPRTYPE_LONGLONG_LIT:
-        printf("%" PRIi64, val.sint);
+        fprintf(out, "%" PRIi64, val.sint);
         break;
 
     case PARSER_EXPRTYPE_UINT_LIT:
     case PARSER_EXPRTYPE_ULONG_LIT:
     case PARSER_EXPRTYPE_ULONGLONG_LIT:
-        printf("%" PRIu64, val.uint);
+        fprintf(out, "%" PRIu64, val.uint);
         break;
 
     case PARSER_EXPRTYPE_FLOAT_LIT:
     case PARSER_EXPRTYPE_DOUBLE_LIT:
     case PARSER_EXPRTYPE_LONGDOUBLE_LIT:
-        printf("%Lf", val.flt);
+        fprintf(out, "%Lf", val.flt);
         break;
 
     case PARSER_EXPRTYPE_BOOL_LIT:
-        printf("%s", val.sint ? "true" : "false");
+        fprintf(out, "%s", val.sint ? "true" : "false");
         break;
 
     case PARSER_EXPRTYPE_PTR_LIT:
-        printf("%p", val.ptr);
+        fprintf(out, "%p", val.ptr);
         break;
 
     default:
@@ -152,86 +154,97 @@ void Literal_print(union Literal_Value val, enum Parser_ExprType type)
     }
 }
 
-void Literal_print_toktype(union Literal_Value val, enum Lexer_TokenType type)
+void Literal_fprint_toktype(FILE *out, union Literal_Value val,
+                            enum Lexer_TokenType type)
 {
     switch (type) {
     case LEXER_TOKENTYPE_CHAR_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_CHAR_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_CHAR_LIT);
         break;
 
     case LEXER_TOKENTYPE_WCHAR_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_WCHAR_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_WCHAR_LIT);
         break;
 
     case LEXER_TOKENTYPE_CHAR16_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_CHAR16_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_CHAR16_LIT);
         break;
 
     case LEXER_TOKENTYPE_CHAR32_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_CHAR32_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_CHAR32_LIT);
         break;
 
     case LEXER_TOKENTYPE_STRING_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_STRING_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_STRING_LIT);
         break;
 
     case LEXER_TOKENTYPE_WSTRING_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_WSTRING_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_WSTRING_LIT);
         break;
 
     case LEXER_TOKENTYPE_STRING16_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_STRING16_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_STRING16_LIT);
         break;
 
     case LEXER_TOKENTYPE_STRING32_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_STRING32_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_STRING32_LIT);
         break;
 
     case LEXER_TOKENTYPE_INT_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_INT_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_INT_LIT);
         break;
 
     case LEXER_TOKENTYPE_UINT_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_UINT_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_UINT_LIT);
         break;
 
     case LEXER_TOKENTYPE_LONG_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_LONG_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_LONG_LIT);
         break;
 
     case LEXER_TOKENTYPE_ULONG_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_ULONG_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_ULONG_LIT);
         break;
 
     case LEXER_TOKENTYPE_LONGLONG_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_LONGLONG_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_LONGLONG_LIT);
         break;
 
     case LEXER_TOKENTYPE_ULONGLONG_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_ULONGLONG_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_ULONGLONG_LIT);
         break;
 
     case LEXER_TOKENTYPE_FLOAT_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_FLOAT_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_FLOAT_LIT);
         break;
 
     case LEXER_TOKENTYPE_DOUBLE_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_DOUBLE_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_DOUBLE_LIT);
         break;
 
     case LEXER_TOKENTYPE_LONGDOUBLE_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_LONGDOUBLE_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_LONGDOUBLE_LIT);
         break;
 
     case LEXER_TOKENTYPE_BOOL_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_BOOL_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_BOOL_LIT);
         break;
 
     case LEXER_TOKENTYPE_PTR_LIT:
-        Literal_print(val, PARSER_EXPRTYPE_PTR_LIT);
+        Literal_fprint(out, val, PARSER_EXPRTYPE_PTR_LIT);
         break;
 
     default:
         CRASH("token is not literal");
     }
+}
+
+void Literal_print(union Literal_Value val, enum Parser_ExprType type)
+{
+    Literal_fprint(stdout, val, type);
+}
+
+void Literal_print_toktype(union Literal_Value val, enum Lexer_TokenType type)
+{
+    Literal_fprint_toktype(stdout, val, type);
 }

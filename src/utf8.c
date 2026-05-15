@@ -3,6 +3,7 @@
 #include "ints.h"
 #include "macros.h"
 #include <limits.h>
+#include <stdio.h>
 #include <string.h>
 #include <uchar.h>
 
@@ -119,14 +120,19 @@ u32 UTF8_read_char(const char *src, isize_t start, isize_t *out_end)
     return uni_to_c32(ret);
 }
 
-void UTF8_print_char(u32 c)
+void UTF8_fprint_char(FILE *out, u32 c)
 {
     char buf[MB_LEN_MAX + 1] = {0};
     mbstate_t ps;
     memset(&ps, 0, sizeof(ps));
 
     c32rtomb(buf, c, &ps);
-    printf("%s", buf);
+    fprintf(out, "%s", buf);
+}
+
+void UTF8_print_char(u32 c)
+{
+    UTF8_fprint_char(stdout, c);
 }
 
 char *UTF8_char_to_str(u32 c)
@@ -140,16 +146,26 @@ char *UTF8_char_to_str(u32 c)
     return ret;
 }
 
-void UTF8_print_str32(u32 *str)
+void UTF8_fprint_str32(FILE *out, u32 *str)
 {
     for (isize_t i = 0; str[i] != '\0'; ++i)
-        UTF8_print_char(str[i]);
+        UTF8_fprint_char(out, str[i]);
+}
+
+void UTF8_print_str32(u32 *str)
+{
+    UTF8_fprint_str32(stdout, str);
+}
+
+void UTF8_fprint_str16(FILE *out, u16 *str)
+{
+    for (isize_t i = 0; str[i] != '\0'; ++i)
+        UTF8_fprint_char(out, str[i]);
 }
 
 void UTF8_print_str16(u16 *str)
 {
-    for (isize_t i = 0; str[i] != '\0'; ++i)
-        UTF8_print_char(str[i]);
+    UTF8_fprint_str16(stdout, str);
 }
 
 char *UTF8_str32_to_str(u32 *str)

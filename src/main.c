@@ -7,6 +7,7 @@
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
+#include "parser/ast_log.h"
 #include "parser/type.h"
 #include "sema/scope.h"
 #include "symbol.h"
@@ -84,6 +85,19 @@ static void log_symbols(const struct SymbolTable *symtbl)
         printf("symtbl[%" PRIisz "] = '%s'\n", i, symtbl->arr[i]);
 }
 
+static void log_ast(const char *path, const struct Parser_ASTNode *root)
+{
+    FILE *f = fopen(path, "w");
+    if (!f) {
+        perror("can't open ast log file");
+        return;
+    }
+
+    Parser_log_ast(root, f);
+
+    fclose(f);
+}
+
 int main(int argc, char **argv)
 {
     // enables unicode
@@ -123,6 +137,9 @@ int main(int argc, char **argv)
         ret = 1;
         goto parser_failed;
     }
+
+    if (CMD_get_args()->ast_out)
+        log_ast(CMD_get_args()->ast_out, &root);
 
 parser_failed:
     // the root scope and root node need to be deallocated manually cuz they

@@ -7,3 +7,5 @@ cmake_install.cmake
 compile_commands.json
 
 bin/
+
+tests/*.ast
