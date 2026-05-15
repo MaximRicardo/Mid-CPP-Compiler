@@ -58,3 +58,5 @@ bool Parser_is_field_prot(const struct Parser_Class *self,
                           const struct Parser_ASTNode *child);
 enum Parser_ClassAccess Parser_field_access(const struct Parser_Class *self,
                                             const struct Parser_ASTNode *child);
+// returns the idx of the field in self->childs
+isize_t Parser_find_field(const struct Parser_Class *self, const char *name);

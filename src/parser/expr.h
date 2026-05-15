@@ -19,6 +19,7 @@ bool Parser_is_logical_op(enum Parser_ExprType type);
 bool Parser_is_comp_op(enum Parser_ExprType type);
 // checks for both regular and compound assignment
 bool Parser_is_assignment(enum Parser_ExprType type);
+bool Parser_is_memb_sel(enum Parser_ExprType type);
 
 // goes from 0 to 15, where 15 is the highest precedence
 i32 Parser_op_precedence(enum Parser_ExprType op);

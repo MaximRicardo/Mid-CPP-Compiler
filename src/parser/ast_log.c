@@ -125,6 +125,8 @@ static void log_func_call_expr(const struct Parser_Expr *expr, FILE *out)
     const struct Parser_Expr *dest = &expr->info.args.arr[0];
     if (Parser_is_scope_res(dest->type))
         log_scope_res_expr(dest, out);
+    else if (Parser_is_memb_sel(dest->type))
+        log_expr(dest, out);
     else
         fprintf(out, "%s", dest->info.ident);
 

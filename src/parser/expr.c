@@ -93,6 +93,14 @@ bool Parser_is_assignment(enum Parser_ExprType type)
            type == PARSER_EXPRTYPE_XOR_ASSIGN;
 }
 
+bool Parser_is_memb_sel(enum Parser_ExprType type)
+{
+    return type == PARSER_EXPRTYPE_MEMB_SEL ||
+           type == PARSER_EXPRTYPE_PTR_MEMB_SEL ||
+           type == PARSER_EXPRTYPE_PTR_TO_MEMB_SEL ||
+           type == PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
+}
+
 i32 Parser_op_precedence(enum Parser_ExprType op)
 {
     // goes from 16 to 1

@@ -242,6 +242,8 @@ static const char *scope_res_ident(const struct Parser_Expr *expr)
         return scope_res_ident(&expr->info.args.arr[1]);
     else if (expr->type == PARSER_EXPRTYPE_UNARY_SCOPE_RES)
         return scope_res_ident(&expr->info.args.arr[0]);
+    else if (Parser_is_memb_sel(expr->type))
+        return scope_res_ident(&expr->info.args.arr[1]);
     else
         CRASH("expr is not a scope resolution");
 }
@@ -280,6 +282,8 @@ static void set_func_call_node(struct Parser_Expr *expr,
         else
             printf("calling func at %d:%d\n", expr->node->start->pos.line,
                    expr->node->start->pos.column);
+    } else if (Parser_is_memb_sel(lhs->type)) {
+        expr->node = lhs->node; // memb selects store the node of the func
     } else {
         CRASH("calling function ptrs not implemented");
     }
@@ -722,6 +726,122 @@ static void typecheck_scope_res_expr(struct Parser_Expr *expr,
     expr->res_scope = Parser_is_scope_res(arg->type) ? arg->res_scope : res;
 }
 
+static struct Diag
+memb_sel_lhs_not_class_err(const struct Parser_Expr *memb_sel)
+{
+    char *lhs_type = Parser_type_to_str(&memb_sel->info.args.arr[0].ret);
+
+    struct Diag ret = {
+        .pos = memb_sel->tok->pos,
+        .line = memb_sel->tok->line,
+        .msg = Print_fmt_to_str(
+            "member select lhs '%s' is not a class or union", lhs_type),
+        .err = ERRORTYPE_BAD_MEMB_SEL,
+        .is_err = true};
+
+    free(lhs_type);
+    return ret;
+}
+
+static struct Diag memb_sel_expects_ptr_err(const struct Parser_Expr *memb_sel)
+{
+    char *lhs_type = Parser_type_to_str(&memb_sel->info.args.arr[0].ret);
+
+    struct Diag ret = {.pos = memb_sel->tok->pos,
+                       .line = memb_sel->tok->line,
+                       .msg = Print_fmt_to_str(
+                           "member select lhs '%s' is not a pointer", lhs_type),
+                       .err = ERRORTYPE_BAD_MEMB_SEL,
+                       .is_err = true};
+
+    free(lhs_type);
+    return ret;
+}
+
+static struct Diag
+memb_sel_expects_non_ptr_err(const struct Parser_Expr *memb_sel)
+{
+    char *lhs_type = Parser_type_to_str(&memb_sel->info.args.arr[0].ret);
+
+    struct Diag ret = {.pos = memb_sel->tok->pos,
+                       .line = memb_sel->tok->line,
+                       .msg = Print_fmt_to_str(
+                           "member select lhs '%s' is a pointer", lhs_type),
+                       .err = ERRORTYPE_BAD_MEMB_SEL,
+                       .is_err = true};
+
+    free(lhs_type);
+    return ret;
+}
+
+static bool memb_sel_expects_ptr(enum Parser_ExprType type)
+{
+    return type == PARSER_EXPRTYPE_PTR_MEMB_SEL ||
+           type == PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
+}
+
+static struct Diag unknown_field_err(const char *field, const char *class_,
+                                     bool is_union,
+                                     const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("unknown field '%s' in %s '%s'", field,
+                                is_union ? "union" : "class", class_),
+        .err = ERRORTYPE_BAD_IDENTIFIER,
+        .is_err = true,
+    };
+}
+
+static void typecheck_memb_sel(struct Parser_Expr *expr,
+                               struct Sema_Scope *scope, struct DiagVec *diags)
+{
+    auto lhs = &expr->info.args.arr[0];
+    auto rhs = &expr->info.args.arr[1];
+
+    Sema_typecheck_expr(lhs, scope, diags);
+
+    if (lhs->ret.spec != PARSER_TYPESPEC_CLASS &&
+        lhs->ret.spec != PARSER_TYPESPEC_UNION) {
+        gen_dynpush(diags, memb_sel_lhs_not_class_err(expr));
+        return;
+    } else if (memb_sel_expects_ptr(expr->type) &&
+               Parser_n_indir(&lhs->ret) != 1) {
+        gen_dynpush(diags, memb_sel_expects_ptr_err(expr));
+    } else if (!memb_sel_expects_ptr(expr->type) &&
+               Parser_n_indir(&lhs->ret) != 0) {
+        gen_dynpush(diags, memb_sel_expects_non_ptr_err(expr));
+    } else if (rhs->type != PARSER_EXPRTYPE_IDENTIFIER) {
+        gen_dynpush(diags,
+                    Diag_expected_token_err("identifier", expr->tok,
+                                            ERRORTYPE_MISSING_IDENTIFIER));
+        return;
+    }
+
+    const struct Parser_Class *class_ =
+        &Parser_named_type_ident(&lhs->ret.named)->decl->class_;
+    const char *field_name = rhs->info.ident;
+    isize_t field_idx = Parser_find_field(class_, field_name);
+    if (field_idx == -1) {
+        gen_dynpush(diags,
+                    unknown_field_err(field_name, class_->name,
+                                      class_->type == PARSER_CLASSTYPE_UNION,
+                                      rhs->tok));
+        return;
+    }
+
+    auto field = class_->childs.arr[field_idx];
+    auto field_type = field->type == PARSER_ASTNODETYPE_VAR_DECL
+                          ? &field->var_decl.type
+                          : &field->func_decl.type;
+
+    expr->ret = Parser_copy_type(field_type);
+    expr->valtype = PARSER_EXPRVALUE_LVALUE;
+    if (field->type == PARSER_ASTNODETYPE_FUNC_DECL)
+        expr->node = field;
+}
+
 static void typecheck_op_expr(struct Parser_Expr *expr,
                               struct Sema_Scope *scope, struct DiagVec *diags)
 {
@@ -752,6 +872,8 @@ static void typecheck_op_expr(struct Parser_Expr *expr,
         typecheck_comp_op_expr(expr, diags);
     else if (Parser_is_scope_res(expr->type))
         typecheck_scope_res_expr(expr, scope, diags);
+    else if (Parser_is_memb_sel(expr->type))
+        typecheck_memb_sel(expr, scope, diags);
     else {
         printf("op at %d:%d\n", expr->tok->pos.line, expr->tok->pos.column);
         printf("op type = %d\n", expr->type);
@@ -790,8 +912,10 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
     } else if (expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
         typecheck_ident_expr(expr, scope, diags);
     } else {
-        // the scope resolution operator is weird
-        if (!Parser_is_scope_res(expr->type)) {
+        // some operators are weird
+        bool typecheck_args =
+            !Parser_is_scope_res(expr->type) && !Parser_is_memb_sel(expr->type);
+        if (typecheck_args) {
             for (isize_t i = 0; i < expr->info.args.len; ++i)
                 Sema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
         }

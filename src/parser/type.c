@@ -1276,3 +1276,9 @@ bool Parser_are_types_same(const struct Parser_Type *a,
     else
         return true;
 }
+
+struct Sema_Ident *Parser_named_type_ident(const struct Parser_TypeNamed *named)
+{
+    assert(named->ident != -1);
+    return &named->parent->idents.arr[named->ident];
+}

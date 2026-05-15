@@ -383,3 +383,22 @@ enum Parser_ClassAccess Parser_field_access(const struct Parser_Class *self,
     else
         CRASH("child isn't in class");
 }
+
+isize_t Parser_find_field(const struct Parser_Class *self, const char *name)
+{
+    for (isize_t i = 0; i < self->childs.len; ++i) {
+        auto child = self->childs.arr[i];
+
+        if (child->type != PARSER_ASTNODETYPE_VAR_DECL &&
+            child->type != PARSER_ASTNODETYPE_FUNC_DECL)
+            continue;
+
+        const char *child_name = child->type == PARSER_ASTNODETYPE_VAR_DECL
+                                     ? child->var_decl.name
+                                     : child->func_decl.name;
+        if (!strcmp(child_name, name))
+            return i;
+    }
+
+    return -1;
+}

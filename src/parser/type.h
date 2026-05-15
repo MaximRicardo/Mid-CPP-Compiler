@@ -66,6 +66,9 @@ struct Parser_TypeNamed {
     i32 ident;
 };
 
+struct Sema_Ident *
+Parser_named_type_ident(const struct Parser_TypeNamed *named);
+
 struct Parser_Type {
     union {
         struct Parser_TypeFPtr *fptr;
