@@ -1,3 +1,4 @@
+#include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
@@ -8,6 +9,7 @@
 #include "parser/ast.h"
 #include "parser/type.h"
 #include "sema/scope.h"
+#include "symbol.h"
 #include <assert.h>
 #include <locale.h>
 #include <stddef.h>
@@ -46,54 +48,66 @@ static bool print_diags(const struct DiagVec *diags)
     return err;
 }
 
+static void log_tokens(const struct Lexer_TokenVec *toks)
+{
+    for (isize_t i = 0; i < toks->len; ++i) {
+        printf("i = %" PRIisz ", pos = (%d, %d), type = %d", i,
+               toks->arr[i].pos.line, toks->arr[i].pos.column,
+               toks->arr[i].type);
+        if (toks->arr[i].type == LEXER_TOKENTYPE_INT_LIT)
+            printf(", value int = %" PRId64, toks->arr[i].val.sint);
+        else if (toks->arr[i].type == LEXER_TOKENTYPE_LONG_LIT)
+            printf(", value long = %" PRId64, toks->arr[i].val.sint);
+        else if (toks->arr[i].type == LEXER_TOKENTYPE_LONGLONG_LIT)
+            printf(", value long long = %" PRId64, toks->arr[i].val.sint);
+        else if (toks->arr[i].type == LEXER_TOKENTYPE_UINT_LIT)
+            printf(", value u int = %" PRId64, toks->arr[i].val.uint);
+        else if (toks->arr[i].type == LEXER_TOKENTYPE_ULONG_LIT)
+            printf(", value u long = %" PRId64, toks->arr[i].val.uint);
+        else if (toks->arr[i].type == LEXER_TOKENTYPE_ULONGLONG_LIT)
+            printf(", value u long long = %" PRId64, toks->arr[i].val.uint);
+        else if (toks->arr[i].type == LEXER_TOKENTYPE_FLOAT_LIT)
+            printf(", value f = %Lf", toks->arr[i].val.flt);
+        else if (toks->arr[i].type == LEXER_TOKENTYPE_DOUBLE_LIT)
+            printf(", value d = %Lf", toks->arr[i].val.flt);
+        else if (toks->arr[i].type == LEXER_TOKENTYPE_LONGDOUBLE_LIT)
+            printf(", value ld = %Lf", toks->arr[i].val.flt);
+        else if (toks->arr[i].type == LEXER_TOKENTYPE_STRING_LIT)
+            printf(", value str = '%s'", toks->arr[i].val.str.c);
+        printf("\n");
+    }
+}
+
+static void log_symbols(const struct SymbolTable *symtbl)
+{
+    for (isize_t i = 0; i < symtbl->len; ++i)
+        printf("symtbl[%" PRIisz "] = '%s'\n", i, symtbl->arr[i]);
+}
+
 int main(int argc, char **argv)
 {
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
 
+    CMD_init_args(argc, argv);
+
     int ret = 0;
 
     struct Parser_Allocators allocs = {};
 
-    assert(argc >= 2);
-    char *src = read_file(argv[1]);
+    assert(CMD_get_args()->src);
+    char *src = read_file(CMD_get_args()->src);
 
-    auto lex = Lexer_tokenize(src, argv[1]);
+    auto lex = Lexer_tokenize(src, CMD_get_args()->src);
     if (print_diags(&lex.diags)) {
         ret = 1;
         goto tokenize_failed;
     }
 
-    for (isize_t i = 0; i < lex.toks.len; ++i) {
-        printf("i = %" PRIisz ", pos = (%d, %d), type = %d", i,
-               lex.toks.arr[i].pos.line, lex.toks.arr[i].pos.column,
-               lex.toks.arr[i].type);
-        if (lex.toks.arr[i].type == LEXER_TOKENTYPE_INT_LIT)
-            printf(", value int = %" PRId64, lex.toks.arr[i].val.sint);
-        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_LONG_LIT)
-            printf(", value long = %" PRId64, lex.toks.arr[i].val.sint);
-        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_LONGLONG_LIT)
-            printf(", value long long = %" PRId64, lex.toks.arr[i].val.sint);
-        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_UINT_LIT)
-            printf(", value u int = %" PRId64, lex.toks.arr[i].val.uint);
-        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_ULONG_LIT)
-            printf(", value u long = %" PRId64, lex.toks.arr[i].val.uint);
-        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_ULONGLONG_LIT)
-            printf(", value u long long = %" PRId64, lex.toks.arr[i].val.uint);
-        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_FLOAT_LIT)
-            printf(", value f = %Lf", lex.toks.arr[i].val.flt);
-        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_DOUBLE_LIT)
-            printf(", value d = %Lf", lex.toks.arr[i].val.flt);
-        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_LONGDOUBLE_LIT)
-            printf(", value ld = %Lf", lex.toks.arr[i].val.flt);
-        else if (lex.toks.arr[i].type == LEXER_TOKENTYPE_STRING_LIT)
-            printf(", value str = '%s'", lex.toks.arr[i].val.str.c);
-        printf("\n");
-    }
-
-    for (isize_t i = 0; i < lex.symtbl.len; ++i) {
-        printf("symtbl[%" PRIisz "] = '%s'\n", i, lex.symtbl.arr[i]);
-    }
+    if (CMD_get_args()->log_tokens)
+        log_tokens(&lex.toks);
+    if (CMD_get_args()->log_symbols)
+        log_symbols(&lex.symtbl);
 
     struct DiagVec parser_diags = gen_dyninit();
 
@@ -101,9 +115,6 @@ int main(int argc, char **argv)
     struct Sema_Scope scope = {.type = SEMA_SCOPETYPE_ROOT, .node = &root};
 
     for (isize_t i = 0; lex.toks.arr[i].type != LEXER_TOKENTYPE_END;) {
-        printf("looping at %d:%d, %" PRIisz "/%" PRIisz "\n",
-               lex.toks.arr[i].pos.line, lex.toks.arr[i].pos.column, i,
-               lex.toks.len - 1);
         auto node = Parser_parse_node(lex.toks.arr, i, &i, &root, &scope, false,
                                       &allocs, &parser_diags);
         gen_dynpush(&root.root, node);
