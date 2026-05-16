@@ -1,3 +1,7 @@
+namespace std {
+float sqrt(float);
+}
+
 class Vec3 {
 public:
     float x;
@@ -72,21 +76,45 @@ public:
         return ret;
     }
 
-    float len();
+    float len()
+    {
+        return std::sqrt(this->dot(*this));
+    }
 
-    Vec3 normalized();
+    Vec3 normalized()
+    {
+        return *this / this->len();
+    }
 
-    Vec3 &operator+=(const Vec3 &);
+    Vec3 &operator+=(const Vec3 &v)
+    {
+        return *this = *this + v;
+    }
 
-    Vec3 &operator-=(const Vec3 &);
+    Vec3 &operator-=(const Vec3 &v)
+    {
+        return *this = *this - v;
+    }
 
-    Vec3 &operator*=(float);
+    Vec3 &operator*=(float s)
+    {
+        return *this = *this * s;
+    }
 
-    Vec3 &operator*=(const Vec3 &);
+    Vec3 &operator*=(const Vec3 &v)
+    {
+        return *this = *this * v;
+    }
 
-    Vec3 &operator/=(float);
+    Vec3 &operator/=(float s)
+    {
+        return *this = *this / s;
+    }
 
-    Vec3 &operator/=(const Vec3 &);
+    Vec3 &operator/=(const Vec3 &v)
+    {
+        return *this = *this / v;
+    }
 };
 
 int main()

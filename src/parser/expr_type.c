@@ -69,6 +69,9 @@ const char *Parser_exprtype_name(enum Parser_ExprType type)
     case PARSER_EXPRTYPE_IDENTIFIER:
         return "IDENTIFIER";
 
+    case PARSER_EXPRTYPE_THIS:
+        return "THIS";
+
     case PARSER_EXPRTYPE_TERNARYOP_START:
         return "TERNARYOP_START";
 

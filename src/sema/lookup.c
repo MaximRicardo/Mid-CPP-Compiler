@@ -182,15 +182,10 @@ static bool param_has_default(const struct Parser_FuncDecl *func, isize_t param)
     return Parser_func_ident(func)->func_info.default_args[param] != NULL;
 }
 
-static bool func_is_method(const struct Parser_FuncDecl *func)
-{
-    return Parser_func_parent(func)->type == SEMA_SCOPETYPE_CLASS;
-}
-
 // non-static methods take an implicit this parameter
 static bool func_takes_this(const struct Parser_FuncDecl *func)
 {
-    return func_is_method(func) && !func->type.squals.is_static;
+    return Parser_func_is_method(func) && !func->type.squals.is_static;
 }
 
 static bool valid_this_arg(const struct Parser_FuncDecl *func,

@@ -101,6 +101,13 @@ static void log_ident_expr(const struct Parser_Expr *expr, FILE *out)
     fprintf(out, "%s", expr->info.ident);
 }
 
+static void log_this_expr(const struct Parser_Expr *expr, FILE *out)
+{
+    assert(expr->type == PARSER_EXPRTYPE_THIS);
+
+    fprintf(out, "this");
+}
+
 static void log_scope_res_expr(const struct Parser_Expr *expr, FILE *out)
 {
     if (expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
@@ -162,6 +169,8 @@ static void log_expr(const struct Parser_Expr *expr, FILE *out)
 {
     if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
         log_ident_expr(expr, out);
+    else if (expr->type == PARSER_EXPRTYPE_THIS)
+        log_this_expr(expr, out);
     else if (Parser_is_numlit(expr->type))
         log_lit_expr(expr, out);
     else if (Parser_is_scope_res(expr->type))

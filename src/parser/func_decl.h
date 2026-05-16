@@ -48,3 +48,5 @@ isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
                                struct Parser_ASTNode *node,
                                struct Parser_Allocators *allocs,
                                struct DiagVec *diags);
+
+bool Parser_func_is_method(const struct Parser_FuncDecl *self);

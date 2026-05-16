@@ -336,6 +336,13 @@ static struct Parser_Expr ident_tok_to_expr(const struct Lexer_Token *tok)
     return ret;
 }
 
+static struct Parser_Expr this_tok_to_expr(const struct Lexer_Token *tok)
+{
+    struct Parser_Expr ret = {
+        .tok = tok, .info.ident = tok->ident, .type = PARSER_EXPRTYPE_THIS};
+    return ret;
+}
+
 static struct Parser_Expr op_tok_to_expr_mode0(const struct Lexer_Token *tok,
                                                struct DiagVec *diags)
 {
@@ -1093,6 +1100,14 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                                        ERRORTYPE_UNEXPECTED_TOKEN));
             else
                 gen_dynpush(&out, ident_tok_to_expr(&toks[i]));
+            mode = false;
+        } else if (toks[i].type == LEXER_TOKENTYPE_THIS) {
+            if (!mode)
+                gen_dynpush(diags,
+                            Diag_unexpected_token_err(
+                                "this", &toks[i], ERRORTYPE_UNEXPECTED_TOKEN));
+            else
+                gen_dynpush(&out, this_tok_to_expr(&toks[i]));
             mode = false;
         } else if (Lexer_is_op(toks[i].type)) {
             push_operator(toks, i, &i, &out, &ops, mode, scope, diags);

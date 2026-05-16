@@ -553,3 +553,8 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
         return rcurly + 1;
     }
 }
+
+bool Parser_func_is_method(const struct Parser_FuncDecl *self)
+{
+    return Parser_func_parent(self)->type == SEMA_SCOPETYPE_CLASS;
+}

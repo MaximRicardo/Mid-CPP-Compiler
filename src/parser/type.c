@@ -931,6 +931,8 @@ static void type_to_str_impl(const struct Parser_Type *type, struct Dynstr *str)
         fptr_to_str(type, str);
     else if (type->spec == PARSER_TYPESPEC_ARRAY)
         array_to_str(type, str);
+    else if (type->spec == PARSER_TYPESPEC_INVALID)
+        Dynstr_append(str, "INVALID-TYPE");
     else
         regular_type_to_str(type, str);
 }

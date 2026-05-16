@@ -206,11 +206,69 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
     }
 }
 
+static struct Diag
+this_outside_nonstatic_method_err(const struct Lexer_Token *tok)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str(
+            "can't use 'this' outside a non-static member function"),
+        .err = ERRORTYPE_BAD_THIS_USAGE,
+        .is_err = true,
+    };
+}
+
+static void typecheck_this_expr(struct Parser_Expr *expr,
+                                const struct Sema_Scope *scope,
+                                struct DiagVec *diags)
+{
+    assert(expr->type == PARSER_EXPRTYPE_THIS);
+
+    // "this" is a prvalue
+    expr->valtype = PARSER_EXPRVALUE_PRVALUE;
+
+    auto func_scope =
+        Sema_closest_scope_of_type_const(scope, SEMA_SCOPETYPE_FUNC);
+    if (!func_scope) {
+        gen_dynpush(diags, this_outside_nonstatic_method_err(expr->tok));
+        goto invalid_this;
+    }
+
+    const struct Parser_FuncDecl *func = &func_scope->node->func_decl;
+    if (!Parser_func_is_method(func) || func->type.squals.is_static) {
+        gen_dynpush(diags, this_outside_nonstatic_method_err(expr->tok));
+        goto invalid_this;
+    }
+
+    assert(Parser_func_parent(func)->type == SEMA_SCOPETYPE_CLASS);
+    const struct Parser_Class *class_ = &Parser_func_parent(func)->node->class_;
+
+    expr->ret.spec = class_->type == PARSER_CLASSTYPE_UNION
+                         ? PARSER_TYPESPEC_UNION
+                         : PARSER_TYPESPEC_CLASS;
+    expr->ret.named.parent = class_->parent;
+    expr->ret.named.ident = class_->ident_idx;
+
+    // TODO: make this account for the constness of the method once i add that
+    gen_dynpush(&expr->ret.dquals, ((struct Parser_TypeDataQual){}));
+    gen_dynpush(&expr->ret.dquals, ((struct Parser_TypeDataQual){}));
+
+    return;
+
+invalid_this:
+    // default to an int*
+    expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT);
+    gen_dynpush(&expr->ret.dquals, ((struct Parser_TypeDataQual){}));
+}
+
 static void scope_res_name_impl(const struct Parser_Expr *expr,
                                 struct Dynstr *str)
 {
     if (expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
         Dynstr_append(str, expr->info.ident);
+    } else if (expr->type == PARSER_EXPRTYPE_THIS) {
+        Dynstr_append(str, "this");
     } else {
         struct Parser_Expr *scope = expr->type == PARSER_EXPRTYPE_BIN_SCOPE_RES
                                         ? &expr->info.args.arr[0]
@@ -221,6 +279,8 @@ static void scope_res_name_impl(const struct Parser_Expr *expr,
 
         if (scope && scope->type == PARSER_EXPRTYPE_IDENTIFIER)
             Dynstr_append(str, scope->info.ident);
+        else if (scope && scope->type == PARSER_EXPRTYPE_THIS)
+            Dynstr_append(str, "this");
         Dynstr_append(str, "::");
 
         scope_res_name_impl(child, str);
@@ -911,6 +971,8 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
         typecheck_lit_expr(expr);
     } else if (expr->type == PARSER_EXPRTYPE_IDENTIFIER) {
         typecheck_ident_expr(expr, scope, diags);
+    } else if (expr->type == PARSER_EXPRTYPE_THIS) {
+        typecheck_this_expr(expr, scope, diags);
     } else {
         // some operators are weird
         bool typecheck_args =
@@ -1030,8 +1092,6 @@ static bool is_valid_array_to_ptr(const struct Parser_Type *src,
                                  src->array->elem.dquals.len,
                                  &dest->dquals.arr[1], dest->dquals.len - 1))
         return false;
-
-    printf("valid array to ptr\n");
 
     return true;
 }

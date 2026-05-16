@@ -689,6 +689,10 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_PROTECTED};
 
+    else if (!strcmp(id, "this"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_THIS};
+
     else if (!strcmp(id, "namespace"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_NAMESPACE};
