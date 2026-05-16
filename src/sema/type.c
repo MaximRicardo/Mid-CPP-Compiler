@@ -929,75 +929,81 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
     }
 }
 
-void Sema_typecheck_root(struct Parser_ASTNode *node, struct Sema_Scope *scope,
-                         struct DiagVec *diags)
+static struct Diag
+invalid_return_stmt_type_err(const struct Parser_Type *func_type,
+                             const struct Parser_Type *ret_type,
+                             const struct Lexer_Token *tok)
 {
-    assert(node->type == PARSER_ASTNODETYPE_ROOT);
+    char *func_type_str = Parser_type_to_str(func_type);
 
-    for (isize_t i = 0; i < node->root.len; ++i)
-        Sema_typecheck_node(node->root.arr[i], scope, diags);
+    struct Diag ret;
+
+    if (ret_type) {
+        char *ret_type_str = Parser_type_to_str(ret_type);
+
+        ret = (struct Diag){
+            .pos = tok->pos,
+            .line = tok->line,
+            .msg = Print_fmt_to_str("returning '%s' in function of type '%s'",
+                                    ret_type_str, func_type_str),
+            .err = ERRORTYPE_BAD_RETURN_STMT_TYPE,
+            .is_err = true,
+        };
+
+        free(ret_type_str);
+    } else {
+        ret = (struct Diag){
+            .pos = tok->pos,
+            .line = tok->line,
+            .msg = Print_fmt_to_str(
+                "expected a return value in function of type '%s'",
+                func_type_str),
+            .err = ERRORTYPE_BAD_RETURN_STMT_TYPE,
+            .is_err = true,
+        };
+    }
+
+    free(func_type_str);
+
+    return ret;
 }
 
-void Sema_typecheck_var_decl(struct Parser_VarDecl *decl,
-                             struct Sema_Scope *scope, struct DiagVec *diags)
+static struct Diag return_outside_func_err(const struct Lexer_Token *tok)
 {
-    if (decl->init)
-        Sema_typecheck_expr(decl->init, scope, diags);
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("return statement outside a function"),
+        .err = ERRORTYPE_RETURN_OUTSIDE_FUNC,
+        .is_err = true,
+    };
 }
 
-void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
-                              struct DiagVec *diags)
+void Sema_typecheck_return(const struct Parser_ASTNode *node,
+                           const struct Sema_Scope *scope,
+                           struct DiagVec *diags)
 {
-    for (isize_t i = 0; i < decl->params.len; ++i)
-        Sema_typecheck_var_decl(&decl->params.arr[i]->var_decl,
-                                decl->param_scope, diags);
+    auto func_scope =
+        Sema_closest_scope_of_type_const(scope, SEMA_SCOPETYPE_FUNC);
+    if (!func_scope) {
+        gen_dynpush(diags, return_outside_func_err(node->start));
+        return;
+    }
 
-    for (isize_t i = 0; i < decl->nodes.len; ++i)
-        Sema_typecheck_node(decl->nodes.arr[i],
-                            Parser_func_ident(decl)->func_info.def_scope,
-                            diags);
-}
+    const struct Parser_Type *func_type = &func_scope->node->func_decl.type;
 
-void Sema_typecheck_class(struct Parser_Class *self, struct DiagVec *diags)
-{
-    auto scope = Parser_class_ident(self)->class_info.def_scope;
+    bool is_void = func_type->spec == PARSER_TYPESPEC_VOID &&
+                   Parser_n_indir(func_type) == 0;
 
-    for (isize_t i = 0; i < self->pub_childs.len; ++i)
-        Sema_typecheck_node(self->pub_childs.arr[i], scope, diags);
-
-    for (isize_t i = 0; i < self->priv_childs.len; ++i)
-        Sema_typecheck_node(self->priv_childs.arr[i], scope, diags);
-
-    for (isize_t i = 0; i < self->prot_childs.len; ++i)
-        Sema_typecheck_node(self->prot_childs.arr[i], scope, diags);
-}
-
-void Sema_typecheck_node(struct Parser_ASTNode *node, struct Sema_Scope *scope,
-                         struct DiagVec *diags)
-{
-    switch (node->type) {
-    case PARSER_ASTNODETYPE_ROOT:
-        Sema_typecheck_root(node, scope, diags);
-        break;
-
-    case PARSER_ASTNODETYPE_EXPR:
-        Sema_typecheck_expr(&node->expr, scope, diags);
-        break;
-
-    case PARSER_ASTNODETYPE_VAR_DECL:
-        Sema_typecheck_var_decl(&node->var_decl, scope, diags);
-        break;
-
-    case PARSER_ASTNODETYPE_FUNC_DECL:
-        Sema_typecheck_func_decl(&node->func_decl, diags);
-        break;
-
-    case PARSER_ASTNODETYPE_CLASS:
-        Sema_typecheck_class(&node->class_, diags);
-        break;
-
-    default:
-        CRASH("can't typecheck node");
+    if (node->ret.expr) {
+        if (!Sema_can_convert(&node->ret.expr->ret, node->ret.expr->valtype,
+                              func_type))
+            gen_dynpush(diags,
+                        invalid_return_stmt_type_err(
+                            func_type, &node->ret.expr->ret, node->start));
+    } else if (!is_void) {
+        gen_dynpush(diags,
+                    invalid_return_stmt_type_err(func_type, NULL, node->start));
     }
 }
 

@@ -330,6 +330,19 @@ static void log_var_node(const struct Parser_ASTNode *node, FILE *out,
     }
 }
 
+static void log_return_node(const struct Parser_ASTNode *node, FILE *out,
+                            int indent)
+{
+    log_w_indent(out, indent, "return");
+
+    if (node->ret.expr) {
+        fprintf(out, " ");
+        log_expr(node->ret.expr, out);
+    }
+
+    fprintf(out, ";\n\n");
+}
+
 static void log_expr_node(const struct Parser_ASTNode *node, FILE *out,
                           int indent)
 {
@@ -348,6 +361,8 @@ static void log_node(const struct Parser_ASTNode *node, FILE *out, int indent)
         log_namespace_node(node, out, indent);
     else if (node->type == PARSER_ASTNODETYPE_VAR_DECL)
         log_var_node(node, out, indent);
+    else if (node->type == PARSER_ASTNODETYPE_RETURN)
+        log_return_node(node, out, indent);
     else if (node->type == PARSER_ASTNODETYPE_EXPR)
         log_expr_node(node, out, indent);
 }

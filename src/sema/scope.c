@@ -39,6 +39,24 @@ struct Sema_Scope *Sema_closest_rnce_scope(struct Sema_Scope *self)
     return (struct Sema_Scope *)Sema_closest_rnce_scope_const(self);
 }
 
+const struct Sema_Scope *
+Sema_closest_scope_of_type_const(const struct Sema_Scope *self,
+                                 enum Sema_ScopeType type)
+{
+    if (self->type == type)
+        return self;
+    else if (self->parent)
+        return Sema_closest_scope_of_type_const(self->parent, type);
+    else
+        return NULL;
+}
+
+struct Sema_Scope *Sema_closest_scope_of_type(struct Sema_Scope *self,
+                                              enum Sema_ScopeType type)
+{
+    return (struct Sema_Scope *)Sema_closest_scope_of_type_const(self, type);
+}
+
 const struct Sema_Ident *
 Sema_find_ident_const(const struct Sema_Scope *scope, const char *name,
                       const struct Sema_Scope **out_ident_scope)

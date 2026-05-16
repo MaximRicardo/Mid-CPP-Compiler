@@ -3,10 +3,11 @@ class A {
     char *str;
 
 public:
-    void method(int arg)
+    char method(int arg)
     {
         char c = *(str + arg);
         x += c;
+        return c;
     }
 };
 

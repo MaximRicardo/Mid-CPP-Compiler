@@ -6,12 +6,14 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "lexer/token_type.h"
 #include "parser/class.h"
 #include "parser/end_types.h"
 #include "parser/enum.h"
 #include "parser/expr.h"
 #include "parser/func_decl.h"
 #include "parser/namespace.h"
+#include "parser/return.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "sema/scope.h"
@@ -46,6 +48,9 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
 
     case PARSER_ASTNODETYPE_NAMESPACE:
         Parser_Namespace_deinit(&self->nmspace);
+        break;
+
+    case PARSER_ASTNODETYPE_RETURN:
         break;
     }
 }
@@ -83,6 +88,11 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         ret->type = PARSER_ASTNODETYPE_NAMESPACE;
         end = Parser_parse_namespace(&ret->nmspace, ret, scope, toks, start,
                                      allocs, diags);
+    } else if (toks[start].type == LEXER_TOKENTYPE_RETURN) {
+        printf("RETURN NODE\n");
+        ret->type = PARSER_ASTNODETYPE_RETURN;
+        end = Parser_parse_return(toks, start, &ret->ret, ret, scope, allocs,
+                                  diags);
     } else if (Parser_valid_type_start(toks, start, scope)) {
         printf("DECL NODE\n");
         bool mvp;

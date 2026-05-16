@@ -3,9 +3,7 @@
 #include "diag.h"
 #include "parser/ast.h"
 #include "parser/expr.h"
-#include "parser/func_decl.h"
 #include "parser/type.h"
-#include "parser/var_decl.h"
 #include "sema/scope.h"
 
 // returns the type name the node creates, and NULL if it doesn't create one
@@ -16,15 +14,9 @@ struct Parser_Type *Sema_node_type(struct Parser_ASTNode *node);
 
 void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
                          struct DiagVec *diags);
-void Sema_typecheck_root(struct Parser_ASTNode *node, struct Sema_Scope *scope,
-                         struct DiagVec *diags);
-void Sema_typecheck_var_decl(struct Parser_VarDecl *decl,
-                             struct Sema_Scope *scope, struct DiagVec *diags);
-void Sema_typecheck_func_decl(struct Parser_FuncDecl *decl,
-                              struct DiagVec *diags);
-void Sema_typecheck_class(struct Parser_Class *self, struct DiagVec *diags);
-void Sema_typecheck_node(struct Parser_ASTNode *node, struct Sema_Scope *scope,
-                         struct DiagVec *diags);
+void Sema_typecheck_return(const struct Parser_ASTNode *node,
+                           const struct Sema_Scope *scope,
+                           struct DiagVec *diags);
 
 bool Sema_can_convert(const struct Parser_Type *src,
                       enum Parser_ExprValueType src_valtype,

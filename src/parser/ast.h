@@ -10,6 +10,7 @@
 #include "namespace.h"
 #include "parser/astvec.h"
 #include "parser/func_decl.h"
+#include "parser/return.h"
 #include "parser/var_decl.h"
 #include "sema/scope.h"
 
@@ -21,6 +22,7 @@ enum Parser_ASTNodeType {
     PARSER_ASTNODETYPE_CLASS,
     PARSER_ASTNODETYPE_ENUM,
     PARSER_ASTNODETYPE_NAMESPACE,
+    PARSER_ASTNODETYPE_RETURN,
 };
 
 struct Parser_ASTNode {
@@ -32,6 +34,7 @@ struct Parser_ASTNode {
         struct Parser_Class class_;
         struct Parser_Enum enum_;
         struct Parser_Namespace nmspace;
+        struct Parser_Return ret;
     };
     struct Parser_ASTNode *parent;
     const struct Lexer_Token *start;
