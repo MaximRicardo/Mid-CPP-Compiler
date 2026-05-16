@@ -261,6 +261,10 @@ invalid_this:
     gen_dynpush(&expr->ret.dquals, ((struct Parser_TypeDataQual){}));
 }
 
+// also works with member select operators:
+//    var.method();
+// becomes:
+//    var::method();
 static void scope_res_name_impl(const struct Parser_Expr *expr,
                                 struct Dynstr *str)
 {
@@ -269,12 +273,14 @@ static void scope_res_name_impl(const struct Parser_Expr *expr,
     } else if (expr->type == PARSER_EXPRTYPE_THIS) {
         Dynstr_append(str, "this");
     } else {
-        struct Parser_Expr *scope = expr->type == PARSER_EXPRTYPE_BIN_SCOPE_RES
-                                        ? &expr->info.args.arr[0]
-                                        : NULL;
-        struct Parser_Expr *child = expr->type == PARSER_EXPRTYPE_BIN_SCOPE_RES
-                                        ? &expr->info.args.arr[1]
-                                        : &expr->info.args.arr[0];
+        struct Parser_Expr *scope =
+            expr->type == PARSER_EXPRTYPE_UNARY_SCOPE_RES
+                ? NULL
+                : &expr->info.args.arr[0];
+        struct Parser_Expr *child =
+            expr->type == PARSER_EXPRTYPE_UNARY_SCOPE_RES
+                ? &expr->info.args.arr[0]
+                : &expr->info.args.arr[1];
 
         if (scope && scope->type == PARSER_EXPRTYPE_IDENTIFIER)
             Dynstr_append(str, scope->info.ident);
@@ -321,6 +327,16 @@ static struct Diag not_a_func_err(const char *name,
     };
 }
 
+static const struct Parser_TypeDataQual *
+method_call_this_quals(struct Parser_Expr *call)
+{
+    const struct Parser_Expr *lhs = &call->info.args.arr[0];
+
+    const struct Parser_TypeDataQualVec *quals =
+        &lhs->info.args.arr[0].ret.dquals;
+    return &quals->arr[quals->len - 1];
+}
+
 static void set_func_call_node(struct Parser_Expr *expr,
                                struct Sema_Scope *scope, struct DiagVec *diags)
 {
@@ -330,17 +346,18 @@ static void set_func_call_node(struct Parser_Expr *expr,
         Parser_is_scope_res(lhs->type) || Parser_is_memb_sel(lhs->type);
     char *qual_name = scope_res_name(lhs);
 
-    /*
-    struct Sema_Scope *res =
-        Parser_is_scope_res(lhs->type) ? lhs->res_scope : scope;
-        */
     struct Sema_Scope *res =
         lhs->ret.spec == PARSER_TYPESPEC_FUNC ? lhs->ret.func.scope : scope;
 
     if (lhs->ret.spec == PARSER_TYPESPEC_FUNC) {
-        expr->node =
-            Sema_find_func(lhs->ret.func.name, &expr->info.args.arr[1],
-                           expr->info.args.len - 1, false, res, qualified);
+        if (Parser_is_memb_sel(lhs->type))
+            expr->node = Sema_find_nonstatic_method(
+                lhs->ret.func.name, &expr->info.args.arr[1],
+                expr->info.args.len - 1, res, method_call_this_quals(expr));
+        else
+            expr->node =
+                Sema_find_func(lhs->ret.func.name, &expr->info.args.arr[1],
+                               expr->info.args.len - 1, false, res, qualified);
 
         if (!expr->node)
             gen_dynpush(diags, not_a_func_err(qual_name, lhs->tok));

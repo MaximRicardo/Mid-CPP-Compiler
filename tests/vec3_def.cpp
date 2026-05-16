@@ -115,11 +115,6 @@ public:
     {
         return *this = *this / v;
     }
-
-    void func()
-    {
-        x += 1.f;
-    }
 };
 
 int main()
@@ -141,7 +136,4 @@ int main()
     c *= a;      // calls operator*=(const Vec3 &)
     c /= 123.L;  // calls operator/=(float)
     c /= a;      // calls operator/=(const Vec3 &)
-
-    const Vec3 v;
-    v.func();
 }
