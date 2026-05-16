@@ -93,6 +93,30 @@ bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name)
     return false;
 }
 
+bool Sema_is_namespace_name(const struct Sema_Scope *scope, const char *name)
+{
+    auto ident = Sema_find_ident_const(scope, name, NULL);
+    if (!ident)
+        return false;
+
+    return ident->type == SEMA_IDENTTYPE_NAMESPACE;
+}
+
+bool Sema_name_type(struct Sema_Scope *scope, const char *name,
+                    struct Parser_Type *out_type)
+{
+    auto ident = Sema_find_ident_const(scope, name, NULL);
+    if (!ident)
+        return false;
+
+    if (ident->type == SEMA_IDENTTYPE_NAMESPACE || !ident->decl) {
+        return false;
+    } else {
+        *out_type = Sema_node_type(ident->decl, scope);
+        return true;
+    }
+}
+
 struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
                                        const char *name)
 {
@@ -127,32 +151,6 @@ struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
     }
 
     CRASH("identifier doesn't declare a type");
-}
-
-bool Sema_name_type(struct Sema_Scope *scope, const char *name,
-                    struct Parser_Type *out_type)
-{
-    auto ident = Sema_find_ident_const(scope, name, NULL);
-    if (!ident)
-        return false;
-
-    if (!ident->decl) {
-        return false;
-    } else {
-        *out_type = Sema_node_type(ident->decl, scope);
-        return true;
-    }
-}
-
-bool Sema_tok_is_type(const struct Sema_Scope *scope,
-                      const struct Lexer_Token *tok)
-{
-    if (Lexer_is_typespec(tok->type))
-        return true;
-    else if (tok->type == LEXER_TOKENTYPE_IDENTIFIER)
-        return Sema_is_type_name(scope, tok->ident);
-    else
-        return false;
 }
 
 struct Parser_Type Sema_tok_type(struct Sema_Scope *scope,

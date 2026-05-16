@@ -1,4 +1,5 @@
 #include "type.h"
+#include "ast.h"
 #include "diag.h"
 #include "dynstr.h"
 #include "generics/dynarray.h"
@@ -17,6 +18,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static bool tok_is_type_spec(const struct Sema_Scope *scope,
+                             const struct Lexer_Token *tok)
+{
+    return Lexer_is_typespec(tok->type) ||
+           (tok->type == LEXER_TOKENTYPE_IDENTIFIER &&
+            Sema_is_type_name(scope, tok->ident));
+}
+
+static bool tok_is_namespace_name(const struct Sema_Scope *scope,
+                                  const struct Lexer_Token *tok)
+{
+    return tok->type == LEXER_TOKENTYPE_IDENTIFIER &&
+           Sema_is_namespace_name(scope, tok->ident);
+}
 
 bool Parser_is_typespec_named(enum Parser_TypeSpec spec)
 {
@@ -437,7 +453,8 @@ struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
     bool missing_spec = true;
 
     for (; Lexer_is_typequal(toks[i].type) || Lexer_is_typemod(toks[i].type) ||
-           Sema_tok_is_type(scope, &toks[i]) ||
+           tok_is_type_spec(scope, &toks[i]) ||
+           tok_is_namespace_name(scope, &toks[i]) ||
            toks[i].type == LEXER_TOKENTYPE_SCOPE_RES;
          ++i) {
         if (Lexer_is_typedataqual(toks[i].type)) {
@@ -723,6 +740,7 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
 {
     isize_t i;
     auto base = parse_typespec(toks, start, &i, scope, diags);
+    printf("base end at %d:%d\n", toks[i].pos.line, toks[i].pos.column);
 
     isize_t c = find_type_center(toks, i);
 
@@ -965,7 +983,15 @@ bool Parser_valid_type_start(const struct Lexer_Token *toks, isize_t idx,
     auto res = Parser_parse_scope_res_const(toks, idx, &res_end, scope, &tmp);
     gen_dyndeinit(&tmp);
 
-    return Sema_tok_is_type(res, &toks[res_end]);
+    printf("idx at %d:%d\n", toks[idx].pos.line, toks[idx].pos.column);
+    printf("res_end at %d:%d\n", toks[res_end].pos.line,
+           toks[res_end].pos.column);
+    if (res->type != SEMA_SCOPETYPE_ROOT)
+        printf("res at %d:%d\n", res->node->start->pos.line,
+               res->node->start->pos.column);
+    printf("is type = %d\n", tok_is_type_spec(res, &toks[res_end]));
+
+    return tok_is_type_spec(res, &toks[res_end]);
 }
 
 enum Parser_TypeSpec Parser_uint_type_of_width(i32 bytes)
