@@ -119,6 +119,7 @@ const char *Parser_typespec_to_str(enum Parser_TypeSpec spec)
         return "enum";
 
     case PARSER_TYPESPEC_INVALID:
+    case PARSER_TYPESPEC_FUNC:
     case PARSER_TYPESPEC_FPTR:
     case PARSER_TYPESPEC_ARRAY:
         printf("spec = %d\n", spec);
@@ -698,6 +699,8 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
             *type->array = Parser_copy_array_type(base->array);
         } else if (Parser_is_typespec_named(base->spec)) {
             type->named = base->named;
+        } else if (base->spec == PARSER_TYPESPEC_FUNC) {
+            type->func = base->func;
         }
 
         if (type->dquals.len > 0 && (base->lv_ref || base->rv_ref))
@@ -760,6 +763,8 @@ struct Parser_Type Parser_copy_type(const struct Parser_Type *type)
         *ret.array = Parser_copy_array_type(type->array);
     } else if (Parser_is_typespec_named(type->spec)) {
         ret.named = type->named;
+    } else if (type->spec == PARSER_TYPESPEC_FUNC) {
+        ret.func = type->func;
     }
 
     return ret;
@@ -1287,4 +1292,17 @@ struct Sema_Ident *Parser_named_type_ident(const struct Parser_TypeNamed *named)
 {
     assert(named->ident != -1);
     return &named->parent->idents.arr[named->ident];
+}
+
+struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
+                                           const char *name)
+{
+    struct Parser_Type ret = {};
+    ret.spec = PARSER_TYPESPEC_FUNC;
+    ret.func.scope = scope;
+    ret.func.name = name;
+
+    gen_dynpush(&ret.dquals, ((struct Parser_TypeDataQual){}));
+
+    return ret;
 }

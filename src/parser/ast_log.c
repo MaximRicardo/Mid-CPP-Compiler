@@ -2,6 +2,7 @@
 #include "attribute.h"
 #include "ints.h"
 #include "literal.h"
+#include "macros.h"
 #include "parser/ast.h"
 #include "parser/class.h"
 #include "parser/expr.h"
@@ -135,8 +136,10 @@ static void log_func_call_expr(const struct Parser_Expr *expr, FILE *out)
         log_scope_res_expr(dest, out);
     else if (Parser_is_memb_sel(dest->type))
         log_expr(dest, out);
+    else if (dest->ret.spec == PARSER_TYPESPEC_FUNC)
+        fprintf(out, "%s", dest->ret.func.name);
     else
-        fprintf(out, "%s", dest->info.ident);
+        CRASH("func call dest expr not supported");
 
     fprintf(out, "#%" PRIi32 ":%" PRIi32 "(", expr->node->start->pos.line,
             expr->node->start->pos.column);

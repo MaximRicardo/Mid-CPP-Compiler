@@ -43,20 +43,15 @@ const char *Sema_node_creates_type_name(const struct Parser_ASTNode *node)
     }
 }
 
-const struct Parser_Type *
-Sema_node_type_const(const struct Parser_ASTNode *node)
+struct Parser_Type Sema_node_type(const struct Parser_ASTNode *node,
+                                  struct Sema_Scope *scope)
 {
     if (node->type == PARSER_ASTNODETYPE_VAR_DECL)
-        return &node->var_decl.type;
+        return Parser_copy_type(&node->var_decl.type);
     else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL)
-        return &node->func_decl.type;
+        return Parser_create_func_type(scope, node->func_decl.name);
     else
         CRASH("fetching the data type of this type of node not supported");
-}
-
-struct Parser_Type *Sema_node_type(struct Parser_ASTNode *node)
-{
-    return (struct Parser_Type *)Sema_node_type_const(node);
 }
 
 static void typecheck_strlit_expr(struct Parser_Expr *expr)
@@ -179,7 +174,7 @@ static void typecheck_lit_expr(struct Parser_Expr *expr)
 }
 
 static void typecheck_ident_expr(struct Parser_Expr *expr,
-                                 const struct Sema_Scope *scope,
+                                 struct Sema_Scope *scope,
                                  struct DiagVec *diags)
 {
     assert(expr->type == PARSER_EXPRTYPE_IDENTIFIER);
@@ -187,10 +182,10 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
     // all identifiers are lvalues
     expr->valtype = PARSER_EXPRVALUE_LVALUE;
 
-    const struct Parser_Type *type =
-        Sema_name_type_const(scope, expr->tok->ident);
+    struct Parser_Type type;
+    bool fnd_type = Sema_name_type(scope, expr->tok->ident, &type);
 
-    if (!type) {
+    if (!fnd_type) {
         gen_dynpush(diags,
                     ((struct Diag){
                         .pos = expr->tok->pos,
@@ -201,8 +196,10 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
                         .is_err = true,
                     }));
         expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT);
+
+        Parser_Type_deinit(&type);
     } else {
-        expr->ret = Parser_copy_type(type);
+        expr->ret = type;
     }
 }
 
@@ -296,6 +293,7 @@ static char *scope_res_name(const struct Parser_Expr *expr)
     return ret.str;
 }
 
+/*
 static const char *scope_res_ident(const struct Parser_Expr *expr)
 {
     if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
@@ -309,6 +307,7 @@ static const char *scope_res_ident(const struct Parser_Expr *expr)
     else
         CRASH("expr is not a scope resolution");
 }
+*/
 
 static struct Diag not_a_func_err(const char *name,
                                   const struct Lexer_Token *tok)
@@ -326,17 +325,21 @@ static void set_func_call_node(struct Parser_Expr *expr,
                                struct Sema_Scope *scope, struct DiagVec *diags)
 {
     const struct Parser_Expr *lhs = &expr->info.args.arr[0];
-    char *qual_name = scope_res_name(lhs);
-    const char *func_name = scope_res_ident(lhs);
-    bool qualified = Parser_is_scope_res(lhs->type);
 
+    bool qualified =
+        Parser_is_scope_res(lhs->type) || Parser_is_memb_sel(lhs->type);
+    char *qual_name = scope_res_name(lhs);
+
+    /*
     struct Sema_Scope *res =
         Parser_is_scope_res(lhs->type) ? lhs->res_scope : scope;
+        */
+    struct Sema_Scope *res =
+        lhs->ret.spec == PARSER_TYPESPEC_FUNC ? lhs->ret.func.scope : scope;
 
-    if (lhs->type == PARSER_EXPRTYPE_IDENTIFIER ||
-        Parser_is_scope_res(lhs->type)) {
+    if (lhs->ret.spec == PARSER_TYPESPEC_FUNC) {
         expr->node =
-            Sema_find_func(func_name, &expr->info.args.arr[1],
+            Sema_find_func(lhs->ret.func.name, &expr->info.args.arr[1],
                            expr->info.args.len - 1, false, res, qualified);
 
         if (!expr->node)
@@ -344,8 +347,6 @@ static void set_func_call_node(struct Parser_Expr *expr,
         else
             printf("calling func at %d:%d\n", expr->node->start->pos.line,
                    expr->node->start->pos.column);
-    } else if (Parser_is_memb_sel(lhs->type)) {
-        expr->node = lhs->node; // memb selects store the node of the func
     } else {
         CRASH("calling function ptrs not implemented");
     }
@@ -894,14 +895,16 @@ static void typecheck_memb_sel(struct Parser_Expr *expr,
     }
 
     auto field = class_->childs.arr[field_idx];
-    auto field_type = field->type == PARSER_ASTNODETYPE_VAR_DECL
-                          ? &field->var_decl.type
-                          : &field->func_decl.type;
 
-    expr->ret = Parser_copy_type(field_type);
-    expr->valtype = PARSER_EXPRVALUE_LVALUE;
-    if (field->type == PARSER_ASTNODETYPE_FUNC_DECL)
-        expr->node = field;
+    if (field->type == PARSER_ASTNODETYPE_VAR_DECL) {
+        expr->ret = Parser_copy_type(&field->var_decl.type);
+        expr->valtype = PARSER_EXPRVALUE_LVALUE;
+    } else {
+        expr->ret = Parser_create_func_type(
+            Parser_class_ident(class_)->class_info.def_scope,
+            field->func_decl.name);
+        expr->valtype = PARSER_EXPRVALUE_LVALUE;
+    }
 }
 
 static void typecheck_op_expr(struct Parser_Expr *expr,

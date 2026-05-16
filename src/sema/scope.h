@@ -50,9 +50,8 @@ bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name);
 struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
                                        const char *name);
 // type of a declared identifier
-const struct Parser_Type *Sema_name_type_const(const struct Sema_Scope *scope,
-                                               const char *name);
-struct Parser_Type *Sema_name_type(struct Sema_Scope *scope, const char *name);
+bool Sema_name_type(struct Sema_Scope *scope, const char *name,
+                    struct Parser_Type *out_type);
 bool Sema_tok_is_type(const struct Sema_Scope *scope,
                       const struct Lexer_Token *tok);
 struct Parser_Type Sema_tok_type(struct Sema_Scope *scope,

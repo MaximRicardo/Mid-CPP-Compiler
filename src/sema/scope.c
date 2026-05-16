@@ -129,22 +129,19 @@ struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
     CRASH("identifier doesn't declare a type");
 }
 
-const struct Parser_Type *Sema_name_type_const(const struct Sema_Scope *scope,
-                                               const char *name)
+bool Sema_name_type(struct Sema_Scope *scope, const char *name,
+                    struct Parser_Type *out_type)
 {
     auto ident = Sema_find_ident_const(scope, name, NULL);
     if (!ident)
-        return NULL;
+        return false;
 
-    if (!ident->decl)
-        return NULL;
-    else
-        return Sema_node_type_const(ident->decl);
-}
-
-struct Parser_Type *Sema_name_type(struct Sema_Scope *scope, const char *name)
-{
-    return (struct Parser_Type *)Sema_name_type_const(scope, name);
+    if (!ident->decl) {
+        return false;
+    } else {
+        *out_type = Sema_node_type(ident->decl, scope);
+        return true;
+    }
 }
 
 bool Sema_tok_is_type(const struct Sema_Scope *scope,

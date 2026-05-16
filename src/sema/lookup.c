@@ -231,8 +231,7 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
 {
     if (!func_params_viable(n_args, func, this_passed))
         return false;
-
-    if (func_takes_this(func) && !valid_this_arg(func, &args[0]))
+    if (this_passed && func_takes_this(func) && !valid_this_arg(func, &args[0]))
         return false;
 
     isize_t n = MIN(n_args, func->params.len);

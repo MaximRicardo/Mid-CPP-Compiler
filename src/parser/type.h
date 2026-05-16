@@ -32,6 +32,7 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_BOOL,
 
     // the weird kids
+    PARSER_TYPESPEC_FUNC,
     PARSER_TYPESPEC_FPTR,
     PARSER_TYPESPEC_ARRAY,
     PARSER_TYPESPEC_AUTO,
@@ -66,14 +67,31 @@ struct Parser_TypeNamed {
     i32 ident;
 };
 
+// not to be confused with an fptr. a func type can refer to multiple overloads
+// of the same name, while a fptr refers to a specific overload without any
+// specific name.
+//
+// example:
+// int f(int, float);
+// char *f(void *);
+//
+// // f is a func type, which gets cast to an fptr of signature
+// // int (*)(int, float) as that is one of f's overloads
+// int (*p)(int, float) = f;
+struct Parser_TypeFunc {
+    struct Sema_Scope *scope; // valid overloads are search for from here
+    const char *name;
+};
+
 struct Sema_Ident *
 Parser_named_type_ident(const struct Parser_TypeNamed *named);
 
 struct Parser_Type {
     union {
+        struct Parser_TypeNamed named; // used by classes, structs, enums, etc.
+        struct Parser_TypeFunc func;
         struct Parser_TypeFPtr *fptr;
         struct Parser_TypeArray *array;
-        struct Parser_TypeNamed named; // used by classes, structs, enums, etc.
     };
     struct Parser_TypeDataQualVec dquals; // one element for each level of
                                           // indirection, including 0.
@@ -134,3 +152,5 @@ bool Parser_squals_same(const struct Parser_TypeStorQual *a,
                         const struct Parser_TypeStorQual *b);
 bool Parser_are_types_same(const struct Parser_Type *a,
                            const struct Parser_Type *b);
+struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
+                                           const char *name);
