@@ -2,7 +2,7 @@ class A {
 public:
     int x;
 
-    int func();
+    void func();
 };
 
 int main()
