@@ -294,7 +294,7 @@ static void log_class_node(const struct Parser_ASTNode *node, FILE *out,
         log_node(child, out, indent + 1);
     }
 
-    log_w_indent(out, indent, "}\n\n");
+    log_w_indent(out, indent, "};\n\n");
 }
 
 static void log_namespace_node(const struct Parser_ASTNode *node, FILE *out,
