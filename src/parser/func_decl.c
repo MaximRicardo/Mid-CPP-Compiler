@@ -599,14 +599,13 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
     decl->params =
         Parser_parse_func_params(toks, lparen, &rparen, node, decl->param_scope,
                                  true, &decl->variadic, allocs, diags);
+    isize_t lcurly =
+        Parser_parse_func_quals(toks, rparen + 1, &decl->quals, diags);
     if (decl->is_op_overload)
         disambig_operator_overload(decl);
     if (decl->name)
         add_func_to_scope(res, decl, node);
     register_default_args(decl, diags);
-
-    isize_t lcurly =
-        Parser_parse_func_quals(toks, rparen + 1, &decl->quals, diags);
 
     if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY)
         return lcurly;

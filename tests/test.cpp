@@ -10,6 +10,11 @@ public:
     {
         return 0;
     }
+
+    int method() const
+    {
+        return 0;
+    }
 };
 
 int main()
@@ -18,6 +23,9 @@ int main()
 
     std::sqrt(2.f);
 
-    A var;
-    var.method();
+    A x;
+    x.method();
+
+    const A y;
+    y.method();
 }

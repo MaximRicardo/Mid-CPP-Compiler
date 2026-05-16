@@ -188,6 +188,8 @@ static bool are_func_decls_same(const struct Parser_FuncDecl *a,
         return false;
     else if (!a->is_op_overload && strcmp(a->name, b->name))
         return false;
+    else if (memcmp(&a->quals, &b->quals, sizeof(a->quals)))
+        return false;
 
     return are_params_same(a, b);
 }
