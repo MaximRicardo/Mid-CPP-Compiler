@@ -255,7 +255,12 @@ Sema_resolve_scope_const(const char *name, const struct Sema_Scope *scope)
         return Sema_ident_scope(ident);
     }
 
-    return NULL;
+    if (!scope->parent)
+        return NULL;
+
+    // keep searching through the parent scopes
+    auto next = Sema_closest_rnce_scope_const(scope->parent);
+    return Sema_resolve_scope_const(name, next);
 }
 
 struct Sema_Scope *Sema_resolve_scope(const char *name,
