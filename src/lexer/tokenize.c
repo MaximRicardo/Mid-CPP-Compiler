@@ -704,6 +704,20 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_RETURN};
 
+    else if (!strcmp(id, "noexcept"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_NOEXCEPT};
+    else if (!strcmp(id, "final"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_FINAL};
+    else if (!strcmp(id, "override"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_OVERRIDE};
+
+    else if (!strcmp(id, "default"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DEFAULT};
+
     else
         return (struct Lexer_Token){.pos = pos,
                                     .line = line,

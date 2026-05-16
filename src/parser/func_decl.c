@@ -101,6 +101,73 @@ struct Parser_ASTNodePVec Parser_parse_func_params(
     return params;
 }
 
+static bool is_func_quals_end(enum Lexer_TokenType type)
+{
+    return type == LEXER_TOKENTYPE_SEMICOLON ||
+           type == LEXER_TOKENTYPE_L_CURLY || type == LEXER_TOKENTYPE_ASSIGN;
+}
+
+static void set_quals_flag(const struct Lexer_Token *tok,
+                           struct Parser_FuncQuals *quals,
+                           struct DiagVec *diags)
+{
+    switch (tok->type) {
+    case LEXER_TOKENTYPE_CONST:
+        quals->is_const = true;
+        break;
+
+    case LEXER_TOKENTYPE_VOLATILE:
+        quals->is_volatile = true;
+        break;
+
+    case LEXER_TOKENTYPE_BITWISE_AND:
+        quals->lv_ref = true;
+        break;
+
+    case LEXER_TOKENTYPE_LOGICAL_AND:
+        quals->rv_ref = true;
+        break;
+
+    case LEXER_TOKENTYPE_FINAL:
+        quals->is_final = true;
+        break;
+
+    case LEXER_TOKENTYPE_OVERRIDE:
+        quals->is_override = true;
+        break;
+
+    default:
+        gen_dynpush(diags, Diag_expected_token_err("qualifier", tok,
+                                                   ERRORTYPE_UNEXPECTED_TOKEN));
+        break;
+    }
+}
+
+isize_t Parser_parse_func_quals(const struct Lexer_Token *toks, isize_t start,
+                                struct Parser_FuncQuals *quals,
+                                struct DiagVec *diags)
+{
+    *quals = (struct Parser_FuncQuals){};
+
+    isize_t i;
+    for (i = start; !is_func_quals_end(toks[i].type); ++i) {
+        set_quals_flag(&toks[i], quals, diags);
+    }
+
+    if (toks[i].type != LEXER_TOKENTYPE_ASSIGN)
+        return i;
+
+    ++i;
+    if (toks[i].type == LEXER_TOKENTYPE_DELETE)
+        quals->is_delete = true;
+    else if (toks[i].type == LEXER_TOKENTYPE_DEFAULT)
+        quals->is_default = true;
+    else
+        gen_dynpush(diags, Diag_expected_token_err("qualifier", &toks[i],
+                                                   ERRORTYPE_UNEXPECTED_TOKEN));
+    return i + 1;
+}
+
 static struct Sema_Scope *create_scope(struct Sema_Scope *scope,
                                        struct Parser_ASTNode *node,
                                        struct Parser_Allocators *allocs,
@@ -538,7 +605,9 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
         add_func_to_scope(res, decl, node);
     register_default_args(decl, diags);
 
-    isize_t lcurly = rparen + 1;
+    isize_t lcurly =
+        Parser_parse_func_quals(toks, rparen + 1, &decl->quals, diags);
+
     if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY)
         return lcurly;
     decl->def_start = &toks[lcurly];

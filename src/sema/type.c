@@ -250,8 +250,10 @@ static void typecheck_this_expr(struct Parser_Expr *expr,
     expr->ret.named.parent = class_->parent;
     expr->ret.named.ident = class_->ident_idx;
 
-    // TODO: make this account for the constness of the method once i add that
-    gen_dynpush(&expr->ret.dquals, ((struct Parser_TypeDataQual){}));
+    gen_dynpush(
+        &expr->ret.dquals,
+        ((struct Parser_TypeDataQual){.is_const = func->quals.is_const,
+                                      .is_volatile = func->quals.is_volatile}));
     gen_dynpush(&expr->ret.dquals, ((struct Parser_TypeDataQual){}));
 
     return;

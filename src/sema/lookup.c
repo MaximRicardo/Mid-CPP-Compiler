@@ -196,10 +196,14 @@ static bool valid_this_arg(const struct Parser_FuncDecl *func,
     if (arg->ret.spec != PARSER_TYPESPEC_CLASS &&
         arg->ret.spec != PARSER_TYPESPEC_UNION)
         return false;
-    else if (Parser_n_indir(&arg->ret) > 0)
+    if (Parser_n_indir(&arg->ret) > 0)
         return false;
-    else if (Parser_named_type_ident(&func->type.named)->class_info.def_scope !=
-             Parser_func_parent(func))
+    if (Parser_named_type_ident(&func->type.named)->class_info.def_scope !=
+        Parser_func_parent(func))
+        return false;
+    if (arg->ret.dquals.arr[0].is_const && !func->quals.is_const)
+        return false;
+    if (arg->ret.dquals.arr[0].is_volatile && !func->quals.is_volatile)
         return false;
 
     return true;

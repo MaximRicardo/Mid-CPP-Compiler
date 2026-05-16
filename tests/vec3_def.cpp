@@ -8,7 +8,7 @@ public:
     float y;
     float z;
 
-    Vec3 operator+(const Vec3 &v)
+    Vec3 operator+(const Vec3 &v) const
     {
         Vec3 ret;
         ret.x = x + v.x;
@@ -17,7 +17,7 @@ public:
         return ret;
     }
 
-    Vec3 operator-(const Vec3 &v)
+    Vec3 operator-(const Vec3 &v) const
     {
         Vec3 ret;
         ret.x = x - v.x;
@@ -26,7 +26,7 @@ public:
         return ret;
     }
 
-    Vec3 operator*(float s)
+    Vec3 operator*(float s) const
     {
         Vec3 ret;
         ret.x = x * s;
@@ -35,7 +35,7 @@ public:
         return ret;
     }
 
-    Vec3 operator*(const Vec3 &v)
+    Vec3 operator*(const Vec3 &v) const
     {
         Vec3 ret;
         ret.x = x * v.x;
@@ -44,7 +44,7 @@ public:
         return ret;
     }
 
-    Vec3 operator/(float s)
+    Vec3 operator/(float s) const
     {
         Vec3 ret;
         ret.x = x / s;
@@ -53,7 +53,7 @@ public:
         return ret;
     }
 
-    Vec3 operator/(const Vec3 &v)
+    Vec3 operator/(const Vec3 &v) const
     {
         Vec3 ret;
         ret.x = x / v.x;
@@ -62,12 +62,12 @@ public:
         return ret;
     }
 
-    float dot(const Vec3 &v)
+    float dot(const Vec3 &v) const
     {
         return x * v.x + y * v.y + z * v.z;
     }
 
-    Vec3 cross(const Vec3 &v)
+    Vec3 cross(const Vec3 &v) const
     {
         Vec3 ret;
         ret.x = y * v.z - z * v.y;
@@ -76,12 +76,12 @@ public:
         return ret;
     }
 
-    float len()
+    float len() const
     {
         return std::sqrt(this->dot(*this));
     }
 
-    Vec3 normalized()
+    Vec3 normalized() const
     {
         return *this / this->len();
     }
@@ -115,6 +115,11 @@ public:
     {
         return *this = *this / v;
     }
+
+    void func()
+    {
+        x += 1.f;
+    }
 };
 
 int main()
@@ -136,4 +141,7 @@ int main()
     c *= a;      // calls operator*=(const Vec3 &)
     c /= 123.L;  // calls operator/=(float)
     c /= a;      // calls operator/=(const Vec3 &)
+
+    const Vec3 v;
+    v.func();
 }

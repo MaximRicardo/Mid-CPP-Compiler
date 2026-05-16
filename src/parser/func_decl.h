@@ -1,11 +1,23 @@
 #pragma once
 
+#include "diag.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "parser/allocator.h"
 #include "parser/astvec.h"
-#include "parser/expr.h"
 #include "parser/type.h"
+
+struct Parser_FuncQuals {
+    bool is_const;
+    bool is_volatile;
+    bool lv_ref;
+    bool rv_ref;
+    bool is_final;
+    bool is_override;
+
+    bool is_delete;  // void f() = delete;
+    bool is_default; // void f() = default;
+};
 
 struct Parser_FuncDecl {
     struct Parser_Type type;
@@ -18,6 +30,7 @@ struct Parser_FuncDecl {
                    // in the parent scope. -1 if there is no identifier
     enum Parser_ExprType op_overload; // the operator that got overloaded
     bool is_op_overload;
+    struct Parser_FuncQuals quals;
     bool has_def; // does this node hold the definition of the func?
     bool variadic;
 };
@@ -31,6 +44,9 @@ Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
                          struct Sema_Scope *scope, bool add_to_scope,
                          bool *out_variadic, struct Parser_Allocators *allocs,
                          struct DiagVec *diags);
+isize_t Parser_parse_func_quals(const struct Lexer_Token *toks, isize_t start,
+                                struct Parser_FuncQuals *out_quals,
+                                struct DiagVec *diags);
 // skip_def -  if true, the func definition won't be parsed, but def_start will
 //             still be set to the first token of the definition and has_def
 //             will still be set to true if there is a definition. used by
