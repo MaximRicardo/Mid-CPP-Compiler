@@ -9,6 +9,7 @@
 #include "parser/type.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 constexpr int indent_width = 4;
 
@@ -195,10 +196,14 @@ static void log_func_entry(const struct Parser_ASTNode *node, FILE *out,
                            int indent)
 {
     char *type = Parser_type_to_str(&node->func_decl.type);
-    log_w_indent(out, indent, "%s %s(", type, node->func_decl.name);
+    log_w_indent(out, indent, "%s %s", type, node->func_decl.name);
     free(type);
     type = NULL;
 
+    if (node->func_decl.is_op_overload)
+        fprintf(out, "#%s", Parser_exprtype_name(node->func_decl.op_overload));
+
+    fprintf(out, "(");
     log_func_params(node, out);
     fprintf(out, ")");
 }
