@@ -726,7 +726,8 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
 
     isize_t c = find_type_center(toks, i);
 
-    bool has_declname = toks[c].type == LEXER_TOKENTYPE_IDENTIFIER;
+    bool has_declname = toks[c].type == LEXER_TOKENTYPE_IDENTIFIER &&
+                        !Sema_is_type_name(scope, toks[c].ident);
 
     auto ret = parse_recursive_part(toks, c - has_declname, i, out_end, scope,
                                     &base.squals, diags);
