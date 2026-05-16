@@ -193,6 +193,23 @@ static bool func_takes_this(const struct Parser_FuncDecl *func)
     return func_is_method(func) && !func->type.squals.is_static;
 }
 
+static bool valid_this_arg(const struct Parser_FuncDecl *func,
+                           const struct Parser_Expr *arg)
+{
+    assert(func_takes_this(func));
+
+    if (arg->ret.spec != PARSER_TYPESPEC_CLASS &&
+        arg->ret.spec != PARSER_TYPESPEC_UNION)
+        return false;
+    else if (Parser_n_indir(&arg->ret) > 0)
+        return false;
+    else if (Parser_named_type_ident(&func->type.named)->class_info.def_scope !=
+             Parser_func_parent(func))
+        return false;
+
+    return true;
+}
+
 static bool func_params_viable(isize_t n_args,
                                const struct Parser_FuncDecl *func,
                                bool this_passed)
@@ -214,6 +231,9 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
                          const struct Parser_FuncDecl *func, bool this_passed)
 {
     if (!func_params_viable(n_args, func, this_passed))
+        return false;
+
+    if (func_takes_this(func) && !valid_this_arg(func, &args[0]))
         return false;
 
     isize_t n = MIN(n_args, func->params.len);
