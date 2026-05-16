@@ -400,6 +400,10 @@ static void set_dqual_flag(struct Parser_TypeDataQual *qual,
         qual->is_const = true;
         break;
 
+    case LEXER_TOKENTYPE_VOLATILE:
+        qual->is_volatile = true;
+        break;
+
     default:
         CRASH("token is not a data qualifier");
     }

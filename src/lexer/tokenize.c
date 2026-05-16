@@ -634,6 +634,9 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
     else if (!strcmp(id, "const"))
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONST};
+    else if (!strcmp(id, "volatile"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_VOLATILE};
 
     else if (!strcmp(id, "typeid"))
         return (struct Lexer_Token){
