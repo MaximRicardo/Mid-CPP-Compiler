@@ -104,8 +104,8 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
             check_semi = !ret->func_decl.has_def;
         } else {
             ret->type = PARSER_ASTNODETYPE_VAR_DECL;
-            end = Parser_parse_var_decl(toks, start, PARSER_DEFAULT_ENDTYPES,
-                                        &ret->var_decl, ret, scope, true,
+            end = Parser_parse_var_decl(toks, start, PARSER_VARDECL_ENDTYPES,
+                                        &ret->var_decl, ret, scope, true, false,
                                         skip_def, allocs, diags);
         }
     } else {

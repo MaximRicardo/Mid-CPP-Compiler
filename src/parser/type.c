@@ -1,5 +1,4 @@
 #include "type.h"
-#include "ast.h"
 #include "diag.h"
 #include "dynstr.h"
 #include "generics/dynarray.h"
@@ -429,9 +428,10 @@ static void set_dqual_flag(struct Parser_TypeDataQual *qual,
 // parses the type specifier and its preceding qualifiers
 // static const int *const &x
 // ^^^^^^^^^^^^^^^^
-struct Parser_Type parse_typespec(const struct Lexer_Token *toks, isize_t start,
-                                  isize_t *out_end, struct Sema_Scope *scope,
-                                  struct DiagVec *diags)
+struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
+                                     isize_t start, isize_t *out_end,
+                                     struct Sema_Scope *scope,
+                                     struct DiagVec *diags)
 {
     struct Parser_Type ret = {};
 
@@ -739,21 +739,33 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      struct DiagVec *diags)
 {
     isize_t i;
-    auto base = parse_typespec(toks, start, &i, scope, diags);
-    printf("base end at %d:%d\n", toks[i].pos.line, toks[i].pos.column);
+    auto base = Parser_parse_base(toks, start, &i, scope, diags);
 
-    isize_t c = find_type_center(toks, i);
+    auto ret = Parser_parse_type_no_base(toks, i, out_end, &base, scope,
+                                         out_declname, diags);
+
+    Parser_Type_deinit(&base);
+    return ret;
+}
+
+struct Parser_Type Parser_parse_type_no_base(const struct Lexer_Token *toks,
+                                             isize_t start, isize_t *out_end,
+                                             const struct Parser_Type *base,
+                                             struct Sema_Scope *scope,
+                                             isize_t *out_declname,
+                                             struct DiagVec *diags)
+{
+    isize_t c = find_type_center(toks, start);
 
     bool has_declname = toks[c].type == LEXER_TOKENTYPE_IDENTIFIER &&
                         !Sema_is_type_name(scope, toks[c].ident);
 
-    auto ret = parse_recursive_part(toks, c - has_declname, i, out_end, scope,
-                                    &base.squals, diags);
-    add_base(&ret, &base, &toks[start], diags);
+    auto ret = parse_recursive_part(toks, c - has_declname, start, out_end,
+                                    scope, &base->squals, diags);
+    add_base(&ret, base, &toks[start], diags);
 
     if (out_declname)
         *out_declname = has_declname ? c : -1;
-    Parser_Type_deinit(&base);
     return ret;
 }
 
@@ -982,14 +994,6 @@ bool Parser_valid_type_start(const struct Lexer_Token *toks, isize_t idx,
     isize_t res_end;
     auto res = Parser_parse_scope_res_const(toks, idx, &res_end, scope, &tmp);
     gen_dyndeinit(&tmp);
-
-    printf("idx at %d:%d\n", toks[idx].pos.line, toks[idx].pos.column);
-    printf("res_end at %d:%d\n", toks[res_end].pos.line,
-           toks[res_end].pos.column);
-    if (res->type != SEMA_SCOPETYPE_ROOT)
-        printf("res at %d:%d\n", res->node->start->pos.line,
-               res->node->start->pos.column);
-    printf("is type = %d\n", tok_is_type_spec(res, &toks[res_end]));
 
     return tok_is_type_spec(res, &toks[res_end]);
 }

@@ -112,7 +112,7 @@ bool Sema_name_type(struct Sema_Scope *scope, const char *name,
     if (ident->type == SEMA_IDENTTYPE_NAMESPACE || !ident->decl) {
         return false;
     } else {
-        *out_type = Sema_node_type(ident->decl, scope);
+        *out_type = Sema_node_type(ident->decl, scope, name);
         return true;
     }
 }
@@ -144,7 +144,12 @@ struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
     }
 
     case SEMA_IDENTTYPE_TYPEDEF:
-        return Parser_copy_type(&ident->decl->var_decl.type);
+        for (isize_t i = 0; i < ident->decl->var_decl.insts.len; ++i) {
+            auto inst = &ident->decl->var_decl.insts.arr[i];
+            if (!strcmp(inst->name, name))
+                return Parser_copy_type(&inst->type);
+        }
+        CRASH("name not typedefed in node");
 
     default:
         break;
@@ -169,8 +174,9 @@ static bool are_params_same(const struct Parser_FuncDecl *a,
         return false;
 
     for (isize_t i = 0; i < a->params.len; ++i) {
-        if (!Parser_are_types_same(&a->params.arr[i]->var_decl.type,
-                                   &b->params.arr[i]->var_decl.type))
+        if (!Parser_are_types_same(
+                &a->params.arr[i]->var_decl.insts.arr[0].type,
+                &b->params.arr[i]->var_decl.insts.arr[0].type))
             return false;
     }
 

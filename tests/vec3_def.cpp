@@ -4,9 +4,7 @@ float sqrt(float);
 
 class Vec3 {
 public:
-    float x;
-    float y;
-    float z;
+    float x, y, z;
 
     Vec3 operator+(const Vec3 &v) const
     {

@@ -270,7 +270,7 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
         // the first arg
         isize_t j = this_passed && func_takes_this(func) ? i + 1 : i;
         if (!Sema_can_convert(&args[j].ret, args[j].valtype,
-                              &func->params.arr[i]->var_decl.type))
+                              &func->params.arr[i]->var_decl.insts.arr[0].type))
             return false;
     }
 
@@ -322,11 +322,11 @@ static int compare_viable_funcs(const void *a_raw, const void *b_raw,
         }
 
         auto arg = &info->args[i];
-        auto a_param = a->func_decl.params.arr[i];
-        auto b_param = b->func_decl.params.arr[i];
+        auto a_param = &a->func_decl.params.arr[i]->var_decl.insts.arr[0];
+        auto b_param = &b->func_decl.params.arr[i]->var_decl.insts.arr[0];
 
-        int a_rank = Sema_conversion_rank(&arg->ret, &a_param->var_decl.type);
-        int b_rank = Sema_conversion_rank(&arg->ret, &b_param->var_decl.type);
+        int a_rank = Sema_conversion_rank(&arg->ret, &a_param->type);
+        int b_rank = Sema_conversion_rank(&arg->ret, &b_param->type);
 
         if (a_rank < b_rank)
             return -1;

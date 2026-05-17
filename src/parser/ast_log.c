@@ -190,15 +190,15 @@ static void log_func_params(const struct Parser_ASTNode *node, FILE *out)
 {
     isize_t end = node->func_decl.params.len;
     for (isize_t i = 0; i < end; ++i) {
-        auto param = node->func_decl.params.arr[i];
+        auto param = &node->func_decl.params.arr[i]->var_decl.insts.arr[0];
 
-        char *type = Parser_type_to_str(&param->var_decl.type);
+        char *type = Parser_type_to_str(&param->type);
         fprintf(out, "%s", type);
         free(type);
         type = NULL;
 
-        if (param->var_decl.name)
-            fprintf(out, " %s", param->var_decl.name);
+        if (param->name)
+            fprintf(out, " %s", param->name);
         if (i + 1 < end)
             fprintf(out, ", ");
     }
@@ -333,17 +333,24 @@ static void log_var_node(const struct Parser_ASTNode *node, FILE *out,
 {
     log_w_indent(out, indent, "");
 
-    char *type = Parser_type_to_str(&node->var_decl.type);
-    fprintf(out, "%s %s", type, node->var_decl.name);
-    free(type);
-    type = NULL;
+    for (isize_t i = 0; i < node->var_decl.insts.len; ++i) {
+        auto inst = &node->var_decl.insts.arr[i];
 
-    if (node->var_decl.init) {
-        fprintf(out, " = ");
-        log_expr(node->var_decl.init, out);
-        fprintf(out, ";\n\n");
-    } else {
-        fprintf(out, ";\n\n");
+        char *type = Parser_type_to_str(&inst->type);
+        fprintf(out, "%s %s", type, inst->name);
+        free(type);
+        type = NULL;
+
+        if (inst->init) {
+            fprintf(out, " = ");
+            log_expr(inst->init, out);
+        }
+
+        if (i + 1 < node->var_decl.insts.len) {
+            fprintf(out, ", ");
+        } else {
+            fprintf(out, ";\n\n");
+        }
     }
 }
 

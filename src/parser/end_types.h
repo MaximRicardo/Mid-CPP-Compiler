@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lexer/token.h"
+#include "lexer/token_type.h"
 #include "macros.h"
 
 // when parsing an expression or declaration or something like that, you should
@@ -11,6 +11,11 @@ constexpr enum Lexer_TokenType Parser_default_endtypes[] = {
     LEXER_TOKENTYPE_SEMICOLON};
 #define PARSER_DEFAULT_ENDTYPES                                                \
     Parser_default_endtypes, ARRLEN(Parser_default_endtypes)
+
+constexpr enum Lexer_TokenType Parser_vardecl_endtypes[] = {
+    LEXER_TOKENTYPE_SEMICOLON, LEXER_TOKENTYPE_COMMA};
+#define PARSER_VARDECL_ENDTYPES                                                \
+    Parser_vardecl_endtypes, ARRLEN(Parser_vardecl_endtypes)
 
 constexpr enum Lexer_TokenType Parser_param_endtypes[] = {
     LEXER_TOKENTYPE_COMMA, LEXER_TOKENTYPE_R_PAREN};

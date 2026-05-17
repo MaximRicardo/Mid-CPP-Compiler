@@ -28,17 +28,20 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
     struct Parser_VarDecl decl;
     isize_t end =
         Parser_parse_var_decl(toks, start, PARSER_PARAM_ENDTYPES, &decl, NULL,
-                              scope, false, false, allocs, diags);
+                              scope, false, true, false, allocs, diags);
     if (out_end)
         *out_end = end;
 
-    bool has_dquals =
-        memcmp(&decl.type.dquals.arr[0], &(struct Parser_TypeDataQual){},
-               sizeof(decl.type.dquals.arr[0])) != 0;
+    auto inst = &decl.insts.arr[0];
 
-    bool ret = decl.init == NULL && Parser_is_typespec_named(decl.type.spec) &&
-               Parser_n_indir(&decl.type) == 0 && !decl.type.lv_ref &&
-               !decl.type.rv_ref && !has_dquals;
+    bool has_dquals =
+        memcmp(&inst->type.dquals.arr[0], &(struct Parser_TypeDataQual){},
+               sizeof(inst->type.dquals.arr[0])) != 0;
+
+    bool ret = inst->init == NULL &&
+               Parser_is_typespec_named(inst->type.spec) &&
+               Parser_n_indir(&inst->type) == 0 && !inst->type.lv_ref &&
+               !inst->type.rv_ref && !has_dquals;
 
     Parser_VarDecl_deinit(&decl);
     return ret;

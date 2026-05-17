@@ -25,6 +25,10 @@ struct Parser_Class {
     struct Parser_ASTNodePVec pub_childs;  // public
     struct Parser_ASTNodePVec priv_childs; // private
     struct Parser_ASTNodePVec prot_childs; // protected
+    struct Parser_ASTNodePVec instances;   // a class declaration can also be
+                                           // followed by a list of instances
+                                           // (for some reason?)
+                                           // class A {...} x, *y, *const z;
     const char *name;
     struct Parser_ASTNodePVec supers;    // classes this class inherits from
     const struct Lexer_Token *def_start; // the left curly '{'

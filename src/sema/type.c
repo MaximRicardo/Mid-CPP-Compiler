@@ -23,20 +23,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *Sema_node_creates_type_name(const struct Parser_ASTNode *node)
+bool Sema_node_creates_type_name(const struct Parser_ASTNode *node)
 {
     switch (node->type) {
     case PARSER_ASTNODETYPE_CLASS:
-        return node->class_.name;
+        return true;
 
     case PARSER_ASTNODETYPE_ENUM:
-        return node->enum_.name;
+        return true;
 
     case PARSER_ASTNODETYPE_VAR_DECL:
-        if (node->var_decl.type.squals.is_typedef)
-            return node->var_decl.name;
-        else
-            return NULL;
+        return node->var_decl.insts.arr[0].type.squals.is_typedef;
 
     default:
         return NULL;
@@ -44,14 +41,17 @@ const char *Sema_node_creates_type_name(const struct Parser_ASTNode *node)
 }
 
 struct Parser_Type Sema_node_type(const struct Parser_ASTNode *node,
-                                  struct Sema_Scope *scope)
+                                  struct Sema_Scope *scope, const char *name)
 {
-    if (node->type == PARSER_ASTNODETYPE_VAR_DECL)
-        return Parser_copy_type(&node->var_decl.type);
-    else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL)
+    if (node->type == PARSER_ASTNODETYPE_VAR_DECL) {
+        auto inst = Parser_decl_inst_of_name_const(&node->var_decl, name);
+        assert(inst);
+        return Parser_copy_type(&inst->type);
+    } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         return Parser_create_func_type(scope, node->func_decl.name);
-    else
+    } else {
         CRASH("fetching the data type of this type of node not supported");
+    }
 }
 
 static void typecheck_strlit_expr(struct Parser_Expr *expr)
@@ -914,7 +914,8 @@ static void typecheck_memb_sel(struct Parser_Expr *expr,
     auto field = class_->childs.arr[field_idx];
 
     if (field->type == PARSER_ASTNODETYPE_VAR_DECL) {
-        expr->ret = Parser_copy_type(&field->var_decl.type);
+        expr->ret = Parser_copy_type(
+            &Parser_decl_inst_of_name(&field->var_decl, field_name)->type);
         expr->valtype = PARSER_EXPRVALUE_LVALUE;
     } else {
         expr->ret = Parser_create_func_type(

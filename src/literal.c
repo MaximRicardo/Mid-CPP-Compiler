@@ -146,7 +146,10 @@ void Literal_fprint(FILE *out, union Literal_Value val,
         break;
 
     case PARSER_EXPRTYPE_PTR_LIT:
-        fprintf(out, "%p", val.ptr);
+        if (!val.ptr)
+            fprintf(out, "nullptr");
+        else
+            fprintf(out, "(std::nullptr_t *)%p", val.ptr);
         break;
 
     default:

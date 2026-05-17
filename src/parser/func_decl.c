@@ -93,7 +93,7 @@ struct Parser_ASTNodePVec Parser_parse_func_params(
                                         .type = PARSER_ASTNODETYPE_VAR_DECL};
             i = Parser_parse_var_decl(toks, i, PARSER_PARAM_ENDTYPES,
                                       &child->var_decl, child, scope,
-                                      add_to_scope, false, allocs, diags);
+                                      add_to_scope, true, false, allocs, diags);
             gen_dynpush(&params, child);
         }
     }
@@ -555,7 +555,7 @@ static void register_default_args(struct Parser_FuncDecl *decl,
         auto default_arg = (*default_args)[i];
 
         auto node = decl->params.arr[i];
-        auto param = &node->var_decl;
+        auto param = &node->var_decl.insts.arr[0];
         if (!param->init) // not a default arg
             continue;
 

@@ -23,6 +23,8 @@ int main()
 
     std::sqrt(2.f);
 
+    int var;
+
     A x;
     x.method();
 

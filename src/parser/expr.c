@@ -210,6 +210,10 @@ i32 Parser_op_precedence(enum Parser_ExprType op)
         flipped = 15;
         break;
 
+    case PARSER_EXPRTYPE_COMMA:
+        flipped = 16;
+        break;
+
     default:
         CRASH("expr isn't an operator");
     }

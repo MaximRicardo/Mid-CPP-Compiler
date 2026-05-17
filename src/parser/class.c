@@ -4,13 +4,14 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "lexer/token_type.h"
 #include "macros.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/end_types.h"
-#include "parser/expr.h"
 #include "parser/find_twin.h"
 #include "parser/scope.h"
+#include "parser/var_decl.h"
 #include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
@@ -121,11 +122,13 @@ static void parse_node_def(struct Parser_ASTNode *node,
                            struct DiagVec *diags)
 {
     if (node->type == PARSER_ASTNODETYPE_VAR_DECL) {
-        if (node->var_decl.init_start) {
-            gen_bumpmalloc(&allocs->expr, &node->var_decl.init);
-            *node->var_decl.init =
-                Parser_parse_expr(toks, node->var_decl.init_start - toks,
-                                  PARSER_DEFAULT_ENDTYPES, NULL, scope, diags);
+        for (isize_t i = 0; i < node->var_decl.insts.len; ++i) {
+            auto inst = &node->var_decl.insts.arr[i];
+            if (inst->init_start) {
+                Parser_parse_var_decl_inst_def(toks, inst->init_start - toks,
+                                               PARSER_DEFAULT_ENDTYPES, inst,
+                                               scope, allocs, diags);
+            }
         }
     } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         if (node->func_decl.def_start) {
@@ -307,12 +310,13 @@ static void add_class_to_scope(struct Sema_Scope *scope,
         self->ident_idx = scope->idents.len - 1;
 }
 
-isize_t Parser_parse_class(struct Parser_Class *self,
-                           struct Parser_ASTNode *node,
-                           struct Sema_Scope *parent_scope,
-                           const struct Lexer_Token *toks, isize_t start,
-                           bool skip_def, struct Parser_Allocators *allocs,
-                           struct DiagVec *diags)
+static isize_t parse_class_till_instances(struct Parser_Class *self,
+                                          struct Parser_ASTNode *node,
+                                          struct Sema_Scope *parent_scope,
+                                          const struct Lexer_Token *toks,
+                                          isize_t start, bool skip_def,
+                                          struct Parser_Allocators *allocs,
+                                          struct DiagVec *diags)
 {
     *self = (struct Parser_Class){.ident_idx = -1};
     isize_t lcurly = parse_class_entry(self, toks, start, parent_scope, diags);
@@ -336,6 +340,20 @@ isize_t Parser_parse_class(struct Parser_Class *self,
     } else {
         return Parser_parse_class_body(self, node, toks, lcurly, allocs, diags);
     }
+}
+
+isize_t Parser_parse_class(struct Parser_Class *self,
+                           struct Parser_ASTNode *node,
+                           struct Sema_Scope *parent_scope,
+                           const struct Lexer_Token *toks, isize_t start,
+                           bool skip_def, struct Parser_Allocators *allocs,
+                           struct DiagVec *diags)
+{
+    isize_t body_end = parse_class_till_instances(
+        self, node, parent_scope, toks, start, skip_def, allocs, diags);
+
+    // if (toks[body_end].type == LEXER_TOKENTYPE_SEMICOLON)
+    return body_end;
 }
 
 bool Parser_is_field_pub(const struct Parser_Class *self,
@@ -393,11 +411,13 @@ isize_t Parser_find_field(const struct Parser_Class *self, const char *name)
             child->type != PARSER_ASTNODETYPE_FUNC_DECL)
             continue;
 
-        const char *child_name = child->type == PARSER_ASTNODETYPE_VAR_DECL
-                                     ? child->var_decl.name
-                                     : child->func_decl.name;
-        if (!strcmp(child_name, name))
-            return i;
+        if (child->type == PARSER_ASTNODETYPE_VAR_DECL) {
+            if (Parser_decl_inst_of_name(&child->var_decl, name))
+                return i;
+        } else {
+            if (!strcmp(child->func_decl.name, name))
+                return i;
+        }
     }
 
     return -1;
