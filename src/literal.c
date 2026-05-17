@@ -5,6 +5,7 @@
 #include "parser/expr_type.h"
 #include "types.h"
 #include "utf8.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <wchar.h>
 
@@ -250,4 +251,143 @@ void Literal_print(union Literal_Value val, enum Parser_ExprType type)
 void Literal_print_toktype(union Literal_Value val, enum Lexer_TokenType type)
 {
     Literal_fprint_toktype(stdout, val, type);
+}
+
+static bool is_hex_digit(char c)
+{
+    return isdigit(c) || c == 'a' || c == 'b' || c == 'c' || c == 'd' ||
+           c == 'e' || c == 'f' || c == 'A' || c == 'B' || c == 'C' ||
+           c == 'D' || c == 'E' || c == 'F';
+}
+
+static int hex_digit_to_num(char c)
+{
+    if (isdigit(c))
+        return c - '0';
+
+    // ASCII isn't guaranteed
+    switch (c) {
+    case 'a':
+    case 'A':
+        return 0xa;
+
+    case 'b':
+    case 'B':
+        return 0xb;
+
+    case 'c':
+    case 'C':
+        return 0xc;
+
+    case 'd':
+    case 'D':
+        return 0xd;
+
+    case 'e':
+    case 'E':
+        return 0xe;
+
+    case 'f':
+    case 'F':
+        return 0xf;
+
+    default:
+        CRASH("not a hex digit");
+    }
+}
+
+static u64 read_intlit_hex(const char *str, isize_t start, isize_t *out_end)
+{
+    u64 ret = 0;
+
+    isize_t i;
+    for (i = start; is_hex_digit(str[i]); ++i) {
+        ret *= 16;
+        ret += hex_digit_to_num(str[i]);
+    }
+
+    if (out_end)
+        *out_end = i;
+    return ret;
+}
+
+static bool is_bin_digit(char c)
+{
+    return c == '0' || c == '1';
+}
+
+static u64 read_intlit_bin(const char *str, isize_t start, isize_t *out_end)
+{
+    u64 ret = 0;
+
+    isize_t i;
+    for (i = start; is_bin_digit(str[i]); ++i) {
+        ret *= 2;
+        ret += str[i] - '0';
+    }
+
+    if (out_end)
+        *out_end = i;
+    return ret;
+}
+
+static bool is_octal_digit(char c)
+{
+    return c >= '0' && c <= '7';
+}
+
+static u64 read_intlit_octal(const char *str, isize_t start, isize_t *out_end)
+{
+    u64 ret = 0;
+
+    isize_t i;
+    for (i = start; is_octal_digit(str[i]); ++i) {
+        ret *= 8;
+        ret += str[i] - '0';
+    }
+
+    if (out_end)
+        *out_end = i;
+    return ret;
+}
+
+static u64 read_intlit_decimal(const char *str, isize_t start, isize_t *out_end)
+{
+    u64 ret = 0;
+
+    isize_t i;
+    for (i = start; isdigit(str[i]); ++i) {
+        ret *= 10;
+        ret += str[i] - '0';
+    }
+
+    if (out_end)
+        *out_end = i;
+    return ret;
+}
+
+struct Literal_ReadIntLitInfo
+Literal_read_intlit(const char *str, isize_t start, isize_t *out_end)
+{
+    assert(isdigit(str[start]));
+
+    struct Literal_ReadIntLitInfo ret = {};
+
+    if (str[start] == '0') {
+        if (str[start + 1] == 'x') {
+            ret.base = 16;
+            ret.value = read_intlit_hex(str, start + 2, out_end);
+        } else if (str[start + 1] == 'b') {
+            ret.base = 2;
+            ret.value = read_intlit_bin(str, start + 2, out_end);
+        } else {
+            ret.base = 8;
+            ret.value = read_intlit_octal(str, start + 1, out_end);
+        }
+    } else {
+        ret.base = 10;
+        ret.value = read_intlit_decimal(str, start, out_end);
+    }
+
+    return ret;
 }

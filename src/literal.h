@@ -45,3 +45,8 @@ void Literal_fprint_toktype(FILE *out, union Literal_Value val,
                             enum Lexer_TokenType type);
 void Literal_print(union Literal_Value val, enum Parser_ExprType type);
 void Literal_print_toktype(union Literal_Value val, enum Lexer_TokenType type);
+
+struct Literal_ReadIntLitInfo {
+    u64 value;
+    int base;
+} Literal_read_intlit(const char *str, isize_t start, isize_t *out_end);

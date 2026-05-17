@@ -6,6 +6,7 @@
 #include "lexer/token.h"
 #include "lexer/token_type.h"
 #include "literal.h"
+#include "macros.h"
 #include "mid_alloc.h"
 #include "position.h"
 #include "print.h"
@@ -186,9 +187,219 @@ struct NumLit {
     enum NumLitType type;
 };
 
+static struct Diag intlit_too_big_err(struct Position pos, const char *line)
+{
+    return (struct Diag){
+        .pos = pos,
+        .line = line,
+        .msg = Print_fmt_to_str("integer literal too big"),
+        .err = ERRORTYPE_BAD_LITERAL,
+        .is_err = true,
+    };
+}
+
+static enum NumLitType sel_numlit_type_int(u64 val, int base,
+                                           struct Position pos,
+                                           const char *line,
+                                           struct DiagVec *diags)
+{
+    if (base == 10) {
+        if (val <= Types_int_smax) {
+            return NUMLIT_INT;
+        } else if (val <= Types_long_smax) {
+            return NUMLIT_LONG;
+        } else if (val <= Types_longlong_smax) {
+            return NUMLIT_LONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_LONGLONG;
+        }
+    } else {
+        if (val <= Types_int_smax) {
+            return NUMLIT_INT;
+        } else if (val <= Types_int_umax) {
+            return NUMLIT_UINT;
+        } else if (val <= Types_long_smax) {
+            return NUMLIT_LONG;
+        } else if (val <= Types_long_umax) {
+            return NUMLIT_ULONG;
+        } else if (val <= Types_longlong_smax) {
+            return NUMLIT_LONGLONG;
+        } else if (val <= Types_longlong_umax) {
+            return NUMLIT_ULONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_ULONGLONG;
+        }
+    }
+}
+
+static enum NumLitType sel_numlit_type_uint(u64 val, int base,
+                                            struct Position pos,
+                                            const char *line,
+                                            struct DiagVec *diags)
+{
+    if (base == 10) {
+        if (val <= Types_int_umax) {
+            return NUMLIT_UINT;
+        } else if (val <= Types_long_umax) {
+            return NUMLIT_ULONG;
+        } else if (val <= Types_longlong_umax) {
+            return NUMLIT_ULONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_ULONGLONG;
+        }
+    } else {
+        if (val <= Types_int_umax) {
+            return NUMLIT_UINT;
+        } else if (val <= Types_long_umax) {
+            return NUMLIT_ULONG;
+        } else if (val <= Types_longlong_umax) {
+            return NUMLIT_ULONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_ULONGLONG;
+        }
+    }
+}
+
+static enum NumLitType sel_numlit_type_long(u64 val, int base,
+                                            struct Position pos,
+                                            const char *line,
+                                            struct DiagVec *diags)
+{
+    if (base == 10) {
+        if (val <= Types_long_smax) {
+            return NUMLIT_LONG;
+        } else if (val <= Types_long_umax) {
+            return NUMLIT_ULONG;
+        } else if (val <= Types_longlong_smax) {
+            return NUMLIT_LONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_LONGLONG;
+        }
+    } else {
+        if (val <= Types_long_smax) {
+            return NUMLIT_LONG;
+        } else if (val <= Types_long_umax) {
+            return NUMLIT_ULONG;
+        } else if (val <= Types_longlong_smax) {
+            return NUMLIT_LONGLONG;
+        } else if (val <= Types_longlong_umax) {
+            return NUMLIT_ULONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_ULONGLONG;
+        }
+    }
+}
+
+static enum NumLitType sel_numlit_type_ulong(u64 val, int base,
+                                             struct Position pos,
+                                             const char *line,
+                                             struct DiagVec *diags)
+{
+    if (base == 10) {
+        if (val <= Types_long_umax) {
+            return NUMLIT_ULONG;
+        } else if (val <= Types_longlong_umax) {
+            return NUMLIT_ULONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_ULONGLONG;
+        }
+    } else {
+        if (val <= Types_long_umax) {
+            return NUMLIT_ULONG;
+        } else if (val <= Types_longlong_umax) {
+            return NUMLIT_ULONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_ULONGLONG;
+        }
+    }
+}
+
+static enum NumLitType sel_numlit_type_longlong(u64 val, int base,
+                                                struct Position pos,
+                                                const char *line,
+                                                struct DiagVec *diags)
+{
+    if (base == 10) {
+        if (val <= Types_longlong_smax) {
+            return NUMLIT_LONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_LONGLONG;
+        }
+    } else {
+        if (val <= Types_longlong_smax) {
+            return NUMLIT_LONGLONG;
+        } else if (val <= Types_longlong_umax) {
+            return NUMLIT_ULONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_ULONGLONG;
+        }
+    }
+}
+
+static enum NumLitType sel_numlit_type_ulonglong(u64 val, int base,
+                                                 struct Position pos,
+                                                 const char *line,
+                                                 struct DiagVec *diags)
+{
+    if (base == 10) {
+        if (val <= Types_longlong_umax) {
+            return NUMLIT_ULONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_ULONGLONG;
+        }
+    } else {
+        if (val <= Types_longlong_umax) {
+            return NUMLIT_ULONGLONG;
+        } else {
+            gen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMLIT_ULONGLONG;
+        }
+    }
+}
+
+static enum NumLitType sel_numlit_type(u64 val, int base, enum NumLitType type,
+                                       struct Position pos, const char *line,
+                                       struct DiagVec *diags)
+{
+    switch (type) {
+    case NUMLIT_INT:
+        return sel_numlit_type_int(val, base, pos, line, diags);
+
+    case NUMLIT_UINT:
+        return sel_numlit_type_uint(val, base, pos, line, diags);
+
+    case NUMLIT_LONG:
+        return sel_numlit_type_long(val, base, pos, line, diags);
+
+    case NUMLIT_ULONG:
+        return sel_numlit_type_ulong(val, base, pos, line, diags);
+
+    case NUMLIT_LONGLONG:
+        return sel_numlit_type_longlong(val, base, pos, line, diags);
+
+    case NUMLIT_ULONGLONG:
+        return sel_numlit_type_ulonglong(val, base, pos, line, diags);
+
+    default:
+        CRASH("type is not an integer lit");
+    }
+}
+
 // end - out variable and can be NULL
 static struct NumLit read_numlit(const char *src, isize_t start,
-                                 isize_t *out_end)
+                                 isize_t *out_end, struct Position pos,
+                                 const char *line, struct DiagVec *diags)
 {
     isize_t digits_end = find_numlit_digits_end(src, start);
     isize_t lit_end;
@@ -209,13 +420,13 @@ static struct NumLit read_numlit(const char *src, isize_t start,
     case NUMLIT_INT:
     case NUMLIT_LONG:
     case NUMLIT_LONGLONG:
-        ret.val.sint = strtoll(&src[start], NULL, 0);
-        break;
-
     case NUMLIT_UINT:
     case NUMLIT_ULONG:
     case NUMLIT_ULONGLONG:
-        ret.val.uint = strtoull(&src[start], NULL, 0);
+        auto info = Literal_read_intlit(src, start, NULL);
+        ret.val.uint = info.value;
+        ret.type = sel_numlit_type(ret.val.uint, info.base, ret.type, pos, line,
+                                   diags);
         break;
 
     case NUMLIT_FLOAT:
@@ -263,12 +474,11 @@ static enum Lexer_TokenType numlit_type_to_tok_type(enum NumLitType type)
 }
 
 // end - out variable and can be NULL
-static struct Lexer_Token create_numlit_tok(const char *src, isize_t start,
-                                            isize_t *out_end,
-                                            struct Position pos,
-                                            const char *line)
+static struct Lexer_Token
+create_numlit_tok(const char *src, isize_t start, isize_t *out_end,
+                  struct Position pos, const char *line, struct DiagVec *diags)
 {
-    auto info = read_numlit(src, start, out_end);
+    auto info = read_numlit(src, start, out_end, pos, line, diags);
 
     struct Lexer_Token ret;
     ret.pos = pos;
@@ -816,8 +1026,8 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '.':
             if (isdigit(src[i + 1])) { // literals like .5
                 auto old_i = i;
-                gen_dynpush(&toks,
-                            create_numlit_tok(src, i, &i, pos, line_start));
+                gen_dynpush(&toks, create_numlit_tok(src, i, &i, pos,
+                                                     line_start, &diags));
                 --i;
                 pos.column += i - old_i;
             } else if (src[i + 1] == '*') {
@@ -1055,7 +1265,8 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '8':
         case '9': {
             auto old_i = i;
-            gen_dynpush(&toks, create_numlit_tok(src, i, &i, pos, line_start));
+            gen_dynpush(&toks,
+                        create_numlit_tok(src, i, &i, pos, line_start, &diags));
             --i;
             pos.column += i - old_i;
             break;
