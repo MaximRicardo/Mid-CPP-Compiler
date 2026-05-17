@@ -52,12 +52,27 @@ isize_t Parser_parse_var_decl_inst(
     const struct Parser_Type *base, struct Parser_VarDeclInst *inst,
     struct Sema_Scope *scope, bool add_to_scope, struct Parser_ASTNode *node,
     bool skip_init, struct Parser_Allocators *allocs, struct DiagVec *diags);
-
-isize_t Parser_parse_var_decl_inst_def(
+isize_t Parser_parse_var_decl_inst_list(
     const struct Lexer_Token *toks, isize_t start,
     const enum Lexer_TokenType *end_types, isize_t n_end_types,
-    struct Parser_VarDeclInst *inst, struct Sema_Scope *scope,
-    struct Parser_Allocators *allocs, struct DiagVec *diags);
+    const struct Parser_Type *base, struct Parser_VarDeclInstVec *insts,
+    struct Parser_ASTNode *node, struct Sema_Scope *scope, bool add_to_scope,
+    bool single_inst, bool skip_init, struct Parser_Allocators *allocs,
+    struct DiagVec *diags);
+
+isize_t Parser_parse_var_decl_inst_def(const struct Lexer_Token *toks,
+                                       const enum Lexer_TokenType *end_types,
+                                       isize_t n_end_types,
+                                       struct Parser_VarDeclInst *inst,
+                                       struct Sema_Scope *scope,
+                                       struct Parser_Allocators *allocs,
+                                       struct DiagVec *diags);
+void Parser_parse_var_decl_def(const struct Lexer_Token *toks,
+                               const enum Lexer_TokenType *end_types,
+                               isize_t n_end_types, struct Parser_VarDecl *decl,
+                               struct Sema_Scope *scope,
+                               struct Parser_Allocators *allocs,
+                               struct DiagVec *diags);
 
 const struct Parser_VarDeclInst *
 Parser_decl_inst_of_name_const(const struct Parser_VarDecl *decl,

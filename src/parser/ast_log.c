@@ -311,7 +311,12 @@ static void log_class_node(const struct Parser_ASTNode *node, FILE *out,
         log_node(child, out, indent + 1);
     }
 
-    log_w_indent(out, indent, "};\n\n");
+    log_w_indent(out, indent, "};\n");
+
+    if (node->class_.var_decl)
+        log_node(node->class_.var_decl, out, indent);
+    else
+        fprintf(out, "\n");
 }
 
 static void log_namespace_node(const struct Parser_ASTNode *node, FILE *out,

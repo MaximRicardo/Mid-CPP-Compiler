@@ -17,7 +17,8 @@
 // function impossible, like:
 // A foo(B());
 //       ^^^
-// TODO: make this not use bump allocation to save on memory usage
+// TODO: make this not use bump allocation to save on memory usage used to store
+//       var definition expressions
 static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
                            isize_t *out_end, struct Sema_Scope *scope,
                            struct Parser_Allocators *allocs,

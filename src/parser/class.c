@@ -11,10 +11,12 @@
 #include "parser/end_types.h"
 #include "parser/find_twin.h"
 #include "parser/scope.h"
+#include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -122,25 +124,15 @@ static void parse_node_def(struct Parser_ASTNode *node,
                            struct DiagVec *diags)
 {
     if (node->type == PARSER_ASTNODETYPE_VAR_DECL) {
-        for (isize_t i = 0; i < node->var_decl.insts.len; ++i) {
-            auto inst = &node->var_decl.insts.arr[i];
-            if (inst->init_start) {
-                Parser_parse_var_decl_inst_def(toks, inst->init_start - toks,
-                                               PARSER_DEFAULT_ENDTYPES, inst,
-                                               scope, allocs, diags);
-            }
-        }
+        Parser_parse_var_decl_def(toks, PARSER_VARDECL_ENDTYPES,
+                                  &node->var_decl, scope, allocs, diags);
     } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         if (node->func_decl.def_start) {
             Parser_parse_func_body(toks, node->func_decl.def_start - toks,
                                    &node->func_decl, node, allocs, diags);
         }
     } else if (node->type == PARSER_ASTNODETYPE_CLASS) {
-        if (node->class_.def_start) {
-            Parser_parse_class_body(&node->class_, node, toks,
-                                    node->class_.def_start - toks, allocs,
-                                    diags);
-        }
+        Parser_parse_class_def(&node->class_, node, toks, scope, allocs, diags);
     }
 }
 
@@ -263,7 +255,7 @@ static void parse_defs(struct Parser_Class *self,
         parse_node_def(self->childs.arr[i], def_scope, toks, allocs, diags);
 }
 
-isize_t Parser_parse_class_body(struct Parser_Class *self,
+static isize_t parse_class_body(struct Parser_Class *self,
                                 struct Parser_ASTNode *node,
                                 const struct Lexer_Token *toks, isize_t lcurly,
                                 struct Parser_Allocators *allocs,
@@ -293,6 +285,19 @@ isize_t Parser_parse_class_body(struct Parser_Class *self,
     parse_defs(self, toks, allocs, diags);
 
     return rcurly + 1;
+}
+
+void Parser_parse_class_def(struct Parser_Class *self,
+                            struct Parser_ASTNode *node,
+                            const struct Lexer_Token *toks,
+                            struct Sema_Scope *scope,
+                            struct Parser_Allocators *allocs,
+                            struct DiagVec *diags)
+{
+    parse_class_body(self, node, toks, self->def_start - toks, allocs, diags);
+
+    Parser_parse_var_decl_def(toks, PARSER_VARDECL_ENDTYPES,
+                              &self->var_decl->var_decl, scope, allocs, diags);
 }
 
 static void add_class_to_scope(struct Sema_Scope *scope,
@@ -338,8 +343,32 @@ static isize_t parse_class_till_instances(struct Parser_Class *self,
     if (skip_def) {
         return find_rcurly(lcurly, toks, diags) + 1;
     } else {
-        return Parser_parse_class_body(self, node, toks, lcurly, allocs, diags);
+        return parse_class_body(self, node, toks, lcurly, allocs, diags);
     }
+}
+
+static isize_t parse_class_instances(struct Parser_Class *self,
+                                     struct Parser_ASTNode *node,
+                                     struct Sema_Scope *parent_scope,
+                                     const struct Lexer_Token *toks,
+                                     isize_t start, bool skip_def,
+                                     struct Parser_Allocators *allocs,
+                                     struct DiagVec *diags)
+{
+    gen_bumpcalloc(&allocs->ast, &self->var_decl);
+    self->var_decl->parent = node;
+    self->var_decl->start = &toks[start];
+    self->var_decl->type = PARSER_ASTNODETYPE_VAR_DECL;
+
+    auto base = Sema_node_type(node, parent_scope, NULL);
+
+    isize_t end = Parser_parse_var_decl_inst_list(
+        toks, start, PARSER_VARDECL_ENDTYPES, &base,
+        &self->var_decl->var_decl.insts, self->var_decl, parent_scope, true,
+        false, skip_def, allocs, diags);
+
+    Parser_Type_deinit(&base);
+    return end;
 }
 
 isize_t Parser_parse_class(struct Parser_Class *self,
@@ -351,9 +380,11 @@ isize_t Parser_parse_class(struct Parser_Class *self,
 {
     isize_t body_end = parse_class_till_instances(
         self, node, parent_scope, toks, start, skip_def, allocs, diags);
+    if (toks[body_end].type == LEXER_TOKENTYPE_SEMICOLON)
+        return body_end;
 
-    // if (toks[body_end].type == LEXER_TOKENTYPE_SEMICOLON)
-    return body_end;
+    return parse_class_instances(self, node, parent_scope, toks, body_end,
+                                 skip_def, allocs, diags);
 }
 
 bool Parser_is_field_pub(const struct Parser_Class *self,

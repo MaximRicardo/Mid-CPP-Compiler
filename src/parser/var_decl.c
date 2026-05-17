@@ -68,13 +68,20 @@ static void resolve_auto(struct Parser_VarDeclInst *inst)
     }
 }
 
-isize_t Parser_parse_var_decl_inst_def(
-    const struct Lexer_Token *toks, isize_t start,
-    const enum Lexer_TokenType *end_types, isize_t n_end_types,
-    struct Parser_VarDeclInst *inst, struct Sema_Scope *scope,
-    struct Parser_Allocators *allocs, struct DiagVec *diags)
+isize_t Parser_parse_var_decl_inst_def(const struct Lexer_Token *toks,
+                                       const enum Lexer_TokenType *end_types,
+                                       isize_t n_end_types,
+                                       struct Parser_VarDeclInst *inst,
+                                       struct Sema_Scope *scope,
+                                       struct Parser_Allocators *allocs,
+                                       struct DiagVec *diags)
 {
+    if (!inst->init_start)
+        return -1;
+
     gen_bumpmalloc(&allocs->expr, &inst->init);
+
+    isize_t start = inst->init_start - toks;
     isize_t end;
     *inst->init = Parser_parse_expr(toks, start, end_types, n_end_types, &end,
                                     scope, diags);
@@ -83,6 +90,20 @@ isize_t Parser_parse_var_decl_inst_def(
         resolve_auto(inst);
 
     return end;
+}
+
+void Parser_parse_var_decl_def(const struct Lexer_Token *toks,
+                               const enum Lexer_TokenType *end_types,
+                               isize_t n_end_types, struct Parser_VarDecl *decl,
+                               struct Sema_Scope *scope,
+                               struct Parser_Allocators *allocs,
+                               struct DiagVec *diags)
+{
+    for (isize_t i = 0; i < decl->insts.len; ++i) {
+        auto inst = &decl->insts.arr[i];
+        Parser_parse_var_decl_inst_def(toks, end_types, n_end_types, inst,
+                                       scope, allocs, diags);
+    }
 }
 
 static struct Diag uninited_deduced_type_err(const char *name, const char *type,
@@ -138,8 +159,8 @@ isize_t Parser_parse_var_decl_inst(
             return Parser_skip_expr(toks, expr_start, end_types, n_end_types,
                                     NULL);
         }
-        return Parser_parse_var_decl_inst_def(
-            toks, expr_start, end_types, n_end_types, inst, res, allocs, diags);
+        return Parser_parse_var_decl_inst_def(toks, end_types, n_end_types,
+                                              inst, res, allocs, diags);
     } else if (inst->type.spec == PARSER_TYPESPEC_AUTO) {
         gen_dynpush(
             diags, uninited_deduced_type_err(inst->name, "auto", &toks[start]));
@@ -159,6 +180,31 @@ static bool is_end_type(const enum Lexer_TokenType *end_types, isize_t n,
     return false;
 }
 
+isize_t Parser_parse_var_decl_inst_list(
+    const struct Lexer_Token *toks, isize_t start,
+    const enum Lexer_TokenType *end_types, isize_t n_end_types,
+    const struct Parser_Type *base, struct Parser_VarDeclInstVec *insts,
+    struct Parser_ASTNode *node, struct Sema_Scope *parent_scope,
+    bool add_to_scope, bool single_inst, bool skip_init,
+    struct Parser_Allocators *allocs, struct DiagVec *diags)
+{
+    isize_t i = start;
+    do {
+        gen_dynpush(insts, (struct Parser_VarDeclInst){});
+        auto inst = &insts->arr[insts->len - 1];
+
+        i = Parser_parse_var_decl_inst(toks, i, end_types, n_end_types, base,
+                                       inst, parent_scope, add_to_scope, node,
+                                       skip_init, allocs, diags);
+
+        if (single_inst || toks[i].type != LEXER_TOKENTYPE_COMMA)
+            break;
+        ++i;
+    } while (!is_end_type(end_types, n_end_types, toks[i].type));
+
+    return i;
+}
+
 isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
                               const enum Lexer_TokenType *end_types,
                               isize_t n_end_types, struct Parser_VarDecl *decl,
@@ -173,22 +219,12 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
     isize_t base_end;
     auto base = Parser_parse_base(toks, start, &base_end, parent_scope, diags);
 
-    isize_t i = base_end;
-    do {
-        gen_dynpush(&decl->insts, (struct Parser_VarDeclInst){});
-        auto inst = &decl->insts.arr[decl->insts.len - 1];
-
-        i = Parser_parse_var_decl_inst(toks, i, end_types, n_end_types, &base,
-                                       inst, parent_scope, add_to_scope, node,
-                                       skip_init, allocs, diags);
-
-        if (single_inst || toks[i].type != LEXER_TOKENTYPE_COMMA)
-            break;
-        ++i;
-    } while (!is_end_type(end_types, n_end_types, toks[i].type));
+    isize_t end = Parser_parse_var_decl_inst_list(
+        toks, base_end, end_types, n_end_types, &base, &decl->insts, node,
+        parent_scope, add_to_scope, single_inst, skip_init, allocs, diags);
 
     Parser_Type_deinit(&base);
-    return i;
+    return end;
 }
 
 const struct Parser_VarDeclInst *

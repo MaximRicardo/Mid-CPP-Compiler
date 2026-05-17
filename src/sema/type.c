@@ -40,6 +40,20 @@ bool Sema_node_creates_type_name(const struct Parser_ASTNode *node)
     }
 }
 
+static struct Parser_Type class_node_type(const struct Parser_ASTNode *node)
+{
+    auto class_ = &node->class_;
+
+    struct Parser_Type ret = {};
+    ret.spec = class_->type == PARSER_CLASSTYPE_UNION ? PARSER_TYPESPEC_UNION
+                                                      : PARSER_TYPESPEC_CLASS;
+    ret.named.parent = class_->parent;
+    ret.named.ident = class_->ident_idx;
+    gen_dynpush(&ret.dquals, (struct Parser_TypeDataQual){});
+
+    return ret;
+}
+
 struct Parser_Type Sema_node_type(const struct Parser_ASTNode *node,
                                   struct Sema_Scope *scope, const char *name)
 {
@@ -49,6 +63,8 @@ struct Parser_Type Sema_node_type(const struct Parser_ASTNode *node,
         return Parser_copy_type(&inst->type);
     } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         return Parser_create_func_type(scope, node->func_decl.name);
+    } else if (node->type == PARSER_ASTNODETYPE_CLASS) {
+        return class_node_type(node);
     } else {
         CRASH("fetching the data type of this type of node not supported");
     }
