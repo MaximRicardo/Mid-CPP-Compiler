@@ -689,8 +689,9 @@ isize_t Parser_parse_tor(const struct Lexer_Token *toks, isize_t start,
         create_scope(c_scope, node, allocs, SEMA_SCOPETYPE_FUNC_PARAMS);
 
     isize_t rparen;
-    Parser_parse_func_params(toks, lparen, &rparen, node, decl->param_scope,
-                             true, &decl->variadic, allocs, diags);
+    decl->params =
+        Parser_parse_func_params(toks, lparen, &rparen, node, decl->param_scope,
+                                 true, &decl->variadic, allocs, diags);
     isize_t lcurly =
         Parser_parse_func_quals(toks, rparen + 1, &decl->quals, diags);
     add_func_to_scope(c_scope, decl, node);

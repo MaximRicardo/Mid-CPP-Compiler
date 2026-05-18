@@ -6,6 +6,9 @@ class Vec3 {
 public:
     float x, y, z;
 
+    Vec3();
+    Vec3(float x, float y, float z);
+
     Vec3 operator+(const Vec3 &v) const
     {
         Vec3 ret;
@@ -117,8 +120,8 @@ public:
 
 int main()
 {
-    Vec3 a;
-    Vec3 b;
+    Vec3 a = Vec3(1.f, 2.f, 3.f);
+    Vec3 b = Vec3(-0.1f, -0.2f, -0.3f);
     Vec3 c;
 
     c = a + b;     // calls operator+(const Vec3 &)
