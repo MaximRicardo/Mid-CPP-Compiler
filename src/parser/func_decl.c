@@ -715,3 +715,14 @@ bool Parser_func_is_method(const struct Parser_FuncDecl *self)
 {
     return Parser_func_parent(self)->type == SEMA_SCOPETYPE_CLASS;
 }
+
+bool Parser_func_is_ctor(const struct Parser_FuncDecl *self)
+{
+    return self->is_tor && !self->is_dtor;
+}
+
+bool Parser_func_takes_implicit_this(const struct Parser_FuncDecl *self)
+{
+    return Parser_func_is_method(self) && !self->type.squals.is_static &&
+           !Parser_func_is_ctor(self);
+}

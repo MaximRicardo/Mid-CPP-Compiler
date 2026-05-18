@@ -87,8 +87,9 @@ struct Parser_TypeNamed {
 // // int (*)(int, float) as that is one of f's overloads
 // int (*p)(int, float) = f;
 struct Parser_TypeFunc {
-    struct Sema_Scope *scope; // valid overloads are search for from here
+    struct Sema_Scope *scope; // valid overloads are searched for from here
     const char *name;
+    bool is_tor; // is a ctor or dtor
 };
 
 struct Sema_Ident *

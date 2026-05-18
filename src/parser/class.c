@@ -8,6 +8,7 @@
 #include "macros.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
+#include "parser/astvec.h"
 #include "parser/end_types.h"
 #include "parser/find_twin.h"
 #include "parser/scope.h"
@@ -460,4 +461,22 @@ isize_t Parser_find_field(const struct Parser_Class *self, const char *name)
     }
 
     return -1;
+}
+
+struct Parser_ASTNodePVec Parser_class_ctors(const struct Parser_Class *self)
+{
+    struct Parser_ASTNodePVec ret = {};
+
+    for (isize_t i = 0; i < self->childs.len; ++i) {
+        auto child = self->childs.arr[i];
+
+        if (child->type != PARSER_ASTNODETYPE_FUNC_DECL)
+            continue;
+        if (!child->func_decl.is_tor || child->func_decl.is_dtor)
+            continue;
+
+        gen_dynpush(&ret, child);
+    }
+
+    return ret;
 }

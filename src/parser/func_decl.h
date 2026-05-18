@@ -75,3 +75,5 @@ isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
                                struct DiagVec *diags);
 
 bool Parser_func_is_method(const struct Parser_FuncDecl *self);
+bool Parser_func_is_ctor(const struct Parser_FuncDecl *self);
+bool Parser_func_takes_implicit_this(const struct Parser_FuncDecl *self);

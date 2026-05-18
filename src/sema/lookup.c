@@ -97,11 +97,18 @@ static void find_funcs_in_scope(const char *name,
     for (isize_t i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
 
-        if (ident->type != SEMA_IDENTTYPE_FUNC)
+        if (strcmp(ident->name, name))
             continue;
 
-        if (!strcmp(ident->name, name))
+        if (ident->type == SEMA_IDENTTYPE_FUNC) {
             gen_dynpush(nodes, ident->decl);
+        } else if (ident->type == SEMA_IDENTTYPE_CLASS && ident->def) {
+            // add every ctor
+            auto ctors = Parser_class_ctors(&ident->def->class_);
+            for (isize_t j = 0; j < ctors.len; ++j)
+                gen_dynpush(nodes, ctors.arr[j]);
+            gen_dyndeinit(&ctors);
+        }
     }
 }
 
@@ -198,16 +205,10 @@ static bool param_has_default(const struct Parser_FuncDecl *func, isize_t param)
     return Parser_func_ident(func)->func_info.default_args[param] != NULL;
 }
 
-// non-static methods take an implicit this parameter
-static bool func_takes_this(const struct Parser_FuncDecl *func)
-{
-    return Parser_func_is_method(func) && !func->type.squals.is_static;
-}
-
 static bool valid_this_arg(const struct Parser_FuncDecl *func,
                            const struct Parser_Expr *arg)
 {
-    assert(func_takes_this(func));
+    assert(Parser_func_takes_implicit_this(func));
 
     if (arg->ret.spec != PARSER_TYPESPEC_CLASS &&
         arg->ret.spec != PARSER_TYPESPEC_UNION)
@@ -229,7 +230,7 @@ static bool func_params_viable(isize_t n_args,
                                const struct Parser_FuncDecl *func,
                                bool this_passed)
 {
-    isize_t n_params = this_passed && func_takes_this(func)
+    isize_t n_params = this_passed && Parser_func_takes_implicit_this(func)
                            ? func->params.len + 1
                            : func->params.len;
 
@@ -251,16 +252,17 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
 
     if (!func_params_viable(n_args, func, this_passed))
         return false;
-    if (this_passed && func_takes_this(func) && !valid_this_arg(func, &args[0]))
+    if (this_passed && Parser_func_takes_implicit_this(func) &&
+        !valid_this_arg(func, &args[0]))
         return false;
 
     if (this_quals) {
-        if (!func_takes_this(func))
+        if (!Parser_func_takes_implicit_this(func))
             return false;
         if ((this_quals->is_const && !func->quals.is_const) ||
             (this_quals->is_volatile && !func->quals.is_volatile))
             return false;
-    } else if (!this_passed && func_takes_this(func)) {
+    } else if (!this_passed && Parser_func_takes_implicit_this(func)) {
         return false;
     }
 
@@ -268,7 +270,8 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
     for (isize_t i = 0; i < n; ++i) {
         // if this is passed and the function implicitly takes this we can skip
         // the first arg
-        isize_t j = this_passed && func_takes_this(func) ? i + 1 : i;
+        isize_t j =
+            this_passed && Parser_func_takes_implicit_this(func) ? i + 1 : i;
         if (!Sema_can_convert(&args[j].ret, args[j].valtype,
                               &func->params.arr[i]->var_decl.insts.arr[0].type))
             return false;

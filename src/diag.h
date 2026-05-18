@@ -81,3 +81,9 @@ struct Diag Diag_ident_redefined_err(const char *name,
 struct Diag Diag_ident_redefined_warn(const char *name,
                                       const struct Lexer_Token *tok,
                                       enum WarnType type);
+struct Diag Diag_ident_undeclared_err(const char *name,
+                                      const struct Lexer_Token *tok,
+                                      enum ErrorType type);
+struct Diag Diag_ident_undeclared_warn(const char *name,
+                                       const struct Lexer_Token *tok,
+                                       enum WarnType type);

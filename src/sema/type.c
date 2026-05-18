@@ -189,6 +189,23 @@ static void typecheck_lit_expr(struct Parser_Expr *expr)
     }
 }
 
+static struct Diag bad_ctor_call_type(const struct Parser_Type *type,
+                                      const struct Lexer_Token *tok)
+{
+    char *str = Parser_type_to_str(type);
+
+    struct Diag ret = {
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("can not call constructor on type '%s'", str),
+        .err = ERRORTYPE_BAD_IDENTIFIER,
+        .is_err = true,
+    };
+
+    free(str);
+    return ret;
+}
+
 static void typecheck_ident_expr(struct Parser_Expr *expr,
                                  struct Sema_Scope *scope,
                                  struct DiagVec *diags)
@@ -198,24 +215,36 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
     // all identifiers are lvalues
     expr->valtype = PARSER_EXPRVALUE_LVALUE;
 
-    struct Parser_Type type;
-    bool fnd_type = Sema_name_type(scope, expr->tok->ident, &type);
+    if (Sema_is_type_name(scope, expr->tok->ident)) {
+        // calling a ctor
+        auto type = Sema_type_name_type(scope, expr->tok->ident);
 
-    if (!fnd_type) {
-        gen_dynpush(diags,
-                    ((struct Diag){
-                        .pos = expr->tok->pos,
-                        .line = expr->tok->line,
-                        .msg = Print_fmt_to_str("undeclared identifier '%s'",
-                                                expr->tok->ident),
-                        .err = ERRORTYPE_UNDECLARED_IDENTIFIER,
-                        .is_err = true,
-                    }));
         expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT);
+        if (type.spec != PARSER_TYPESPEC_CLASS &&
+            type.spec != PARSER_TYPESPEC_UNION) {
+            gen_dynpush(diags, bad_ctor_call_type(&type, expr->tok));
+        } else {
+            expr->ret.spec = PARSER_TYPESPEC_FUNC;
+            expr->ret.func.is_tor = true;
+            expr->ret.func.scope = scope;
+            expr->ret.func.name = Parser_named_type_ident(&type.named)->name;
+        }
 
         Parser_Type_deinit(&type);
     } else {
-        expr->ret = type;
+        struct Parser_Type type;
+        bool fnd_type = Sema_name_type(scope, expr->tok->ident, &type);
+
+        if (!fnd_type) {
+            gen_dynpush(diags, Diag_ident_undeclared_err(
+                                   expr->tok->ident, expr->tok,
+                                   ERRORTYPE_UNDECLARED_IDENTIFIER));
+            expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT);
+
+            Parser_Type_deinit(&type);
+        } else {
+            expr->ret = type;
+        }
     }
 }
 

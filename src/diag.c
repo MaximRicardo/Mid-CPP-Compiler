@@ -110,3 +110,29 @@ struct Diag Diag_ident_redefined_warn(const char *name,
         .is_err = false,
     };
 }
+
+struct Diag Diag_ident_undeclared_err(const char *name,
+                                      const struct Lexer_Token *tok,
+                                      enum ErrorType type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("undeclared identifier '%s'", name),
+        .err = type,
+        .is_err = true,
+    };
+}
+
+struct Diag Diag_ident_undeclared_warn(const char *name,
+                                       const struct Lexer_Token *tok,
+                                       enum WarnType type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("undeclared identifier '%s'", name),
+        .warn = type,
+        .is_err = false,
+    };
+}
