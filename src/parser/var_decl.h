@@ -39,8 +39,7 @@ void Parser_VarDecl_deinit(struct Parser_VarDecl *self);
 //             definitions
 isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
                               const enum Lexer_TokenType *end_types,
-                              isize_t n_end_types, struct Parser_VarDecl *decl,
-                              struct Parser_ASTNode *node,
+                              isize_t n_end_types, struct Parser_ASTNode *node,
                               struct Sema_Scope *scope, bool add_to_scope,
                               bool single_inst, bool skip_init,
                               struct Parser_Allocators *allocs,

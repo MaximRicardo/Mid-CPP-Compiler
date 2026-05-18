@@ -57,7 +57,6 @@ isize_t Parser_parse_func_quals(const struct Lexer_Token *toks, isize_t start,
 //             will still be set to true if there is a definition. used by
 //             classes, which parse declarations first then definitions
 isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
-                               struct Parser_FuncDecl *decl,
                                struct Parser_ASTNode *node,
                                struct Sema_Scope *scope, bool skip_def,
                                struct Parser_Allocators *allocs,
@@ -69,7 +68,6 @@ isize_t Parser_parse_tor(const struct Lexer_Token *toks, isize_t start,
 
 // returns the idx of the closing curly bracket
 isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
-                               struct Parser_FuncDecl *decl,
                                struct Parser_ASTNode *node,
                                struct Parser_Allocators *allocs,
                                struct DiagVec *diags);

@@ -107,8 +107,8 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
     if (is_class_start(toks[check_type].type)) {
         printf("CLASS NODE\n");
         ret->type = PARSER_ASTNODETYPE_CLASS;
-        end = Parser_parse_class(&ret->class_, ret, scope, toks, start,
-                                 flags.skip_def, allocs, diags);
+        end = Parser_parse_class(ret, scope, toks, start, flags.skip_def,
+                                 allocs, diags);
     } else if (flags.is_field && is_ctor_start(toks, check_type, parent)) {
         printf("CTOR NODE\n");
         ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
@@ -126,27 +126,25 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         check_semi = false;
         ret->type = PARSER_ASTNODETYPE_NAMESPACE;
         ret->type = PARSER_ASTNODETYPE_NAMESPACE;
-        end = Parser_parse_namespace(&ret->nmspace, ret, scope, toks, start,
-                                     allocs, diags);
+        end = Parser_parse_namespace(ret, scope, toks, start, allocs, diags);
     } else if (toks[start].type == LEXER_TOKENTYPE_RETURN) {
         printf("RETURN NODE\n");
         ret->type = PARSER_ASTNODETYPE_RETURN;
-        end = Parser_parse_return(toks, start, &ret->ret, ret, scope, allocs,
-                                  diags);
+        end = Parser_parse_return(toks, start, ret, scope, allocs, diags);
     } else if (Parser_valid_type_start(toks, start, scope)) {
         printf("DECL NODE\n");
         bool mvp;
         if (Parser_decl_is_func(toks, start, scope, allocs, diags, &mvp)) {
             printf("mvp = %d\n", mvp);
             ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
-            end = Parser_parse_func_decl(toks, start, &ret->func_decl, ret,
-                                         scope, flags.skip_def, allocs, diags);
+            end = Parser_parse_func_decl(toks, start, ret, scope,
+                                         flags.skip_def, allocs, diags);
             check_semi = !ret->func_decl.has_def;
         } else {
             ret->type = PARSER_ASTNODETYPE_VAR_DECL;
             end = Parser_parse_var_decl(toks, start, PARSER_VARDECL_ENDTYPES,
-                                        &ret->var_decl, ret, scope, true, false,
-                                        flags.skip_def, allocs, diags);
+                                        ret, scope, true, false, flags.skip_def,
+                                        allocs, diags);
         }
     } else {
         printf("EXPR NODE\n");

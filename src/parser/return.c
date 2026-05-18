@@ -7,7 +7,6 @@
 #include "sema/type.h"
 
 isize_t Parser_parse_return(const struct Lexer_Token *toks, isize_t start,
-                            struct Parser_Return *ret,
                             struct Parser_ASTNode *node,
                             struct Sema_Scope *scope,
                             struct Parser_Allocators *allocs,
@@ -15,16 +14,17 @@ isize_t Parser_parse_return(const struct Lexer_Token *toks, isize_t start,
 {
     assert(toks[start].type == LEXER_TOKENTYPE_RETURN);
 
-    *ret = (struct Parser_Return){};
+    auto self = &node->ret;
+    *self = (struct Parser_Return){};
 
     isize_t end;
 
     if (toks[start + 1].type == LEXER_TOKENTYPE_SEMICOLON) {
         end = start + 1;
     } else {
-        gen_bumpmalloc(&allocs->expr, &ret->expr);
-        *ret->expr = Parser_parse_expr(toks, start + 1, PARSER_DEFAULT_ENDTYPES,
-                                       &end, scope, diags);
+        gen_bumpmalloc(&allocs->expr, &self->expr);
+        *self->expr = Parser_parse_expr(
+            toks, start + 1, PARSER_DEFAULT_ENDTYPES, &end, scope, diags);
     }
 
     Sema_typecheck_return(node, scope, diags);

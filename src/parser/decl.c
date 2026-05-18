@@ -3,6 +3,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/token_type.h"
+#include "parser/ast.h"
 #include "parser/end_types.h"
 #include "parser/find_twin.h"
 #include "parser/scope.h"
@@ -26,14 +27,15 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
 {
     assert(Parser_valid_type_start(toks, start, scope));
 
-    struct Parser_VarDecl decl;
+    struct Parser_ASTNode decl = {.type = PARSER_ASTNODETYPE_VAR_DECL,
+                                  .start = &toks[start]};
     isize_t end =
-        Parser_parse_var_decl(toks, start, PARSER_PARAM_ENDTYPES, &decl, NULL,
-                              scope, false, true, false, allocs, diags);
+        Parser_parse_var_decl(toks, start, PARSER_PARAM_ENDTYPES, &decl, scope,
+                              false, true, false, allocs, diags);
     if (out_end)
         *out_end = end;
 
-    auto inst = &decl.insts.arr[0];
+    auto inst = &decl.var_decl.insts.arr[0];
 
     bool has_dquals =
         memcmp(&inst->type.dquals.arr[0], &(struct Parser_TypeDataQual){},
@@ -44,7 +46,7 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
                Parser_n_indir(&inst->type) == 0 && !inst->type.lv_ref &&
                !inst->type.rv_ref && !has_dquals;
 
-    Parser_VarDecl_deinit(&decl);
+    Parser_ASTNode_deinit(&decl);
     return ret;
 }
 

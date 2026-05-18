@@ -42,14 +42,12 @@ struct Parser_Class {
 void Parser_Class_deinit(struct Parser_Class *self);
 struct Sema_Ident *Parser_class_ident(const struct Parser_Class *self);
 // returns the end of the class
-isize_t Parser_parse_class(struct Parser_Class *self,
-                           struct Parser_ASTNode *node,
+isize_t Parser_parse_class(struct Parser_ASTNode *node,
                            struct Sema_Scope *scope,
                            const struct Lexer_Token *toks, isize_t start,
                            bool skip_def, struct Parser_Allocators *allocs,
                            struct DiagVec *diags);
-void Parser_parse_class_def(struct Parser_Class *self,
-                            struct Parser_ASTNode *node,
+void Parser_parse_class_def(struct Parser_ASTNode *node,
                             const struct Lexer_Token *toks,
                             struct Sema_Scope *scope,
                             struct Parser_Allocators *allocs,

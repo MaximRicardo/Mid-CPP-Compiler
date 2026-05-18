@@ -23,10 +23,11 @@ struct Sema_Ident *Parser_namespace_ident(const struct Parser_Namespace *self)
 }
 
 static void add_nmspace_to_scope(struct Sema_Scope *scope,
-                                 struct Parser_Namespace *self,
                                  struct Parser_ASTNode *node,
                                  struct DiagVec *diags)
 {
+    auto self = &node->nmspace;
+
     const struct Sema_Ident *old = Sema_add_ident(
         scope, &(struct Sema_Ident){.name = self->name,
                                     .decl = node,
@@ -43,12 +44,13 @@ static void add_nmspace_to_scope(struct Sema_Scope *scope,
 //   namespace Name { ... }
 //   ^              ^
 // start           ret
-static isize_t parse_entry(struct Parser_Namespace *self,
-                           struct Parser_ASTNode *node,
+static isize_t parse_entry(struct Parser_ASTNode *node,
                            struct Sema_Scope *scope,
                            const struct Lexer_Token *toks, isize_t start,
                            struct DiagVec *diags)
 {
+    auto self = &node->nmspace;
+
     isize_t name_idx = start + 1;
     if (toks[name_idx].type != LEXER_TOKENTYPE_IDENTIFIER) {
         gen_dynpush(diags, Diag_expected_token_err("identifier", &toks[start],
@@ -58,7 +60,7 @@ static isize_t parse_entry(struct Parser_Namespace *self,
 
     self->name = toks[name_idx].ident;
 
-    add_nmspace_to_scope(scope, self, node, diags);
+    add_nmspace_to_scope(scope, node, diags);
     return name_idx + 1;
 }
 
@@ -84,17 +86,17 @@ static void setup_scope(struct Sema_Scope *parent,
     gen_dynpush(&parent->childs, self->scope);
 }
 
-isize_t Parser_parse_namespace(struct Parser_Namespace *self,
-                               struct Parser_ASTNode *node,
+isize_t Parser_parse_namespace(struct Parser_ASTNode *node,
                                struct Sema_Scope *parent,
                                const struct Lexer_Token *toks, isize_t start,
                                struct Parser_Allocators *allocs,
                                struct DiagVec *diags)
 {
+    auto self = &node->nmspace;
     *self = (struct Parser_Namespace){.ident_idx = -1};
     setup_scope(parent, self, node, allocs);
 
-    isize_t lcurly = parse_entry(self, node, parent, toks, start, diags);
+    isize_t lcurly = parse_entry(node, parent, toks, start, diags);
     if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY) {
         gen_dynpush(diags, Diag_expected_token_err("'{'", &toks[start],
                                                    ERRORTYPE_MISSING_CURLY));

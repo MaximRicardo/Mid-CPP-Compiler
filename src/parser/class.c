@@ -129,11 +129,11 @@ static void parse_node_def(struct Parser_ASTNode *node,
                                   &node->var_decl, scope, allocs, diags);
     } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         if (node->func_decl.def_start) {
-            Parser_parse_func_body(toks, node->func_decl.def_start - toks,
-                                   &node->func_decl, node, allocs, diags);
+            Parser_parse_func_body(toks, node->func_decl.def_start - toks, node,
+                                   allocs, diags);
         }
     } else if (node->type == PARSER_ASTNODETYPE_CLASS) {
-        Parser_parse_class_def(&node->class_, node, toks, scope, allocs, diags);
+        Parser_parse_class_def(node, toks, scope, allocs, diags);
     }
 }
 
@@ -291,13 +291,14 @@ static isize_t parse_class_body(struct Parser_Class *self,
     return rcurly + 1;
 }
 
-void Parser_parse_class_def(struct Parser_Class *self,
-                            struct Parser_ASTNode *node,
+void Parser_parse_class_def(struct Parser_ASTNode *node,
                             const struct Lexer_Token *toks,
                             struct Sema_Scope *scope,
                             struct Parser_Allocators *allocs,
                             struct DiagVec *diags)
 {
+    auto self = &node->class_;
+
     parse_class_body(self, node, toks, self->def_start - toks, allocs, diags);
 
     Parser_parse_var_decl_def(toks, PARSER_VARDECL_ENDTYPES,
@@ -376,13 +377,14 @@ static isize_t parse_class_instances(
     return end;
 }
 
-isize_t Parser_parse_class(struct Parser_Class *self,
-                           struct Parser_ASTNode *node,
+isize_t Parser_parse_class(struct Parser_ASTNode *node,
                            struct Sema_Scope *parent_scope,
                            const struct Lexer_Token *toks, isize_t start,
                            bool skip_def, struct Parser_Allocators *allocs,
                            struct DiagVec *diags)
 {
+    auto self = &node->class_;
+
     struct Parser_TypeStorQual squals = {};
     struct Parser_TypeDataQual dquals = {};
     start = Parser_parse_quals(toks, start, &squals, &dquals);

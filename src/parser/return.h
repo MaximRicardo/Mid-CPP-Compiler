@@ -12,7 +12,6 @@ struct Parser_Return {
 };
 
 isize_t Parser_parse_return(const struct Lexer_Token *toks, isize_t start,
-                            struct Parser_Return *ret,
                             struct Parser_ASTNode *node,
                             struct Sema_Scope *scope,
                             struct Parser_Allocators *allocs,
