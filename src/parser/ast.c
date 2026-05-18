@@ -71,14 +71,16 @@ static isize_t skip_typequals(const struct Lexer_Token *toks, isize_t start)
     return i - 1;
 }
 
-static bool is_ctor_start(const struct Lexer_Token *tok,
+static bool is_ctor_start(const struct Lexer_Token *toks, isize_t start,
                           const struct Parser_ASTNode *parent)
 {
-    if (tok->type != LEXER_TOKENTYPE_IDENTIFIER)
+    if (toks[start].type != LEXER_TOKENTYPE_IDENTIFIER)
+        return false;
+    if (toks[start + 1].type != LEXER_TOKENTYPE_L_PAREN)
         return false;
 
     assert(parent->type == PARSER_ASTNODETYPE_CLASS);
-    return !strcmp(tok->ident, parent->class_.name);
+    return !strcmp(toks[start].ident, parent->class_.name);
 }
 
 static bool is_dtor_start(const struct Lexer_Token *tok)
@@ -107,7 +109,7 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         ret->type = PARSER_ASTNODETYPE_CLASS;
         end = Parser_parse_class(&ret->class_, ret, scope, toks, start,
                                  flags.skip_def, allocs, diags);
-    } else if (flags.is_field && is_ctor_start(&toks[check_type], parent)) {
+    } else if (flags.is_field && is_ctor_start(toks, check_type, parent)) {
         printf("CTOR NODE\n");
         ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
         end = Parser_parse_tor(toks, start, ret, scope, flags.skip_def, allocs,
