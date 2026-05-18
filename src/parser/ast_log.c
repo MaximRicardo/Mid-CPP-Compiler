@@ -156,7 +156,12 @@ static void log_func_call_expr(const struct Parser_Expr *expr, FILE *out)
 
 static void log_generic_expr(const struct Parser_Expr *expr, FILE *out)
 {
-    fprintf(out, "_%s(", Parser_exprtype_name(expr->type));
+    fprintf(out, "_%s", Parser_exprtype_name(expr->type));
+    if (expr->overloaded)
+        fprintf(out, "#%" PRIi32 ":%" PRIi32, expr->node->start->pos.line,
+                expr->node->start->pos.column);
+
+    fprintf(out, "(");
 
     for (isize_t i = 0; i < expr->info.args.len; ++i) {
         log_expr(&expr->info.args.arr[i], out);

@@ -49,14 +49,20 @@ struct Parser_Expr {
 
     struct Sema_Scope *res_scope; // used by scope resolutions
 
-    const struct Parser_ASTNode *node; // some expressions may have nodes
-                                       // associated with them, like function
-                                       // calls referencing the function being
-                                       // called
+    struct Parser_ASTNode *node; // some expressions may have nodes
+                                 // associated with them:
+                                 //
+                                 // function calls reference the func
+                                 // being called.
+                                 //
+                                 // overloaded operators reference the
+                                 // function holding the overload.
     const struct Lexer_Token *tok;
     struct Parser_Type ret;
     enum Parser_ExprType type;
     enum Parser_ExprValueType valtype;
+    bool overloaded;  // did this expression get overloaded by an operator
+                      // overload
     bool typechecked; // has this expr been typechecked yet
 };
 

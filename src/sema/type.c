@@ -1010,7 +1010,7 @@ static void typecheck_op_expr(struct Parser_Expr *expr,
 }
 
 static void typecheck_overloaded_op(struct Parser_Expr *expr,
-                                    const struct Parser_ASTNode *overload)
+                                    struct Parser_ASTNode *overload)
 {
     printf("found op overload at %d:%d\n", expr->tok->pos.line,
            expr->tok->pos.column);
@@ -1018,6 +1018,8 @@ static void typecheck_overloaded_op(struct Parser_Expr *expr,
     printf("op overload decl at %d:%d\n", overload->start->pos.line,
            overload->start->pos.column);
 
+    expr->overloaded = true;
+    expr->node = overload;
     expr->ret = Parser_copy_type(&func->type);
 
     if (func->type.lv_ref)
