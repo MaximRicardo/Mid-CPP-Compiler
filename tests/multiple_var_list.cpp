@@ -10,7 +10,7 @@ class A {
     int x, y, z;
 } A_a, A_b, A_c;
 
-class B {
+const class B {
     int x, y, z;
 } *B_a, **B_b, ***B_c;
 

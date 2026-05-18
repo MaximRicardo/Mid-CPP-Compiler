@@ -61,6 +61,15 @@ static bool is_class_start(enum Lexer_TokenType type)
            type == LEXER_TOKENTYPE_UNION;
 }
 
+static isize_t skip_typequals(const struct Lexer_Token *toks, isize_t start)
+{
+    isize_t i = start;
+    while (Lexer_is_typequal(toks[i++].type))
+        ;
+
+    return i - 1;
+}
+
 struct Parser_ASTNode *
 Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
                   isize_t *out_end, struct Parser_ASTNode *parent,
@@ -74,14 +83,15 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
     printf("AST START AT %d:%d\n", ret->start->pos.line,
            ret->start->pos.column);
 
+    isize_t check_type = skip_typequals(toks, start);
     isize_t end;
     bool check_semi = true;
-    if (is_class_start(toks[start].type)) {
+    if (is_class_start(toks[check_type].type)) {
         printf("CLASS NODE\n");
         ret->type = PARSER_ASTNODETYPE_CLASS;
         end = Parser_parse_class(&ret->class_, ret, scope, toks, start,
                                  skip_def, allocs, diags);
-    } else if (toks[start].type == LEXER_TOKENTYPE_NAMESPACE) {
+    } else if (toks[check_type].type == LEXER_TOKENTYPE_NAMESPACE) {
         printf("NAMESPACE NODE\n");
         check_semi = false;
         ret->type = PARSER_ASTNODETYPE_NAMESPACE;

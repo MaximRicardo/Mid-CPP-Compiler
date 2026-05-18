@@ -62,6 +62,14 @@ struct Parser_TypeDataQual {
 };
 gen_dynarray_struct_named(Parser_TypeDataQualVec, struct Parser_TypeDataQual);
 
+void Parser_set_squal_flag(struct Parser_TypeStorQual *qual,
+                           enum Lexer_TokenType type);
+void Parser_set_dqual_flag(struct Parser_TypeDataQual *qual,
+                           enum Lexer_TokenType type);
+isize_t Parser_parse_quals(const struct Lexer_Token *toks, isize_t start,
+                           struct Parser_TypeStorQual *squals,
+                           struct Parser_TypeDataQual *dquals);
+
 struct Parser_TypeNamed {
     struct Sema_Scope *parent;
     i32 ident;

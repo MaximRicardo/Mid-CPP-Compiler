@@ -387,7 +387,7 @@ static enum Parser_TypeSpec make_spec_longlong(enum Parser_TypeSpec spec,
     }
 }
 
-static void set_squal_flag(struct Parser_TypeStorQual *qual,
+void Parser_set_squal_flag(struct Parser_TypeStorQual *qual,
                            enum Lexer_TokenType type)
 {
     switch (type) {
@@ -408,7 +408,7 @@ static void set_squal_flag(struct Parser_TypeStorQual *qual,
     }
 }
 
-static void set_dqual_flag(struct Parser_TypeDataQual *qual,
+void Parser_set_dqual_flag(struct Parser_TypeDataQual *qual,
                            enum Lexer_TokenType type)
 {
     switch (type) {
@@ -423,6 +423,21 @@ static void set_dqual_flag(struct Parser_TypeDataQual *qual,
     default:
         CRASH("token is not a data qualifier");
     }
+}
+
+isize_t Parser_parse_quals(const struct Lexer_Token *toks, isize_t start,
+                           struct Parser_TypeStorQual *squals,
+                           struct Parser_TypeDataQual *dquals)
+{
+    isize_t i;
+    for (i = start; Lexer_is_typequal(toks[i].type); ++i) {
+        if (Lexer_is_typestorqual(toks[i].type))
+            Parser_set_squal_flag(squals, toks[i].type);
+        else
+            Parser_set_dqual_flag(dquals, toks[i].type);
+    }
+
+    return i;
 }
 
 // parses the type specifier and its preceding qualifiers
@@ -458,7 +473,7 @@ struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
            toks[i].type == LEXER_TOKENTYPE_SCOPE_RES;
          ++i) {
         if (Lexer_is_typedataqual(toks[i].type)) {
-            set_dqual_flag(&dquals, toks[i].type);
+            Parser_set_dqual_flag(&dquals, toks[i].type);
         } else if (toks[i].type == LEXER_TOKENTYPE_SIGNED) {
             if (is_signed)
                 gen_dynpush(diags, unnecessary_qual_warn("signed", &toks[i]));
@@ -487,7 +502,7 @@ struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
                 is_long = &toks[i];
             }
         } else if (Lexer_is_typequal(toks[i].type)) {
-            set_squal_flag(&squals, toks[i].type);
+            Parser_set_squal_flag(&squals, toks[i].type);
         } else if (missing_spec) {
             missing_spec = false;
             auto res = Parser_parse_scope_res(toks, i, &i, scope, diags);
@@ -613,7 +628,7 @@ parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
           is_lv_ref_tok(toks[i].type) || is_rv_ref_tok(toks[i].type));
          --i) {
         if (Lexer_is_typedataqual(toks[i].type)) {
-            set_dqual_flag(&dquals, toks[i].type);
+            Parser_set_dqual_flag(&dquals, toks[i].type);
         } else if (is_ptr_tok(toks[i].type)) {
             gen_dynpush(&ret.dquals, dquals);
             dquals = (struct Parser_TypeDataQual){};

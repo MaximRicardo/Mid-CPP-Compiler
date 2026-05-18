@@ -347,13 +347,12 @@ static isize_t parse_class_till_instances(struct Parser_Class *self,
     }
 }
 
-static isize_t parse_class_instances(struct Parser_Class *self,
-                                     struct Parser_ASTNode *node,
-                                     struct Sema_Scope *parent_scope,
-                                     const struct Lexer_Token *toks,
-                                     isize_t start, bool skip_def,
-                                     struct Parser_Allocators *allocs,
-                                     struct DiagVec *diags)
+static isize_t parse_class_instances(
+    struct Parser_Class *self, struct Parser_ASTNode *node,
+    struct Sema_Scope *parent_scope, const struct Parser_TypeStorQual *squals,
+    const struct Parser_TypeDataQual *dquals, const struct Lexer_Token *toks,
+    isize_t start, bool skip_def, struct Parser_Allocators *allocs,
+    struct DiagVec *diags)
 {
     gen_bumpcalloc(&allocs->ast, &self->var_decl);
     self->var_decl->parent = node;
@@ -361,6 +360,8 @@ static isize_t parse_class_instances(struct Parser_Class *self,
     self->var_decl->type = PARSER_ASTNODETYPE_VAR_DECL;
 
     auto base = Sema_node_type(node, parent_scope, NULL);
+    base.squals = *squals;
+    base.dquals.arr[0] = *dquals;
 
     isize_t end = Parser_parse_var_decl_inst_list(
         toks, start, PARSER_VARDECL_ENDTYPES, &base,
@@ -378,13 +379,17 @@ isize_t Parser_parse_class(struct Parser_Class *self,
                            bool skip_def, struct Parser_Allocators *allocs,
                            struct DiagVec *diags)
 {
+    struct Parser_TypeStorQual squals = {};
+    struct Parser_TypeDataQual dquals = {};
+    start = Parser_parse_quals(toks, start, &squals, &dquals);
+
     isize_t body_end = parse_class_till_instances(
         self, node, parent_scope, toks, start, skip_def, allocs, diags);
     if (toks[body_end].type == LEXER_TOKENTYPE_SEMICOLON)
         return body_end;
 
-    return parse_class_instances(self, node, parent_scope, toks, body_end,
-                                 skip_def, allocs, diags);
+    return parse_class_instances(self, node, parent_scope, &squals, &dquals,
+                                 toks, body_end, skip_def, allocs, diags);
 }
 
 bool Parser_is_field_pub(const struct Parser_Class *self,
