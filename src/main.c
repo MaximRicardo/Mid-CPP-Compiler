@@ -129,8 +129,10 @@ int main(int argc, char **argv)
     struct Sema_Scope scope = {.type = SEMA_SCOPETYPE_ROOT, .node = &root};
 
     for (isize_t i = 0; lex.toks.arr[i].type != LEXER_TOKENTYPE_END;) {
-        auto node = Parser_parse_node(lex.toks.arr, i, &i, &root, &scope, false,
-                                      &allocs, &parser_diags);
+        auto node =
+            Parser_parse_node(lex.toks.arr, i, &i, &root, &scope,
+                              (struct Parser_ParseNodeFlags){.skip_def = false},
+                              &allocs, &parser_diags);
         gen_dynpush(&root.root, node);
     }
     if (print_diags(&parser_diags)) {

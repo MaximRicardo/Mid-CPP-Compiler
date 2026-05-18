@@ -204,8 +204,23 @@ static void log_func_params(const struct Parser_ASTNode *node, FILE *out)
     }
 }
 
-static void log_func_entry(const struct Parser_ASTNode *node, FILE *out,
-                           int indent)
+static void log_tor_entry(const struct Parser_ASTNode *node, FILE *out,
+                          int indent, bool is_dtor)
+{
+    const char *type = node->func_decl.param_scope->parent->node->class_.name;
+    if (is_dtor)
+        log_w_indent(out, indent, "~%s", type);
+    else
+        log_w_indent(out, indent, "%s", type);
+    type = NULL;
+
+    fprintf(out, "(");
+    log_func_params(node, out);
+    fprintf(out, ")");
+}
+
+static void log_generic_func_entry(const struct Parser_ASTNode *node, FILE *out,
+                                   int indent)
 {
     char *type = Parser_type_to_str(&node->func_decl.type);
     log_w_indent(out, indent, "%s %s", type, node->func_decl.name);
@@ -218,6 +233,15 @@ static void log_func_entry(const struct Parser_ASTNode *node, FILE *out,
     fprintf(out, "(");
     log_func_params(node, out);
     fprintf(out, ")");
+}
+
+static void log_func_entry(const struct Parser_ASTNode *node, FILE *out,
+                           int indent)
+{
+    if (node->func_decl.is_tor)
+        log_tor_entry(node, out, indent, node->func_decl.is_dtor);
+    else
+        log_generic_func_entry(node, out, indent);
 }
 
 static void log_func_node(const struct Parser_ASTNode *node, FILE *out,
@@ -330,7 +354,7 @@ static void log_namespace_node(const struct Parser_ASTNode *node, FILE *out,
         log_node(child, out, indent);
     }
 
-    log_w_indent(out, indent, "} // %s\n\n", node->nmspace.name);
+    log_w_indent(out, indent, "} // namespace %s\n\n", node->nmspace.name);
 }
 
 static void log_var_node(const struct Parser_ASTNode *node, FILE *out,

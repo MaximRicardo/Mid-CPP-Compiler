@@ -19,6 +19,7 @@
 #include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include <string.h>
 
 static struct Diag missing_default_arg_err(const char *func,
@@ -242,8 +243,9 @@ isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
     auto def = setup_def_scope(decl, node, allocs, diags);
 
     for (isize_t i = lcurly + 1; i < rcurly;) {
-        auto child =
-            Parser_parse_node(toks, i, &i, node, def, false, allocs, diags);
+        auto child = Parser_parse_node(
+            toks, i, &i, node, def,
+            (struct Parser_ParseNodeFlags){.skip_def = false}, allocs, diags);
         gen_dynpush(&decl->nodes, child);
     }
 
@@ -437,10 +439,11 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
     }
 }
 
-static void parse_func_type(struct Parser_FuncDecl *decl,
-                            const struct Lexer_Token *toks, isize_t start,
-                            isize_t *out_end, struct Sema_Scope *parent_scope,
-                            struct Sema_Scope **out_res, struct DiagVec *diags)
+static isize_t parse_func_type(struct Parser_FuncDecl *decl,
+                               const struct Lexer_Token *toks, isize_t start,
+                               struct Sema_Scope *parent_scope,
+                               struct Sema_Scope **out_res,
+                               struct DiagVec *diags)
 {
     isize_t type_end;
     isize_t name;
@@ -467,8 +470,52 @@ static void parse_func_type(struct Parser_FuncDecl *decl,
             parse_operator_overload(toks, type_end, &type_end, diags);
     }
 
-    if (out_end)
-        *out_end = type_end;
+    return type_end;
+}
+
+static struct Parser_ASTNode *find_tor_class(struct Sema_Scope *scope,
+                                             const char *name)
+{
+    if (scope->type == SEMA_SCOPETYPE_CLASS) {
+        if (!strcmp(scope->node->class_.name, name))
+            return scope->node;
+    }
+
+    for (isize_t i = 0; i < scope->idents.len; ++i) {
+        auto ident = &scope->idents.arr[i];
+
+        if (ident->type != SEMA_IDENTTYPE_CLASS)
+            continue;
+
+        if (!strcmp(ident->name, name))
+            return ident->decl;
+    }
+
+    return NULL;
+}
+
+static isize_t parse_tor_type(struct Parser_FuncDecl *decl,
+                              const struct Lexer_Token *toks, isize_t start,
+                              struct Parser_ASTNode **out_class,
+                              struct Sema_Scope *parent_scope,
+                              struct DiagVec *diags)
+{
+    isize_t name_idx;
+    auto res =
+        Parser_parse_scope_res(toks, start, &name_idx, parent_scope, diags);
+
+    decl->is_dtor = toks[name_idx].type == LEXER_TOKENTYPE_BITWISE_NOT;
+    if (decl->is_dtor)
+        ++name_idx;
+
+    assert(toks[name_idx].type == LEXER_TOKENTYPE_IDENTIFIER);
+    auto class_ = find_tor_class(res, toks[name_idx].ident);
+    assert(class_);
+    if (out_class)
+        *out_class = class_;
+    decl->type = Sema_node_type(class_, res, NULL);
+
+    return name_idx + 1;
 }
 
 // some operator overloads are ambiguous until the parameters have been parsed
@@ -586,8 +633,8 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
     *decl = (struct Parser_FuncDecl){.ident_idx = -1};
 
     struct Sema_Scope *res;
-    isize_t type_end;
-    parse_func_type(decl, toks, start, &type_end, parent_scope, &res, diags);
+    isize_t type_end =
+        parse_func_type(decl, toks, start, parent_scope, &res, diags);
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN)
         CRASH("function missing left paren");
 
@@ -605,6 +652,48 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
         disambig_operator_overload(decl);
     if (decl->name)
         add_func_to_scope(res, decl, node);
+    register_default_args(decl, diags);
+
+    if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY)
+        return lcurly;
+    decl->def_start = &toks[lcurly];
+    decl->has_def = true;
+
+    if (skip_def) {
+        isize_t rcurly = Parser_find_twin_curly(toks, lcurly, ISIZE_MAX);
+        return rcurly == -1 ? lcurly + 1 : rcurly + 1;
+    } else {
+        isize_t rcurly =
+            Parser_parse_func_body(toks, lcurly, decl, node, allocs, diags);
+        return rcurly + 1;
+    }
+}
+
+isize_t Parser_parse_tor(const struct Lexer_Token *toks, isize_t start,
+                         struct Parser_ASTNode *node,
+                         struct Sema_Scope *parent_scope, bool skip_def,
+                         struct Parser_Allocators *allocs,
+                         struct DiagVec *diags)
+{
+    auto decl = &node->func_decl;
+    *decl = (struct Parser_FuncDecl){.ident_idx = -1, .is_tor = true};
+
+    struct Parser_ASTNode *class_;
+    isize_t lparen =
+        parse_tor_type(decl, toks, start, &class_, parent_scope, diags);
+
+    decl->name = decl->is_dtor ? Parser_dtor_name : Parser_ctor_name;
+
+    auto c_scope = Parser_class_ident(&class_->class_)->class_info.def_scope;
+    decl->param_scope =
+        create_scope(c_scope, node, allocs, SEMA_SCOPETYPE_FUNC_PARAMS);
+
+    isize_t rparen;
+    Parser_parse_func_params(toks, lparen, &rparen, node, decl->param_scope,
+                             true, &decl->variadic, allocs, diags);
+    isize_t lcurly =
+        Parser_parse_func_quals(toks, rparen + 1, &decl->quals, diags);
+    add_func_to_scope(c_scope, decl, node);
     register_default_args(decl, diags);
 
     if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY)

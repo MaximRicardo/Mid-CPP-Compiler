@@ -105,7 +105,8 @@ isize_t Parser_parse_namespace(struct Parser_Namespace *self,
 
     for (isize_t i = lcurly + 1; i < rcurly;) {
         struct Parser_ASTNode *child = Parser_parse_node(
-            toks, i, &i, node, self->scope, false, allocs, diags);
+            toks, i, &i, node, self->scope,
+            (struct Parser_ParseNodeFlags){.skip_def = false}, allocs, diags);
 
         gen_dynpush(&self->childs, child);
     }

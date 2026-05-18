@@ -230,8 +230,11 @@ static void parse_decls(struct Parser_Class *self, struct Parser_ASTNode *node,
         if (Lexer_is_accessspec(toks[i].type)) {
             i = parse_accessspec(toks, i, &mode, diags);
         } else {
-            struct Parser_ASTNode *child = Parser_parse_node(
-                toks, i, &i, node, def_scope, true, allocs, diags);
+            struct Parser_ASTNode *child =
+                Parser_parse_node(toks, i, &i, node, def_scope,
+                                  (struct Parser_ParseNodeFlags){
+                                      .skip_def = true, .is_field = true},
+                                  allocs, diags);
 
             gen_dynpush(&self->childs, child);
 

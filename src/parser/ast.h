@@ -42,10 +42,16 @@ struct Parser_ASTNode {
 };
 
 void Parser_ASTNode_deinit(struct Parser_ASTNode *self);
+
+struct Parser_ParseNodeFlags {
+    bool skip_def;
+    bool is_field; // is the node a field of a class.
+                   // parent is assumed to be the parent class.
+};
 // skip_def - if true and the node has a definition / initializer, then it
 //            won't be parsed and rather be skipped
 struct Parser_ASTNode *
 Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
                   isize_t *out_end, struct Parser_ASTNode *parent,
-                  struct Sema_Scope *scope, bool skip_def,
+                  struct Sema_Scope *scope, struct Parser_ParseNodeFlags flags,
                   struct Parser_Allocators *allocs, struct DiagVec *diags);

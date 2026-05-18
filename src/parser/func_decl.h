@@ -7,6 +7,9 @@
 #include "parser/astvec.h"
 #include "parser/type.h"
 
+constexpr char Parser_ctor_name[] = "__constructor";
+constexpr char Parser_dtor_name[] = "__destructor";
+
 struct Parser_FuncQuals {
     bool is_const;
     bool is_volatile;
@@ -33,6 +36,8 @@ struct Parser_FuncDecl {
     struct Parser_FuncQuals quals;
     bool has_def; // does this node hold the definition of the func?
     bool variadic;
+    bool is_tor; // if true the func is either a ctor or a dtor
+    bool is_dtor;
 };
 
 void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self);
@@ -57,6 +62,10 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
                                struct Sema_Scope *scope, bool skip_def,
                                struct Parser_Allocators *allocs,
                                struct DiagVec *diags);
+isize_t Parser_parse_tor(const struct Lexer_Token *toks, isize_t start,
+                         struct Parser_ASTNode *node, struct Sema_Scope *scope,
+                         bool skip_def, struct Parser_Allocators *allocs,
+                         struct DiagVec *diags);
 
 // returns the idx of the closing curly bracket
 isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
