@@ -13,9 +13,25 @@
 struct Parser_VarDeclInst {
     struct Parser_Type type;
     const char *name;
-    struct Parser_Expr *init;
-    const struct Lexer_Token *init_start; // points to the first token of the
-                                          // initialization expr
+    const struct Lexer_Token *start;
+
+    // a var decl can have: an initializer, a ctor, or neither
+    union {
+        struct {
+            struct Parser_Expr *expr;
+            const struct Lexer_Token
+                *start; // points to the first token of the
+                        // initialization expr if there is one
+        } init;
+
+        struct {
+            struct Parser_ExprVec args;
+            struct Parser_ASTNode *node;
+        } ctor;
+    };
+    bool has_ctor;
+
+    bool typechecked;
 };
 gen_dynarray_struct_named(Parser_VarDeclInstVec, struct Parser_VarDeclInst);
 

@@ -41,7 +41,7 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
         memcmp(&inst->type.dquals.arr[0], &(struct Parser_TypeDataQual){},
                sizeof(inst->type.dquals.arr[0])) != 0;
 
-    bool ret = inst->init == NULL &&
+    bool ret = inst->init.expr == NULL &&
                Parser_is_typespec_named(inst->type.spec) &&
                Parser_n_indir(&inst->type) == 0 && !inst->type.lv_ref &&
                !inst->type.rv_ref && !has_dquals;

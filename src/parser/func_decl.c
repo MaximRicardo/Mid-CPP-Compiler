@@ -603,7 +603,7 @@ static void register_default_args(struct Parser_FuncDecl *decl,
 
         auto node = decl->params.arr[i];
         auto param = &node->var_decl.insts.arr[0];
-        if (!param->init) // not a default arg
+        if (!param->init.expr) // not a default arg
             continue;
 
         if (default_arg) {
@@ -613,7 +613,7 @@ static void register_default_args(struct Parser_FuncDecl *decl,
             continue;
         }
 
-        (*default_args)[i] = param->init;
+        (*default_args)[i] = param->init.expr;
     }
 
     isize_t bad;

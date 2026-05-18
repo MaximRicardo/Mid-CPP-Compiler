@@ -920,13 +920,13 @@ static void parse_func_call_args(struct Parser_Expr *f_call,
 
     for (isize_t i = lparen + 1; i < rparen; ++i) {
         auto arg =
-            Parser_parse_expr(toks, i, PARSER_PARAM_ENDTYPES, &i, scope, diags);
+            Parser_parse_expr(toks, i, PARSER_ARG_ENDTYPES, &i, scope, diags);
         gen_dynpush(&f_call->info.args, arg);
 
         if (toks[i].type != LEXER_TOKENTYPE_R_PAREN &&
             toks[i].type != LEXER_TOKENTYPE_COMMA) {
             gen_dynpush(diags,
-                        Diag_expected_token_err("')'", &toks[lparen],
+                        Diag_expected_token_err("','", &toks[lparen],
                                                 ERRORTYPE_MISSING_PAREN));
         }
     }

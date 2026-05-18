@@ -90,10 +90,22 @@ static void get_assoc_scopes(const struct Parser_Expr *args, isize_t n_args,
     }
 }
 
+static void add_class_ctors(const struct Parser_Class *class_,
+                            struct Parser_ASTNodePVec *nodes)
+{
+    auto ctors = Parser_class_ctors(class_);
+    for (isize_t j = 0; j < ctors.len; ++j)
+        gen_dynpush(nodes, ctors.arr[j]);
+    gen_dyndeinit(&ctors);
+}
+
 static void find_funcs_in_scope(const char *name,
                                 const struct Sema_Scope *scope,
                                 struct Parser_ASTNodePVec *nodes)
 {
+    if (scope->type == SEMA_SCOPETYPE_CLASS)
+        add_class_ctors(&scope->node->class_, nodes);
+
     for (isize_t i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
 
@@ -103,11 +115,7 @@ static void find_funcs_in_scope(const char *name,
         if (ident->type == SEMA_IDENTTYPE_FUNC) {
             gen_dynpush(nodes, ident->decl);
         } else if (ident->type == SEMA_IDENTTYPE_CLASS && ident->def) {
-            // add every ctor
-            auto ctors = Parser_class_ctors(&ident->def->class_);
-            for (isize_t j = 0; j < ctors.len; ++j)
-                gen_dynpush(nodes, ctors.arr[j]);
-            gen_dyndeinit(&ctors);
+            add_class_ctors(&ident->def->class_, nodes);
         }
     }
 }

@@ -8,12 +8,15 @@
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
+#include "parser/end_types.h"
 #include "parser/expr.h"
+#include "parser/find_twin.h"
 #include "parser/scope.h"
 #include "parser/type.h"
 #include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +24,8 @@
 
 void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self)
 {
+    if (self->has_ctor)
+        gen_dyndeinit(&self->ctor.args, Parser_Expr_deinit);
     Parser_Type_deinit(&self->type);
 }
 
@@ -45,11 +50,11 @@ static struct Sema_Ident *add_ident(const struct Parser_VarDeclInst *inst,
 
 static void resolve_auto(struct Parser_VarDeclInst *inst)
 {
-    assert(inst->init);
+    assert(inst->init.expr);
     assert(inst->type.spec == PARSER_TYPESPEC_AUTO);
     assert(Parser_n_indir(&inst->type) == 0); // "auto *" not supported yet
 
-    auto init_type = &inst->init->ret;
+    auto init_type = &inst->init.expr->ret;
 
     inst->type.spec = init_type->spec;
     if (init_type->spec == PARSER_TYPESPEC_FPTR) {
@@ -76,15 +81,15 @@ isize_t Parser_parse_var_decl_inst_def(const struct Lexer_Token *toks,
                                        struct Parser_Allocators *allocs,
                                        struct DiagVec *diags)
 {
-    if (!inst->init_start)
+    if (!inst->init.start)
         return -1;
 
-    gen_bumpmalloc(&allocs->expr, &inst->init);
+    gen_bumpmalloc(&allocs->expr, &inst->init.expr);
 
-    isize_t start = inst->init_start - toks;
+    isize_t start = inst->init.start - toks;
     isize_t end;
-    *inst->init = Parser_parse_expr(toks, start, end_types, n_end_types, &end,
-                                    scope, diags);
+    *inst->init.expr = Parser_parse_expr(toks, start, end_types, n_end_types,
+                                         &end, scope, diags);
 
     if (inst->type.spec == PARSER_TYPESPEC_AUTO)
         resolve_auto(inst);
@@ -125,6 +130,49 @@ static bool valid_name_idx(isize_t idx, const struct Lexer_Token *toks)
     return idx != -1 && toks[idx].type == LEXER_TOKENTYPE_IDENTIFIER;
 }
 
+static isize_t parse_inst_ctor(const struct Lexer_Token *toks, isize_t lparen,
+                               struct Parser_VarDeclInst *inst,
+                               struct Sema_Scope *scope, struct DiagVec *diags)
+{
+    isize_t rparen = Parser_find_twin_paren(toks, lparen, ISIZE_MAX);
+    if (rparen == -1) {
+        gen_dynpush(diags, Diag_expected_token_err("')'", &toks[lparen],
+                                                   ERRORTYPE_MISSING_PAREN));
+        rparen = lparen;
+    }
+
+    for (isize_t i = lparen + 1; i < rparen; ++i) {
+        auto arg =
+            Parser_parse_expr(toks, i, PARSER_ARG_ENDTYPES, &i, scope, diags);
+        gen_dynpush(&inst->ctor.args, arg);
+
+        if (toks[i].type != LEXER_TOKENTYPE_R_PAREN &&
+            toks[i].type != LEXER_TOKENTYPE_COMMA) {
+            gen_dynpush(diags,
+                        Diag_expected_token_err("','", &toks[lparen],
+                                                ERRORTYPE_MISSING_PAREN));
+        }
+    }
+
+    return rparen + 1;
+}
+
+static isize_t parse_inst_init(const struct Lexer_Token *toks, isize_t start,
+                               const enum Lexer_TokenType *end_types,
+                               isize_t n_end_types,
+                               struct Parser_VarDeclInst *inst, bool skip_init,
+                               struct Sema_Scope *scope,
+                               struct Parser_Allocators *allocs,
+                               struct DiagVec *diags)
+{
+    inst->init.start = &toks[start];
+    if (skip_init) {
+        return Parser_skip_expr(toks, start, end_types, n_end_types, NULL);
+    }
+    return Parser_parse_var_decl_inst_def(toks, end_types, n_end_types, inst,
+                                          scope, allocs, diags);
+}
+
 isize_t Parser_parse_var_decl_inst(
     const struct Lexer_Token *toks, isize_t start,
     const enum Lexer_TokenType *end_types, isize_t n_end_types,
@@ -133,7 +181,7 @@ isize_t Parser_parse_var_decl_inst(
     struct Parser_ASTNode *node, bool skip_init,
     struct Parser_Allocators *allocs, struct DiagVec *diags)
 {
-    *inst = (struct Parser_VarDeclInst){};
+    *inst = (struct Parser_VarDeclInst){.start = &toks[start]};
 
     isize_t type_end;
     isize_t name;
@@ -150,23 +198,23 @@ isize_t Parser_parse_var_decl_inst(
                                                     ERRORTYPE_BAD_IDENTIFIER));
 
     isize_t assign_idx = type_end;
+    inst->has_ctor = toks[assign_idx].type == LEXER_TOKENTYPE_L_PAREN;
     bool has_init = toks[assign_idx].type == LEXER_TOKENTYPE_ASSIGN;
 
-    if (has_init) {
-        isize_t expr_start = assign_idx + 1;
-        inst->init_start = &toks[expr_start];
-        if (skip_init) {
-            return Parser_skip_expr(toks, expr_start, end_types, n_end_types,
-                                    NULL);
-        }
-        return Parser_parse_var_decl_inst_def(toks, end_types, n_end_types,
-                                              inst, res, allocs, diags);
+    isize_t ret = type_end;
+    if (inst->has_ctor) {
+        ret = parse_inst_ctor(toks, assign_idx, inst, res, diags);
+    } else if (has_init) {
+        ret = parse_inst_init(toks, assign_idx + 1, end_types, n_end_types,
+                              inst, skip_init, res, allocs, diags);
     } else if (inst->type.spec == PARSER_TYPESPEC_AUTO) {
         gen_dynpush(
             diags, uninited_deduced_type_err(inst->name, "auto", &toks[start]));
     }
 
-    return type_end;
+    Sema_typecheck_var_decl_inst(inst, diags);
+
+    return ret;
 }
 
 static bool is_end_type(const enum Lexer_TokenType *end_types, isize_t n,

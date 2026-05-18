@@ -1061,6 +1061,69 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
     }
 }
 
+static struct Diag no_matching_ctor_err(const struct Parser_Type *type,
+                                        const struct Lexer_Token *tok)
+{
+    char *str = Parser_type_to_str(type);
+
+    struct Diag ret = {
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("no matching constructor for '%s'", str),
+        .err = ERRORTYPE_NO_MATCHING_CTOR,
+        .is_err = true,
+    };
+
+    free(str);
+    return ret;
+}
+
+// returns whether or not the ctor is correct
+static bool typecheck_vdecl_class_type_ctor(struct Parser_VarDeclInst *inst)
+{
+    assert(inst->has_ctor);
+
+    auto ident = Parser_named_type_ident(&inst->type.named);
+    inst->ctor.node =
+        Sema_find_func(ident->name, inst->ctor.args.arr, inst->ctor.args.len,
+                       false, ident->class_info.def_scope, true);
+
+    return inst->ctor.node != NULL;
+}
+
+// returns whether or not the ctor is correct
+static bool typecheck_vdecl_generic_type_ctor(struct Parser_VarDeclInst *inst)
+{
+    assert(inst->has_ctor);
+
+    if (inst->ctor.args.len > 1)
+        return false;
+
+    auto arg = &inst->ctor.args.arr[0];
+    return Sema_can_convert(&arg->ret, arg->valtype, &inst->type);
+}
+
+void Sema_typecheck_var_decl_inst(struct Parser_VarDeclInst *inst,
+                                  struct DiagVec *diags)
+{
+    inst->typechecked = true;
+    if (!inst->has_ctor)
+        return;
+
+    bool bad;
+    if ((inst->type.spec == PARSER_TYPESPEC_CLASS ||
+         inst->type.spec == PARSER_TYPESPEC_UNION) &&
+        Parser_n_indir(&inst->type) == 0) {
+
+        bad = !typecheck_vdecl_class_type_ctor(inst);
+    } else {
+        bad = !typecheck_vdecl_generic_type_ctor(inst);
+    }
+
+    if (bad)
+        gen_dynpush(diags, no_matching_ctor_err(&inst->type, inst->start));
+}
+
 static struct Diag
 invalid_return_stmt_type_err(const struct Parser_Type *func_type,
                              const struct Parser_Type *ret_type,

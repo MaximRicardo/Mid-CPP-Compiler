@@ -4,6 +4,7 @@
 #include "parser/ast.h"
 #include "parser/expr.h"
 #include "parser/type.h"
+#include "parser/var_decl.h"
 #include "sema/scope.h"
 
 // returns whether or not the node creates a new named type
@@ -19,6 +20,8 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
 void Sema_typecheck_return(const struct Parser_ASTNode *node,
                            const struct Sema_Scope *scope,
                            struct DiagVec *diags);
+void Sema_typecheck_var_decl_inst(struct Parser_VarDeclInst *inst,
+                                  struct DiagVec *diags);
 
 bool Sema_can_convert(const struct Parser_Type *src,
                       enum Parser_ExprValueType src_valtype,

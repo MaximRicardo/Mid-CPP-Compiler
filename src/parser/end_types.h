@@ -21,3 +21,7 @@ constexpr enum Lexer_TokenType Parser_param_endtypes[] = {
     LEXER_TOKENTYPE_COMMA, LEXER_TOKENTYPE_R_PAREN};
 #define PARSER_PARAM_ENDTYPES                                                  \
     Parser_param_endtypes, ARRLEN(Parser_param_endtypes)
+
+constexpr enum Lexer_TokenType Parser_arg_endtypes[] = {
+    LEXER_TOKENTYPE_COMMA, LEXER_TOKENTYPE_R_PAREN};
+#define PARSER_ARG_ENDTYPES Parser_arg_endtypes, ARRLEN(Parser_arg_endtypes)

@@ -8,6 +8,7 @@
 #include "parser/expr.h"
 #include "parser/expr_type.h"
 #include "parser/type.h"
+#include "parser/var_decl.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -129,6 +130,18 @@ static void log_scope_res_expr(const struct Parser_Expr *expr, FILE *out)
     }
 }
 
+// doesn't include parentheses
+static void log_func_call_args(const struct Parser_Expr *args, isize_t n,
+                               FILE *out)
+{
+    for (isize_t i = 0; i < n; ++i) {
+        log_expr(&args[i], out);
+
+        if (i + 1 < n)
+            fprintf(out, ", ");
+    }
+}
+
 static void log_func_call_expr(const struct Parser_Expr *expr, FILE *out)
 {
     const struct Parser_Expr *dest = &expr->info.args.arr[0];
@@ -144,12 +157,7 @@ static void log_func_call_expr(const struct Parser_Expr *expr, FILE *out)
     fprintf(out, "#%" PRIi32 ":%" PRIi32 "(", expr->node->start->pos.line,
             expr->node->start->pos.column);
 
-    for (isize_t i = 1; i < expr->info.args.len; ++i) {
-        log_expr(&expr->info.args.arr[i], out);
-
-        if (i + 1 < expr->info.args.len)
-            fprintf(out, ", ");
-    }
+    log_func_call_args(&expr->info.args.arr[1], expr->info.args.len - 1, out);
 
     fprintf(out, ")");
 }
@@ -362,23 +370,34 @@ static void log_namespace_node(const struct Parser_ASTNode *node, FILE *out,
     log_w_indent(out, indent, "} // namespace %s\n\n", node->nmspace.name);
 }
 
+static void log_var_inst(const struct Parser_VarDeclInst *inst, FILE *out)
+{
+    char *type = Parser_type_to_str(&inst->type);
+    fprintf(out, "%s %s", type, inst->name);
+    free(type);
+    type = NULL;
+
+    if (inst->has_ctor) {
+        if (inst->ctor.node)
+            fprintf(out, "#%" PRIi32 ":%" PRIi32,
+                    inst->ctor.node->start->pos.line,
+                    inst->ctor.node->start->pos.column);
+        fprintf(out, "(");
+        log_func_call_args(inst->ctor.args.arr, inst->ctor.args.len, out);
+        fprintf(out, ")");
+    } else if (inst->init.expr) {
+        fprintf(out, " = ");
+        log_expr(inst->init.expr, out);
+    }
+}
+
 static void log_var_node(const struct Parser_ASTNode *node, FILE *out,
                          int indent)
 {
     log_w_indent(out, indent, "");
 
     for (isize_t i = 0; i < node->var_decl.insts.len; ++i) {
-        auto inst = &node->var_decl.insts.arr[i];
-
-        char *type = Parser_type_to_str(&inst->type);
-        fprintf(out, "%s %s", type, inst->name);
-        free(type);
-        type = NULL;
-
-        if (inst->init) {
-            fprintf(out, " = ");
-            log_expr(inst->init, out);
-        }
+        log_var_inst(&node->var_decl.insts.arr[i], out);
 
         if (i + 1 < node->var_decl.insts.len) {
             fprintf(out, ", ");
