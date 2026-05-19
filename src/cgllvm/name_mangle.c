@@ -22,7 +22,7 @@ static void mangle_dquals(struct Parser_TypeDataQual dquals, struct Dynstr *str)
 static void mangle_type_indirs(const struct Parser_Type *type,
                                struct Dynstr *str)
 {
-    for (isize_t i = Parser_n_indir(type) - 1; i >= 0; ++i) {
+    for (isize_t i = Parser_n_indir(type) - 1; i >= 0; --i) {
         Dynstr_append_char(str, 'P');
         mangle_dquals(type->dquals.arr[i], str);
     }
@@ -36,11 +36,8 @@ static void mangle_scope(const struct Sema_Scope *scope, struct Dynstr *str)
     if (!Sema_is_rnce_scope(scope->type) || scope->type == SEMA_SCOPETYPE_ROOT)
         return;
 
-    const char *name = scope->node->type == PARSER_ASTNODETYPE_CLASS
-                           ? scope->node->class_.name
-                       : scope->node->type == PARSER_ASTNODETYPE_ENUM
-                           ? scope->node->enum_.name
-                           : scope->node->nmspace.name;
+    const char *name = Sema_scope_name(scope);
+    assert(name);
 
     if (!strcmp(name, "std"))
         // namespace std is abbreviated to "St" with no length markers
@@ -365,7 +362,7 @@ static void mangle_generic_func(const struct Parser_FuncDecl *func,
     const struct Sema_Scope *scope = func->param_scope->parent;
 
     Dynstr_append(str, "_Z");
-    if (Sema_closest_rnce_scope_const(scope)) {
+    if (scope->parent) {
         // scope is nested
         Dynstr_append_char(str, 'N');
         mangle_scope(scope, str);
