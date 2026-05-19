@@ -19,6 +19,11 @@ partially / fully supports:
     * Function Pointers
     * auto
     * typedef
+    * LValue and RValue References
+* Variables
+    * Every Allowed Type (even wacky wonky ones like `void (*const *)(int (*)(), ...)`)
+    * Declarator Lists (meaning: `int x, *y, *const *z;`)
+    * Constructors
 * Functions
     * Argument Dependent Lookup
     * Overload Resolution
@@ -28,9 +33,12 @@ partially / fully supports:
     * Forward Declaration
 * Classes
     * Static and Non-Static Member Functions
+    * Constructors
+    * Destructors
     * public, private and protected
     * 2-Pass Parsing
     * Forward Declaration
+    * Trailing Declarator Lists (meaing: `class A { .. } x, *y, *const *z`)
 * Namespaces
 
 ### C Support
