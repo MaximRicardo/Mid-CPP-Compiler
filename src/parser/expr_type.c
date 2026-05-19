@@ -60,8 +60,8 @@ const char *Parser_exprtype_name(enum Parser_ExprType type)
     case PARSER_EXPRTYPE_BOOL_LIT:
         return "BOOL_LIT";
 
-    case PARSER_EXPRTYPE_PTR_LIT:
-        return "PTR_LIT";
+    case PARSER_EXPRTYPE_NULLPTR_LIT:
+        return "NULLPTR_LIT";
 
     case PARSER_EXPRTYPE_NUMLIT_END:
         return "NUMLIT_END";

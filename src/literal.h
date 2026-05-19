@@ -28,7 +28,6 @@ union Literal_Value {
     i64 sint;
     u64 uint;
     long double flt;
-    void *ptr;
 
     // strings
     struct Literal_String str;

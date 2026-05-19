@@ -22,5 +22,5 @@ int main()
     A var2(10);
     NM::Test x = NM::Test();
 
-    int y(10);
+    int *y(nullptr);
 }

@@ -79,6 +79,8 @@ const char *Parser_typespec_to_str(enum Parser_TypeSpec spec)
     switch (spec) {
     case PARSER_TYPESPEC_VOID:
         return "void";
+    case PARSER_TYPESPEC_NULLPTR:
+        return "nullptr_t";
 
     case PARSER_TYPESPEC_CHAR:
         return "char";
@@ -1351,4 +1353,14 @@ struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
     gen_dynpush(&ret.dquals, ((struct Parser_TypeDataQual){}));
 
     return ret;
+}
+
+bool Parser_type_is_void_ptr(const struct Parser_Type *type)
+{
+    return Parser_n_indir(type) == 1 && type->spec == PARSER_TYPESPEC_VOID;
+}
+
+bool Parser_type_is_nullptr_t(const struct Parser_Type *type)
+{
+    return Parser_n_indir(type) == 0 && type->spec == PARSER_TYPESPEC_NULLPTR;
 }

@@ -179,9 +179,8 @@ static void typecheck_lit_expr(struct Parser_Expr *expr)
         expr->ret.spec = PARSER_TYPESPEC_BOOL;
         break;
 
-    case PARSER_EXPRTYPE_PTR_LIT:
-        expr->ret.spec = PARSER_TYPESPEC_VOID;
-        gen_dynpush(&expr->ret.dquals, (struct Parser_TypeDataQual){});
+    case PARSER_EXPRTYPE_NULLPTR_LIT:
+        expr->ret.spec = PARSER_TYPESPEC_NULLPTR;
         break;
 
     default:
@@ -1244,6 +1243,10 @@ bool Sema_can_convert(const struct Parser_Type *src,
         return true;
     else if (Parser_n_indir(src) == Parser_n_indir(dest) &&
              src->spec == dest->spec)
+        return true;
+    else if (Parser_n_indir(src) > 0 && Parser_type_is_void_ptr(dest))
+        return true;
+    else if (Parser_type_is_nullptr_t(src) && Parser_n_indir(dest) > 0)
         return true;
     else if (is_valid_array_to_ptr(src, dest))
         return true;

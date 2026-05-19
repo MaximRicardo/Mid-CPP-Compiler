@@ -889,8 +889,8 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
     else if (!strcmp(id, "nullptr"))
         return (struct Lexer_Token){.pos = pos,
                                     .line = line,
-                                    .type = LEXER_TOKENTYPE_PTR_LIT,
-                                    .val.ptr = NULL};
+                                    .type = LEXER_TOKENTYPE_NULLPTR_LIT,
+                                    .val.uint = 0};
 
     else if (!strcmp(id, "public"))
         return (struct Lexer_Token){

@@ -319,8 +319,8 @@ static struct Parser_Expr lit_tok_to_expr(const struct Lexer_Token *tok)
         ret.type = PARSER_EXPRTYPE_BOOL_LIT;
         break;
 
-    case LEXER_TOKENTYPE_PTR_LIT:
-        ret.type = PARSER_EXPRTYPE_PTR_LIT;
+    case LEXER_TOKENTYPE_NULLPTR_LIT:
+        ret.type = PARSER_EXPRTYPE_NULLPTR_LIT;
         break;
 
     default:

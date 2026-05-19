@@ -36,6 +36,7 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_FPTR,
     PARSER_TYPESPEC_ARRAY,
     PARSER_TYPESPEC_AUTO,
+    PARSER_TYPESPEC_NULLPTR,
 
     // prefixed types
     PARSER_TYPESPEC_CLASS,
@@ -172,3 +173,5 @@ bool Parser_are_types_same(const struct Parser_Type *a,
                            const struct Parser_Type *b);
 struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
                                            const char *name);
+bool Parser_type_is_void_ptr(const struct Parser_Type *type);
+bool Parser_type_is_nullptr_t(const struct Parser_Type *type);

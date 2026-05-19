@@ -146,11 +146,8 @@ void Literal_fprint(FILE *out, union Literal_Value val,
         fprintf(out, "%s", val.sint ? "true" : "false");
         break;
 
-    case PARSER_EXPRTYPE_PTR_LIT:
-        if (!val.ptr)
-            fprintf(out, "nullptr");
-        else
-            fprintf(out, "(std::nullptr_t *)%p", val.ptr);
+    case PARSER_EXPRTYPE_NULLPTR_LIT:
+        fprintf(out, "nullptr");
         break;
 
     default:
@@ -234,8 +231,8 @@ void Literal_fprint_toktype(FILE *out, union Literal_Value val,
         Literal_fprint(out, val, PARSER_EXPRTYPE_BOOL_LIT);
         break;
 
-    case LEXER_TOKENTYPE_PTR_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_PTR_LIT);
+    case LEXER_TOKENTYPE_NULLPTR_LIT:
+        Literal_fprint(out, val, PARSER_EXPRTYPE_NULLPTR_LIT);
         break;
 
     default:
