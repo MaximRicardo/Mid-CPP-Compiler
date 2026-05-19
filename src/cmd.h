@@ -3,6 +3,7 @@
 struct CMD_Args {
     const char *src;
     const char *ast_out;
+    const char *asm_out;
     bool log_tokens;
     bool log_symbols;
 };

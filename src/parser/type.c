@@ -157,6 +157,22 @@ bool Parser_is_integral_typespec(enum Parser_TypeSpec spec)
            spec == PARSER_TYPESPEC_ULONGLONG || spec == PARSER_TYPESPEC_BOOL;
 }
 
+bool Parser_is_signed_integral_typespec(enum Parser_TypeSpec spec)
+{
+    return (spec == PARSER_TYPESPEC_CHAR && Types_char_signed) ||
+           spec == PARSER_TYPESPEC_SCHAR ||
+           (spec == PARSER_TYPESPEC_WCHAR && Types_wchar_signed) ||
+           spec == PARSER_TYPESPEC_SHORT || spec == PARSER_TYPESPEC_INT ||
+           spec == PARSER_TYPESPEC_LONG || spec == PARSER_TYPESPEC_LONGLONG ||
+           spec == PARSER_TYPESPEC_BOOL;
+}
+
+bool Parser_is_unsigned_integral_typespec(enum Parser_TypeSpec spec)
+{
+    return Parser_is_integral_typespec(spec) &&
+           !Parser_is_signed_integral_typespec(spec);
+}
+
 bool Parser_is_floating_typespec(enum Parser_TypeSpec spec)
 {
     return spec == PARSER_TYPESPEC_FLOAT || spec == PARSER_TYPESPEC_DOUBLE ||

@@ -15,6 +15,14 @@
 #include <assert.h>
 #include <stdio.h>
 
+bool Parser_is_strlit(enum Parser_ExprType type)
+{
+    return type == PARSER_EXPRTYPE_STRING_LIT ||
+           type == PARSER_EXPRTYPE_WSTRING_LIT ||
+           type == PARSER_EXPRTYPE_STRING16_LIT ||
+           type == PARSER_EXPRTYPE_STRING32_LIT;
+}
+
 bool Parser_is_numlit(enum Parser_ExprType type)
 {
     return type > PARSER_EXPRTYPE_NUMLIT_START &&

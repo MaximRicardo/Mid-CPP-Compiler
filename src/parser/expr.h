@@ -8,6 +8,7 @@
 #include "literal.h"
 #include "parser/type.h"
 
+bool Parser_is_strlit(enum Parser_ExprType type);
 bool Parser_is_numlit(enum Parser_ExprType type);
 bool Parser_is_ternaryop(enum Parser_ExprType type);
 bool Parser_is_binop(enum Parser_ExprType type);

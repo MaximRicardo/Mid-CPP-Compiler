@@ -126,8 +126,6 @@ int main(int argc, char **argv)
 
     CMD_init_args(argc, argv);
 
-    CGLLVM_Test();
-
     int ret = 0;
 
     struct Parser_Allocators allocs = {};
@@ -167,6 +165,9 @@ int main(int argc, char **argv)
         log_ast(CMD_get_args()->ast_out, &root);
 
     test_mangling(&scope);
+
+    CGLLVM_init_codegen();
+    CGLLVM_codegen(&root);
 
 parser_failed:
     // the root scope and root node need to be deallocated manually cuz they

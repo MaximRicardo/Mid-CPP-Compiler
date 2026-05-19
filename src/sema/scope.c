@@ -271,3 +271,14 @@ struct Sema_Scope *Sema_resolve_scope(const char *name,
 {
     return (struct Sema_Scope *)Sema_resolve_scope_const(name, scope);
 }
+
+const char *Sema_scope_name(const struct Sema_Scope *scope)
+{
+    const char *name =
+        scope->type == SEMA_SCOPETYPE_CLASS       ? scope->node->class_.name
+        : scope->type == SEMA_SCOPETYPE_ENUM      ? scope->node->enum_.name
+        : scope->type == SEMA_SCOPETYPE_NAMESPACE ? scope->node->nmspace.name
+                                                  : NULL;
+
+    return name;
+}

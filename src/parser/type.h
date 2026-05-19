@@ -48,6 +48,8 @@ bool Parser_is_typespec_named(enum Parser_TypeSpec spec);
 enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type);
 const char *Parser_typespec_to_str(enum Parser_TypeSpec spec);
 bool Parser_is_integral_typespec(enum Parser_TypeSpec spec);
+bool Parser_is_signed_integral_typespec(enum Parser_TypeSpec spec);
+bool Parser_is_unsigned_integral_typespec(enum Parser_TypeSpec spec);
 bool Parser_is_floating_typespec(enum Parser_TypeSpec spec);
 
 struct Parser_TypeStorQual {

@@ -69,3 +69,6 @@ const struct Sema_Scope *
 Sema_resolve_scope_const(const char *name, const struct Sema_Scope *scope);
 struct Sema_Scope *Sema_resolve_scope(const char *name,
                                       struct Sema_Scope *scope);
+
+// returns NULL if it doesn't have one
+const char *Sema_scope_name(const struct Sema_Scope *scope);

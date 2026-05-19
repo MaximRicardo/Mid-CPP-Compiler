@@ -1,33 +1,4 @@
-void func();
-
-namespace std {
-float sqrt(float);
-}
-
-class A {
-public:
-    int method()
-    {
-        return 0;
-    }
-
-    int method() const
-    {
-        return 0;
-    }
-};
-
-int main()
+int main(int argc, char **argv)
 {
-    func();
-
-    std::sqrt(2.f);
-
-    int var;
-
-    A x;
-    x.method();
-
-    const A y;
-    y.method();
+    auto x = 10 * (23 - 1.f) / 2;
 }
