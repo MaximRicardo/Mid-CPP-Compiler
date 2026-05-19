@@ -1,3 +1,4 @@
+#include "cgllvm/codegen.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
@@ -104,6 +105,8 @@ int main(int argc, char **argv)
     setlocale(LC_CTYPE, "en_US.UTF-8");
 
     CMD_init_args(argc, argv);
+
+    CGLLVM_Test();
 
     int ret = 0;
 
