@@ -1,4 +1,5 @@
 #include "cgllvm/codegen.h"
+#include "cgllvm/name_mangle.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
@@ -10,6 +11,7 @@
 #include "parser/ast.h"
 #include "parser/ast_log.h"
 #include "parser/type.h"
+#include "sema/ident.h"
 #include "sema/scope.h"
 #include "symbol.h"
 #include <assert.h>
@@ -99,6 +101,24 @@ static void log_ast(const char *path, const struct Parser_ASTNode *root)
     fclose(f);
 }
 
+static void test_mangling(const struct Sema_Scope *scope)
+{
+    for (isize_t i = 0; i < scope->idents.len; ++i) {
+        struct Sema_Ident *ident = &scope->idents.arr[i];
+
+        if (ident->type != SEMA_IDENTTYPE_FUNC)
+            continue;
+
+        char *mangled = CGLLVM_mangle_func(&ident->decl->func_decl);
+        printf("func at %d:%d becomes '%s'\n", ident->decl->start->pos.line,
+               ident->decl->start->pos.column, mangled);
+        free(mangled);
+    }
+
+    for (isize_t i = 0; i < scope->childs.len; ++i)
+        test_mangling(scope->childs.arr[i]);
+}
+
 int main(int argc, char **argv)
 {
     // enables unicode
@@ -145,6 +165,8 @@ int main(int argc, char **argv)
 
     if (CMD_get_args()->ast_out)
         log_ast(CMD_get_args()->ast_out, &root);
+
+    test_mangling(&scope);
 
 parser_failed:
     // the root scope and root node need to be deallocated manually cuz they
