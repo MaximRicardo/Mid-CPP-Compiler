@@ -126,7 +126,7 @@ static void parse_node_def(struct Parser_ASTNode *node,
 {
     if (node->type == PARSER_ASTNODETYPE_VAR_DECL) {
         Parser_parse_var_decl_def(toks, PARSER_VARDECL_ENDTYPES,
-                                  &node->var_decl, scope, allocs, diags);
+                                  &node->var_decl, false, scope, allocs, diags);
     } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         if (node->func_decl.def_start) {
             Parser_parse_func_body(toks, node->func_decl.def_start - toks, node,
@@ -302,7 +302,8 @@ void Parser_parse_class_def(struct Parser_ASTNode *node,
     parse_class_body(self, node, toks, self->def_start - toks, allocs, diags);
 
     Parser_parse_var_decl_def(toks, PARSER_VARDECL_ENDTYPES,
-                              &self->var_decl->var_decl, scope, allocs, diags);
+                              &self->var_decl->var_decl, false, scope, allocs,
+                              diags);
 }
 
 static void add_class_to_scope(struct Sema_Scope *scope,
@@ -370,8 +371,10 @@ static isize_t parse_class_instances(
 
     isize_t end = Parser_parse_var_decl_inst_list(
         toks, start, PARSER_VARDECL_ENDTYPES, &base,
-        &self->var_decl->var_decl.insts, self->var_decl, parent_scope, true,
-        false, skip_def, allocs, diags);
+        &self->var_decl->var_decl.insts, self->var_decl, parent_scope,
+        (struct Parser_ParseVarDeclFlags){.add_to_scope = true,
+                                          .skip_init = skip_def},
+        allocs, diags);
 
     Parser_Type_deinit(&base);
     return end;

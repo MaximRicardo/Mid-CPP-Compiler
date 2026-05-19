@@ -11,15 +11,12 @@
 #include "parser/var_decl.h"
 #include "sema/scope.h"
 #include <assert.h>
-#include <stdio.h>
 #include <string.h>
 
 // some parameters make telling the difference between a variable and a
 // function impossible, like:
 // A foo(B());
 //       ^^^
-// TODO: make this not use bump allocation to save on memory usage used to store
-//       var definition expressions
 static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
                            isize_t *out_end, struct Sema_Scope *scope,
                            struct Parser_Allocators *allocs,
@@ -29,20 +26,26 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
 
     struct Parser_ASTNode decl = {.type = PARSER_ASTNODETYPE_VAR_DECL,
                                   .start = &toks[start]};
-    isize_t end =
-        Parser_parse_var_decl(toks, start, PARSER_PARAM_ENDTYPES, &decl, scope,
-                              false, true, false, allocs, diags);
+    // skip_init is true cuz the actual initializer isn't important, all that
+    // really matters is whether or not there is one. it also avoids allocating
+    // an expr tree to hold the initializer.
+    isize_t end = Parser_parse_var_decl(
+        toks, start, PARSER_PARAM_ENDTYPES, &decl,
+        (struct Parser_ParseVarDeclFlags){
+            .add_to_scope = false, .single_inst = true, .skip_init = true},
+        scope, allocs, diags);
     if (out_end)
         *out_end = end;
 
     auto inst = &decl.var_decl.insts.arr[0];
 
+    bool has_init = !inst->has_ctor && inst->init.start;
+
     bool has_dquals =
         memcmp(&inst->type.dquals.arr[0], &(struct Parser_TypeDataQual){},
                sizeof(inst->type.dquals.arr[0])) != 0;
 
-    bool ret = inst->init.expr == NULL &&
-               Parser_is_typespec_named(inst->type.spec) &&
+    bool ret = !has_init && Parser_is_typespec_named(inst->type.spec) &&
                Parser_n_indir(&inst->type) == 0 && !inst->type.lv_ref &&
                !inst->type.rv_ref && !has_dquals;
 

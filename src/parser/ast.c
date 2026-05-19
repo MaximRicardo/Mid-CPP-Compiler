@@ -142,9 +142,11 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
             check_semi = !ret->func_decl.has_def;
         } else {
             ret->type = PARSER_ASTNODETYPE_VAR_DECL;
-            end = Parser_parse_var_decl(toks, start, PARSER_VARDECL_ENDTYPES,
-                                        ret, scope, true, false, flags.skip_def,
-                                        allocs, diags);
+            end = Parser_parse_var_decl(
+                toks, start, PARSER_VARDECL_ENDTYPES, ret,
+                (struct Parser_ParseVarDeclFlags){.add_to_scope = true,
+                                                  .skip_init = flags.skip_def},
+                scope, allocs, diags);
         }
     } else {
         printf("EXPR NODE\n");

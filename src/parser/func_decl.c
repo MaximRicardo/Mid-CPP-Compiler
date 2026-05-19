@@ -92,9 +92,11 @@ struct Parser_ASTNodePVec Parser_parse_func_params(
                 (struct Parser_ASTNode){.parent = parent,
                                         .start = &toks[i],
                                         .type = PARSER_ASTNODETYPE_VAR_DECL};
-            i = Parser_parse_var_decl(toks, i, PARSER_PARAM_ENDTYPES, child,
-                                      scope, add_to_scope, true, false, allocs,
-                                      diags);
+            i = Parser_parse_var_decl(
+                toks, i, PARSER_PARAM_ENDTYPES, child,
+                (struct Parser_ParseVarDeclFlags){.add_to_scope = add_to_scope,
+                                                  .single_inst = true},
+                scope, allocs, diags);
             gen_dynpush(&params, child);
         }
     }
