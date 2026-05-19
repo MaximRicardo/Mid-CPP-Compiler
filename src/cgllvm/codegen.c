@@ -112,18 +112,17 @@ static LLVMValueRef codegen_strlit(const struct Literal_String *lit,
                                    LLVMContextRef context, LLVMModuleRef mod)
 {
     isize_t len = Literal_strlit_len(lit) + 1;
-
-    auto ret = LLVMAddGlobal(
-        mod, LLVMArrayType2(LLVMIntType(Types_char_size * 8), len), "$strlit");
-
-    LLVMSetLinkage(ret, LLVMInternalLinkage);
-    LLVMSetGlobalConstant(ret, true);
-
     int elem_size = lit->type == LITERAL_STRINGTYPE_CHAR ? Types_char_size * 8
                     : lit->type == LITERAL_STRINGTYPE_WCHAR
                         ? Types_wchar_size * 8
                     : lit->type == LITERAL_STRINGTYPE_CHAR16 ? 16
                                                              : 32;
+
+    auto ret = LLVMAddGlobal(
+        mod, LLVMArrayType2(LLVMIntTypeInContext(context, elem_size), len), "");
+
+    LLVMSetLinkage(ret, LLVMInternalLinkage);
+    LLVMSetGlobalConstant(ret, true);
 
     LLVMValueRef *elems = mid_malloc(len * sizeof(*elems));
     for (isize_t i = 0; i < len - 1; ++i) {
@@ -131,18 +130,22 @@ static LLVMValueRef codegen_strlit(const struct Literal_String *lit,
         case LITERAL_STRINGTYPE_CHAR:
             elems[i] = LLVMConstInt(LLVMIntTypeInContext(context, elem_size),
                                     lit->c[i], Types_char_signed);
+            break;
 
         case LITERAL_STRINGTYPE_WCHAR:
             elems[i] = LLVMConstInt(LLVMIntTypeInContext(context, elem_size),
                                     lit->wc[i], Types_wchar_signed);
+            break;
 
         case LITERAL_STRINGTYPE_CHAR16:
             elems[i] = LLVMConstInt(LLVMIntTypeInContext(context, elem_size),
                                     lit->c16[i], false);
+            break;
 
         case LITERAL_STRINGTYPE_CHAR32:
             elems[i] = LLVMConstInt(LLVMIntTypeInContext(context, elem_size),
                                     lit->c32[i], false);
+            break;
         }
     }
     elems[len - 1] =
@@ -152,6 +155,7 @@ static LLVMValueRef codegen_strlit(const struct Literal_String *lit,
         ret,
         LLVMConstArray2(LLVMIntTypeInContext(context, elem_size), elems, len));
 
+    free(elems);
     return ret;
 }
 
@@ -169,6 +173,8 @@ static LLVMValueRef codegen_lit_expr(const struct Parser_Expr *expr,
                              expr->info.val.flt);
     else if (Parser_is_strlit(expr->type))
         return codegen_strlit(&expr->info.val.str, context, mod);
+    else if (expr->type == PARSER_EXPRTYPE_NULLPTR_LIT)
+        return LLVMConstPointerNull(LLVMVoidType());
     else
         CRASH("expr isn't a literal");
 }

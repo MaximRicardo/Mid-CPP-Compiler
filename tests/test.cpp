@@ -1,4 +1,5 @@
 int main(int argc, char **argv)
 {
-    auto x = 10 * (23 - 1.f) / 2;
+    // int *p = nullptr;
+    const char *str = "asdf";
 }
