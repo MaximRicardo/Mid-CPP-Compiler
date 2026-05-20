@@ -10,11 +10,14 @@
 #include "macros.h"
 #include "mid_alloc.h"
 #include "parser/ast.h"
+#include "parser/class.h"
 #include "parser/expr.h"
 #include "parser/expr_type.h"
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "scope.h"
+#include "sema/scope.h"
+#include "sema/type.h"
 #include "type.h"
 #include "types.h"
 #include <assert.h>
@@ -112,7 +115,7 @@ void CGLLVM_init_codegen(void)
 }
 
 static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
-                                 struct CGLLVM_Scope *scope,
+                                 const struct CGLLVM_Scope *scope,
                                  LLVMContextRef context, LLVMModuleRef mod,
                                  LLVMBuilderRef builder);
 
@@ -188,7 +191,7 @@ static LLVMValueRef codegen_lit_expr(const struct Parser_Expr *expr,
 }
 
 static LLVMValueRef codegen_ident_expr(const struct Parser_Expr *expr,
-                                       struct CGLLVM_Scope *scope,
+                                       const struct CGLLVM_Scope *scope,
                                        bool load_ref, LLVMBuilderRef builder)
 {
     auto ident = CGLLVM_find_ident_const(scope, expr->info.ident, NULL);
@@ -205,7 +208,7 @@ static bool is_valid_array_subscr_ptr(const struct Parser_Type *type)
 }
 
 static LLVMValueRef codegen_subscr_expr(const struct Parser_Expr *expr,
-                                        struct CGLLVM_Scope *scope,
+                                        const struct CGLLVM_Scope *scope,
                                         LLVMContextRef context,
                                         LLVMModuleRef mod,
                                         LLVMBuilderRef builder)
@@ -225,17 +228,19 @@ static LLVMValueRef codegen_subscr_expr(const struct Parser_Expr *expr,
         lhs_is_array ? lhs : rhs, lhs_is_array ? &rhs : &lhs, 1, "");
 }
 
-static LLVMValueRef cast_assign_operand(const struct Parser_Type *src,
-                                        LLVMValueRef val,
-                                        const struct Parser_Type *dest,
-                                        LLVMContextRef context,
-                                        LLVMBuilderRef builder)
+static LLVMValueRef cast_value(LLVMValueRef val, const struct Parser_Type *src,
+                               const struct Parser_Type *dest,
+                               LLVMContextRef context, LLVMBuilderRef builder)
 {
     if (Parser_are_types_same(src, dest))
         return val;
-    if (Parser_n_indir(src) > 0 && Parser_n_indir(dest) > 0)
+
+    isize_t src_indir = Parser_n_indir(src);
+    isize_t dest_indir = Parser_n_indir(dest);
+
+    // opaque ptrs are used so ptrs of different types shouldn't be an issue
+    if (src_indir > 0 && dest_indir > 0)
         return val;
-    assert(Parser_n_indir(src) == 0 && Parser_n_indir(dest) == 0);
 
     bool src_signed = Parser_is_signed_integral_typespec(src->spec);
     bool src_int = Parser_is_integral_typespec(src->spec);
@@ -245,6 +250,14 @@ static LLVMValueRef cast_assign_operand(const struct Parser_Type *src,
     bool dest_fp = Parser_is_floating_typespec(dest->spec);
 
     LLVMTypeRef dest_type = CGLLVM_convert_parser_type(dest, context);
+
+    if (src_indir == 0 && src_int && dest_indir > 0) {
+        return LLVMBuildIntToPtr(builder, val, dest_type, "");
+    } else if (src_indir > 0 && dest_indir == 0 && dest_int) {
+        return LLVMBuildPtrToInt(builder, val, dest_type, "");
+    } else if (src_indir > 0 || dest_indir > 0) {
+        CRASH("invalid ptr conversion");
+    }
 
     if (src_int && dest_fp) {
         if (src_signed)
@@ -263,8 +276,9 @@ static LLVMValueRef cast_assign_operand(const struct Parser_Type *src,
     CRASH("couldn't cast assignment operand");
 }
 
-static LLVMValueRef cast_arith_expr_operand(const struct Parser_Type *src,
-                                            LLVMValueRef val,
+/*
+static LLVMValueRef cast_arith_expr_operand(LLVMValueRef val,
+                                            const struct Parser_Type *src,
                                             const struct Parser_Type *dest,
                                             LLVMContextRef context,
                                             LLVMBuilderRef builder)
@@ -296,6 +310,7 @@ static LLVMValueRef cast_arith_expr_operand(const struct Parser_Type *src,
 
     return val;
 }
+*/
 
 static void cast_arith_expr_operands(const struct Parser_Expr *expr,
                                      LLVMValueRef *lhs, LLVMValueRef *rhs,
@@ -312,10 +327,8 @@ static void cast_arith_expr_operands(const struct Parser_Expr *expr,
     auto lhs_expr = &expr->info.args.arr[0];
     auto rhs_expr = &expr->info.args.arr[1];
 
-    *lhs = cast_arith_expr_operand(&lhs_expr->ret, *lhs, &expr->ret, context,
-                                   builder);
-    *rhs = cast_arith_expr_operand(&rhs_expr->ret, *rhs, &expr->ret, context,
-                                   builder);
+    *lhs = cast_value(*lhs, &lhs_expr->ret, &expr->ret, context, builder);
+    *rhs = cast_value(*rhs, &rhs_expr->ret, &expr->ret, context, builder);
 }
 
 // add    - if true, lhs + rhs is generated, else, lhs - rhs is generated.
@@ -339,7 +352,7 @@ static LLVMValueRef codegen_ptr_arith_expr(const struct Parser_Expr *expr,
 }
 
 static LLVMValueRef codegen_arith_expr(const struct Parser_Expr *expr,
-                                       struct CGLLVM_Scope *scope,
+                                       const struct CGLLVM_Scope *scope,
                                        LLVMContextRef context,
                                        LLVMModuleRef mod,
                                        LLVMBuilderRef builder)
@@ -420,8 +433,44 @@ static LLVMValueRef codegen_arith_expr(const struct Parser_Expr *expr,
     }
 }
 
+static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
+                                   const struct CGLLVM_Scope *scope,
+                                   LLVMContextRef context, LLVMModuleRef mod,
+                                   LLVMBuilderRef builder)
+{
+    LLVMValueRef *ret = mid_malloc(expr->info.args.len * sizeof(*ret));
+
+    for (isize_t i = 0; i < expr->info.args.len - 1; ++i) {
+        auto arg = &expr->info.args.arr[i + 1];
+
+        ret[i] = codegen_expr(arg, scope, context, mod, builder);
+    }
+
+    return ret;
+}
+
+static LLVMValueRef codegen_call_expr(const struct Parser_Expr *expr,
+                                      const struct CGLLVM_Scope *scope,
+                                      LLVMContextRef context, LLVMModuleRef mod,
+                                      LLVMBuilderRef builder)
+{
+    char *name = CGLLVM_mangle_func(&expr->node->func_decl);
+
+    auto root = CGLLVM_find_root_scope_const(scope);
+    auto func = CGLLVM_find_ident_const(root, name, NULL);
+
+    LLVMValueRef *args = get_call_args(expr, scope, context, mod, builder);
+
+    auto ret = LLVMBuildCall2(builder, func->type, func->val, args,
+                              expr->info.args.len - 1, "");
+
+    free(args);
+    free(name);
+    return ret;
+}
+
 static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
-                                 struct CGLLVM_Scope *scope,
+                                 const struct CGLLVM_Scope *scope,
                                  LLVMContextRef context, LLVMModuleRef mod,
                                  LLVMBuilderRef builder)
 {
@@ -430,12 +479,14 @@ static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
 
     if (Parser_is_numlit(expr->type))
         return codegen_lit_expr(expr, context, mod);
-    if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
+    else if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
         return codegen_ident_expr(expr, scope, false, builder);
-    if (expr->type == PARSER_EXPRTYPE_ARRAY_SUBSCR)
+    else if (expr->type == PARSER_EXPRTYPE_ARRAY_SUBSCR)
         return codegen_subscr_expr(expr, scope, context, mod, builder);
     else if (Parser_is_arith_op(expr->type))
         return codegen_arith_expr(expr, scope, context, mod, builder);
+    else if (expr->type == PARSER_EXPRTYPE_FUNC_CALL)
+        return codegen_call_expr(expr, scope, context, mod, builder);
     else {
         printf("expr at %" PRIi32 ":%" PRIi32 "\n", expr->tok->pos.line,
                expr->tok->pos.column);
@@ -518,24 +569,50 @@ static void codegen_func_body(const struct Parser_ASTNode *node,
     LLVMDisposeBuilder(builder);
 }
 
+static struct Parser_Type implicit_this_type(const struct Parser_ASTNode *node)
+{
+    const struct Sema_Scope *parent = Parser_func_parent(&node->func_decl);
+    return Sema_node_type(parent->node, parent->parent, NULL);
+}
+
+static LLVMTypeRef *get_func_params(const struct Parser_ASTNode *node,
+                                    LLVMContextRef context,
+                                    isize_t *out_n_params)
+{
+    bool implicit_this = Parser_func_takes_implicit_this(&node->func_decl);
+    isize_t n_params = node->func_decl.params.len + implicit_this;
+    if (out_n_params)
+        *out_n_params = n_params;
+
+    LLVMTypeRef *params = mid_malloc(n_params * sizeof(*params));
+    for (isize_t i = 0; i < node->func_decl.params.len; ++i) {
+        params[i + implicit_this] = CGLLVM_convert_parser_type(
+            &node->func_decl.params.arr[i]->var_decl.insts.arr[0].type,
+            context);
+    }
+
+    if (implicit_this) {
+        struct Parser_Type type = implicit_this_type(node);
+        params[0] = CGLLVM_convert_parser_type(&type, context);
+        Parser_Type_deinit(&type);
+    }
+
+    return params;
+}
+
 static void codegen_func_node(const struct Parser_ASTNode *node,
                               struct CGLLVM_Scope *scope,
                               struct CGLLVM_Allocators *allocs,
                               LLVMContextRef context, LLVMModuleRef mod)
 {
-    LLVMTypeRef *params =
-        mid_malloc(node->func_decl.params.len * sizeof(*params));
-    for (isize_t i = 0; i < node->func_decl.params.len; ++i) {
-        params[i] = CGLLVM_convert_parser_type(
-            &node->func_decl.params.arr[i]->var_decl.insts.arr[0].type,
-            context);
-    }
+    isize_t n_params;
+    LLVMTypeRef *params = get_func_params(node, context, &n_params);
 
     struct CGLLVM_Ident ident = {};
 
     ident.type = LLVMFunctionType(
         CGLLVM_convert_parser_type(&node->func_decl.type, context), params,
-        node->func_decl.params.len, node->func_decl.variadic);
+        n_params, node->func_decl.variadic);
     free(params);
 
     ident.name = CGLLVM_mangle_func(&node->func_decl);
@@ -565,8 +642,8 @@ static void codegen_var_inst_node(const struct Parser_VarDeclInst *inst,
 
     if (inst->init.expr) {
         auto init = codegen_expr(inst->init.expr, scope, context, mod, builder);
-        init = cast_assign_operand(&inst->init.expr->ret, init, &inst->type,
-                                   context, builder);
+        init = cast_value(init, &inst->init.expr->ret, &inst->type, context,
+                          builder);
         LLVMBuildStore(builder, init, ident.val);
     }
 
@@ -594,6 +671,41 @@ static void codegen_ret_node(const struct Parser_ASTNode *node,
     }
 }
 
+static void codegen_class_methods(const struct Parser_ASTNode *node,
+                                  struct CGLLVM_Scope *scope,
+                                  struct CGLLVM_Allocators *allocs,
+                                  LLVMContextRef context, LLVMModuleRef mod)
+{
+    for (isize_t i = 0; i < node->class_.childs.len; ++i) {
+        auto child = node->class_.childs.arr[i];
+
+        if (child->type != PARSER_ASTNODETYPE_FUNC_DECL)
+            continue;
+
+        codegen_func_node(child, scope, allocs, context, mod);
+    }
+}
+
+static void codegen_class_node(const struct Parser_ASTNode *node,
+                               struct CGLLVM_Scope *scope,
+                               struct CGLLVM_Allocators *allocs,
+                               LLVMContextRef context, LLVMModuleRef mod)
+{
+    /*
+    char *name = CGLLVM_named_type_full_name(&(struct Parser_TypeNamed){
+        .parent = node->class_.parent, .ident = node->class_.ident_idx});
+
+    auto type = LLVMStructCreateNamed(context, name);
+    auto fields = CGLLVM_class_to_struct_fields(&node->class_, context);
+    LLVMStructSetBody(type, fields.arr, fields.len, false);
+
+    gen_dyndeinit(&fields);
+    free(name);
+    */
+
+    codegen_class_methods(node, scope, allocs, context, mod);
+}
+
 static void codegen_node(const struct Parser_ASTNode *node,
                          struct CGLLVM_Scope *scope,
                          struct CGLLVM_Allocators *allocs,
@@ -616,6 +728,10 @@ static void codegen_node(const struct Parser_ASTNode *node,
 
     case PARSER_ASTNODETYPE_RETURN:
         codegen_ret_node(node, scope, context, mod, builder);
+        break;
+
+    case PARSER_ASTNODETYPE_CLASS:
+        codegen_class_node(node, scope, allocs, context, mod);
         break;
 
     case PARSER_ASTNODETYPE_EXPR:

@@ -1,11 +1,13 @@
-int sum(int x, int y)
-{
-    return x + y;
-}
+class TestClass {
+public:
+    int x, y, z;
+
+    void func();
+};
+
+void func(TestClass);
 
 int main(int argc, char **argv)
 {
-    short x = 10;
-    int y = 20;
-    int z = x + y;
+    TestClass var;
 }

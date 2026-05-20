@@ -25,5 +25,9 @@ struct CGLLVM_Ident *CGLLVM_find_ident(struct CGLLVM_Scope *scope,
                                        struct CGLLVM_Scope **out_ident_scope);
 
 const struct CGLLVM_Scope *
-CGLLVM_find_nearest_func_const(const struct CGLLVM_Scope *scope);
-struct CGLLVM_Scope *CGLLVM_find_nearest_func(struct CGLLVM_Scope *scope);
+CGLLVM_find_func_scope_const(const struct CGLLVM_Scope *scope);
+struct CGLLVM_Scope *CGLLVM_find_func_scope(struct CGLLVM_Scope *scope);
+
+const struct CGLLVM_Scope *
+CGLLVM_find_root_scope_const(const struct CGLLVM_Scope *scope);
+struct CGLLVM_Scope *CGLLVM_find_root_scope(struct CGLLVM_Scope *scope);

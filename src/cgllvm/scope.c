@@ -38,17 +38,31 @@ struct CGLLVM_Ident *CGLLVM_find_ident(struct CGLLVM_Scope *scope,
 }
 
 const struct CGLLVM_Scope *
-CGLLVM_find_nearest_func_const(const struct CGLLVM_Scope *scope)
+CGLLVM_find_func_scope_const(const struct CGLLVM_Scope *scope)
 {
     if (scope->node && scope->node->type == PARSER_ASTNODETYPE_FUNC_DECL)
         return scope;
     else if (scope->parent)
-        return CGLLVM_find_nearest_func_const(scope->parent);
+        return CGLLVM_find_func_scope_const(scope->parent);
     else
         return NULL;
 }
 
-struct CGLLVM_Scope *CGLLVM_find_nearest_func(struct CGLLVM_Scope *scope)
+struct CGLLVM_Scope *CGLLVM_find_func_scope(struct CGLLVM_Scope *scope)
 {
-    return (struct CGLLVM_Scope *)CGLLVM_find_nearest_func_const(scope);
+    return (struct CGLLVM_Scope *)CGLLVM_find_func_scope_const(scope);
+}
+
+const struct CGLLVM_Scope *
+CGLLVM_find_root_scope_const(const struct CGLLVM_Scope *scope)
+{
+    if (scope->parent)
+        return scope->parent;
+    else
+        return scope;
+}
+
+struct CGLLVM_Scope *CGLLVM_find_root_scope(struct CGLLVM_Scope *scope)
+{
+    return (struct CGLLVM_Scope *)CGLLVM_find_root_scope_const(scope);
 }
