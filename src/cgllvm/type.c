@@ -14,11 +14,17 @@
 #include <llvm-c-20/llvm-c/Core.h>
 #include <llvm-c-20/llvm-c/Types.h>
 
+static bool is_ptr(const struct Parser_Type *type)
+{
+    return Parser_n_indir(type) > 0 || type->lv_ref || type->rv_ref ||
+           type->spec == PARSER_TYPESPEC_FPTR ||
+           type->spec == PARSER_TYPESPEC_NULLPTR;
+}
+
 LLVMTypeRef CGLLVM_convert_parser_type(const struct Parser_Type *type,
                                        LLVMContextRef context)
 {
-    if (Parser_n_indir(type) > 0 || type->spec == PARSER_TYPESPEC_FPTR ||
-        type->spec == PARSER_TYPESPEC_NULLPTR)
+    if (is_ptr(type))
         return LLVMPointerTypeInContext(context, 0);
 
     switch (type->spec) {
@@ -125,10 +131,11 @@ char *CGLLVM_named_type_full_name(const struct Parser_TypeNamed *named)
     return str.str;
 }
 
-LLVMTypeRef CGLLVM_create_struct(const struct Parser_Class *src,
-                                 LLVMContextRef context)
+struct CGLLVM_TypeRefVec
+CGLLVM_class_to_struct_fields(const struct Parser_Class *src,
+                              LLVMContextRef context)
 {
-    struct CGLLVM_TypeRefVec fields = {};
+    struct CGLLVM_TypeRefVec ret = {};
 
     for (isize_t i = 0; i < src->childs.len; ++i) {
         const struct Parser_ASTNode *child = src->childs.arr[i];
@@ -139,10 +146,18 @@ LLVMTypeRef CGLLVM_create_struct(const struct Parser_Class *src,
         for (isize_t j = 0; j < child->var_decl.insts.len; ++i) {
             const struct Parser_VarDeclInst *inst =
                 &child->var_decl.insts.arr[i];
-            gen_dynpush(&fields,
-                        CGLLVM_convert_parser_type(&inst->type, context));
+            gen_dynpush(&ret, CGLLVM_convert_parser_type(&inst->type, context));
         }
     }
+
+    return ret;
+}
+
+LLVMTypeRef CGLLVM_create_struct(const struct Parser_Class *src,
+                                 LLVMContextRef context)
+{
+    struct CGLLVM_TypeRefVec fields =
+        CGLLVM_class_to_struct_fields(src, context);
 
     auto ret = LLVMStructTypeInContext(context, fields.arr, fields.len, false);
     gen_dyndeinit(&fields);
