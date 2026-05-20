@@ -520,7 +520,8 @@ static LLVMValueRef codegen_memb_sel(const struct Parser_Expr *expr,
     if (idx == -1)
         return NULL;
 
-    auto struct_type = CGLLVM_convert_parser_type(&lhs_expr->ret, context);
+    auto struct_type = CGLLVM_create_struct(
+        &Parser_named_type_ident(&lhs_expr->ret.named)->decl->class_, context);
     LLVMValueRef ptr_idx =
         LLVMConstInt(LLVMInt32TypeInContext(context), idx, true);
     auto ptr = LLVMBuildGEP2(builder, struct_type, lhs, &ptr_idx, 1, "");
