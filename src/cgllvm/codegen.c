@@ -205,6 +205,14 @@ static LLVMValueRef codegen_ident_expr(const struct Parser_Expr *expr,
         return LLVMBuildLoad2(builder, ident->type, ident->val, "");
 }
 
+static LLVMValueRef get_implicit_this(const struct CGLLVM_Scope *scope)
+{
+    auto func = CGLLVM_find_func_scope_const(scope);
+    auto f_ident = &func->parent->idents.arr[func->ident_idx];
+
+    return LLVMGetParam(f_ident->val, 0);
+}
+
 static bool is_valid_array_subscr_ptr(const struct Parser_Type *type)
 {
     return type->spec == PARSER_TYPESPEC_ARRAY || Parser_n_indir(type) > 0;
@@ -466,7 +474,7 @@ static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
         auto val = codegen_expr(arg, scope, context, mod, builder);
         val = cast_value(val, &arg->ret, &param->type, context, builder);
 
-        ret[i] = val;
+        ret[i + implicit_this] = val;
     }
 
     if (implicit_this) {
@@ -642,6 +650,8 @@ static LLVMValueRef codegen_expr_ref(const struct Parser_Expr *expr,
 
     if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
         return codegen_ident_expr(expr, scope, true, builder);
+    else if (expr->type == PARSER_EXPRTYPE_THIS)
+        return get_implicit_this(scope);
     else if (expr->type == PARSER_EXPRTYPE_ARRAY_SUBSCR)
         return codegen_subscr_expr(expr, scope, true, context, mod, builder);
     else if (Parser_is_memb_sel(expr->type))
@@ -664,6 +674,8 @@ static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
         return codegen_lit_expr(expr, context, mod);
     else if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
         return codegen_ident_expr(expr, scope, false, builder);
+    else if (expr->type == PARSER_EXPRTYPE_THIS)
+        return get_implicit_this(scope);
     else if (expr->type == PARSER_EXPRTYPE_ARRAY_SUBSCR)
         return codegen_subscr_expr(expr, scope, false, context, mod, builder);
     else if (Parser_is_arith_op(expr->type))
