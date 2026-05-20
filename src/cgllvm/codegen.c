@@ -1,5 +1,9 @@
 #include "codegen.h"
+#include "allocator.h"
+#include "cgllvm/ident.h"
 #include "cgllvm/name_mangle.h"
+#include "generics/bumpalloc.h"
+#include "generics/dynarray.h"
 #include "ints.h"
 #include "literal.h"
 #include "macros.h"
@@ -8,6 +12,7 @@
 #include "parser/expr.h"
 #include "parser/expr_type.h"
 #include "parser/type.h"
+#include "scope.h"
 #include "type.h"
 #include "types.h"
 #include <assert.h>
@@ -105,6 +110,7 @@ void CGLLVM_init_codegen(void)
 }
 
 static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
+                                 struct CGLLVM_Scope *scope,
                                  LLVMContextRef context, LLVMModuleRef mod,
                                  LLVMBuilderRef builder);
 
@@ -179,18 +185,33 @@ static LLVMValueRef codegen_lit_expr(const struct Parser_Expr *expr,
         CRASH("expr isn't a literal");
 }
 
+static LLVMValueRef codegen_ident_expr(const struct Parser_Expr *expr,
+                                       struct CGLLVM_Scope *scope,
+                                       bool load_ref, LLVMBuilderRef builder)
+{
+    auto ident = CGLLVM_find_ident_const(scope, expr->info.ident, NULL);
+
+    if (load_ref)
+        return ident->val;
+    else
+        return LLVMBuildLoad2(builder, ident->type, ident->val, "");
+}
+
 static bool is_valid_array_subscr_ptr(const struct Parser_Type *type)
 {
     return type->spec == PARSER_TYPESPEC_ARRAY || Parser_n_indir(type) > 0;
 }
 
 static LLVMValueRef codegen_subscr_expr(const struct Parser_Expr *expr,
+                                        struct CGLLVM_Scope *scope,
                                         LLVMContextRef context,
                                         LLVMModuleRef mod,
                                         LLVMBuilderRef builder)
 {
-    auto lhs = codegen_expr(&expr->info.args.arr[0], context, mod, builder);
-    auto rhs = codegen_expr(&expr->info.args.arr[1], context, mod, builder);
+    auto lhs =
+        codegen_expr(&expr->info.args.arr[0], scope, context, mod, builder);
+    auto rhs =
+        codegen_expr(&expr->info.args.arr[1], scope, context, mod, builder);
 
     auto lhs_t = &expr->info.args.arr[0].ret;
     auto rhs_t = &expr->info.args.arr[1].ret;
@@ -248,14 +269,17 @@ static void cast_arith_expr_operands(const struct Parser_Expr *expr,
 }
 
 static LLVMValueRef codegen_arith_expr(const struct Parser_Expr *expr,
+                                       struct CGLLVM_Scope *scope,
                                        LLVMContextRef context,
                                        LLVMModuleRef mod,
                                        LLVMBuilderRef builder)
 {
-    auto lhs = codegen_expr(&expr->info.args.arr[0], context, mod, builder);
+    auto lhs =
+        codegen_expr(&expr->info.args.arr[0], scope, context, mod, builder);
     LLVMValueRef rhs;
     if (Parser_is_binop(expr->type))
-        rhs = codegen_expr(&expr->info.args.arr[1], context, mod, builder);
+        rhs =
+            codegen_expr(&expr->info.args.arr[1], scope, context, mod, builder);
 
     cast_arith_expr_operands(expr, &lhs, &rhs, context, builder);
 
@@ -319,27 +343,49 @@ static LLVMValueRef codegen_arith_expr(const struct Parser_Expr *expr,
 }
 
 static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
+                                 struct CGLLVM_Scope *scope,
                                  LLVMContextRef context, LLVMModuleRef mod,
                                  LLVMBuilderRef builder)
 {
     if (Parser_is_numlit(expr->type))
         return codegen_lit_expr(expr, context, mod);
+    if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
+        return codegen_ident_expr(expr, scope, false, builder);
     if (expr->type == PARSER_EXPRTYPE_ARRAY_SUBSCR)
-        return codegen_subscr_expr(expr, context, mod, builder);
+        return codegen_subscr_expr(expr, scope, context, mod, builder);
     else if (Parser_is_arith_op(expr->type))
-        return codegen_arith_expr(expr, context, mod, builder);
-    else
+        return codegen_arith_expr(expr, scope, context, mod, builder);
+    else {
+        printf("expr at %" PRIi32 ":%" PRIi32 "\n", expr->tok->pos.line,
+               expr->tok->pos.column);
         CRASH("bad expr type\n");
+    }
 }
 
 static void codegen_node(const struct Parser_ASTNode *node,
+                         struct CGLLVM_Scope *scope,
+                         struct CGLLVM_Allocators *allocs,
                          LLVMContextRef context, LLVMModuleRef mod,
                          LLVMBuilderRef builder);
 
+static struct CGLLVM_Scope *create_func_scope(struct CGLLVM_Scope *scope,
+                                              struct CGLLVM_Allocators *allocs,
+                                              const struct Parser_ASTNode *node)
+{
+    struct CGLLVM_Scope *ret;
+    gen_bumpmalloc(&allocs->scope, &ret);
+    *ret = (struct CGLLVM_Scope){.parent = scope, .node = node};
+    return ret;
+}
+
 static void codegen_func_body(const struct Parser_ASTNode *node,
+                              struct CGLLVM_Scope *parent_scope,
+                              struct CGLLVM_Allocators *allocs,
                               LLVMValueRef func, LLVMContextRef context,
                               LLVMModuleRef mod)
 {
+    auto scope = create_func_scope(parent_scope, allocs, node);
+
     LLVMBasicBlockRef entry =
         LLVMAppendBasicBlockInContext(context, func, "entry");
     LLVMBuilderRef builder = LLVMCreateBuilderInContext(context);
@@ -348,7 +394,7 @@ static void codegen_func_body(const struct Parser_ASTNode *node,
     for (isize_t i = 0; i < node->func_decl.nodes.len; ++i) {
         auto child = node->func_decl.nodes.arr[i];
 
-        codegen_node(child, context, mod, builder);
+        codegen_node(child, scope, allocs, context, mod, builder);
     }
 
     LLVMBuildRet(builder,
@@ -357,6 +403,8 @@ static void codegen_func_body(const struct Parser_ASTNode *node,
 }
 
 static void codegen_func_node(const struct Parser_ASTNode *node,
+                              struct CGLLVM_Scope *scope,
+                              struct CGLLVM_Allocators *allocs,
                               LLVMContextRef context, LLVMModuleRef mod)
 {
     LLVMTypeRef *params =
@@ -367,21 +415,24 @@ static void codegen_func_node(const struct Parser_ASTNode *node,
             context);
     }
 
-    LLVMTypeRef type = LLVMFunctionType(
+    struct CGLLVM_Ident ident = {};
+
+    ident.type = LLVMFunctionType(
         CGLLVM_convert_parser_type(&node->func_decl.type, context), params,
         node->func_decl.params.len, node->func_decl.variadic);
-
-    char *name = CGLLVM_mangle_func(&node->func_decl);
-    auto func = LLVMAddFunction(mod, name, type);
-
-    free(name);
     free(params);
 
+    ident.name = CGLLVM_mangle_func(&node->func_decl);
+    ident.val = LLVMAddFunction(mod, ident.name, ident.type);
+
+    gen_dynpush(&scope->idents, ident);
+
     if (node->func_decl.nodes.len > 0)
-        codegen_func_body(node, func, context, mod);
+        codegen_func_body(node, scope, allocs, ident.val, context, mod);
 }
 
 static void codegen_var_inst_node(const struct Parser_VarDeclInst *inst,
+                                  struct CGLLVM_Scope *scope,
                                   LLVMContextRef context, LLVMModuleRef mod,
                                   LLVMBuilderRef builder)
 {
@@ -390,25 +441,31 @@ static void codegen_var_inst_node(const struct Parser_VarDeclInst *inst,
 
     assert(!inst->has_ctor);
 
-    auto ptr = LLVMBuildAlloca(
-        builder, CGLLVM_convert_parser_type(&inst->type, context), inst->name);
+    struct CGLLVM_Ident ident = {.name = strdup(inst->name)};
+
+    ident.type = CGLLVM_convert_parser_type(&inst->type, context);
+    ident.val = LLVMBuildAlloca(builder, ident.type, inst->name);
 
     if (inst->init.expr) {
-        auto init = codegen_expr(inst->init.expr, context, mod, builder);
-        LLVMBuildStore(builder, init, ptr);
+        auto init = codegen_expr(inst->init.expr, scope, context, mod, builder);
+        LLVMBuildStore(builder, init, ident.val);
     }
+
+    gen_dynpush(&scope->idents, ident);
 }
 
 static void codegen_var_node(const struct Parser_ASTNode *node,
-                             LLVMContextRef context, LLVMModuleRef mod,
-                             LLVMBuilderRef builder)
+                             struct CGLLVM_Scope *scope, LLVMContextRef context,
+                             LLVMModuleRef mod, LLVMBuilderRef builder)
 {
     for (isize_t i = 0; i < node->var_decl.insts.len; ++i)
-        codegen_var_inst_node(&node->var_decl.insts.arr[i], context, mod,
+        codegen_var_inst_node(&node->var_decl.insts.arr[i], scope, context, mod,
                               builder);
 }
 
 static void codegen_node(const struct Parser_ASTNode *node,
+                         struct CGLLVM_Scope *scope,
+                         struct CGLLVM_Allocators *allocs,
                          LLVMContextRef context, LLVMModuleRef mod,
                          LLVMBuilderRef builder)
 {
@@ -419,15 +476,15 @@ static void codegen_node(const struct Parser_ASTNode *node,
         CRASH("root node encountered within AST");
 
     case PARSER_ASTNODETYPE_FUNC_DECL:
-        codegen_func_node(node, context, mod);
+        codegen_func_node(node, scope, allocs, context, mod);
         break;
 
     case PARSER_ASTNODETYPE_VAR_DECL:
-        codegen_var_node(node, context, mod, builder);
+        codegen_var_node(node, scope, context, mod, builder);
         break;
 
     case PARSER_ASTNODETYPE_EXPR:
-        codegen_expr(&node->expr, context, mod, builder);
+        codegen_expr(&node->expr, scope, context, mod, builder);
 
     default:
         break;
@@ -455,8 +512,15 @@ void CGLLVM_codegen(const struct Parser_ASTNode *root)
     LLVMModuleRef mod =
         LLVMModuleCreateWithNameInContext("test_module", context);
 
+    struct CGLLVM_Allocators allocs = {};
+    struct CGLLVM_Scope root_scope = {};
+
     for (isize_t i = 0; i < root->root.len; ++i)
-        codegen_node(root->root.arr[i], context, mod, NULL);
+        codegen_node(root->root.arr[i], &root_scope, &allocs, context, mod,
+                     NULL);
+
+    CGLLVM_Scope_deinit(&root_scope);
+    CGLLVM_Allocators_deinit(&allocs);
 
     verify_module(mod);
     print_module(mod);

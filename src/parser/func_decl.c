@@ -729,3 +729,9 @@ bool Parser_func_takes_implicit_this(const struct Parser_FuncDecl *self)
     return Parser_func_is_method(self) && !self->type.squals.is_static &&
            !Parser_func_is_ctor(self);
 }
+
+bool Parser_func_is_main(const struct Parser_FuncDecl *self)
+{
+    return self->param_scope->parent->type == SEMA_SCOPETYPE_ROOT &&
+           !strcmp(self->name, "main");
+}
