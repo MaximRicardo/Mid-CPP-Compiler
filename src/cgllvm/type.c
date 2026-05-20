@@ -13,6 +13,7 @@
 #include "types.h"
 #include <llvm-c-20/llvm-c/Core.h>
 #include <llvm-c-20/llvm-c/Types.h>
+#include <string.h>
 
 static bool is_ptr(const struct Parser_Type *type)
 {
@@ -151,6 +152,31 @@ CGLLVM_class_to_struct_fields(const struct Parser_Class *src,
     }
 
     return ret;
+}
+
+isize_t CGLLVM_class_field_to_struct_field_idx(const struct Parser_Class *src,
+                                               const char *name)
+{
+    isize_t ret = 0;
+
+    for (isize_t i = 0; i < src->childs.len; ++i) {
+        const struct Parser_ASTNode *child = src->childs.arr[i];
+
+        if (child->type != PARSER_ASTNODETYPE_VAR_DECL)
+            continue;
+
+        for (isize_t j = 0; j < child->var_decl.insts.len; ++j) {
+            const struct Parser_VarDeclInst *inst =
+                &child->var_decl.insts.arr[j];
+
+            if (!strcmp(inst->name, name))
+                return ret;
+
+            ++ret;
+        }
+    }
+
+    return -1;
 }
 
 LLVMTypeRef CGLLVM_create_struct(const struct Parser_Class *src,

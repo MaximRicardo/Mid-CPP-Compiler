@@ -117,6 +117,10 @@ static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
                                  const struct CGLLVM_Scope *scope,
                                  LLVMContextRef context, LLVMModuleRef mod,
                                  LLVMBuilderRef builder);
+static LLVMValueRef codegen_expr_ref(const struct Parser_Expr *expr,
+                                     const struct CGLLVM_Scope *scope,
+                                     LLVMContextRef context, LLVMModuleRef mod,
+                                     LLVMBuilderRef builder);
 
 static LLVMValueRef codegen_strlit(const struct Literal_String *lit,
                                    LLVMContextRef context, LLVMModuleRef mod)
@@ -208,7 +212,7 @@ static bool is_valid_array_subscr_ptr(const struct Parser_Type *type)
 
 static LLVMValueRef codegen_subscr_expr(const struct Parser_Expr *expr,
                                         const struct CGLLVM_Scope *scope,
-                                        LLVMContextRef context,
+                                        bool load_ref, LLVMContextRef context,
                                         LLVMModuleRef mod,
                                         LLVMBuilderRef builder)
 {
@@ -221,10 +225,16 @@ static LLVMValueRef codegen_subscr_expr(const struct Parser_Expr *expr,
     auto rhs_t = &expr->info.args.arr[1].ret;
     bool lhs_is_array = is_valid_array_subscr_ptr(lhs_t);
 
-    return LLVMBuildGEP2(
-        builder,
-        CGLLVM_convert_parser_type(lhs_is_array ? lhs_t : rhs_t, context),
-        lhs_is_array ? lhs : rhs, lhs_is_array ? &rhs : &lhs, 1, "");
+    auto type =
+        CGLLVM_convert_parser_type(lhs_is_array ? lhs_t : rhs_t, context);
+
+    auto ptr = LLVMBuildGEP2(builder, type, lhs_is_array ? lhs : rhs,
+                             lhs_is_array ? &rhs : &lhs, 1, "");
+
+    if (load_ref)
+        return ptr;
+
+    return LLVMBuildLoad2(builder, type, ptr, "");
 }
 
 static LLVMValueRef cast_value(LLVMValueRef val, const struct Parser_Type *src,
@@ -370,7 +380,6 @@ static LLVMValueRef codegen_arith_expr(const struct Parser_Expr *expr,
         return LLVMBuildMul(builder, lhs, rhs, "");
 
     case PARSER_EXPRTYPE_DIV:
-        // printf("lhs is float = %d\n", lhs);
         if (Parser_is_floating_typespec(expr->ret.spec))
             return LLVMBuildFDiv(builder, lhs, rhs, "");
         else if (Parser_is_signed_integral_typespec(expr->ret.spec))
@@ -489,6 +498,154 @@ static LLVMValueRef codegen_call_expr(const struct Parser_Expr *expr,
     return ret;
 }
 
+static LLVMValueRef codegen_memb_sel(const struct Parser_Expr *expr,
+                                     const struct CGLLVM_Scope *scope,
+                                     bool load_ref, LLVMContextRef context,
+                                     LLVMModuleRef mod, LLVMBuilderRef builder)
+{
+    const struct Parser_Expr *lhs_expr = &expr->info.args.arr[0];
+    const struct Parser_Expr *rhs_expr = &expr->info.args.arr[1];
+
+    LLVMValueRef lhs;
+    if (expr->type == PARSER_EXPRTYPE_PTR_MEMB_SEL)
+        lhs = codegen_expr(lhs_expr, scope, context, mod, builder);
+    else
+        lhs = codegen_expr_ref(lhs_expr, scope, context, mod, builder);
+
+    assert(rhs_expr->type == PARSER_EXPRTYPE_IDENTIFIER);
+
+    auto class_ = &Parser_named_type_ident(&lhs_expr->ret.named)->decl->class_;
+    isize_t idx =
+        CGLLVM_class_field_to_struct_field_idx(class_, rhs_expr->info.ident);
+    if (idx == -1)
+        return NULL;
+
+    auto struct_type = CGLLVM_convert_parser_type(&lhs_expr->ret, context);
+    LLVMValueRef ptr_idx =
+        LLVMConstInt(LLVMInt32TypeInContext(context), idx, true);
+    auto ptr = LLVMBuildGEP2(builder, struct_type, lhs, &ptr_idx, 1, "");
+    if (load_ref)
+        return ptr;
+
+    auto res_t = CGLLVM_convert_parser_type(&expr->ret, context);
+    return LLVMBuildLoad2(builder, res_t, ptr, "");
+}
+
+static LLVMValueRef codegen_assign_expr(const struct Parser_Expr *expr,
+                                        const struct CGLLVM_Scope *scope,
+                                        bool load_ref, LLVMContextRef context,
+                                        LLVMModuleRef mod,
+                                        LLVMBuilderRef builder)
+{
+    const struct Parser_Expr *lhs_expr = &expr->info.args.arr[0];
+    const struct Parser_Expr *rhs_expr = &expr->info.args.arr[1];
+
+    auto lhs = codegen_expr_ref(lhs_expr, scope, context, mod, builder);
+    auto rhs = codegen_expr(rhs_expr, scope, context, mod, builder);
+
+    LLVMValueRef deref_lhs;
+    if (load_ref || expr->type != PARSER_EXPRTYPE_ASSIGN) {
+        deref_lhs = LLVMBuildLoad2(
+            builder, CGLLVM_convert_parser_type(&lhs_expr->ret, context), lhs,
+            "");
+    }
+
+    LLVMValueRef res;
+    switch (expr->type) {
+    case PARSER_EXPRTYPE_ASSIGN:
+        res = rhs;
+        break;
+
+    case PARSER_EXPRTYPE_MUL_ASSIGN:
+        res = LLVMBuildMul(builder, deref_lhs, rhs, "");
+        break;
+
+    case PARSER_EXPRTYPE_DIV_ASSIGN:
+        if (Parser_is_floating_typespec(expr->ret.spec))
+            res = LLVMBuildFDiv(builder, deref_lhs, rhs, "");
+        else if (Parser_is_signed_integral_typespec(expr->ret.spec))
+            res = LLVMBuildSDiv(builder, deref_lhs, rhs, "");
+        else
+            res = LLVMBuildUDiv(builder, deref_lhs, rhs, "");
+        break;
+
+    case PARSER_EXPRTYPE_MOD_ASSIGN:
+        if (Parser_is_floating_typespec(expr->ret.spec))
+            res = LLVMBuildFRem(builder, deref_lhs, rhs, "");
+        else if (Parser_is_signed_integral_typespec(expr->ret.spec))
+            res = LLVMBuildSRem(builder, deref_lhs, rhs, "");
+        else
+            res = LLVMBuildURem(builder, deref_lhs, rhs, "");
+        break;
+
+    case PARSER_EXPRTYPE_ADD_ASSIGN:
+        if (Parser_n_indir(&expr->ret) == 0)
+            res = LLVMBuildAdd(builder, deref_lhs, rhs, "");
+        else
+            res = codegen_ptr_arith_expr(expr, deref_lhs, rhs, true, context,
+                                         builder);
+        break;
+
+    case PARSER_EXPRTYPE_SUB_ASSIGN:
+        if (Parser_n_indir(&expr->ret) == 0)
+            res = LLVMBuildSub(builder, deref_lhs, rhs, "");
+        else
+            res = codegen_ptr_arith_expr(expr, deref_lhs, rhs, false, context,
+                                         builder);
+        break;
+
+    case PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN:
+        res = LLVMBuildShl(builder, deref_lhs, rhs, "");
+        break;
+
+    case PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN:
+        if (Parser_is_signed_integral_typespec(expr->ret.spec))
+            res = LLVMBuildAShr(builder, deref_lhs, rhs, "");
+        else
+            res = LLVMBuildLShr(builder, deref_lhs, rhs, "");
+        break;
+
+    case PARSER_EXPRTYPE_AND_ASSIGN:
+        res = LLVMBuildAnd(builder, deref_lhs, rhs, "");
+        break;
+
+    case PARSER_EXPRTYPE_XOR_ASSIGN:
+        res = LLVMBuildXor(builder, deref_lhs, rhs, "");
+        break;
+
+    case PARSER_EXPRTYPE_OR_ASSIGN:
+        res = LLVMBuildOr(builder, deref_lhs, rhs, "");
+        break;
+
+    default:
+        CRASH("not an assignment expr");
+    }
+
+    LLVMBuildStore(builder, res, lhs);
+    return load_ref ? lhs : deref_lhs;
+}
+
+// loads in a reference to the result, like in the expression &p[10], the value
+// p + 10 is returned
+static LLVMValueRef codegen_expr_ref(const struct Parser_Expr *expr,
+                                     const struct CGLLVM_Scope *scope,
+                                     LLVMContextRef context, LLVMModuleRef mod,
+                                     LLVMBuilderRef builder)
+{
+    assert(!expr->overloaded);
+
+    if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
+        return codegen_ident_expr(expr, scope, true, builder);
+    else if (expr->type == PARSER_EXPRTYPE_ARRAY_SUBSCR)
+        return codegen_subscr_expr(expr, scope, true, context, mod, builder);
+    else if (Parser_is_memb_sel(expr->type))
+        return codegen_memb_sel(expr, scope, true, context, mod, builder);
+    else if (Parser_is_assignment(expr->type))
+        return codegen_assign_expr(expr, scope, false, context, mod, builder);
+    else
+        CRASH("can't get ref of expr type");
+}
+
 static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
                                  const struct CGLLVM_Scope *scope,
                                  LLVMContextRef context, LLVMModuleRef mod,
@@ -502,11 +659,15 @@ static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
     else if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
         return codegen_ident_expr(expr, scope, false, builder);
     else if (expr->type == PARSER_EXPRTYPE_ARRAY_SUBSCR)
-        return codegen_subscr_expr(expr, scope, context, mod, builder);
+        return codegen_subscr_expr(expr, scope, false, context, mod, builder);
     else if (Parser_is_arith_op(expr->type))
         return codegen_arith_expr(expr, scope, context, mod, builder);
     else if (expr->type == PARSER_EXPRTYPE_FUNC_CALL)
         return codegen_call_expr(expr, scope, context, mod, builder);
+    else if (Parser_is_memb_sel(expr->type))
+        return codegen_memb_sel(expr, scope, false, context, mod, builder);
+    else if (Parser_is_assignment(expr->type))
+        return codegen_assign_expr(expr, scope, false, context, mod, builder);
     else {
         printf("expr at %" PRIi32 ":%" PRIi32 "\n", expr->tok->pos.line,
                expr->tok->pos.column);
@@ -788,8 +949,8 @@ void CGLLVM_codegen(const struct Parser_ASTNode *root)
     CGLLVM_Scope_deinit(&root_scope);
     CGLLVM_Allocators_deinit(&allocs);
 
-    verify_module(mod);
     print_module(mod);
+    verify_module(mod);
 
     LLVMDisposeModule(mod);
     LLVMContextDispose(context);

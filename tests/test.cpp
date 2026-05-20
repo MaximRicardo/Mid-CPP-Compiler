@@ -7,8 +7,12 @@ public:
 
 void func(TestClass);
 
+int sum(int, int);
+
 int main(int argc, char **argv)
 {
     TestClass var;
-    var.func().func();
+    var.y = 10;
+    var.z = 20;
+    var.x = var.y + var.z;
 }
