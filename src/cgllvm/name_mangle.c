@@ -400,6 +400,9 @@ char *CGLLVM_mangle_func(const struct Parser_FuncDecl *func)
 
     if (Parser_func_is_method(func))
         mangle_member_func(func, &str);
+    else if (Parser_func_is_main(func))
+        // the main function doesn't get mangled
+        Dynstr_append(&str, "main");
     else
         mangle_generic_func(func, &str);
 
