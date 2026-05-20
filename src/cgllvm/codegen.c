@@ -193,19 +193,10 @@ static LLVMValueRef codegen_ident_expr(const struct Parser_Expr *expr,
 {
     auto ident = CGLLVM_find_ident_const(scope, expr->info.ident, NULL);
 
-    LLVMValueRef val;
-    if (ident->is_param) {
-        auto f_scope = CGLLVM_find_nearest_func_const(scope);
-        auto f_ident = &f_scope->parent->idents.arr[f_scope->ident_idx];
-        val = LLVMGetParam(f_ident->val, ident->param_idx);
-    } else {
-        val = ident->val;
-    }
-
-    if (ident->is_param || load_ref)
-        return val;
+    if (load_ref)
+        return ident->val;
     else
-        return LLVMBuildLoad2(builder, ident->type, val, "");
+        return LLVMBuildLoad2(builder, ident->type, ident->val, "");
 }
 
 static bool is_valid_array_subscr_ptr(const struct Parser_Type *type)
@@ -458,29 +449,36 @@ static void codegen_node(const struct Parser_ASTNode *node,
                          LLVMContextRef context, LLVMModuleRef mod,
                          LLVMBuilderRef builder);
 
-static void add_params_to_scope(const struct Parser_FuncDecl *func,
-                                struct CGLLVM_Scope *scope)
+static void add_params_to_func(const struct Parser_FuncDecl *func,
+                               struct CGLLVM_Scope *scope,
+                               LLVMContextRef context, LLVMValueRef func_val,
+                               LLVMBuilderRef builder)
 {
     for (isize_t i = 0; i < func->params.len; ++i) {
         auto param = &func->params.arr[i]->var_decl.insts.arr[0];
 
-        struct CGLLVM_Ident ident = {
-            .is_param = true, .param_idx = i, .name = strdup(param->name)};
+        struct CGLLVM_Ident ident = {.name = strdup(param->name)};
+
+        ident.type = CGLLVM_convert_parser_type(&param->type, context);
+        ident.val = LLVMBuildAlloca(builder, ident.type, "");
+        LLVMBuildStore(builder, LLVMGetParam(func_val, i), ident.val);
+
         gen_dynpush(&scope->idents, ident);
     }
 }
 
-static struct CGLLVM_Scope *create_func_scope(struct CGLLVM_Scope *scope,
-                                              struct CGLLVM_Allocators *allocs,
-                                              const struct Parser_ASTNode *node,
-                                              isize_t func_ident)
+static struct CGLLVM_Scope *
+create_func_scope(struct CGLLVM_Scope *scope, struct CGLLVM_Allocators *allocs,
+                  const struct Parser_ASTNode *node, isize_t func_ident,
+                  LLVMContextRef context, LLVMValueRef func_val,
+                  LLVMBuilderRef builder)
 {
     struct CGLLVM_Scope *ret;
     gen_bumpmalloc(&allocs->scope, &ret);
     *ret = (struct CGLLVM_Scope){
         .parent = scope, .node = node, .ident_idx = func_ident};
 
-    add_params_to_scope(&node->func_decl, scope);
+    add_params_to_func(&node->func_decl, ret, context, func_val, builder);
 
     return ret;
 }
@@ -492,12 +490,13 @@ static void codegen_func_body(const struct Parser_ASTNode *node,
                               LLVMValueRef func, LLVMContextRef context,
                               LLVMModuleRef mod)
 {
-    auto scope = create_func_scope(parent_scope, allocs, node, func_ident);
-
     LLVMBasicBlockRef entry =
         LLVMAppendBasicBlockInContext(context, func, "entry");
     LLVMBuilderRef builder = LLVMCreateBuilderInContext(context);
     LLVMPositionBuilderAtEnd(builder, entry);
+
+    auto scope = create_func_scope(parent_scope, allocs, node, func_ident,
+                                   context, func, builder);
 
     bool ret_fnd = false;
 
