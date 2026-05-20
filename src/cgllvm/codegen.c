@@ -218,14 +218,10 @@ static LLVMValueRef codegen_subscr_expr(const struct Parser_Expr *expr,
     auto rhs_t = &expr->info.args.arr[1].ret;
     bool lhs_is_array = is_valid_array_subscr_ptr(lhs_t);
 
-    LLVMValueRef idxs[2] = {
-        LLVMConstInt(LLVMInt32TypeInContext(context), 0, true),
-        lhs_is_array ? rhs : lhs};
-
     return LLVMBuildGEP2(
         builder,
         CGLLVM_convert_parser_type(lhs_is_array ? lhs_t : rhs_t, context),
-        lhs_is_array ? lhs : rhs, idxs, ARRLEN(idxs), "");
+        lhs_is_array ? lhs : rhs, lhs_is_array ? &rhs : &lhs, 1, "");
 }
 
 static LLVMValueRef cast_to_fp_expr_type(const struct Parser_Expr *expr,
@@ -269,6 +265,26 @@ static void cast_arith_expr_operands(const struct Parser_Expr *expr,
     }
 }
 
+// add    - if true, lhs + rhs is generated, else, lhs - rhs is generated.
+static LLVMValueRef codegen_ptr_arith_expr(const struct Parser_Expr *expr,
+                                           LLVMValueRef lhs, LLVMValueRef rhs,
+                                           bool add, LLVMContextRef context,
+                                           LLVMBuilderRef builder)
+{
+    assert(Parser_n_indir(&expr->ret) > 0);
+
+    bool lhs_ptr = Parser_n_indir(&expr->info.args.arr[0].ret) > 0;
+    LLVMValueRef ptr = lhs_ptr ? lhs : rhs;
+    LLVMValueRef off = lhs_ptr ? rhs : lhs;
+
+    if (!add)
+        off = LLVMBuildNeg(builder, off, "");
+
+    return LLVMBuildGEP2(builder,
+                         CGLLVM_convert_parser_type(&expr->ret, context), ptr,
+                         &off, 1, "");
+}
+
 static LLVMValueRef codegen_arith_expr(const struct Parser_Expr *expr,
                                        struct CGLLVM_Scope *scope,
                                        LLVMContextRef context,
@@ -306,10 +322,18 @@ static LLVMValueRef codegen_arith_expr(const struct Parser_Expr *expr,
             return LLVMBuildURem(builder, lhs, rhs, "");
 
     case PARSER_EXPRTYPE_ADD:
-        return LLVMBuildAdd(builder, lhs, rhs, "");
+        if (Parser_n_indir(&expr->ret) == 0)
+            return LLVMBuildAdd(builder, lhs, rhs, "");
+        else
+            return codegen_ptr_arith_expr(expr, lhs, rhs, true, context,
+                                          builder);
 
     case PARSER_EXPRTYPE_SUB:
-        return LLVMBuildSub(builder, lhs, rhs, "");
+        if (Parser_n_indir(&expr->ret) == 0)
+            return LLVMBuildSub(builder, lhs, rhs, "");
+        else
+            return codegen_ptr_arith_expr(expr, lhs, rhs, false, context,
+                                          builder);
 
     case PARSER_EXPRTYPE_LEFT_SHIFT:
         return LLVMBuildShl(builder, lhs, rhs, "");
