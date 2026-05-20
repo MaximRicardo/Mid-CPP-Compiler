@@ -10,8 +10,6 @@ public:
     }
 };
 
-void func(TestClass);
-
 int sum(int, int);
 
 int main(int argc, char **argv)

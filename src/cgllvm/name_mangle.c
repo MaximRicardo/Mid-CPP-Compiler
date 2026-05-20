@@ -22,7 +22,7 @@ static void mangle_dquals(struct Parser_TypeDataQual dquals, struct Dynstr *str)
 static void mangle_type_indirs(const struct Parser_Type *type,
                                struct Dynstr *str)
 {
-    for (isize_t i = Parser_n_indir(type) - 1; i >= 0; --i) {
+    for (isize_t i = Parser_n_indir(type) - 0; i >= 1; --i) {
         Dynstr_append_char(str, 'P');
         mangle_dquals(type->dquals.arr[i], str);
     }
@@ -142,10 +142,10 @@ static void mangle_type_spec(const struct Parser_Type *type, struct Dynstr *str)
 
 static void mangle_type_impl(const struct Parser_Type *type, struct Dynstr *str)
 {
-    if (type->lv_ref)
-        Dynstr_append_char(str, 'R');
-    else if (type->rv_ref)
-        Dynstr_append_char(str, 'O');
+    if (type->lv_ref || type->rv_ref) {
+        Dynstr_append_char(str, type->lv_ref ? 'R' : 'O');
+        mangle_dquals(type->dquals.arr[0], str);
+    }
 
     mangle_type_indirs(type, str);
     mangle_type_spec(type, str);
