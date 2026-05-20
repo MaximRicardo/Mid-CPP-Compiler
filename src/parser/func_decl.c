@@ -724,10 +724,13 @@ bool Parser_func_is_ctor(const struct Parser_FuncDecl *self)
     return self->is_tor && !self->is_dtor;
 }
 
-bool Parser_func_takes_implicit_this(const struct Parser_FuncDecl *self)
+bool Parser_func_takes_implicit_this(const struct Parser_FuncDecl *self,
+                                     bool cnt_ctors)
 {
-    return Parser_func_is_method(self) && !self->type.squals.is_static &&
-           !Parser_func_is_ctor(self);
+    if (cnt_ctors && Parser_func_is_ctor(self))
+        return true;
+    return Parser_func_is_method(self) && !Parser_func_is_ctor(self) &&
+           !self->type.squals.is_static;
 }
 
 struct Parser_Type Parser_implicit_this_type(const struct Parser_FuncDecl *self)

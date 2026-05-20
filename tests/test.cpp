@@ -2,6 +2,8 @@ class TestClass {
 public:
     int x, y, z;
 
+    TestClass(int x, int y, int z);
+
     TestClass foo(int x);
 
     TestClass func()
@@ -10,18 +12,9 @@ public:
     }
 };
 
-namespace NMSpace {
-int sum(int, int);
-}
+void func();
 
 int main(int argc, char **argv)
 {
-    TestClass var;
-    var.y = 10;
-    var.z = 20;
-    var.x = var.y + var.z;
-
-    var.func();
-
-    NMSpace::sum(5, 10);
+    TestClass var(argc, argc, argc);
 }

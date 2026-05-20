@@ -218,7 +218,7 @@ static bool param_has_default(const struct Parser_FuncDecl *func, isize_t param)
 static bool valid_this_arg(const struct Parser_FuncDecl *func,
                            const struct Parser_Expr *arg)
 {
-    assert(Parser_func_takes_implicit_this(func));
+    assert(Parser_func_takes_implicit_this(func, false));
 
     if (arg->ret.spec != PARSER_TYPESPEC_CLASS &&
         arg->ret.spec != PARSER_TYPESPEC_UNION)
@@ -241,7 +241,8 @@ static bool func_params_viable(isize_t n_args, bool implicit_this,
 {
     isize_t n_params = func->params.len;
 
-    bool skip_first = !implicit_this && Parser_func_takes_implicit_this(func);
+    bool skip_first =
+        !implicit_this && Parser_func_takes_implicit_this(func, false);
     if (skip_first)
         --n_args;
 
@@ -263,11 +264,11 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
     if (!func_params_viable(n_args, implicit_this, func))
         return false;
 
-    if (!implicit_this && Parser_func_takes_implicit_this(func) &&
+    if (!implicit_this && Parser_func_takes_implicit_this(func, false) &&
         !valid_this_arg(func, &args[0]))
         return false;
     else if (implicit_this) {
-        if (!Parser_func_takes_implicit_this(func))
+        if (!Parser_func_takes_implicit_this(func, false))
             return false;
         if ((this_quals->is_const && !func->quals.is_const) ||
             (this_quals->is_volatile && !func->quals.is_volatile))
@@ -279,7 +280,9 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
         // if this is passed and the function implicitly takes this we can skip
         // the first arg
         isize_t j =
-            !implicit_this && Parser_func_takes_implicit_this(func) ? i + 1 : i;
+            !implicit_this && Parser_func_takes_implicit_this(func, false)
+                ? i + 1
+                : i;
         if (!Sema_can_convert(&args[j].ret, args[j].valtype,
                               &func->params.arr[i]->var_decl.insts.arr[0].type))
             return false;

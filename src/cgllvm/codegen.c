@@ -15,6 +15,7 @@
 #include "parser/expr_type.h"
 #include "parser/func_decl.h"
 #include "parser/type.h"
+#include "parser/var_decl.h"
 #include "scope.h"
 #include "sema/scope.h"
 #include "type.h"
@@ -25,8 +26,16 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Types.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+
+static void print_module(LLVMModuleRef mod)
+{
+    char *mod_str = LLVMPrintModuleToString(mod);
+    printf("mod {\n%s\n}\n", mod_str);
+    LLVMDisposeMessage(mod_str);
+}
 
 #if 0
 void CGLLVM_Test(void)
@@ -458,7 +467,7 @@ static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
                                    LLVMBuilderRef builder, isize_t *out_n_args)
 {
     bool implicit_this =
-        Parser_func_takes_implicit_this(&expr->node->func_decl);
+        Parser_func_takes_implicit_this(&expr->node->func_decl, true);
 
     isize_t n_args = expr->info.args.len - 1 + implicit_this;
     if (out_n_args)
@@ -782,7 +791,8 @@ static LLVMTypeRef *get_func_params(const struct Parser_ASTNode *node,
                                     LLVMContextRef context,
                                     isize_t *out_n_params)
 {
-    bool implicit_this = Parser_func_takes_implicit_this(&node->func_decl);
+    bool implicit_this =
+        Parser_func_takes_implicit_this(&node->func_decl, true);
     isize_t n_params = node->func_decl.params.len + implicit_this;
     if (out_n_params)
         *out_n_params = n_params;
@@ -810,9 +820,12 @@ static void codegen_func_node(const struct Parser_ASTNode *node,
 
     struct CGLLVM_Ident ident = {};
 
-    ident.type = LLVMFunctionType(
-        CGLLVM_convert_parser_type(&node->func_decl.type, context), params,
-        n_params, node->func_decl.variadic);
+    auto ret_type =
+        node->func_decl.is_tor
+            ? LLVMVoidTypeInContext(context)
+            : CGLLVM_convert_parser_type(&node->func_decl.type, context);
+    ident.type =
+        LLVMFunctionType(ret_type, params, n_params, node->func_decl.variadic);
     free(params);
 
     ident.name = CGLLVM_mangle_func(&node->func_decl);
@@ -825,6 +838,36 @@ static void codegen_func_node(const struct Parser_ASTNode *node,
                           context, mod);
 }
 
+static void call_ctor(const struct Parser_VarDeclInst *inst,
+                      const struct CGLLVM_Ident *ident,
+                      struct CGLLVM_Scope *scope, LLVMContextRef context,
+                      LLVMModuleRef mod, LLVMBuilderRef builder)
+{
+    isize_t n_args = inst->ctor.args.len + 1;
+    LLVMValueRef *args = mid_malloc(n_args * sizeof(*args));
+
+    args[0] = ident->val;
+
+    for (isize_t i = 0; i < inst->ctor.args.len; ++i) {
+        auto arg = &args[i + 1];
+        auto arg_expr = &inst->ctor.args.arr[i];
+        auto param =
+            &inst->ctor.node->func_decl.params.arr[i]->var_decl.insts.arr[0];
+
+        *arg = codegen_expr(arg_expr, scope, context, mod, builder);
+        *arg = cast_value(*arg, &arg_expr->ret, &param->type, context, builder);
+    }
+
+    char *name = CGLLVM_mangle_func(&inst->ctor.node->func_decl);
+    auto root = CGLLVM_find_root_scope_const(scope);
+    auto func = CGLLVM_find_ident_const(root, name, NULL);
+
+    LLVMBuildCall2(builder, func->type, func->val, args, n_args, "");
+
+    free(name);
+    free(args);
+}
+
 static void codegen_var_inst_node(const struct Parser_VarDeclInst *inst,
                                   struct CGLLVM_Scope *scope,
                                   LLVMContextRef context, LLVMModuleRef mod,
@@ -833,21 +876,20 @@ static void codegen_var_inst_node(const struct Parser_VarDeclInst *inst,
     if (!inst->name)
         return;
 
-    assert(!inst->has_ctor);
-
     struct CGLLVM_Ident ident = {.name = strdup(inst->name)};
 
     ident.type = CGLLVM_convert_parser_type(&inst->type, context);
     ident.val = LLVMBuildAlloca(builder, ident.type, inst->name);
+    gen_dynpush(&scope->idents, ident);
 
-    if (inst->init.expr) {
+    if (inst->has_ctor) {
+        call_ctor(inst, &ident, scope, context, mod, builder);
+    } else if (inst->init.expr) {
         auto init = codegen_expr(inst->init.expr, scope, context, mod, builder);
         init = cast_value(init, &inst->init.expr->ret, &inst->type, context,
                           builder);
         LLVMBuildStore(builder, init, ident.val);
     }
-
-    gen_dynpush(&scope->idents, ident);
 }
 
 static void codegen_var_node(const struct Parser_ASTNode *node,
@@ -963,13 +1005,6 @@ static void verify_module(LLVMModuleRef mod)
     if (LLVMVerifyModule(mod, LLVMAbortProcessAction, &error))
         printf("error: %s\n", error);
     LLVMDisposeMessage(error);
-}
-
-static void print_module(LLVMModuleRef mod)
-{
-    char *mod_str = LLVMPrintModuleToString(mod);
-    printf("mod {\n%s\n}\n", mod_str);
-    LLVMDisposeMessage(mod_str);
 }
 
 void CGLLVM_codegen(const struct Parser_ASTNode *root)
