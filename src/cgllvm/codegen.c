@@ -699,6 +699,18 @@ static void codegen_node(const struct Parser_ASTNode *node,
                          LLVMContextRef context, LLVMModuleRef mod,
                          LLVMBuilderRef builder);
 
+static struct CGLLVM_Scope *create_scope(struct CGLLVM_Scope *scope,
+                                         struct CGLLVM_Allocators *allocs,
+                                         const struct Parser_ASTNode *node)
+{
+    struct CGLLVM_Scope *ret;
+    gen_bumpmalloc(&allocs->scope, &ret);
+    *ret =
+        (struct CGLLVM_Scope){.parent = scope, .node = node, .ident_idx = -1};
+
+    return ret;
+}
+
 static void add_params_to_func(const struct Parser_FuncDecl *func,
                                struct CGLLVM_Scope *scope,
                                LLVMContextRef context, LLVMValueRef func_val,
@@ -723,10 +735,8 @@ create_func_scope(struct CGLLVM_Scope *scope, struct CGLLVM_Allocators *allocs,
                   LLVMContextRef context, LLVMValueRef func_val,
                   LLVMBuilderRef builder)
 {
-    struct CGLLVM_Scope *ret;
-    gen_bumpmalloc(&allocs->scope, &ret);
-    *ret = (struct CGLLVM_Scope){
-        .parent = scope, .node = node, .ident_idx = func_ident};
+    struct CGLLVM_Scope *ret = create_scope(scope, allocs, node);
+    ret->ident_idx = func_ident;
 
     add_params_to_func(&node->func_decl, ret, context, func_val, builder);
 
@@ -896,14 +906,24 @@ static void codegen_class_node(const struct Parser_ASTNode *node,
     codegen_class_methods(node, scope, allocs, context, mod);
 }
 
+static void codegen_nmspace_node(const struct Parser_ASTNode *node,
+                                 struct CGLLVM_Scope *scope,
+                                 struct CGLLVM_Allocators *allocs,
+                                 LLVMContextRef context, LLVMModuleRef mod)
+{
+    for (isize_t i = 0; i < node->nmspace.childs.len; ++i) {
+        auto child = node->nmspace.childs.arr[i];
+
+        codegen_node(child, scope, allocs, context, mod, NULL);
+    }
+}
+
 static void codegen_node(const struct Parser_ASTNode *node,
                          struct CGLLVM_Scope *scope,
                          struct CGLLVM_Allocators *allocs,
                          LLVMContextRef context, LLVMModuleRef mod,
                          LLVMBuilderRef builder)
 {
-    (void)builder;
-
     switch (node->type) {
     case PARSER_ASTNODETYPE_ROOT:
         CRASH("root node encountered within AST");
@@ -922,6 +942,10 @@ static void codegen_node(const struct Parser_ASTNode *node,
 
     case PARSER_ASTNODETYPE_CLASS:
         codegen_class_node(node, scope, allocs, context, mod);
+        break;
+
+    case PARSER_ASTNODETYPE_NAMESPACE:
+        codegen_nmspace_node(node, scope, allocs, context, mod);
         break;
 
     case PARSER_ASTNODETYPE_EXPR:

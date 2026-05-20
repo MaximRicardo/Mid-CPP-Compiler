@@ -10,7 +10,9 @@ public:
     }
 };
 
+namespace NMSpace {
 int sum(int, int);
+}
 
 int main(int argc, char **argv)
 {
@@ -20,4 +22,6 @@ int main(int argc, char **argv)
     var.x = var.y + var.z;
 
     var.func();
+
+    NMSpace::sum(5, 10);
 }
