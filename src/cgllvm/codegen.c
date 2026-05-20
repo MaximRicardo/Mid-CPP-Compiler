@@ -470,8 +470,8 @@ static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
         // jank
         auto lhs = &expr->info.args.arr[0];
         assert(Parser_is_memb_sel(lhs->type));
-        ret[0] =
-            codegen_expr(&lhs->info.args.arr[0], scope, context, mod, builder);
+        ret[0] = codegen_expr_ref(&lhs->info.args.arr[0], scope, context, mod,
+                                  builder);
     }
 
     return ret;
@@ -766,11 +766,8 @@ static LLVMTypeRef *get_func_params(const struct Parser_ASTNode *node,
             context);
     }
 
-    if (implicit_this) {
-        struct Parser_Type type = Parser_implicit_this_type(&node->func_decl);
-        params[0] = CGLLVM_convert_parser_type(&type, context);
-        Parser_Type_deinit(&type);
-    }
+    if (implicit_this)
+        params[0] = LLVMPointerTypeInContext(context, 0);
 
     return params;
 }

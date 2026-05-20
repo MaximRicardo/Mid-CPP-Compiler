@@ -15,4 +15,6 @@ int main(int argc, char **argv)
     var.y = 10;
     var.z = 20;
     var.x = var.y + var.z;
+
+    var.func();
 }
