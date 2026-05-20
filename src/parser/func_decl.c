@@ -730,6 +730,12 @@ bool Parser_func_takes_implicit_this(const struct Parser_FuncDecl *self)
            !Parser_func_is_ctor(self);
 }
 
+struct Parser_Type Parser_implicit_this_type(const struct Parser_FuncDecl *self)
+{
+    const struct Sema_Scope *parent = Parser_func_parent(self);
+    return Sema_node_type(parent->node, parent->parent, NULL);
+}
+
 bool Parser_func_is_main(const struct Parser_FuncDecl *self)
 {
     return self->param_scope->parent->type == SEMA_SCOPETYPE_ROOT &&

@@ -17,7 +17,6 @@
 #include "parser/type.h"
 #include "scope.h"
 #include "sema/scope.h"
-#include "sema/type.h"
 #include "type.h"
 #include "types.h"
 #include <assert.h>
@@ -436,14 +435,34 @@ static LLVMValueRef codegen_arith_expr(const struct Parser_Expr *expr,
 static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
                                    const struct CGLLVM_Scope *scope,
                                    LLVMContextRef context, LLVMModuleRef mod,
-                                   LLVMBuilderRef builder)
+                                   LLVMBuilderRef builder, isize_t *out_n_args)
 {
-    LLVMValueRef *ret = mid_malloc(expr->info.args.len * sizeof(*ret));
+    bool implicit_this =
+        Parser_func_takes_implicit_this(&expr->node->func_decl);
+
+    isize_t n_args = expr->info.args.len - 1 + implicit_this;
+    if (out_n_args)
+        *out_n_args = n_args;
+
+    LLVMValueRef *ret = mid_malloc(n_args * sizeof(*ret));
 
     for (isize_t i = 0; i < expr->info.args.len - 1; ++i) {
         auto arg = &expr->info.args.arr[i + 1];
+        auto param =
+            &expr->node->func_decl.params.arr[i]->var_decl.insts.arr[0];
 
-        ret[i] = codegen_expr(arg, scope, context, mod, builder);
+        auto val = codegen_expr(arg, scope, context, mod, builder);
+        val = cast_value(val, &arg->ret, &param->type, context, builder);
+
+        ret[i] = val;
+    }
+
+    if (implicit_this) {
+        // jank
+        auto lhs = &expr->info.args.arr[0];
+        assert(Parser_is_memb_sel(lhs->type));
+        ret[0] =
+            codegen_expr(&lhs->info.args.arr[0], scope, context, mod, builder);
     }
 
     return ret;
@@ -459,10 +478,11 @@ static LLVMValueRef codegen_call_expr(const struct Parser_Expr *expr,
     auto root = CGLLVM_find_root_scope_const(scope);
     auto func = CGLLVM_find_ident_const(root, name, NULL);
 
-    LLVMValueRef *args = get_call_args(expr, scope, context, mod, builder);
+    isize_t n_args;
+    LLVMValueRef *args =
+        get_call_args(expr, scope, context, mod, builder, &n_args);
 
-    auto ret = LLVMBuildCall2(builder, func->type, func->val, args,
-                              expr->info.args.len - 1, "");
+    auto ret = LLVMBuildCall2(builder, func->type, func->val, args, n_args, "");
 
     free(args);
     free(name);
@@ -569,12 +589,6 @@ static void codegen_func_body(const struct Parser_ASTNode *node,
     LLVMDisposeBuilder(builder);
 }
 
-static struct Parser_Type implicit_this_type(const struct Parser_ASTNode *node)
-{
-    const struct Sema_Scope *parent = Parser_func_parent(&node->func_decl);
-    return Sema_node_type(parent->node, parent->parent, NULL);
-}
-
 static LLVMTypeRef *get_func_params(const struct Parser_ASTNode *node,
                                     LLVMContextRef context,
                                     isize_t *out_n_params)
@@ -592,7 +606,7 @@ static LLVMTypeRef *get_func_params(const struct Parser_ASTNode *node,
     }
 
     if (implicit_this) {
-        struct Parser_Type type = implicit_this_type(node);
+        struct Parser_Type type = Parser_implicit_this_type(&node->func_decl);
         params[0] = CGLLVM_convert_parser_type(&type, context);
         Parser_Type_deinit(&type);
     }

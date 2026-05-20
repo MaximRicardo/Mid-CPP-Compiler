@@ -2,7 +2,7 @@ class TestClass {
 public:
     int x, y, z;
 
-    void func();
+    TestClass func();
 };
 
 void func(TestClass);
@@ -10,4 +10,5 @@ void func(TestClass);
 int main(int argc, char **argv)
 {
     TestClass var;
+    var.func().func();
 }
