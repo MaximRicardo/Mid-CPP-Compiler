@@ -1,3 +1,8 @@
+int sum(int x, int y)
+{
+    return x + y;
+}
+
 int main(int argc, char **argv)
 {
     short x = 10;

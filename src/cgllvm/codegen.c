@@ -12,6 +12,7 @@
 #include "parser/ast.h"
 #include "parser/expr.h"
 #include "parser/expr_type.h"
+#include "parser/func_decl.h"
 #include "parser/type.h"
 #include "scope.h"
 #include "type.h"
@@ -192,10 +193,19 @@ static LLVMValueRef codegen_ident_expr(const struct Parser_Expr *expr,
 {
     auto ident = CGLLVM_find_ident_const(scope, expr->info.ident, NULL);
 
-    if (load_ref)
-        return ident->val;
+    LLVMValueRef val;
+    if (ident->is_param) {
+        auto f_scope = CGLLVM_find_nearest_func_const(scope);
+        auto f_ident = &f_scope->parent->idents.arr[f_scope->ident_idx];
+        val = LLVMGetParam(f_ident->val, ident->param_idx);
+    } else {
+        val = ident->val;
+    }
+
+    if (ident->is_param || load_ref)
+        return val;
     else
-        return LLVMBuildLoad2(builder, ident->type, ident->val, "");
+        return LLVMBuildLoad2(builder, ident->type, val, "");
 }
 
 static bool is_valid_array_subscr_ptr(const struct Parser_Type *type)
@@ -448,37 +458,64 @@ static void codegen_node(const struct Parser_ASTNode *node,
                          LLVMContextRef context, LLVMModuleRef mod,
                          LLVMBuilderRef builder);
 
+static void add_params_to_scope(const struct Parser_FuncDecl *func,
+                                struct CGLLVM_Scope *scope)
+{
+    for (isize_t i = 0; i < func->params.len; ++i) {
+        auto param = &func->params.arr[i]->var_decl.insts.arr[0];
+
+        struct CGLLVM_Ident ident = {
+            .is_param = true, .param_idx = i, .name = strdup(param->name)};
+        gen_dynpush(&scope->idents, ident);
+    }
+}
+
 static struct CGLLVM_Scope *create_func_scope(struct CGLLVM_Scope *scope,
                                               struct CGLLVM_Allocators *allocs,
-                                              const struct Parser_ASTNode *node)
+                                              const struct Parser_ASTNode *node,
+                                              isize_t func_ident)
 {
     struct CGLLVM_Scope *ret;
     gen_bumpmalloc(&allocs->scope, &ret);
-    *ret = (struct CGLLVM_Scope){.parent = scope, .node = node};
+    *ret = (struct CGLLVM_Scope){
+        .parent = scope, .node = node, .ident_idx = func_ident};
+
+    add_params_to_scope(&node->func_decl, scope);
+
     return ret;
 }
 
 static void codegen_func_body(const struct Parser_ASTNode *node,
+                              isize_t func_ident,
                               struct CGLLVM_Scope *parent_scope,
                               struct CGLLVM_Allocators *allocs,
                               LLVMValueRef func, LLVMContextRef context,
                               LLVMModuleRef mod)
 {
-    auto scope = create_func_scope(parent_scope, allocs, node);
+    auto scope = create_func_scope(parent_scope, allocs, node, func_ident);
 
     LLVMBasicBlockRef entry =
         LLVMAppendBasicBlockInContext(context, func, "entry");
     LLVMBuilderRef builder = LLVMCreateBuilderInContext(context);
     LLVMPositionBuilderAtEnd(builder, entry);
 
+    bool ret_fnd = false;
+
     for (isize_t i = 0; i < node->func_decl.nodes.len; ++i) {
         auto child = node->func_decl.nodes.arr[i];
 
         codegen_node(child, scope, allocs, context, mod, builder);
+
+        if (child->type == PARSER_ASTNODETYPE_RETURN) {
+            ret_fnd = true;
+            break;
+        }
     }
 
-    LLVMBuildRet(builder,
-                 LLVMConstInt(LLVMInt32TypeInContext(context), 0, true));
+    if (!ret_fnd)
+        LLVMBuildRet(builder,
+                     LLVMConstInt(LLVMInt32TypeInContext(context), 0, true));
+
     LLVMDisposeBuilder(builder);
 }
 
@@ -508,7 +545,8 @@ static void codegen_func_node(const struct Parser_ASTNode *node,
     gen_dynpush(&scope->idents, ident);
 
     if (node->func_decl.nodes.len > 0)
-        codegen_func_body(node, scope, allocs, ident.val, context, mod);
+        codegen_func_body(node, scope->idents.len - 1, scope, allocs, ident.val,
+                          context, mod);
 }
 
 static void codegen_var_inst_node(const struct Parser_VarDeclInst *inst,
