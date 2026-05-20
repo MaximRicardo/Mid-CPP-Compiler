@@ -142,9 +142,10 @@ static void find_op_overloads_in_scope(enum Parser_ExprType op,
     }
 }
 
-struct Parser_ASTNode *
-Sema_find_func(const char *name, const struct Parser_Expr *args, isize_t n_args,
-               bool this_passed, struct Sema_Scope *scope, bool is_qualified)
+struct Parser_ASTNode *Sema_find_func(const char *name,
+                                      const struct Parser_Expr *args,
+                                      isize_t n_args, struct Sema_Scope *scope,
+                                      bool is_qualified)
 {
     struct Sema_ScopePVec scopes = {};
     if (is_qualified) {
@@ -160,7 +161,7 @@ Sema_find_func(const char *name, const struct Parser_Expr *args, isize_t n_args,
 
     struct Parser_ASTNode *ret = NULL;
     if (funcs.len > 0)
-        ret = Sema_best_viable_func(args, n_args, &funcs, this_passed, NULL);
+        ret = Sema_best_viable_func(args, n_args, &funcs, NULL);
 
     gen_dyndeinit(&funcs);
     gen_dyndeinit(&scopes);
@@ -168,18 +169,19 @@ Sema_find_func(const char *name, const struct Parser_Expr *args, isize_t n_args,
 }
 
 struct Parser_ASTNode *
-Sema_find_nonstatic_method(const char *name, const struct Parser_Expr *args,
-                           isize_t n_args, struct Sema_Scope *scope,
-                           const struct Parser_TypeDataQual *this_quals)
+Sema_find_method(const char *name, const struct Parser_Expr *args,
+                 isize_t n_args, struct Sema_Scope *scope,
+                 const struct Parser_TypeDataQual *this_quals)
 {
     assert(this_quals);
+    assert(scope->type == SEMA_SCOPETYPE_CLASS);
 
     struct Parser_ASTNodePVec funcs = {};
     find_funcs_in_scope(name, scope, &funcs);
 
     struct Parser_ASTNode *ret = NULL;
     if (funcs.len > 0)
-        ret = Sema_best_viable_func(args, n_args, &funcs, false, this_quals);
+        ret = Sema_best_viable_func(args, n_args, &funcs, this_quals);
 
     gen_dyndeinit(&funcs);
     return ret;
@@ -201,7 +203,7 @@ struct Parser_ASTNode *Sema_find_op_overload(enum Parser_ExprType op,
 
     struct Parser_ASTNode *ret = NULL;
     if (funcs.len > 0)
-        ret = Sema_best_viable_func(args, n_args, &funcs, true, NULL);
+        ret = Sema_best_viable_func(args, n_args, &funcs, NULL);
 
     gen_dyndeinit(&funcs);
     gen_dyndeinit(&scopes);
@@ -234,13 +236,14 @@ static bool valid_this_arg(const struct Parser_FuncDecl *func,
     return true;
 }
 
-static bool func_params_viable(isize_t n_args,
-                               const struct Parser_FuncDecl *func,
-                               bool this_passed)
+static bool func_params_viable(isize_t n_args, bool implicit_this,
+                               const struct Parser_FuncDecl *func)
 {
-    isize_t n_params = this_passed && Parser_func_takes_implicit_this(func)
-                           ? func->params.len + 1
-                           : func->params.len;
+    isize_t n_params = func->params.len;
+
+    bool skip_first = !implicit_this && Parser_func_takes_implicit_this(func);
+    if (skip_first)
+        --n_args;
 
     if (n_params == n_args)
         return true;
@@ -252,26 +255,23 @@ static bool func_params_viable(isize_t n_args,
 }
 
 bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
-                         const struct Parser_FuncDecl *func, bool this_passed,
+                         const struct Parser_FuncDecl *func,
                          const struct Parser_TypeDataQual *this_quals)
 {
-    // this_quals is only allowed if "this" is implicitly passed
-    assert(!this_passed || !this_quals);
+    bool implicit_this = this_quals;
 
-    if (!func_params_viable(n_args, func, this_passed))
+    if (!func_params_viable(n_args, implicit_this, func))
         return false;
-    if (this_passed && Parser_func_takes_implicit_this(func) &&
+
+    if (!implicit_this && Parser_func_takes_implicit_this(func) &&
         !valid_this_arg(func, &args[0]))
         return false;
-
-    if (this_quals) {
+    else if (implicit_this) {
         if (!Parser_func_takes_implicit_this(func))
             return false;
         if ((this_quals->is_const && !func->quals.is_const) ||
             (this_quals->is_volatile && !func->quals.is_volatile))
             return false;
-    } else if (!this_passed && Parser_func_takes_implicit_this(func)) {
-        return false;
     }
 
     isize_t n = MIN(n_args, func->params.len);
@@ -279,7 +279,7 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
         // if this is passed and the function implicitly takes this we can skip
         // the first arg
         isize_t j =
-            this_passed && Parser_func_takes_implicit_this(func) ? i + 1 : i;
+            !implicit_this && Parser_func_takes_implicit_this(func) ? i + 1 : i;
         if (!Sema_can_convert(&args[j].ret, args[j].valtype,
                               &func->params.arr[i]->var_decl.insts.arr[0].type))
             return false;
@@ -290,15 +290,14 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
 
 struct Parser_ASTNodePVec
 Sema_viable_funcs(const struct Parser_Expr *args, isize_t n_args,
-                  const struct Parser_ASTNodePVec *funcs, bool this_passed,
+                  const struct Parser_ASTNodePVec *funcs,
                   const struct Parser_TypeDataQual *this_quals)
 {
     struct Parser_ASTNodePVec ret = {};
 
     for (isize_t i = 0; i < funcs->len; ++i) {
         auto func = funcs->arr[i];
-        if (Sema_is_func_viable(args, n_args, &func->func_decl, this_passed,
-                                this_quals))
+        if (Sema_is_func_viable(args, n_args, &func->func_decl, this_quals))
             gen_dynpush(&ret, func);
     }
 
@@ -350,11 +349,10 @@ static int compare_viable_funcs(const void *a_raw, const void *b_raw,
 
 struct Parser_ASTNode *
 Sema_best_viable_func(const struct Parser_Expr *args, isize_t n_args,
-                      const struct Parser_ASTNodePVec *funcs, bool this_passed,
+                      const struct Parser_ASTNodePVec *funcs,
                       const struct Parser_TypeDataQual *this_quals)
 {
-    auto viable =
-        Sema_viable_funcs(args, n_args, funcs, this_passed, this_quals);
+    auto viable = Sema_viable_funcs(args, n_args, funcs, this_quals);
     if (viable.len == 0)
         return NULL;
 

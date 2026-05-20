@@ -395,13 +395,13 @@ static void set_func_call_node(struct Parser_Expr *expr,
 
     if (lhs->ret.spec == PARSER_TYPESPEC_FUNC) {
         if (Parser_is_memb_sel(lhs->type))
-            expr->node = Sema_find_nonstatic_method(
+            expr->node = Sema_find_method(
                 lhs->ret.func.name, &expr->info.args.arr[1],
                 expr->info.args.len - 1, res, method_call_this_quals(expr));
         else
             expr->node =
                 Sema_find_func(lhs->ret.func.name, &expr->info.args.arr[1],
-                               expr->info.args.len - 1, false, res, qualified);
+                               expr->info.args.len - 1, res, qualified);
 
         if (!expr->node)
             gen_dynpush(diags, not_a_func_err(qual_name, lhs->tok));
@@ -1085,7 +1085,7 @@ static bool typecheck_vdecl_class_type_ctor(struct Parser_VarDeclInst *inst)
     auto ident = Parser_named_type_ident(&inst->type.named);
     inst->ctor.node =
         Sema_find_func(ident->name, inst->ctor.args.arr, inst->ctor.args.len,
-                       false, ident->class_info.def_scope, true);
+                       ident->class_info.def_scope, true);
 
     return inst->ctor.node != NULL;
 }
