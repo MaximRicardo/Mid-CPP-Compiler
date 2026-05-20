@@ -224,17 +224,76 @@ static LLVMValueRef codegen_subscr_expr(const struct Parser_Expr *expr,
         lhs_is_array ? lhs : rhs, lhs_is_array ? &rhs : &lhs, 1, "");
 }
 
-static LLVMValueRef cast_to_fp_expr_type(const struct Parser_Expr *expr,
-                                         LLVMValueRef val, bool is_signed,
-                                         LLVMContextRef context,
-                                         LLVMBuilderRef builder)
+static LLVMValueRef cast_assign_operand(const struct Parser_Type *src,
+                                        LLVMValueRef val,
+                                        const struct Parser_Type *dest,
+                                        LLVMContextRef context,
+                                        LLVMBuilderRef builder)
 {
-    if (is_signed)
-        return LLVMBuildSIToFP(
-            builder, val, CGLLVM_convert_parser_type(&expr->ret, context), "");
-    else
-        return LLVMBuildUIToFP(
-            builder, val, CGLLVM_convert_parser_type(&expr->ret, context), "");
+    if (Parser_are_types_same(src, dest))
+        return val;
+    if (Parser_n_indir(src) > 0 && Parser_n_indir(dest) > 0)
+        return val;
+    assert(Parser_n_indir(src) == 0 && Parser_n_indir(dest) == 0);
+
+    bool src_signed = Parser_is_signed_integral_typespec(src->spec);
+    bool src_int = Parser_is_integral_typespec(src->spec);
+    bool src_fp = Parser_is_floating_typespec(src->spec);
+
+    bool dest_int = Parser_is_integral_typespec(dest->spec);
+    bool dest_fp = Parser_is_floating_typespec(dest->spec);
+
+    LLVMTypeRef dest_type = CGLLVM_convert_parser_type(dest, context);
+
+    if (src_int && dest_fp) {
+        if (src_signed)
+            return LLVMBuildSIToFP(builder, val, dest_type, "");
+        else
+            return LLVMBuildUIToFP(builder, val, dest_type, "");
+    } else if (src_int && dest_int) {
+        if (src_signed)
+            return LLVMBuildSExt(builder, val, dest_type, "");
+        else
+            return LLVMBuildZExt(builder, val, dest_type, "");
+    } else if (src_fp && dest_fp) {
+        return LLVMBuildFPExt(builder, val, dest_type, "");
+    }
+
+    CRASH("couldn't cast assignment operand");
+}
+
+static LLVMValueRef cast_arith_expr_operand(const struct Parser_Type *src,
+                                            LLVMValueRef val,
+                                            const struct Parser_Type *dest,
+                                            LLVMContextRef context,
+                                            LLVMBuilderRef builder)
+{
+    bool src_signed = Parser_is_signed_integral_typespec(src->spec);
+    bool src_int = Parser_is_integral_typespec(src->spec);
+    bool src_fp = Parser_is_floating_typespec(src->spec);
+    i32 src_rank = Parser_typespec_conv_rank(src->spec);
+
+    bool dest_int = Parser_is_integral_typespec(dest->spec);
+    bool dest_fp = Parser_is_floating_typespec(dest->spec);
+    i32 dest_rank = Parser_typespec_conv_rank(dest->spec);
+
+    LLVMTypeRef dest_type = CGLLVM_convert_parser_type(dest, context);
+
+    if (src_int && dest_fp) {
+        if (src_signed)
+            return LLVMBuildSIToFP(builder, val, dest_type, "");
+        else
+            return LLVMBuildUIToFP(builder, val, dest_type, "");
+    } else if (src_int && dest_int && src_rank < dest_rank) {
+        if (src_signed)
+            return LLVMBuildSExt(builder, val, dest_type, "");
+        else
+            return LLVMBuildZExt(builder, val, dest_type, "");
+    } else if (src_fp && dest_fp && src_rank < dest_rank) {
+        return LLVMBuildFPExt(builder, val, dest_type, "");
+    }
+
+    return val;
 }
 
 static void cast_arith_expr_operands(const struct Parser_Expr *expr,
@@ -252,17 +311,10 @@ static void cast_arith_expr_operands(const struct Parser_Expr *expr,
     auto lhs_expr = &expr->info.args.arr[0];
     auto rhs_expr = &expr->info.args.arr[1];
 
-    if (Parser_is_integral_typespec(lhs_expr->ret.spec) &&
-        Parser_is_floating_typespec(rhs_expr->ret.spec)) {
-        *lhs = cast_to_fp_expr_type(
-            expr, *lhs, Parser_is_signed_integral_typespec(lhs_expr->ret.spec),
-            context, builder);
-    } else if (Parser_is_integral_typespec(rhs_expr->ret.spec) &&
-               Parser_is_floating_typespec(lhs_expr->ret.spec)) {
-        *rhs = cast_to_fp_expr_type(
-            expr, *rhs, Parser_is_signed_integral_typespec(rhs_expr->ret.spec),
-            context, builder);
-    }
+    *lhs = cast_arith_expr_operand(&lhs_expr->ret, *lhs, &expr->ret, context,
+                                   builder);
+    *rhs = cast_arith_expr_operand(&rhs_expr->ret, *rhs, &expr->ret, context,
+                                   builder);
 }
 
 // add    - if true, lhs + rhs is generated, else, lhs - rhs is generated.
@@ -372,6 +424,9 @@ static LLVMValueRef codegen_expr(const struct Parser_Expr *expr,
                                  LLVMContextRef context, LLVMModuleRef mod,
                                  LLVMBuilderRef builder)
 {
+    assert(!expr->overloaded &&
+           "codegen of overloaded exprs not implemented yet");
+
     if (Parser_is_numlit(expr->type))
         return codegen_lit_expr(expr, context, mod);
     if (expr->type == PARSER_EXPRTYPE_IDENTIFIER)
@@ -473,6 +528,8 @@ static void codegen_var_inst_node(const struct Parser_VarDeclInst *inst,
 
     if (inst->init.expr) {
         auto init = codegen_expr(inst->init.expr, scope, context, mod, builder);
+        init = cast_assign_operand(&inst->init.expr->ret, init, &inst->type,
+                                   context, builder);
         LLVMBuildStore(builder, init, ident.val);
     }
 

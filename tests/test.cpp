@@ -1,7 +1,6 @@
 int main(int argc, char **argv)
 {
-    // int *p = nullptr;
-    const char32_t *str = U"asdf";
-
-    auto p = str + 1;
+    short x = 10;
+    int y = 20;
+    int z = x + y;
 }
