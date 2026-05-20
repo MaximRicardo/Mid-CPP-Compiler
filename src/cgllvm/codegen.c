@@ -2,6 +2,7 @@
 #include "allocator.h"
 #include "cgllvm/ident.h"
 #include "cgllvm/name_mangle.h"
+#include "cmd.h"
 #include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
 #include "ints.h"
@@ -510,7 +511,7 @@ void CGLLVM_codegen(const struct Parser_ASTNode *root)
 {
     LLVMContextRef context = LLVMContextCreate();
     LLVMModuleRef mod =
-        LLVMModuleCreateWithNameInContext("test_module", context);
+        LLVMModuleCreateWithNameInContext(CMD_get_args()->src, context);
 
     struct CGLLVM_Allocators allocs = {};
     struct CGLLVM_Scope root_scope = {};
