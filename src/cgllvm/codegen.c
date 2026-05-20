@@ -355,9 +355,12 @@ static LLVMValueRef codegen_ptr_arith_expr(const struct Parser_Expr *expr,
     if (!add)
         off = LLVMBuildNeg(builder, off, "");
 
-    return LLVMBuildGEP2(builder,
-                         CGLLVM_convert_parser_type(&expr->ret, context), ptr,
-                         &off, 1, "");
+    auto deref = Parser_deref_type(&expr->ret, NULL);
+    auto ret = LLVMBuildGEP2(
+        builder, CGLLVM_convert_parser_type(&deref, context), ptr, &off, 1, "");
+
+    Parser_Type_deinit(&deref);
+    return ret;
 }
 
 static LLVMValueRef codegen_arith_expr(const struct Parser_Expr *expr,
@@ -522,9 +525,11 @@ static LLVMValueRef codegen_memb_sel(const struct Parser_Expr *expr,
 
     auto struct_type = CGLLVM_create_struct(
         &Parser_named_type_ident(&lhs_expr->ret.named)->decl->class_, context);
-    LLVMValueRef ptr_idx =
-        LLVMConstInt(LLVMInt32TypeInContext(context), idx, true);
-    auto ptr = LLVMBuildGEP2(builder, struct_type, lhs, &ptr_idx, 1, "");
+    LLVMValueRef ptr_idxs[2] = {
+        LLVMConstNull(LLVMInt32TypeInContext(context)),
+        LLVMConstInt(LLVMInt32TypeInContext(context), idx, true)};
+    auto ptr = LLVMBuildGEP2(builder, struct_type, lhs, ptr_idxs,
+                             ARRLEN(ptr_idxs), "");
     if (load_ref)
         return ptr;
 

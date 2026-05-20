@@ -2,6 +2,15 @@ class TestClass {
 public:
     int x, y, z;
 
+    /*
+    TestClass foo(int x);
+
+    TestClass func()
+    {
+        return this->foo(100);
+    }
+    */
+
     TestClass func();
 };
 
@@ -16,5 +25,6 @@ int main(int argc, char **argv)
     var.z = 20;
     var.x = var.y + var.z;
 
-    var.func();
+    TestClass *ptr;
+    auto x = ptr + 10;
 }
