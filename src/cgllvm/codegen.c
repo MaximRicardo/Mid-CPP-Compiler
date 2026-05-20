@@ -467,7 +467,7 @@ static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
                                    LLVMBuilderRef builder, isize_t *out_n_args)
 {
     bool implicit_this =
-        Parser_func_takes_implicit_this(&expr->node->func_decl, true);
+        Parser_func_takes_implicit_this(&expr->node->func_decl, false);
 
     isize_t n_args = expr->info.args.len - 1 + implicit_this;
     if (out_n_args)
@@ -645,7 +645,7 @@ static LLVMValueRef codegen_assign_expr(const struct Parser_Expr *expr,
     }
 
     LLVMBuildStore(builder, res, lhs);
-    return load_ref ? lhs : deref_lhs;
+    return load_ref ? lhs : res;
 }
 
 // loads in a reference to the result, like in the expression &p[10], the value
