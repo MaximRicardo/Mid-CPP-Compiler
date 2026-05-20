@@ -545,6 +545,18 @@ static void codegen_var_node(const struct Parser_ASTNode *node,
                               builder);
 }
 
+static void codegen_ret_node(const struct Parser_ASTNode *node,
+                             struct CGLLVM_Scope *scope, LLVMContextRef context,
+                             LLVMModuleRef mod, LLVMBuilderRef builder)
+{
+    if (node->ret.expr) {
+        auto val = codegen_expr(node->ret.expr, scope, context, mod, builder);
+        LLVMBuildRet(builder, val);
+    } else {
+        LLVMBuildRetVoid(builder);
+    }
+}
+
 static void codegen_node(const struct Parser_ASTNode *node,
                          struct CGLLVM_Scope *scope,
                          struct CGLLVM_Allocators *allocs,
@@ -565,8 +577,13 @@ static void codegen_node(const struct Parser_ASTNode *node,
         codegen_var_node(node, scope, context, mod, builder);
         break;
 
+    case PARSER_ASTNODETYPE_RETURN:
+        codegen_ret_node(node, scope, context, mod, builder);
+        break;
+
     case PARSER_ASTNODETYPE_EXPR:
         codegen_expr(&node->expr, scope, context, mod, builder);
+        break;
 
     default:
         break;
