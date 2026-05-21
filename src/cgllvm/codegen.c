@@ -467,7 +467,7 @@ static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
                                    LLVMBuilderRef builder, isize_t *out_n_args)
 {
     bool implicit_this =
-        Parser_func_takes_implicit_this(&expr->node->func_decl, false);
+        Parser_func_takes_implicit_this(&expr->node->func_decl, true);
 
     isize_t n_args = expr->info.args.len - 1 + implicit_this;
     if (out_n_args)
@@ -486,7 +486,12 @@ static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
         ret[i + implicit_this] = val;
     }
 
-    if (implicit_this) {
+    if (Parser_func_is_ctor(&expr->node->func_decl)) {
+        auto type = Parser_implicit_this_type(&expr->node->func_decl);
+        ret[0] = LLVMBuildAlloca(
+            builder, CGLLVM_convert_parser_type(&type, context), "");
+        Parser_Type_deinit(&type);
+    } else if (implicit_this) {
         // jank
         auto lhs = &expr->info.args.arr[0];
         assert(Parser_is_memb_sel(lhs->type));
@@ -512,6 +517,13 @@ static LLVMValueRef codegen_call_expr(const struct Parser_Expr *expr,
         get_call_args(expr, scope, context, mod, builder, &n_args);
 
     auto ret = LLVMBuildCall2(builder, func->type, func->val, args, n_args, "");
+    // ctors return the resulting value
+    if (Parser_func_is_ctor(&expr->node->func_decl)) {
+        auto type = Parser_implicit_this_type(&expr->node->func_decl);
+        ret = LLVMBuildLoad2(
+            builder, CGLLVM_convert_parser_type(&type, context), args[0], "");
+        Parser_Type_deinit(&type);
+    }
 
     free(args);
     free(name);

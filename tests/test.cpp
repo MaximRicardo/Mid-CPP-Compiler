@@ -17,4 +17,5 @@ void func();
 int main(int argc, char **argv)
 {
     TestClass var(argc, argc, argc);
+    var = TestClass(1, 2, 3);
 }
