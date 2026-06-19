@@ -15,17 +15,18 @@
 #include <llvm-c-20/llvm-c/Types.h>
 #include <string.h>
 
-static bool is_ptr(const struct Parser_Type *type)
+static bool is_ptr(const struct Parser_Type *type, bool ref_is_ptr)
 {
-    return Parser_n_indir(type) > 0 || type->lv_ref || type->rv_ref ||
+    return Parser_n_indir(type) > 0 ||
+           (ref_is_ptr && (type->lv_ref || type->rv_ref)) ||
            type->spec == PARSER_TYPESPEC_FPTR ||
            type->spec == PARSER_TYPESPEC_NULLPTR;
 }
 
 LLVMTypeRef CGLLVM_convert_parser_type(const struct Parser_Type *type,
-                                       LLVMContextRef context)
+                                       LLVMContextRef context, bool ref_is_ptr)
 {
-    if (is_ptr(type))
+    if (is_ptr(type, ref_is_ptr))
         return LLVMPointerTypeInContext(context, 0);
 
     switch (type->spec) {
@@ -76,7 +77,7 @@ LLVMTypeRef CGLLVM_convert_parser_type(const struct Parser_Type *type,
 
     case PARSER_TYPESPEC_ARRAY:
         return LLVMArrayType2(
-            CGLLVM_convert_parser_type(&type->array->elem, context),
+            CGLLVM_convert_parser_type(&type->array->elem, context, true),
             type->array->len);
 
     case PARSER_TYPESPEC_CLASS:
@@ -147,7 +148,8 @@ CGLLVM_class_to_struct_fields(const struct Parser_Class *src,
         for (isize_t j = 0; j < child->var_decl.insts.len; ++j) {
             const struct Parser_VarDeclInst *inst =
                 &child->var_decl.insts.arr[j];
-            gen_dynpush(&ret, CGLLVM_convert_parser_type(&inst->type, context));
+            gen_dynpush(&ret,
+                        CGLLVM_convert_parser_type(&inst->type, context, true));
         }
     }
 

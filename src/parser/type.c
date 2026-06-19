@@ -1380,3 +1380,8 @@ bool Parser_type_is_nullptr_t(const struct Parser_Type *type)
 {
     return Parser_n_indir(type) == 0 && type->spec == PARSER_TYPESPEC_NULLPTR;
 }
+
+bool Parser_type_is_ref(const struct Parser_Type *type)
+{
+    return type->lv_ref || type->rv_ref;
+}

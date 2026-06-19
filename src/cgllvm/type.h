@@ -7,7 +7,7 @@
 #include <llvm-c/Types.h>
 
 LLVMTypeRef CGLLVM_convert_parser_type(const struct Parser_Type *type,
-                                       LLVMContextRef context);
+                                       LLVMContextRef context, bool ref_is_ptr);
 char *CGLLVM_named_type_full_name(const struct Parser_TypeNamed *named);
 
 struct CGLLVM_TypeRefVec

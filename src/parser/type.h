@@ -177,3 +177,4 @@ struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
                                            const char *name);
 bool Parser_type_is_void_ptr(const struct Parser_Type *type);
 bool Parser_type_is_nullptr_t(const struct Parser_Type *type);
+bool Parser_type_is_ref(const struct Parser_Type *type);
