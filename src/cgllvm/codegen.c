@@ -484,8 +484,13 @@ static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
         auto param =
             &expr->node->func_decl.params.arr[i]->var_decl.insts.arr[0];
 
-        auto val = codegen_expr(arg, scope, context, mod, builder);
-        val = cast_value(val, &arg->ret, &param->type, context, builder);
+        LLVMValueRef val;
+        if (Parser_type_is_ref(&param->type)) {
+            val = codegen_expr_ref(arg, scope, context, mod, builder);
+        } else {
+            val = codegen_expr(arg, scope, context, mod, builder);
+            val = cast_value(val, &arg->ret, &param->type, context, builder);
+        }
 
         ret[i + implicit_this] = val;
     }
@@ -747,9 +752,15 @@ static void add_params_to_func(const struct Parser_FuncDecl *func,
 
         struct CGLLVM_Ident ident = {.name = strdup(param->name)};
 
-        ident.type = CGLLVM_convert_parser_type(&param->type, context, true);
-        ident.val = LLVMBuildAlloca(builder, ident.type, "");
-        LLVMBuildStore(builder, LLVMGetParam(func_val, i), ident.val);
+        ident.type = CGLLVM_convert_parser_type(&param->type, context, false);
+
+        auto val = LLVMGetParam(func_val, i);
+        if (Parser_type_is_ref(&param->type)) {
+            ident.val = val;
+        } else {
+            ident.val = LLVMBuildAlloca(builder, ident.type, "");
+            LLVMBuildStore(builder, LLVMGetParam(func_val, i), ident.val);
+        }
 
         gen_dynpush(&scope->idents, ident);
     }
