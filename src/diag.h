@@ -48,6 +48,12 @@ enum WarnType {
     WARNTYPE_UNNECESSARY_QUALIFIER,
 };
 
+enum DiagType {
+    DIAGTYPE_ERROR,
+    DIAGTYPE_WARNING,
+    DIAGTYPE_NOTE,
+};
+
 struct Diag {
     struct Position pos;
     const char *line; // terminated by '\n'
@@ -56,7 +62,7 @@ struct Diag {
         enum ErrorType err;
         enum WarnType warn;
     };
-    bool is_err;
+    enum DiagType type;
 };
 gen_dynarray_struct_named(DiagVec, struct Diag);
 

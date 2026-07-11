@@ -23,10 +23,16 @@ Sema_best_viable_func(const struct Parser_Expr *args, isize_t n_args,
                       const struct Parser_ASTNodePVec *funcs,
                       const struct Parser_TypeDataQual *this_quals);
 
+struct Parser_ASTNodePVec
+Sema_find_candidate_funcs(const char *name, const struct Parser_Expr *args,
+                          isize_t n_args, struct Sema_Scope *scope,
+                          bool is_qualified);
 struct Parser_ASTNode *Sema_find_func(const char *name,
                                       const struct Parser_Expr *args,
                                       isize_t n_args, struct Sema_Scope *scope,
                                       bool is_qualified);
+struct Parser_ASTNodePVec Sema_find_candidate_methods(const char *name,
+                                                      struct Sema_Scope *scope);
 struct Parser_ASTNode *
 Sema_find_method(const char *name, const struct Parser_Expr *args,
                  isize_t n_args, struct Sema_Scope *scope,

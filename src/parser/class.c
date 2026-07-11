@@ -61,7 +61,7 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
                        .line = toks[ident].line,
                        .msg = Print_fmt_to_str("'%s' is undefined", super_name),
                        .err = ERRORTYPE_BAD_SUPERCLASS,
-                       .is_err = true,
+                       .type = DIAGTYPE_ERROR,
                    }));
     else if (super->type != PARSER_ASTNODETYPE_CLASS)
         gen_dynpush(diags, ((struct Diag){
@@ -70,7 +70,7 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
                                .msg = Print_fmt_to_str(
                                    "'%s' is not a defined class", super_name),
                                .err = ERRORTYPE_BAD_SUPERCLASS,
-                               .is_err = true,
+                               .type = DIAGTYPE_ERROR,
                            }));
     else
         gen_dynpush(&self->supers, super);

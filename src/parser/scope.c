@@ -15,7 +15,7 @@ static struct Diag not_a_nmpace_err(const char *tok_name,
         .line = tok->line,
         .msg = Print_fmt_to_str("'%s' is not a namespace", tok_name),
         .err = ERRORTYPE_MISSING_TOKEN,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 

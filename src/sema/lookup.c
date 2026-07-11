@@ -142,10 +142,10 @@ static void find_op_overloads_in_scope(enum Parser_ExprType op,
     }
 }
 
-struct Parser_ASTNode *Sema_find_func(const char *name,
-                                      const struct Parser_Expr *args,
-                                      isize_t n_args, struct Sema_Scope *scope,
-                                      bool is_qualified)
+struct Parser_ASTNodePVec
+Sema_find_candidate_funcs(const char *name, const struct Parser_Expr *args,
+                          isize_t n_args, struct Sema_Scope *scope,
+                          bool is_qualified)
 {
     struct Sema_ScopePVec scopes = {};
     if (is_qualified) {
@@ -159,13 +159,35 @@ struct Parser_ASTNode *Sema_find_func(const char *name,
     for (isize_t i = 0; i < scopes.len; ++i)
         find_funcs_in_scope(name, scopes.arr[i], &funcs);
 
+    gen_dyndeinit(&scopes);
+    return funcs;
+}
+
+struct Parser_ASTNode *Sema_find_func(const char *name,
+                                      const struct Parser_Expr *args,
+                                      isize_t n_args, struct Sema_Scope *scope,
+                                      bool is_qualified)
+{
+    auto funcs =
+        Sema_find_candidate_funcs(name, args, n_args, scope, is_qualified);
+
     struct Parser_ASTNode *ret = NULL;
     if (funcs.len > 0)
         ret = Sema_best_viable_func(args, n_args, &funcs, NULL);
 
     gen_dyndeinit(&funcs);
-    gen_dyndeinit(&scopes);
     return ret;
+}
+
+struct Parser_ASTNodePVec Sema_find_candidate_methods(const char *name,
+                                                      struct Sema_Scope *scope)
+{
+    assert(scope->type == SEMA_SCOPETYPE_CLASS);
+
+    struct Parser_ASTNodePVec funcs = {};
+    find_funcs_in_scope(name, scope, &funcs);
+
+    return funcs;
 }
 
 struct Parser_ASTNode *
@@ -176,8 +198,7 @@ Sema_find_method(const char *name, const struct Parser_Expr *args,
     assert(this_quals);
     assert(scope->type == SEMA_SCOPETYPE_CLASS);
 
-    struct Parser_ASTNodePVec funcs = {};
-    find_funcs_in_scope(name, scope, &funcs);
+    auto funcs = Sema_find_candidate_methods(name, scope);
 
     struct Parser_ASTNode *ret = NULL;
     if (funcs.len > 0)

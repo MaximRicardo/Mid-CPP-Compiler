@@ -120,7 +120,7 @@ static struct Diag uninited_deduced_type_err(const char *name, const char *type,
             "declaration of '%s' as a deduced type '%s' needs an initializer",
             name, type),
         .err = ERRORTYPE_BAD_VAR_DECLARATION,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -180,7 +180,7 @@ static struct Diag void_var_err(const char *name, const struct Lexer_Token *tok,
         .line = tok->line,
         .msg = Print_fmt_to_str("'%s' has incomplete type 'void'", name),
         .err = type,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 

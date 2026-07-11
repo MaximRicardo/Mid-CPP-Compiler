@@ -20,10 +20,19 @@ void Diag_print(const struct Diag *diag)
     //                   ^
     printf("%s:%" PRId32 ":%" PRId32 ": ", diag->pos.file, diag->pos.line,
            diag->pos.column);
-    if (diag->is_err)
+    switch (diag->type) {
+    case DIAGTYPE_ERROR:
         printf("%serror%s: ", Print_ansi_red, Print_ansi_reset);
-    else
+        break;
+
+    case DIAGTYPE_WARNING:
         printf("%swarning%s: ", Print_ansi_magenta, Print_ansi_reset);
+        break;
+
+    case DIAGTYPE_NOTE:
+        printf("%snote%s: ", Print_ansi_cyan, Print_ansi_reset);
+        break;
+    }
     printf("%s\n", diag->msg);
 
     printf("%05" PRId32 " | ", diag->pos.line);
@@ -46,7 +55,7 @@ struct Diag Diag_expected_token_err(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("expected %s", name),
         .err = type,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -59,7 +68,7 @@ struct Diag Diag_expected_token_warn(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("expected %s", name),
         .warn = type,
-        .is_err = false,
+        .type = DIAGTYPE_WARNING,
     };
 }
 
@@ -72,7 +81,7 @@ struct Diag Diag_unexpected_token_err(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("unexpected %s", name),
         .err = type,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -85,7 +94,7 @@ struct Diag Diag_unexpected_token_warn(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("unexpected %s", name),
         .warn = type,
-        .is_err = false,
+        .type = DIAGTYPE_WARNING,
     };
 }
 
@@ -98,7 +107,7 @@ struct Diag Diag_ident_redefined_err(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("'%s' redefined", name),
         .err = type,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -111,7 +120,7 @@ struct Diag Diag_ident_redefined_warn(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("'%s' redefined", name),
         .warn = type,
-        .is_err = false,
+        .type = DIAGTYPE_WARNING,
     };
 }
 
@@ -124,7 +133,7 @@ struct Diag Diag_ident_undeclared_err(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("undeclared identifier '%s'", name),
         .err = type,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -137,7 +146,7 @@ struct Diag Diag_ident_undeclared_warn(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("undeclared identifier '%s'", name),
         .warn = type,
-        .is_err = false,
+        .type = DIAGTYPE_WARNING,
     };
 }
 
@@ -150,7 +159,7 @@ struct Diag Diag_func_undeclared_err(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("undeclared function '%s'", name),
         .err = type,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -163,6 +172,6 @@ struct Diag Diag_func_undeclared_warn(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("undeclared function '%s'", name),
         .warn = type,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }

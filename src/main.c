@@ -52,11 +52,12 @@ static void clean_diags(struct DiagVec *diags)
 
         bool remove = false;
 
-        if (cur->is_err) {
-            if (prev->is_err && cur->err == prev->err)
+        if (cur->type == DIAGTYPE_ERROR) {
+            if (prev->type == DIAGTYPE_NOTE && cur->err == prev->err)
                 remove = true;
-        } else if (!prev->is_err && cur->warn == prev->warn) {
-            remove = true;
+        } else if (cur->type == DIAGTYPE_WARNING) {
+            if (prev->type == DIAGTYPE_WARNING && cur->warn == prev->warn)
+                remove = true;
         }
 
         if (remove)
@@ -71,7 +72,7 @@ static bool print_diags(struct DiagVec *diags)
 
     bool err = false;
     for (isize_t i = 0; i < diags->len; ++i) {
-        if (diags->arr[i].is_err)
+        if (diags->arr[i].type == DIAGTYPE_ERROR)
             err = true;
         Diag_print(&diags->arr[i]);
     }

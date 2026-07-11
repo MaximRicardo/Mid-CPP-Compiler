@@ -216,7 +216,7 @@ static struct Diag unnecessary_qual_warn(const char *qual,
         .line = tok->line,
         .msg = Print_fmt_to_str("unnecessary '%s' qualifier", qual),
         .warn = WARNTYPE_UNNECESSARY_QUALIFIER,
-        .is_err = false,
+        .type = DIAGTYPE_WARNING,
     };
 }
 
@@ -227,7 +227,7 @@ static struct Diag ptr_to_ref_err(const struct Lexer_Token *tok)
         .line = tok->line,
         .msg = Print_fmt_to_str("pointer to a reference is not allowed"),
         .err = ERRORTYPE_PTR_TO_REF,
-        .is_err = false,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -238,7 +238,7 @@ static struct Diag missplaced_const_err(const struct Lexer_Token *tok)
         .line = tok->line,
         .msg = Print_fmt_to_str("missplaced const specifier"),
         .err = ERRORTYPE_MISPLACED_QUALIFIER,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -249,7 +249,7 @@ static struct Diag type_alr_const_err(const struct Lexer_Token *tok)
         .line = tok->line,
         .msg = Print_fmt_to_str("type is already a reference"),
         .err = ERRORTYPE_TYPE_ALREADY_REF,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -260,7 +260,7 @@ static struct Diag expected_paren(bool left, const struct Lexer_Token *tok)
         .line = tok->line,
         .msg = Print_fmt_to_str("expected '%c'", left ? '(' : ')'),
         .err = ERRORTYPE_MISSING_PAREN,
-        .is_err = 1,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -273,7 +273,7 @@ static struct Diag spec_unsignable_err(const char *type_name,
         .msg = Print_fmt_to_str("type '%s' cannot be made signed or unsigned",
                                 type_name),
         .err = ERRORTYPE_TYPE_UNSIGNABLE,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -285,7 +285,7 @@ static struct Diag bad_qual_err(const char *type_name,
         .line = tok->line,
         .msg = Print_fmt_to_str("bad qualifier '%s'", type_name),
         .err = ERRORTYPE_TYPE_UNSIGNABLE,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -545,7 +545,7 @@ struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
                            .line = toks[start].line,
                            .msg = strdup("expected a type specifier"),
                            .err = ERRORTYPE_MISSING_TYPESPEC,
-                           .is_err = true};
+                           .type = DIAGTYPE_ERROR};
         gen_dynpush(diags, err);
         ret.spec = PARSER_TYPESPEC_INT; // default to int
     }

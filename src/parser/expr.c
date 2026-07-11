@@ -990,7 +990,7 @@ static void add_op_to_out(struct Parser_Expr *op, struct Parser_ExprVec *out,
                                             : 3,
                 Parser_is_unaryop(op->type) ? "operand" : "operands", out->len),
             .err = ERRORTYPE_INSUFFICIENT_OPERANDS,
-            .is_err = true};
+            .type = DIAGTYPE_ERROR};
         gen_dynpush(diags, err);
         return;
     }
@@ -1056,7 +1056,7 @@ static struct Parser_Expr parse_subexpr(const struct Lexer_Token *toks,
                            .line = toks[l_paren].line,
                            .msg = Print_fmt_to_str("expected ')'"),
                            .err = ERRORTYPE_MISSING_PAREN,
-                           .is_err = true};
+                           .type = DIAGTYPE_ERROR};
         gen_dynpush(diags, err);
     }
 

@@ -198,7 +198,7 @@ static struct Diag bad_ctor_call_type(const struct Parser_Type *type,
         .line = tok->line,
         .msg = Print_fmt_to_str("can not call constructor on type '%s'", str),
         .err = ERRORTYPE_BAD_IDENTIFIER,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 
     free(str);
@@ -256,7 +256,7 @@ this_outside_nonstatic_method_err(const struct Lexer_Token *tok)
         .msg = Print_fmt_to_str(
             "can't use 'this' outside a non-static member function"),
         .err = ERRORTYPE_BAD_THIS_USAGE,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -367,7 +367,7 @@ static struct Diag bad_overload_call_err(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("call to nonexistent overload of '%s'", name),
         .err = ERRORTYPE_BAD_IDENTIFIER,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -379,6 +379,45 @@ method_call_this_quals(struct Parser_Expr *call)
     const struct Parser_TypeDataQualVec *quals =
         &lhs->info.args.arr[0].ret.dquals;
     return &quals->arr[quals->len - 1];
+}
+
+static struct Diag note_func_candidate(const struct Parser_ASTNode *func)
+{
+    return (struct Diag){
+        .pos = func->start->pos,
+        .line = func->start->line,
+        .msg = Print_fmt_to_str("candidate not viable"),
+        .type = DIAGTYPE_NOTE,
+    };
+}
+
+static void note_func_candidates(const char *name,
+                                 const struct Parser_Expr *args, isize_t n_args,
+                                 struct Sema_Scope *scope, bool is_qualified,
+                                 struct DiagVec *diags)
+{
+    auto cands =
+        Sema_find_candidate_funcs(name, args, n_args, scope, is_qualified);
+
+    for (isize_t i = 0; i < cands.len; ++i) {
+        gen_dynpush(diags, note_func_candidate(cands.arr[i]));
+    }
+
+    gen_dyndeinit(&cands);
+}
+
+static void note_method_candidates(const char *name,
+
+                                   struct Sema_Scope *scope,
+                                   struct DiagVec *diags)
+{
+    auto cands = Sema_find_candidate_methods(name, scope);
+
+    for (isize_t i = 0; i < cands.len; ++i) {
+        gen_dynpush(diags, note_func_candidate(cands.arr[i]));
+    }
+
+    gen_dyndeinit(&cands);
 }
 
 static void set_func_call_node(struct Parser_Expr *expr,
@@ -394,7 +433,10 @@ static void set_func_call_node(struct Parser_Expr *expr,
         lhs->ret.spec == PARSER_TYPESPEC_FUNC ? lhs->ret.func.scope : scope;
 
     if (lhs->ret.spec == PARSER_TYPESPEC_FUNC) {
-        if (Parser_is_memb_sel(lhs->type))
+        // bum ass code
+        bool is_method = Parser_is_memb_sel(lhs->type);
+
+        if (is_method)
             expr->node = Sema_find_method(
                 lhs->ret.func.name, &expr->info.args.arr[1],
                 expr->info.args.len - 1, res, method_call_this_quals(expr));
@@ -403,11 +445,18 @@ static void set_func_call_node(struct Parser_Expr *expr,
                 Sema_find_func(lhs->ret.func.name, &expr->info.args.arr[1],
                                expr->info.args.len - 1, res, qualified);
 
-        if (!expr->node)
+        if (!expr->node) {
             gen_dynpush(diags, bad_overload_call_err(qual_name, lhs->tok));
-        else
+            if (is_method)
+                note_method_candidates(lhs->ret.func.name, res, diags);
+            else
+                note_func_candidates(
+                    lhs->ret.func.name, &expr->info.args.arr[1],
+                    expr->info.args.len - 1, res, qualified, diags);
+        } else {
             printf("calling func at %d:%d\n", expr->node->start->pos.line,
                    expr->node->start->pos.column);
+        }
     } else if (lhs->ret.spec == PARSER_TYPESPEC_FPTR) {
         CRASH("calling function ptrs not implemented");
     } else {
@@ -452,7 +501,7 @@ static void typecheck_assignment_expr(struct Parser_Expr *expr,
                                             ? "an xvalue"
                                             : "a prvalue"),
                 .err = ERRORTYPE_BAD_ASSIGNMENT,
-                .is_err = true,
+                .type = DIAGTYPE_ERROR,
             }));
 
     expr->ret = Parser_copy_type(&lhs->ret);
@@ -479,7 +528,7 @@ static void typecheck_inc_dec_expr(struct Parser_Expr *expr,
                                         is_prefix ? "prefix" : "postfix",
                                         is_inc ? "increment" : "decrement"),
                 .err = ERRORTYPE_BAD_ASSIGNMENT,
-                .is_err = true,
+                .type = DIAGTYPE_ERROR,
             }));
 
     expr->ret = Parser_copy_type(&expr->info.args.arr[0].ret);
@@ -501,7 +550,7 @@ static void typecheck_deref_expr(struct Parser_Expr *expr,
                 .line = expr->tok->line,
                 .msg = Print_fmt_to_str("cannot dereference type '%s'", tname),
                 .err = ERRORTYPE_BAD_DEREF,
-                .is_err = true,
+                .type = DIAGTYPE_ERROR,
             }));
         free(tname);
         expr->ret = Parser_copy_type(&arg->ret);
@@ -523,7 +572,7 @@ static void typecheck_ref_expr(struct Parser_Expr *expr, struct DiagVec *diags)
                         .line = expr->tok->line,
                         .msg = Print_fmt_to_str("cannot reference rvalue"),
                         .err = ERRORTYPE_BAD_REF,
-                        .is_err = true,
+                        .type = DIAGTYPE_ERROR,
                     }));
 
     bool failed;
@@ -558,7 +607,7 @@ static void typecheck_arr_subscr_expr(struct Parser_Expr *expr,
                 .msg = Print_fmt_to_str("cannot subscript types '%s' and '%s'",
                                         lhs_tname, rhs_tname),
                 .err = ERRORTYPE_BAD_ARRAY_SUBSCRIPT,
-                .is_err = true,
+                .type = DIAGTYPE_ERROR,
             }));
         free(lhs_tname);
         free(rhs_tname);
@@ -586,7 +635,7 @@ static struct Diag cond_one_result_void_err(const struct Lexer_Token *tok)
         .line = tok->line,
         .msg = strdup("only one result of conditional '?' expression is void"),
         .err = ERRORTYPE_BAD_CONDITIONAL,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -644,7 +693,7 @@ static struct Diag bad_operands(const struct Parser_Expr *expr,
             .msg = Print_fmt_to_str("%s operator can not operate on '%s'", type,
                                     lhs_tname),
             .err = err_type,
-            .is_err = true,
+            .type = DIAGTYPE_ERROR,
         };
     } else {
         ret = (struct Diag){
@@ -654,7 +703,7 @@ static struct Diag bad_operands(const struct Parser_Expr *expr,
                 Print_fmt_to_str("%s operator can not operate on '%s' and '%s'",
                                  type, lhs_tname, rhs_tname),
             .err = err_type,
-            .is_err = true,
+            .type = DIAGTYPE_ERROR,
         };
     }
     free(lhs_tname);
@@ -865,7 +914,7 @@ memb_sel_lhs_not_class_err(const struct Parser_Expr *memb_sel)
         .msg = Print_fmt_to_str(
             "member select lhs '%s' is not a class or union", lhs_type),
         .err = ERRORTYPE_BAD_MEMB_SEL,
-        .is_err = true};
+        .type = DIAGTYPE_ERROR};
 
     free(lhs_type);
     return ret;
@@ -880,7 +929,7 @@ static struct Diag memb_sel_expects_ptr_err(const struct Parser_Expr *memb_sel)
                        .msg = Print_fmt_to_str(
                            "member select lhs '%s' is not a pointer", lhs_type),
                        .err = ERRORTYPE_BAD_MEMB_SEL,
-                       .is_err = true};
+                       .type = DIAGTYPE_ERROR};
 
     free(lhs_type);
     return ret;
@@ -896,7 +945,7 @@ memb_sel_expects_non_ptr_err(const struct Parser_Expr *memb_sel)
                        .msg = Print_fmt_to_str(
                            "member select lhs '%s' is a pointer", lhs_type),
                        .err = ERRORTYPE_BAD_MEMB_SEL,
-                       .is_err = true};
+                       .type = DIAGTYPE_ERROR};
 
     free(lhs_type);
     return ret;
@@ -918,7 +967,7 @@ static struct Diag unknown_field_err(const char *field, const char *class_,
         .msg = Print_fmt_to_str("unknown field '%s' in %s '%s'", field,
                                 is_union ? "union" : "class", class_),
         .err = ERRORTYPE_BAD_IDENTIFIER,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -1074,7 +1123,7 @@ static struct Diag no_matching_ctor_err(const struct Parser_Type *type,
         .line = tok->line,
         .msg = Print_fmt_to_str("no matching constructor for '%s'", str),
         .err = ERRORTYPE_NO_MATCHING_CTOR,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 
     free(str);
@@ -1145,7 +1194,7 @@ invalid_return_stmt_type_err(const struct Parser_Type *func_type,
             .msg = Print_fmt_to_str("returning '%s' in function of type '%s'",
                                     ret_type_str, func_type_str),
             .err = ERRORTYPE_BAD_RETURN_STMT_TYPE,
-            .is_err = true,
+            .type = DIAGTYPE_ERROR,
         };
 
         free(ret_type_str);
@@ -1157,7 +1206,7 @@ invalid_return_stmt_type_err(const struct Parser_Type *func_type,
                 "expected a return value in function of type '%s'",
                 func_type_str),
             .err = ERRORTYPE_BAD_RETURN_STMT_TYPE,
-            .is_err = true,
+            .type = DIAGTYPE_ERROR,
         };
     }
 
@@ -1173,7 +1222,7 @@ static struct Diag return_outside_func_err(const struct Lexer_Token *tok)
         .line = tok->line,
         .msg = Print_fmt_to_str("return statement outside a function"),
         .err = ERRORTYPE_RETURN_OUTSIDE_FUNC,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 

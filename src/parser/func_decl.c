@@ -31,7 +31,7 @@ static struct Diag missing_default_arg_err(const char *func,
         .line = tok->line,
         .msg = Print_fmt_to_str("function '%s' missing default argument", func),
         .err = err_type,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -444,7 +444,7 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
                                .line = toks[op].line,
                                .msg = strdup("can't overload operator"),
                                .err = ERRORTYPE_BAD_OP_OVERLOAD,
-                               .is_err = true,
+                               .type = DIAGTYPE_ERROR,
                            }));
         if (out_end)
             --*out_end;

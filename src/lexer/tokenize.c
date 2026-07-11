@@ -194,7 +194,7 @@ static struct Diag intlit_too_big_err(struct Position pos, const char *line)
         .line = line,
         .msg = Print_fmt_to_str("integer literal too big"),
         .err = ERRORTYPE_BAD_LITERAL,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -525,7 +525,7 @@ enum Literal_StringType charlit_type(const char *src, isize_t start,
                         .msg = Print_fmt_to_str(
                             "unknown char literal prefix '%c'", src[start]),
                         .err = ERRORTYPE_BAD_LITERAL,
-                        .is_err = true,
+                        .type = DIAGTYPE_ERROR,
                     }));
         return LITERAL_STRINGTYPE_CHAR;
     }
@@ -539,7 +539,7 @@ static struct Diag expected_tok_err(const char *name, struct Position pos,
         .line = line,
         .msg = Print_fmt_to_str("expected %s", name),
         .err = type,
-        .is_err = true,
+        .type = DIAGTYPE_ERROR,
     };
 }
 
@@ -611,7 +611,7 @@ bool verify_charlit_value(u32 val, enum Literal_StringType type,
                         .msg = Print_fmt_to_str(
                             "character to big to fit in character literal"),
                         .err = ERRORTYPE_BAD_LITERAL,
-                        .is_err = true,
+                        .type = DIAGTYPE_ERROR,
                     }));
 
     return !too_big;
@@ -1356,7 +1356,7 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
             // column isn't updated cuz it's still one character
             char *c = UTF8_char_to_str(UTF8_read_char(src, i, &i));
             --i;
-            struct Diag err = {.is_err = true,
+            struct Diag err = {.type = DIAGTYPE_ERROR,
                                .err = ERRORTYPE_UNKNOWN_SYMBOL,
                                .msg =
                                    Print_fmt_to_str("unknown symbol '%s'", c),
