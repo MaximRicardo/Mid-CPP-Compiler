@@ -7,4 +7,5 @@ int main()
     a = 10;
     int x = 12;
     void y;
+    signed signed int z;
 }

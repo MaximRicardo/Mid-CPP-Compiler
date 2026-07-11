@@ -18,9 +18,13 @@ void Diag_print(const struct Diag *diag)
     // example: "test.cpp:10:5: error: expected ';' after expression"
     //          "00010 | printf("hello world")"
     //                   ^
-    printf("%s:%" PRId32 ":%" PRId32 ": %s: %s\n", diag->pos.file,
-           diag->pos.line, diag->pos.column, diag->is_err ? "error" : "warning",
-           diag->msg);
+    printf("%s:%" PRId32 ":%" PRId32 ": ", diag->pos.file, diag->pos.line,
+           diag->pos.column);
+    if (diag->is_err)
+        printf("%serror%s: ", Print_ansi_red, Print_ansi_reset);
+    else
+        printf("%swarning%s: ", Print_ansi_magenta, Print_ansi_reset);
+    printf("%s\n", diag->msg);
 
     printf("%05" PRId32 " | ", diag->pos.line);
     Print_line(diag->line);
