@@ -11,6 +11,7 @@
 #include "parser/ast.h"
 #include "parser/ast_log.h"
 #include "parser/type.h"
+#include "position.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "symbol.h"
@@ -39,9 +40,35 @@ static char *read_file(const char *path)
     return str;
 }
 
-// returns true if at least one of them was an error
-static bool print_diags(const struct DiagVec *diags)
+// removes duplicate diags
+static void clean_diags(struct DiagVec *diags)
 {
+    for (isize_t i = diags->len - 1; i >= 1; --i) {
+        auto cur = &diags->arr[i];
+        auto prev = &diags->arr[i - 1];
+
+        if (!Position_equal(&cur->pos, &prev->pos))
+            continue;
+
+        bool remove = false;
+
+        if (cur->is_err) {
+            if (prev->is_err && cur->err == prev->err)
+                remove = true;
+        } else if (!prev->is_err && cur->warn == prev->warn) {
+            remove = true;
+        }
+
+        if (remove)
+            gen_dynremove(diags, i, Diag_deinit);
+    }
+}
+
+// returns true if at least one of them was an error
+static bool print_diags(struct DiagVec *diags)
+{
+    clean_diags(diags);
+
     bool err = false;
     for (isize_t i = 0; i < diags->len; ++i) {
         if (diags->arr[i].is_err)
