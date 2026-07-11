@@ -408,8 +408,12 @@ static void set_func_call_node(struct Parser_Expr *expr,
         else
             printf("calling func at %d:%d\n", expr->node->start->pos.line,
                    expr->node->start->pos.column);
-    } else {
+    } else if (lhs->ret.spec == PARSER_TYPESPEC_FPTR) {
         CRASH("calling function ptrs not implemented");
+    } else {
+        gen_dynpush(diags,
+                    Diag_func_undeclared_err(lhs->info.ident, lhs->tok,
+                                             ERRORTYPE_UNDECLARED_FUNCTION));
     }
 
     free(qual_name);

@@ -22,6 +22,7 @@ enum ErrorType {
     ERRORTYPE_UNEXPECTED_TOKEN,
     ERRORTYPE_TYPEDEF_MISSING_NAME,
     ERRORTYPE_UNDECLARED_IDENTIFIER,
+    ERRORTYPE_UNDECLARED_FUNCTION,
     ERRORTYPE_BAD_IDENTIFIER,
     ERRORTYPE_BAD_ARRAY_SUBSCRIPT,
     ERRORTYPE_BAD_ASSIGNMENT,
@@ -88,3 +89,9 @@ struct Diag Diag_ident_undeclared_err(const char *name,
 struct Diag Diag_ident_undeclared_warn(const char *name,
                                        const struct Lexer_Token *tok,
                                        enum WarnType type);
+struct Diag Diag_func_undeclared_err(const char *name,
+                                     const struct Lexer_Token *tok,
+                                     enum ErrorType type);
+struct Diag Diag_func_undeclared_warn(const char *name,
+                                      const struct Lexer_Token *tok,
+                                      enum WarnType type);

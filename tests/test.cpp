@@ -1,4 +1,4 @@
-int func(int &arg)
+int &func(int &arg)
 {
     arg = -67;
 
