@@ -172,6 +172,18 @@ static isize_t parse_inst_init(const struct Lexer_Token *toks, isize_t start,
                                           false, scope, allocs, diags);
 }
 
+static struct Diag void_var_err(const char *name, const struct Lexer_Token *tok,
+                                enum ErrorType type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("'%s' has incomplete type 'void'", name),
+        .err = type,
+        .is_err = true,
+    };
+}
+
 isize_t Parser_parse_var_decl_inst(
     const struct Lexer_Token *toks, isize_t start,
     const enum Lexer_TokenType *end_types, isize_t n_end_types,
@@ -191,6 +203,9 @@ isize_t Parser_parse_var_decl_inst(
                           : Parser_parse_scope_res(toks, name, &name,
                                                    parent_scope, diags);
     inst->name = valid_name_idx(name, toks) ? toks[name].ident : NULL;
+    if (Parser_type_is_void(&inst->type) && inst->name)
+        gen_dynpush(diags, void_var_err(inst->name, &toks[start],
+                                        ERRORTYPE_BAD_VAR_DECLARATION));
 
     if (inst->name && flags.add_to_scope && add_ident(inst, node, res))
         gen_dynpush(diags, Diag_ident_redefined_err(inst->name, &toks[start],

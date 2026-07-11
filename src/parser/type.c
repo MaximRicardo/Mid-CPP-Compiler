@@ -1371,6 +1371,11 @@ struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
     return ret;
 }
 
+bool Parser_type_is_void(const struct Parser_Type *type)
+{
+    return Parser_n_indir(type) == 0 && type->spec == PARSER_TYPESPEC_VOID;
+}
+
 bool Parser_type_is_void_ptr(const struct Parser_Type *type)
 {
     return Parser_n_indir(type) == 1 && type->spec == PARSER_TYPESPEC_VOID;

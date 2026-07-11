@@ -56,6 +56,16 @@ struct Sema_Ident *Parser_func_ident(const struct Parser_FuncDecl *func)
     return &parent->idents.arr[func->ident_idx];
 }
 
+// accounts for functions taking a singular void parameter
+// example: int f(void)
+static void account_for_void_param(struct Parser_ASTNodePVec *params)
+{
+    if (params->len == 1 &&
+        Parser_type_is_void(&params->arr[0]->var_decl.insts.arr[0].type)) {
+        gen_dyndeinit(params);
+    }
+}
+
 struct Parser_ASTNodePVec Parser_parse_func_params(
     const struct Lexer_Token *toks, isize_t lparen, isize_t *out_rparen,
     struct Parser_ASTNode *parent, struct Sema_Scope *scope, bool add_to_scope,
@@ -100,6 +110,8 @@ struct Parser_ASTNodePVec Parser_parse_func_params(
             gen_dynpush(&params, child);
         }
     }
+
+    account_for_void_param(&params);
 
     return params;
 }
