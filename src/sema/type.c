@@ -359,13 +359,13 @@ static const char *scope_res_ident(const struct Parser_Expr *expr)
 }
 */
 
-static struct Diag not_a_func_err(const char *name,
-                                  const struct Lexer_Token *tok)
+static struct Diag bad_overload_call_err(const char *name,
+                                         const struct Lexer_Token *tok)
 {
     return (struct Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = Print_fmt_to_str("'%s' is not a function", name),
+        .msg = Print_fmt_to_str("call to nonexistent overload of '%s'", name),
         .err = ERRORTYPE_BAD_IDENTIFIER,
         .is_err = true,
     };
@@ -404,7 +404,7 @@ static void set_func_call_node(struct Parser_Expr *expr,
                                expr->info.args.len - 1, res, qualified);
 
         if (!expr->node)
-            gen_dynpush(diags, not_a_func_err(qual_name, lhs->tok));
+            gen_dynpush(diags, bad_overload_call_err(qual_name, lhs->tok));
         else
             printf("calling func at %d:%d\n", expr->node->start->pos.line,
                    expr->node->start->pos.column);
