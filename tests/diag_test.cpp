@@ -1,4 +1,6 @@
 void func(int);
+void func(float);
+void func(const char *, int);
 
 int main()
 {
