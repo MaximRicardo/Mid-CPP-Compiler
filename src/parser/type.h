@@ -37,7 +37,8 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_ARRAY,
     PARSER_TYPESPEC_AUTO,
     PARSER_TYPESPEC_NULLPTR,
-    PARSER_TYPESPEC_TEMPLATED, // considered a named type
+    PARSER_TYPESPEC_TEMPLATED, // considered a named type, can't be typechecked
+    PARSER_TYPESPEC_UNKNOWN,   // can't be type checked
 
     // prefixed types
     PARSER_TYPESPEC_CLASS,
@@ -45,6 +46,7 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_ENUM,
 };
 
+bool Parser_is_typespec_typecheckable(enum Parser_TypeSpec spec);
 bool Parser_is_typespec_named(enum Parser_TypeSpec spec);
 enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type);
 const char *Parser_typespec_to_str(enum Parser_TypeSpec spec);
@@ -177,7 +179,10 @@ struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
                                            const char *name);
 struct Parser_Type Parser_create_templated_type(struct Sema_Scope *scope,
                                                 i32 ident);
+struct Parser_Type Parser_create_unknown_type();
 bool Parser_type_is_void(const struct Parser_Type *type);
 bool Parser_type_is_void_ptr(const struct Parser_Type *type);
 bool Parser_type_is_nullptr_t(const struct Parser_Type *type);
 bool Parser_type_is_ref(const struct Parser_Type *type);
+// lvls of indir doesn't matter here
+bool Parser_type_is_typecheckable(const struct Parser_Type *type);

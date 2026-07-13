@@ -33,6 +33,11 @@ static bool tok_is_namespace_name(const struct Sema_Scope *scope,
            Sema_is_namespace_name(scope, tok->ident);
 }
 
+bool Parser_is_typespec_typecheckable(enum Parser_TypeSpec spec)
+{
+    return spec == PARSER_TYPESPEC_TEMPLATED || spec == PARSER_TYPESPEC_UNKNOWN;
+}
+
 bool Parser_is_typespec_named(enum Parser_TypeSpec spec)
 {
     return spec == PARSER_TYPESPEC_CLASS || spec == PARSER_TYPESPEC_ENUM ||
@@ -140,6 +145,7 @@ const char *Parser_typespec_to_str(enum Parser_TypeSpec spec)
     case PARSER_TYPESPEC_FPTR:
     case PARSER_TYPESPEC_ARRAY:
     case PARSER_TYPESPEC_TEMPLATED:
+    case PARSER_TYPESPEC_UNKNOWN:
         printf("spec = %d\n", spec);
         CRASH("can't convert type spec to str");
         return "INVALID-TYPE";
@@ -1386,6 +1392,15 @@ struct Parser_Type Parser_create_templated_type(struct Sema_Scope *scope,
     return ret;
 }
 
+struct Parser_Type Parser_create_unknown_type()
+{
+    struct Parser_Type ret = {.spec = PARSER_TYPESPEC_UNKNOWN};
+
+    gen_dynpush(&ret.dquals, ((struct Parser_TypeDataQual){}));
+
+    return ret;
+}
+
 bool Parser_type_is_void(const struct Parser_Type *type)
 {
     return Parser_n_indir(type) == 0 && type->spec == PARSER_TYPESPEC_VOID;
@@ -1404,4 +1419,9 @@ bool Parser_type_is_nullptr_t(const struct Parser_Type *type)
 bool Parser_type_is_ref(const struct Parser_Type *type)
 {
     return type->lv_ref || type->rv_ref;
+}
+
+bool Parser_type_is_typecheckable(const struct Parser_Type *type)
+{
+    return Parser_is_typespec_typecheckable(type->spec);
 }
