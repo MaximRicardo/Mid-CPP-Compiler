@@ -142,6 +142,7 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         end = Parser_parse_return(toks, start, ret, scope, allocs, diags);
     } else if (toks[start].type == LEXER_TOKENTYPE_TEMPLATE) {
         printf("TEMPLATE NODE\n");
+        check_semi = false;
         ret->type = PARSER_ASTNODETYPE_TMPLT;
         end = Parser_parse_tmplt(ret, scope, toks, start, allocs, diags);
     } else if (Parser_valid_type_start(toks, start, scope)) {

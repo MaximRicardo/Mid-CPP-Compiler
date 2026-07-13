@@ -48,6 +48,8 @@ struct Sema_Ident *Sema_find_ident(struct Sema_Scope *scope, const char *name,
 
 bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name);
 bool Sema_is_namespace_name(const struct Sema_Scope *scope, const char *name);
+bool Sema_ident_type(struct Sema_Scope *scope, const struct Sema_Ident *ident,
+                     struct Parser_Type *out_type);
 bool Sema_name_type(struct Sema_Scope *scope, const char *name,
                     struct Parser_Type *out_type);
 // type of a type-name.

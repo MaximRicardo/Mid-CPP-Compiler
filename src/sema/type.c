@@ -69,6 +69,9 @@ struct Parser_Type Sema_node_type(const struct Parser_ASTNode *node,
         return Parser_create_func_type(scope, node->func_decl.name);
     } else if (node->type == PARSER_ASTNODETYPE_CLASS) {
         return class_node_type(node);
+    } else if (node->type == PARSER_ASTNODETYPE_TMPLT_PARAM) {
+        assert(node->tmplt_param.kind == PARSER_TMPLTPARAM_NONTYPE);
+        return Parser_copy_type(&node->tmplt_param.non_type.type);
     } else {
         CRASH("fetching the data type of this type of node not supported");
     }
@@ -215,11 +218,24 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
 {
     assert(expr->type == PARSER_EXPRTYPE_IDENTIFIER);
 
-    // all identifiers are lvalues
-    expr->valtype = PARSER_EXPRVALUE_LVALUE;
+    auto ident = Sema_find_ident_const(scope, expr->tok->ident, NULL);
+    if (!ident) {
+        gen_dynpush(diags,
+                    Diag_ident_undeclared_err(expr->tok->ident, expr->tok,
+                                              ERRORTYPE_UNDECLARED_IDENTIFIER));
+        expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT);
+    }
+    assert(ident->decl);
 
-    if (Sema_is_type_name(scope, expr->tok->ident)) {
-        // calling a ctor
+    // template non-type parameters are prvalues, all other identifiers are
+    // lvalues
+    expr->valtype = ident->decl->type == PARSER_ASTNODETYPE_TMPLT_PARAM
+                        ? PARSER_EXPRVALUE_PRVALUE
+                        : PARSER_EXPRVALUE_LVALUE;
+
+    if (Sema_node_creates_type_name(ident->decl)) {
+        // functional cast stuff
+        // example: ClassName(1, 2, 3)
         auto type = Sema_type_name_type(scope, expr->tok->ident);
 
         expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT);
@@ -235,19 +251,7 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
 
         Parser_Type_deinit(&type);
     } else {
-        struct Parser_Type type;
-        bool fnd_type = Sema_name_type(scope, expr->tok->ident, &type);
-
-        if (!fnd_type) {
-            gen_dynpush(diags, Diag_ident_undeclared_err(
-                                   expr->tok->ident, expr->tok,
-                                   ERRORTYPE_UNDECLARED_IDENTIFIER));
-            expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT);
-
-            Parser_Type_deinit(&type);
-        } else {
-            expr->ret = type;
-        }
+        assert(Sema_ident_type(scope, ident, &expr->ret));
     }
 }
 

@@ -103,6 +103,17 @@ bool Sema_is_namespace_name(const struct Sema_Scope *scope, const char *name)
     return ident->type == SEMA_IDENTTYPE_NAMESPACE;
 }
 
+bool Sema_ident_type(struct Sema_Scope *scope, const struct Sema_Ident *ident,
+                     struct Parser_Type *out_type)
+{
+    if (ident->type == SEMA_IDENTTYPE_NAMESPACE || !ident->decl) {
+        return false;
+    } else {
+        *out_type = Sema_node_type(ident->decl, scope, ident->name);
+        return true;
+    }
+}
+
 bool Sema_name_type(struct Sema_Scope *scope, const char *name,
                     struct Parser_Type *out_type)
 {
@@ -110,12 +121,7 @@ bool Sema_name_type(struct Sema_Scope *scope, const char *name,
     if (!ident)
         return false;
 
-    if (ident->type == SEMA_IDENTTYPE_NAMESPACE || !ident->decl) {
-        return false;
-    } else {
-        *out_type = Sema_node_type(ident->decl, scope, name);
-        return true;
-    }
+    return Sema_ident_type(scope, ident, out_type);
 }
 
 struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,

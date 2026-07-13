@@ -294,6 +294,15 @@ isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
                            struct Parser_Allocators *allocs,
                            struct DiagVec *diags)
 {
-    return parse_tmplt_impl(node, parent_scope, toks, start, allocs, false,
-                            diags);
+    isize_t child_start =
+        parse_tmplt_impl(node, parent_scope, toks, start, allocs, false, diags);
+
+    auto tmplt = &node->tmplt;
+
+    isize_t child_end;
+    tmplt->child =
+        Parser_parse_node(toks, child_start, &child_end, node, tmplt->scope,
+                          (struct Parser_ParseNodeFlags){}, allocs, diags);
+
+    return child_end;
 }
