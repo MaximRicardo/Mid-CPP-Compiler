@@ -17,6 +17,12 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 
+static isize_t parse_tmplt_impl(struct Parser_ASTNode *node,
+                                struct Sema_Scope *parent_scope,
+                                const struct Lexer_Token *toks, isize_t start,
+                                struct Parser_Allocators *allocs, bool is_param,
+                                struct DiagVec *diags);
+
 void Parser_Tmplt_deinit(struct Parser_Tmplt *self)
 {
     gen_dyndeinit(&self->params);
@@ -37,8 +43,7 @@ void Parser_TmpltTypeParam_deinit(struct Parser_TmpltTypeParam *self)
 
 void Parser_TmpltTmpltParam_deinit(struct Parser_TmpltTmpltParam *self)
 {
-    if (self->def_arg)
-        Parser_Type_deinit(self->def_arg);
+    (void)self;
 }
 
 void Parser_TmpltParam_deinit(struct Parser_TmpltParam *self)
@@ -137,6 +142,42 @@ static void parse_tmplt_type_param(struct Parser_ASTNode *node,
     }
 }
 
+static void parse_tmplt_tmplt_param(
+    struct Parser_ASTNode *node, struct Parser_ASTNode *parent,
+    struct Sema_Scope *scope, const struct Lexer_Token *toks, isize_t start,
+    isize_t *out_end, struct Parser_Allocators *allocs, struct DiagVec *diags)
+{
+    auto param = &node->tmplt_param.tmplt;
+    *param = (struct Parser_TmpltTmpltParam){.parent = parent};
+
+    gen_bumpmalloc(&allocs->ast, &param->tmplt);
+    param->tmplt->parent = node;
+    param->tmplt->start = &toks[start];
+    param->tmplt->type = PARSER_ASTNODETYPE_TMPLT;
+
+    isize_t name_idx =
+        parse_tmplt_impl(param->tmplt, scope, toks, start, allocs, true, diags);
+
+    isize_t assign_idx = name_idx;
+    if (toks[name_idx].type == LEXER_TOKENTYPE_IDENTIFIER) {
+        ++assign_idx;
+        param->name = toks[name_idx].ident;
+        if (add_ident(param->name, node, scope, SEMA_IDENTTYPE_TEMPLATE))
+            gen_dynpush(diags,
+                        Diag_ident_redefined_err(param->name, &toks[name_idx],
+                                                 ERRORTYPE_BAD_IDENTIFIER));
+    }
+
+    // no default argument
+    if (toks[assign_idx].type != LEXER_TOKENTYPE_ASSIGN) {
+        if (out_end)
+            *out_end = assign_idx;
+        return;
+    }
+
+    CRASH("default argument for template template parameter not yet supported");
+}
+
 void parse_tmplt_param(struct Parser_ASTNode *node,
                        struct Parser_ASTNode *parent, struct Sema_Scope *scope,
                        const struct Lexer_Token *toks, isize_t start,
@@ -149,6 +190,8 @@ void parse_tmplt_param(struct Parser_ASTNode *node,
 
     if (toks[start].type == LEXER_TOKENTYPE_TEMPLATE) {
         param->kind = PARSER_TMPLTPARAM_TMPLT;
+        parse_tmplt_tmplt_param(node, parent, scope, toks, start, out_end,
+                                allocs, diags);
     } else if (toks[start].type == LEXER_TOKENTYPE_CLASS ||
                toks[start].type == LEXER_TOKENTYPE_TYPENAME) {
         param->kind = PARSER_TMPLTPARAM_TYPE;
@@ -205,11 +248,13 @@ static struct Sema_Scope *create_scope(struct Sema_Scope *parent,
     return ret;
 }
 
-isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
-                           struct Sema_Scope *parent_scope,
-                           const struct Lexer_Token *toks, isize_t start,
-                           struct Parser_Allocators *allocs,
-                           struct DiagVec *diags)
+// is_param     - is the template a template template parameter? if so the
+//                function stops after the type parameter key
+static isize_t parse_tmplt_impl(struct Parser_ASTNode *node,
+                                struct Sema_Scope *parent_scope,
+                                const struct Lexer_Token *toks, isize_t start,
+                                struct Parser_Allocators *allocs, bool is_param,
+                                struct DiagVec *diags)
 {
     assert(toks[start].type == LEXER_TOKENTYPE_TEMPLATE);
 
@@ -229,5 +274,26 @@ isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
     tmplt->params = parse_tmplt_param_list(node, tmplt->scope, toks, l_angle,
                                            &r_angle, allocs, diags);
 
-    return r_angle + 1;
+    if (is_param) {
+        if (toks[r_angle + 1].type != LEXER_TOKENTYPE_CLASS) {
+            gen_dynpush(diags,
+                        Diag_expected_token_err("class", &toks[r_angle + 1],
+                                                ERRORTYPE_MISSING_TOKEN));
+            return r_angle + 1;
+        } else {
+            return r_angle + 2;
+        }
+    } else {
+        return r_angle + 1;
+    }
+}
+
+isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
+                           struct Sema_Scope *parent_scope,
+                           const struct Lexer_Token *toks, isize_t start,
+                           struct Parser_Allocators *allocs,
+                           struct DiagVec *diags)
+{
+    return parse_tmplt_impl(node, parent_scope, toks, start, allocs, false,
+                            diags);
 }

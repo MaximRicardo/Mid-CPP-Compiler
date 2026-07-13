@@ -11,6 +11,7 @@ enum Sema_IdentType {
     SEMA_IDENTTYPE_CLASS,
     SEMA_IDENTTYPE_ENUM,
     SEMA_IDENTTYPE_NAMESPACE,
+    SEMA_IDENTTYPE_TEMPLATE,
 };
 
 // NCE - Namespace, Class, or Enum

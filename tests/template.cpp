@@ -1,1 +1,1 @@
-template <typename T, class T, T x = 10, T x>;
+template <template <typename, typename> class C, class C>;
