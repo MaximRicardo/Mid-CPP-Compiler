@@ -35,7 +35,7 @@ static bool tok_is_namespace_name(const struct Sema_Scope *scope,
 
 bool Parser_is_typespec_typecheckable(enum Parser_TypeSpec spec)
 {
-    return spec == PARSER_TYPESPEC_TEMPLATED || spec == PARSER_TYPESPEC_UNKNOWN;
+    return spec != PARSER_TYPESPEC_TEMPLATED && spec != PARSER_TYPESPEC_UNKNOWN;
 }
 
 bool Parser_is_typespec_named(enum Parser_TypeSpec spec)

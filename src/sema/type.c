@@ -77,6 +77,11 @@ struct Parser_Type Sema_node_type(const struct Parser_ASTNode *node,
     }
 }
 
+static void mark_expr_unknown_ret(struct Parser_Expr *expr)
+{
+    expr->ret = Parser_create_unknown_type();
+}
+
 static void typecheck_strlit_expr(struct Parser_Expr *expr)
 {
     // str literals are of type const char[]
@@ -828,6 +833,8 @@ static void typecheck_logical_bin_op_expr(struct Parser_Expr *expr,
 static void typecheck_logical_op_expr(struct Parser_Expr *expr,
                                       struct DiagVec *diags)
 {
+    CRASH("typechecking logical op exprs hasn't been implemented yet");
+
     expr->valtype = PARSER_EXPRVALUE_PRVALUE;
     expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_BOOL);
 
@@ -986,6 +993,10 @@ static void typecheck_memb_sel(struct Parser_Expr *expr,
     auto rhs = &expr->info.args.arr[1];
 
     Sema_typecheck_expr(lhs, scope, diags);
+    if (!Parser_type_is_typecheckable(&lhs->ret)) {
+        mark_expr_unknown_ret(expr);
+        return;
+    }
 
     if (lhs->ret.spec != PARSER_TYPESPEC_CLASS &&
         lhs->ret.spec != PARSER_TYPESPEC_UNION) {
@@ -1090,6 +1101,16 @@ static void typecheck_overloaded_op(struct Parser_Expr *expr,
         expr->valtype = PARSER_EXPRVALUE_PRVALUE;
 }
 
+static bool has_no_untypecheckable_args(struct Parser_Expr *expr)
+{
+    for (isize_t i = 0; i < expr->info.args.len; ++i) {
+        if (!Parser_type_is_typecheckable(&expr->info.args.arr[i].ret))
+            return false;
+    }
+
+    return true;
+}
+
 void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
                          struct DiagVec *diags)
 {
@@ -1110,6 +1131,11 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
         if (typecheck_args) {
             for (isize_t i = 0; i < expr->info.args.len; ++i)
                 Sema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
+
+            if (!has_no_untypecheckable_args(expr)) {
+                mark_expr_unknown_ret(expr);
+                return;
+            }
         }
 
         struct Parser_ASTNode *overload = Sema_find_op_overload(
