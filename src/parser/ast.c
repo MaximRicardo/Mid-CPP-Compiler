@@ -14,6 +14,7 @@
 #include "parser/func_decl.h"
 #include "parser/namespace.h"
 #include "parser/return.h"
+#include "parser/template.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "sema/scope.h"
@@ -52,6 +53,14 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
         break;
 
     case PARSER_ASTNODETYPE_RETURN:
+        break;
+
+    case PARSER_ASTNODETYPE_TMPLT:
+        Parser_Tmplt_deinit(&self->tmplt);
+        break;
+
+    case PARSER_ASTNODETYPE_TMPLT_PARAM:
+        Parser_TmpltParam_deinit(&self->tmplt_param);
         break;
     }
 }
@@ -131,6 +140,10 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         printf("RETURN NODE\n");
         ret->type = PARSER_ASTNODETYPE_RETURN;
         end = Parser_parse_return(toks, start, ret, scope, allocs, diags);
+    } else if (toks[start].type == LEXER_TOKENTYPE_TEMPLATE) {
+        printf("TEMPLATE NODE\n");
+        ret->type = PARSER_ASTNODETYPE_TMPLT;
+        end = Parser_parse_tmplt(ret, scope, toks, start, allocs, diags);
     } else if (Parser_valid_type_start(toks, start, scope)) {
         printf("DECL NODE\n");
         bool mvp;

@@ -13,14 +13,15 @@ enum Sema_ScopeType {
     SEMA_SCOPETYPE_ENUM,
     SEMA_SCOPETYPE_NAMESPACE,
     SEMA_SCOPETYPE_COMPOUND_STMT,
+    SEMA_SCOPETYPE_TEMPLATE,
 };
 
 gen_dynarray_struct_named(Sema_ScopePVec, struct Sema_Scope *);
 struct Sema_Scope {
+    struct Sema_IdentVec idents; // NOTE: be careful about ptr invalidation
     struct Sema_ScopePVec childs;
     struct Sema_Scope *parent;
     struct Parser_ASTNode *node;
-    struct Sema_IdentVec idents; // NOTE: be careful about ptr invalidation
     enum Sema_ScopeType type;
 };
 

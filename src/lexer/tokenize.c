@@ -928,6 +928,13 @@ static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
         return (struct Lexer_Token){
             .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DEFAULT};
 
+    else if (!strcmp(id, "template"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_TEMPLATE};
+    else if (!strcmp(id, "typename"))
+        return (struct Lexer_Token){
+            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_TYPENAME};
+
     else
         return (struct Lexer_Token){.pos = pos,
                                     .line = line,

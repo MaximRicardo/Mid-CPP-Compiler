@@ -13,6 +13,7 @@
 #include "parser/return.h"
 #include "parser/var_decl.h"
 #include "sema/scope.h"
+#include "template.h"
 
 enum Parser_ASTNodeType {
     PARSER_ASTNODETYPE_ROOT,
@@ -23,6 +24,8 @@ enum Parser_ASTNodeType {
     PARSER_ASTNODETYPE_ENUM,
     PARSER_ASTNODETYPE_NAMESPACE,
     PARSER_ASTNODETYPE_RETURN,
+    PARSER_ASTNODETYPE_TMPLT,
+    PARSER_ASTNODETYPE_TMPLT_PARAM,
 };
 
 struct Parser_ASTNode {
@@ -35,6 +38,8 @@ struct Parser_ASTNode {
         struct Parser_Enum enum_;
         struct Parser_Namespace nmspace;
         struct Parser_Return ret;
+        struct Parser_Tmplt tmplt;
+        struct Parser_TmpltParam tmplt_param;
     };
     struct Parser_ASTNode *parent;
     const struct Lexer_Token *start;
