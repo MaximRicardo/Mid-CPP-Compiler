@@ -216,9 +216,11 @@ scope_find_ident_shallow(const struct Sema_Scope *scope,
         if (strcmp(ident->name, search->name))
             continue;
 
+        /*
         bool same_type = ident->type == search->type;
         if (!same_type)
             continue;
+            */
 
         if (search->type != SEMA_IDENTTYPE_FUNC ||
             are_func_decls_same(&search->decl->func_decl,
