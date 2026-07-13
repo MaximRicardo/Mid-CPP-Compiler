@@ -37,6 +37,7 @@ enum Parser_TypeSpec {
     PARSER_TYPESPEC_ARRAY,
     PARSER_TYPESPEC_AUTO,
     PARSER_TYPESPEC_NULLPTR,
+    PARSER_TYPESPEC_TEMPLATED, // considered a named type
 
     // prefixed types
     PARSER_TYPESPEC_CLASS,
@@ -133,18 +134,17 @@ struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type);
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
                                      struct Sema_Scope *scope,
-                                     isize_t *out_declname,
+                                     isize_t *out_declname, bool is_type_id,
                                      struct DiagVec *diags);
 struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
                                      struct Sema_Scope *scope,
                                      struct DiagVec *diags);
-struct Parser_Type Parser_parse_type_no_base(const struct Lexer_Token *toks,
-                                             isize_t start, isize_t *out_end,
-                                             const struct Parser_Type *base,
-                                             struct Sema_Scope *scope,
-                                             isize_t *out_declname,
-                                             struct DiagVec *diags);
+struct Parser_Type
+Parser_parse_type_no_base(const struct Lexer_Token *toks, isize_t start,
+                          isize_t *out_end, const struct Parser_Type *base,
+                          struct Sema_Scope *scope, isize_t *out_declname,
+                          bool is_type_id, struct DiagVec *diags);
 isize_t Parser_n_indir(const struct Parser_Type *type);
 struct Parser_Type Parser_copy_type(const struct Parser_Type *type);
 struct Parser_TypeFPtr
@@ -175,6 +175,8 @@ bool Parser_are_types_same(const struct Parser_Type *a,
                            const struct Parser_Type *b);
 struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
                                            const char *name);
+struct Parser_Type Parser_create_templated_type(struct Sema_Scope *scope,
+                                                i32 ident);
 bool Parser_type_is_void(const struct Parser_Type *type);
 bool Parser_type_is_void_ptr(const struct Parser_Type *type);
 bool Parser_type_is_nullptr_t(const struct Parser_Type *type);

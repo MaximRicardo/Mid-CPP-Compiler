@@ -25,6 +25,8 @@ struct Parser_TmpltNonTypeParam {
     struct Parser_Type type;
     const char *name;
     struct Parser_Expr *def_arg;
+    struct Parser_ASTNode *parent;
+    i32 ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 
@@ -33,6 +35,8 @@ void Parser_TmpltNonTypeParam_deinit(struct Parser_TmpltNonTypeParam *self);
 struct Parser_TmpltTypeParam {
     const char *name;
     struct Parser_Type *def_arg;
+    struct Parser_ASTNode *parent;
+    i32 ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 
@@ -42,6 +46,8 @@ struct Parser_TmpltTmpltParam {
     struct Parser_ASTNode *tmplt;
     const char *name;
     struct Parser_Type *def_arg; // must have a matching template
+    struct Parser_ASTNode *parent;
+    i32 ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 

@@ -172,6 +172,30 @@ struct Diag Diag_func_undeclared_warn(const char *name,
         .line = tok->line,
         .msg = Print_fmt_to_str("undeclared function '%s'", name),
         .warn = type,
+        .type = DIAGTYPE_WARNING,
+    };
+}
+
+struct Diag Diag_type_id_w_name_err(const struct Lexer_Token *tok,
+                                    enum ErrorType type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("type-id can't be named"),
+        .err = type,
         .type = DIAGTYPE_ERROR,
+    };
+}
+
+struct Diag Diag_type_id_w_name_warn(const struct Lexer_Token *tok,
+                                     enum WarnType type)
+{
+    return (struct Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = Print_fmt_to_str("type-id can't be named"),
+        .warn = type,
+        .type = DIAGTYPE_WARNING,
     };
 }

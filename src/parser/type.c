@@ -36,7 +36,7 @@ static bool tok_is_namespace_name(const struct Sema_Scope *scope,
 bool Parser_is_typespec_named(enum Parser_TypeSpec spec)
 {
     return spec == PARSER_TYPESPEC_CLASS || spec == PARSER_TYPESPEC_ENUM ||
-           spec == PARSER_TYPESPEC_UNION;
+           spec == PARSER_TYPESPEC_UNION || spec == PARSER_TYPESPEC_TEMPLATED;
 }
 
 enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type)
@@ -139,6 +139,7 @@ const char *Parser_typespec_to_str(enum Parser_TypeSpec spec)
     case PARSER_TYPESPEC_FUNC:
     case PARSER_TYPESPEC_FPTR:
     case PARSER_TYPESPEC_ARRAY:
+    case PARSER_TYPESPEC_TEMPLATED:
         printf("spec = %d\n", spec);
         CRASH("can't convert type spec to str");
         return "INVALID-TYPE";
@@ -595,7 +596,7 @@ static isize_t parse_fptr(struct Parser_Type *type,
     isize_t i = p_lparen + 1;
     while (i < p_rparen) {
         gen_dynpush(&type->fptr->params,
-                    Parser_parse_type(toks, i, &i, scope, NULL, diags));
+                    Parser_parse_type(toks, i, &i, scope, NULL, false, diags));
 
         if (toks[i].type != LEXER_TOKENTYPE_COMMA &&
             toks[i].type != LEXER_TOKENTYPE_R_PAREN) {
@@ -768,30 +769,32 @@ static void add_base(struct Parser_Type *type, const struct Parser_Type *base,
 struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
                                      struct Sema_Scope *scope,
-                                     isize_t *out_declname,
+                                     isize_t *out_declname, bool is_type_id,
                                      struct DiagVec *diags)
 {
     isize_t i;
     auto base = Parser_parse_base(toks, start, &i, scope, diags);
 
     auto ret = Parser_parse_type_no_base(toks, i, out_end, &base, scope,
-                                         out_declname, diags);
+                                         out_declname, is_type_id, diags);
 
     Parser_Type_deinit(&base);
     return ret;
 }
 
-struct Parser_Type Parser_parse_type_no_base(const struct Lexer_Token *toks,
-                                             isize_t start, isize_t *out_end,
-                                             const struct Parser_Type *base,
-                                             struct Sema_Scope *scope,
-                                             isize_t *out_declname,
-                                             struct DiagVec *diags)
+struct Parser_Type
+Parser_parse_type_no_base(const struct Lexer_Token *toks, isize_t start,
+                          isize_t *out_end, const struct Parser_Type *base,
+                          struct Sema_Scope *scope, isize_t *out_declname,
+                          bool is_type_id, struct DiagVec *diags)
 {
     isize_t c = find_type_center(toks, start);
 
     bool has_declname = toks[c].type == LEXER_TOKENTYPE_IDENTIFIER &&
                         !Sema_is_type_name(scope, toks[c].ident);
+    if (has_declname && is_type_id)
+        gen_dynpush(diags,
+                    Diag_type_id_w_name_err(&toks[c], ERRORTYPE_BAD_TYPE));
 
     auto ret = parse_recursive_part(toks, c - has_declname, start, out_end,
                                     scope, &base->squals, diags);
@@ -1365,6 +1368,18 @@ struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
     ret.spec = PARSER_TYPESPEC_FUNC;
     ret.func.scope = scope;
     ret.func.name = name;
+
+    gen_dynpush(&ret.dquals, ((struct Parser_TypeDataQual){}));
+
+    return ret;
+}
+
+struct Parser_Type Parser_create_templated_type(struct Sema_Scope *scope,
+                                                i32 ident)
+{
+    struct Parser_Type ret = {.spec = PARSER_TYPESPEC_TEMPLATED};
+    ret.named.ident = ident;
+    ret.named.parent = scope;
 
     gen_dynpush(&ret.dquals, ((struct Parser_TypeDataQual){}));
 

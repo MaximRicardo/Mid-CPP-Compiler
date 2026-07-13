@@ -197,7 +197,7 @@ isize_t Parser_parse_var_decl_inst(
     isize_t type_end;
     isize_t name;
     inst->type = Parser_parse_type_no_base(toks, start, &type_end, base,
-                                           parent_scope, &name, diags);
+                                           parent_scope, &name, false, diags);
 
     auto res = name == -1 ? parent_scope
                           : Parser_parse_scope_res(toks, name, &name,

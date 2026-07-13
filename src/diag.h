@@ -42,6 +42,7 @@ enum ErrorType {
     ERRORTYPE_RETURN_OUTSIDE_FUNC,
     ERRORTYPE_BAD_THIS_USAGE,
     ERRORTYPE_NO_MATCHING_CTOR,
+    ERRORTYPE_BAD_TYPE,
 };
 
 enum WarnType {
@@ -101,3 +102,7 @@ struct Diag Diag_func_undeclared_err(const char *name,
 struct Diag Diag_func_undeclared_warn(const char *name,
                                       const struct Lexer_Token *tok,
                                       enum WarnType type);
+struct Diag Diag_type_id_w_name_err(const struct Lexer_Token *tok,
+                                    enum ErrorType type);
+struct Diag Diag_type_id_w_name_warn(const struct Lexer_Token *tok,
+                                     enum WarnType type);

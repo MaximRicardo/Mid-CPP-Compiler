@@ -461,8 +461,8 @@ static isize_t parse_func_type(struct Parser_FuncDecl *decl,
 {
     isize_t type_end;
     isize_t name;
-    decl->type =
-        Parser_parse_type(toks, start, &type_end, parent_scope, &name, diags);
+    decl->type = Parser_parse_type(toks, start, &type_end, parent_scope, &name,
+                                   false, diags);
 
     auto res = name == -1 ? parent_scope
                           : Parser_parse_scope_res(toks, name, &name,

@@ -6,6 +6,7 @@
 #include "parser/ast.h"
 #include "parser/class.h"
 #include "parser/func_decl.h"
+#include "parser/template.h"
 #include "parser/type.h"
 #include "sema/ident.h"
 #include "sema/type.h"
@@ -144,10 +145,17 @@ struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
     }
 
     case SEMA_IDENTTYPE_TYPEDEF:
-        for (isize_t i = 0; i < ident->decl->var_decl.insts.len; ++i) {
-            auto inst = &ident->decl->var_decl.insts.arr[i];
-            if (!strcmp(inst->name, name))
-                return Parser_copy_type(&inst->type);
+        if (ident->decl->type == PARSER_ASTNODETYPE_VAR_DECL) {
+            for (isize_t i = 0; i < ident->decl->var_decl.insts.len; ++i) {
+                auto inst = &ident->decl->var_decl.insts.arr[i];
+                if (!strcmp(inst->name, name))
+                    return Parser_copy_type(&inst->type);
+            }
+        } else if (ident->decl->type == PARSER_ASTNODETYPE_TMPLT_PARAM) {
+            assert(ident->decl->tmplt_param.kind == PARSER_TMPLTPARAM_TYPE);
+            auto param = &ident->decl->tmplt_param.type;
+            return Parser_create_templated_type(param->parent->tmplt.scope,
+                                                param->ident_idx);
         }
         CRASH("name not typedefed in node");
 

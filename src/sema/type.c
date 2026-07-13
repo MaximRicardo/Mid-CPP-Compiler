@@ -12,6 +12,7 @@
 #include "parser/expr.h"
 #include "parser/expr_type.h"
 #include "parser/func_decl.h"
+#include "parser/template.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "print.h"
@@ -34,6 +35,9 @@ bool Sema_node_creates_type_name(const struct Parser_ASTNode *node)
 
     case PARSER_ASTNODETYPE_VAR_DECL:
         return node->var_decl.insts.arr[0].type.squals.is_typedef;
+
+    case PARSER_ASTNODETYPE_TMPLT_PARAM:
+        return node->tmplt_param.kind == PARSER_TMPLTPARAM_TYPE;
 
     default:
         return NULL;

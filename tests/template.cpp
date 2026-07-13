@@ -1,1 +1,1 @@
-template <int x, float x>;
+template <typename T, class T, T x = 10, T x>;

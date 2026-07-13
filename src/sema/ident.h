@@ -6,7 +6,7 @@
 
 enum Sema_IdentType {
     SEMA_IDENTTYPE_VAR,
-    SEMA_IDENTTYPE_TYPEDEF,
+    SEMA_IDENTTYPE_TYPEDEF, // TODO: rename this to alias instead of typedef
     SEMA_IDENTTYPE_FUNC,
     SEMA_IDENTTYPE_CLASS,
     SEMA_IDENTTYPE_ENUM,
