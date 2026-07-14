@@ -162,7 +162,7 @@ static void parse_tmplt_tmplt_param(
     if (toks[name_idx].type == LEXER_TOKENTYPE_IDENTIFIER) {
         ++assign_idx;
         param->name = toks[name_idx].ident;
-        if (add_ident(param->name, node, scope, SEMA_IDENTTYPE_TEMPLATE))
+        if (add_ident(param->name, node, scope, SEMA_IDENTTYPE_TMPLT_CLASS))
             gen_dynpush(diags,
                         Diag_ident_redefined_err(param->name, &toks[name_idx],
                                                  ERRORTYPE_BAD_IDENTIFIER));
