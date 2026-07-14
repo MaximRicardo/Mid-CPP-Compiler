@@ -229,6 +229,7 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
                     Diag_ident_undeclared_err(expr->tok->ident, expr->tok,
                                               ERRORTYPE_UNDECLARED_IDENTIFIER));
         expr->ret = Parser_toktype_to_type(LEXER_TOKENTYPE_INT);
+        return;
     }
     assert(ident->decl);
 
@@ -731,8 +732,13 @@ static enum Parser_TypeSpec op_prom_typespec(enum Parser_TypeSpec spec)
         return Parser_integral_prom(spec);
     else if (Parser_is_floating_typespec(spec))
         return spec;
-    else
+    else {
+        /*
+        *(volatile int *)NULL = 10;
+        printf("spec = %d, %d\n", spec, PARSER_TYPESPEC_ARRAY);
+        */
         CRASH("can't promote type spec");
+    }
 }
 
 static struct Parser_Type op_prom_type(struct Parser_Type *type)
@@ -1272,11 +1278,15 @@ void Sema_typecheck_return(const struct Parser_ASTNode *node,
     }
 
     const struct Parser_Type *func_type = &func_scope->node->func_decl.type;
+    if (!Parser_type_is_typecheckable(func_type))
+        return;
 
     bool is_void = func_type->spec == PARSER_TYPESPEC_VOID &&
                    Parser_n_indir(func_type) == 0;
 
     if (node->ret.expr) {
+        if (!Parser_type_is_typecheckable(&node->ret.expr->ret))
+            return;
         if (!Sema_can_convert(&node->ret.expr->ret, node->ret.expr->valtype,
                               func_type))
             gen_dynpush(diags,

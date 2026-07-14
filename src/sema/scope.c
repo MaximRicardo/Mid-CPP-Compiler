@@ -58,13 +58,37 @@ struct Sema_Scope *Sema_closest_scope_of_type(struct Sema_Scope *self,
     return (struct Sema_Scope *)Sema_closest_scope_of_type_const(self, type);
 }
 
+static const struct Sema_Ident *
+find_ident_in_arr(const char *name, const struct Sema_Ident *idents, isize_t n)
+{
+    for (isize_t i = 0; i < n; ++i) {
+        auto ident = &idents[i];
+        if (!strcmp(ident->name, name)) {
+            return ident;
+        }
+    }
+
+    return NULL;
+}
+
 const struct Sema_Ident *
 Sema_find_ident_const(const struct Sema_Scope *scope, const char *name,
                       const struct Sema_Scope **out_ident_scope)
 {
-    for (isize_t i = 0; i < scope->idents.len; ++i) {
-        auto ident = &scope->idents.arr[i];
-        if (!strcmp(ident->name, name)) {
+    const struct Sema_Ident *ident;
+
+    ident = find_ident_in_arr(name, scope->idents.arr, scope->idents.len);
+    if (ident) {
+        if (out_ident_scope)
+            *out_ident_scope = scope;
+        return ident;
+    }
+
+    if (Parser_node_is_templated(scope->node)) {
+        // search in the template parameters
+        auto tmplt = scope->node->parent->tmplt.scope;
+        ident = find_ident_in_arr(name, tmplt->idents.arr, tmplt->idents.len);
+        if (ident) {
             if (out_ident_scope)
                 *out_ident_scope = scope;
             return ident;
@@ -213,25 +237,21 @@ static bool are_func_decls_same(const struct Parser_FuncDecl *a,
 }
 
 // only checks the scope itself and not its parents
-static struct Sema_Ident *
-scope_find_ident_shallow(const struct Sema_Scope *scope,
-                         const struct Sema_Ident *search)
+static struct Sema_Ident *find_ident_shallow(const struct Sema_Scope *scope,
+                                             const struct Sema_Ident *search)
 {
     for (isize_t i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
         if (strcmp(ident->name, search->name))
             continue;
 
-        /*
-        bool same_type = ident->type == search->type;
-        if (!same_type)
+        if (search->type == SEMA_IDENTTYPE_FUNC &&
+            ident->type == SEMA_IDENTTYPE_FUNC &&
+            !are_func_decls_same(&search->decl->func_decl,
+                                 &ident->decl->func_decl))
             continue;
-            */
 
-        if (search->type != SEMA_IDENTTYPE_FUNC ||
-            are_func_decls_same(&search->decl->func_decl,
-                                &ident->decl->func_decl))
-            return ident;
+        return ident;
     }
 
     return NULL;
@@ -240,12 +260,12 @@ scope_find_ident_shallow(const struct Sema_Scope *scope,
 struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
                                   const struct Sema_Ident *ident)
 {
-    auto old_ident = scope_find_ident_shallow(scope, ident);
+    auto old_ident = find_ident_shallow(scope, ident);
     if (old_ident)
         return old_ident;
 
     gen_dynpush(&scope->idents, *ident);
-    return 0;
+    return NULL;
 }
 
 i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,
@@ -297,4 +317,13 @@ const char *Sema_scope_name(const struct Sema_Scope *scope)
                                                   : NULL;
 
     return name;
+}
+
+void Sema_add_tmplt_params_to_scope(struct Sema_Scope *scope,
+                                    const struct Sema_Scope *tmplt)
+{
+    for (isize_t i = 0; i < tmplt->idents.len; ++i) {
+        // NOTE: doing a basic data copy should be safe (i hope)
+        gen_dynpush(&scope->idents, tmplt->idents.arr[i]);
+    }
 }

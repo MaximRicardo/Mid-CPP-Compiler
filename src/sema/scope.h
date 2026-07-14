@@ -75,3 +75,6 @@ struct Sema_Scope *Sema_resolve_scope(const char *name,
 
 // returns NULL if it doesn't have one
 const char *Sema_scope_name(const struct Sema_Scope *scope);
+
+void Sema_add_tmplt_params_to_scope(struct Sema_Scope *scope,
+                                    const struct Sema_Scope *tmplt);

@@ -453,15 +453,21 @@ parse_operator_overload(const struct Lexer_Token *toks, isize_t op,
     }
 }
 
-static isize_t parse_func_type(struct Parser_FuncDecl *decl,
+static isize_t parse_func_type(struct Parser_ASTNode *node,
                                const struct Lexer_Token *toks, isize_t start,
                                struct Sema_Scope *parent_scope,
                                struct Sema_Scope **out_res,
                                struct DiagVec *diags)
 {
+    auto decl = &node->func_decl;
+    bool is_tmplt = Parser_node_is_templated(node);
+
+    // if the func is templated then the func ret type might be a template
+    // parameter so we need to search within the tmplt scope
+    auto type_scope = is_tmplt ? node->parent->tmplt.scope : parent_scope;
     isize_t type_end;
     isize_t name;
-    decl->type = Parser_parse_type(toks, start, &type_end, parent_scope, &name,
+    decl->type = Parser_parse_type(toks, start, &type_end, type_scope, &name,
                                    false, diags);
 
     auto res = name == -1 ? parent_scope
@@ -575,10 +581,13 @@ static void add_func_to_scope(struct Sema_Scope *scope,
                               struct Parser_FuncDecl *decl,
                               struct Parser_ASTNode *node)
 {
+    bool is_tmplt = Parser_node_is_templated(node);
+    enum Sema_IdentType type =
+        is_tmplt ? SEMA_IDENTTYPE_TMPLT_FUNC : SEMA_IDENTTYPE_FUNC;
+
     const struct Sema_Ident *old = Sema_add_ident(
-        scope, &(struct Sema_Ident){.name = decl->name,
-                                    .decl = node,
-                                    .type = SEMA_IDENTTYPE_FUNC});
+        scope,
+        &(struct Sema_Ident){.name = decl->name, .decl = node, .type = type});
 
     if (old)
         decl->ident_idx = old - scope->idents.arr;
@@ -610,7 +619,7 @@ static void register_default_args(struct Parser_FuncDecl *decl,
 {
     auto default_args = &Parser_func_ident(decl)->func_info.default_args;
     if (!*default_args)
-        *default_args = mid_calloc(decl->params.len, sizeof(*default_args));
+        *default_args = mid_calloc(decl->params.len, sizeof(**default_args));
 
     for (isize_t i = 0; i < decl->params.len; ++i) {
         auto default_arg = (*default_args)[i];
@@ -648,7 +657,7 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
 
     struct Sema_Scope *res;
     isize_t type_end =
-        parse_func_type(decl, toks, start, parent_scope, &res, diags);
+        parse_func_type(node, toks, start, parent_scope, &res, diags);
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN)
         CRASH("function missing left paren");
 

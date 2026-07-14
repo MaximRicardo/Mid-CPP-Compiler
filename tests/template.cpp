@@ -1,7 +1,7 @@
 // template <template <typename, typename> class C, int x = 123>;
 
-template <typename T, T tmplt_arg> int func(T arg)
+template <typename T, typename A, T tmplt_arg> A func(T arg)
 {
-    auto x = tmplt_arg + (arg - "asdf");
-    (x + 10) - L"asdf";
+    auto x = arg + tmplt_arg;
+    return *x;
 }

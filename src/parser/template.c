@@ -301,7 +301,7 @@ isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
 
     isize_t child_end;
     tmplt->child =
-        Parser_parse_node(toks, child_start, &child_end, node, tmplt->scope,
+        Parser_parse_node(toks, child_start, &child_end, node, parent_scope,
                           (struct Parser_ParseNodeFlags){}, allocs, diags);
 
     return child_end;

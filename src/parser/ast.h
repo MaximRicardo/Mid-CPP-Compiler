@@ -60,3 +60,8 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
                   isize_t *out_end, struct Parser_ASTNode *parent,
                   struct Sema_Scope *scope, struct Parser_ParseNodeFlags flags,
                   struct Parser_Allocators *allocs, struct DiagVec *diags);
+// is the node a template, example:
+//    template <typename T> void func(T arg);
+//                          ^
+//                        node
+bool Parser_node_is_templated(const struct Parser_ASTNode *node);

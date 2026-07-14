@@ -110,6 +110,12 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
     printf("AST START AT %d:%d\n", ret->start->pos.line,
            ret->start->pos.column);
 
+    // if we need to parse a type to figure out what kind of node this is, use
+    // this scope as it accounts for types created by a parent template node if
+    // there is one
+    struct Sema_Scope *type_scope =
+        Parser_node_is_templated(ret) ? ret->parent->tmplt.scope : scope;
+
     isize_t check_type = skip_typequals(toks, start);
     isize_t end;
     bool check_semi = true;
@@ -145,10 +151,12 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         check_semi = false;
         ret->type = PARSER_ASTNODETYPE_TMPLT;
         end = Parser_parse_tmplt(ret, scope, toks, start, allocs, diags);
-    } else if (Parser_valid_type_start(toks, start, scope)) {
+    } else if (Parser_valid_type_start(toks, start, type_scope)) {
         printf("DECL NODE\n");
         bool mvp;
-        if (Parser_decl_is_func(toks, start, scope, allocs, diags, &mvp)) {
+        bool is_func =
+            Parser_decl_is_func(toks, start, type_scope, allocs, diags, &mvp);
+        if (is_func) {
             printf("mvp = %d\n", mvp);
             ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
             end = Parser_parse_func_decl(toks, start, ret, scope,
@@ -180,4 +188,9 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         *out_end = end;
     printf("AST END\n");
     return ret;
+}
+
+bool Parser_node_is_templated(const struct Parser_ASTNode *node)
+{
+    return node->parent && node->parent->type == PARSER_ASTNODETYPE_TMPLT;
 }
