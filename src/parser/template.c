@@ -14,6 +14,7 @@
 #include "parser/expr.h"
 #include "parser/find_twin.h"
 #include "parser/type.h"
+#include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 
@@ -301,6 +302,21 @@ static isize_t parse_tmplt_impl(struct Parser_ASTNode *node,
     }
 }
 
+static void check_child_valid(const struct Parser_Tmplt *tmplt,
+                              struct DiagVec *diags)
+{
+    if (tmplt->child->type != PARSER_ASTNODETYPE_FUNC_DECL &&
+        tmplt->child->type != PARSER_ASTNODETYPE_CLASS) {
+        gen_dynpush(diags,
+                    ((struct Diag){.pos = tmplt->child->start->pos,
+                                   .line = tmplt->child->start->line,
+                                   .msg = Print_fmt_to_str(
+                                       "statement can not be a template"),
+                                   .err = ERRORTYPE_BAD_TEMPLATE,
+                                   .type = DIAGTYPE_ERROR}));
+    }
+}
+
 isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
                            struct Sema_Scope *parent_scope,
                            const struct Lexer_Token *toks, isize_t start,
@@ -316,6 +332,8 @@ isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
     tmplt->child =
         Parser_parse_node(toks, child_start, &child_end, node, tmplt->scope,
                           (struct Parser_ParseNodeFlags){}, allocs, diags);
+
+    check_child_valid(tmplt, diags);
 
     return child_end;
 }
