@@ -8,8 +8,10 @@
 #include "macros.h"
 #include "mid_alloc.h"
 #include "parser/find_twin.h"
+#include "parser/template.h"
 #include "print.h"
 #include "scope.h"
+#include "sema/ident.h"
 #include "sema/scope.h"
 #include "types.h"
 #include <assert.h>
@@ -465,6 +467,38 @@ isize_t Parser_parse_quals(const struct Lexer_Token *toks, isize_t start,
     return i;
 }
 
+static struct Parser_Type type_name_type(const struct Lexer_Token *toks,
+                                         isize_t start, isize_t *out_end,
+                                         struct Sema_Scope *scope,
+                                         struct DiagVec *diags)
+{
+    assert(toks[start].type == LEXER_TOKENTYPE_IDENTIFIER);
+
+    auto ident = Sema_find_ident_const(scope, toks[start].ident, NULL);
+    if (!Sema_ident_is_tmplt(ident->type)) {
+        if (out_end)
+            *out_end = start + 1;
+        return Sema_type_name_type(scope, toks[start].ident);
+    }
+
+    // the type is a template and therefore we need to parse the template
+    // arguments. example:
+    //  Type<...>
+    //  ^
+    // toks[start]
+    isize_t l_angle = start + 1;
+    isize_t r_angle;
+    struct Parser_TmpltArgVec args =
+        Parser_parse_tmplt_args(toks, l_angle, &r_angle, scope, diags);
+    if (out_end)
+        *out_end = r_angle;
+
+    printf("n args = %" PRIisz "\n", args.len);
+
+    gen_dyndeinit(&args, Parser_TmpltArg_deinit);
+    CRASH("asdf");
+}
+
 // parses the type specifier and its preceding qualifiers
 // static const int *const &x
 // ^^^^^^^^^^^^^^^^
@@ -531,7 +565,12 @@ struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
         } else if (missing_spec) {
             missing_spec = false;
             auto res = Parser_parse_scope_res(toks, i, &i, scope, diags);
-            ret = Sema_tok_type(res, &toks[i]);
+            if (toks[i].type == LEXER_TOKENTYPE_IDENTIFIER) {
+                ret = type_name_type(toks, i, &i, res, diags);
+                --i;
+            } else {
+                ret = Parser_toktype_to_type(toks[i].type);
+            }
             spec_is_typedef = ret.squals.is_typedef;
         } else {
             break;

@@ -13,9 +13,7 @@ public:
     T memb;
 };
 
-template <typename T> return 10;
-
 int main()
 {
-    func(10);
+    ClassTmplt<int, 12323 + 1, ClassTmplt> var;
 }

@@ -47,6 +47,7 @@ gen_dynarray_struct_named(Sema_IdentVec, struct Sema_Ident);
 
 void Sema_Ident_deinit(struct Sema_Ident *self);
 struct Sema_Scope *Sema_ident_scope(const struct Sema_Ident *self);
+bool Sema_ident_is_tmplt(enum Sema_IdentType type);
 
 // this is here in case i eventually need to make a more complex copy function
 static inline struct Sema_Ident

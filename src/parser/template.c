@@ -337,3 +337,98 @@ isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
 
     return child_end;
 }
+
+void Parser_TmpltArg_deinit(struct Parser_TmpltArg *self)
+{
+    switch (self->kind) {
+    case PARSER_TMPLTARG_EXPR:
+        Parser_Expr_deinit(&self->expr);
+        break;
+
+    case PARSER_TMPLTARG_TYPE:
+        Parser_Type_deinit(&self->type);
+        break;
+
+    default:
+        break;
+    }
+}
+
+static bool is_tmplt_tmplt_arg(const struct Lexer_Token *tok,
+                               struct Sema_Scope *scope,
+                               struct Sema_Ident **out_ident)
+{
+    if (tok->type != LEXER_TOKENTYPE_IDENTIFIER)
+        return false;
+
+    auto ident = Sema_find_ident(scope, tok->ident, NULL);
+    if (out_ident)
+        *out_ident = ident;
+    if (!ident)
+        return false;
+
+    return Sema_ident_is_tmplt(ident->type);
+}
+
+static struct Parser_TmpltArg parse_tmplt_arg(const struct Lexer_Token *toks,
+                                              isize_t start, isize_t *out_end,
+                                              struct Sema_Scope *scope,
+                                              struct DiagVec *diags)
+{
+    struct Parser_TmpltArg arg = {};
+
+    struct Sema_Ident *ident;
+    if (is_tmplt_tmplt_arg(&toks[start], scope, &ident)) {
+        arg.kind = PARSER_TMPLTARG_IDENT;
+        arg.ident = ident;
+    } else if (Parser_valid_type_start(toks, start, scope)) {
+        arg.kind = PARSER_TMPLTARG_TYPE;
+        arg.type =
+            Parser_parse_type(toks, start, out_end, scope, NULL, true, diags);
+    } else {
+        arg.kind = PARSER_TMPLTARG_EXPR;
+        arg.expr = Parser_parse_expr(toks, start, PARSER_TMPLT_ARG_ENDTYPES,
+                                     out_end, scope, diags);
+    }
+
+    return arg;
+}
+
+struct Parser_TmpltArgVec
+Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
+                        isize_t *out_r_angle, struct Sema_Scope *scope,
+                        struct DiagVec *diags)
+{
+    struct Parser_TmpltArgVec args = {};
+
+    if (toks[l_angle].type != LEXER_TTALIAS_L_ANGLE) {
+        gen_dynpush(diags, Diag_expected_token_err("'<'", &toks[l_angle],
+                                                   ERRORTYPE_MISSING_ANGLE));
+        if (out_r_angle)
+            *out_r_angle = l_angle;
+        return args;
+    }
+
+    isize_t r_angle = Parser_find_twin_angle(toks, l_angle, ISIZE_MAX);
+    if (r_angle == -1) {
+        gen_dynpush(diags, Diag_expected_token_err("'<'", &toks[l_angle],
+                                                   ERRORTYPE_MISSING_ANGLE));
+        if (out_r_angle)
+            *out_r_angle = l_angle;
+        return args;
+    }
+
+    if (out_r_angle)
+        *out_r_angle = r_angle;
+
+    for (isize_t i = l_angle + 1; i < r_angle; ++i) {
+        auto arg = parse_tmplt_arg(toks, i, &i, scope, diags);
+        if (i < r_angle && toks[i].type != LEXER_TOKENTYPE_COMMA)
+            gen_dynpush(diags, Diag_expected_token_err(
+                                   "','", &toks[i], ERRORTYPE_MISSING_COMMA));
+
+        gen_dynpush(&args, arg);
+    }
+
+    return args;
+}

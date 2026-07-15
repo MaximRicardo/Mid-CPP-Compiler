@@ -39,3 +39,10 @@ struct Sema_Scope *Sema_ident_scope(const struct Sema_Ident *self)
         CRASH("ident doesn't have it's own scope");
     }
 }
+
+bool Sema_ident_is_tmplt(enum Sema_IdentType type)
+{
+    return type == SEMA_IDENTTYPE_TMPLT_ALIAS ||
+           type == SEMA_IDENTTYPE_TMPLT_FUNC ||
+           type == SEMA_IDENTTYPE_TMPLT_CLASS;
+}

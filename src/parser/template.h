@@ -2,8 +2,10 @@
 
 #include "astvec.h"
 #include "diag.h"
+#include "generics/dynarray.h"
 #include "ints.h"
 #include "parser/allocator.h"
+#include "parser/expr.h"
 #include "parser/type.h"
 #include "sema/scope.h"
 
@@ -64,6 +66,24 @@ struct Parser_TmpltParam {
 
 void Parser_TmpltParam_deinit(struct Parser_TmpltParam *self);
 
+enum Parser_TmpltArgType {
+    PARSER_TMPLTARG_EXPR,  // used by nontype params
+    PARSER_TMPLTARG_TYPE,  // used by type params
+    PARSER_TMPLTARG_IDENT, // used by template template params
+};
+
+struct Parser_TmpltArg {
+    union {
+        struct Parser_Expr expr;
+        struct Parser_Type type;
+        struct Sema_Ident *ident;
+    };
+    enum Parser_TmpltArgType kind;
+};
+gen_dynarray_struct_named(Parser_TmpltArgVec, struct Parser_TmpltArg);
+
+void Parser_TmpltArg_deinit(struct Parser_TmpltArg *self);
+
 isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
                            struct Sema_Scope *scope,
                            const struct Lexer_Token *toks, isize_t start,
@@ -72,3 +92,7 @@ isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
 const struct Sema_Ident *
 Parser_tmplt_ident_const(const struct Parser_Tmplt *self);
 struct Sema_Ident *Parser_tmplt_ident(struct Parser_Tmplt *self);
+struct Parser_TmpltArgVec
+Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
+                        isize_t *out_r_angle, struct Sema_Scope *scope,
+                        struct DiagVec *diags);
