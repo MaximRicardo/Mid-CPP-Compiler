@@ -1,7 +1,10 @@
 // template <template <typename, typename> class C, int x = 123>;
 
-template <typename T, typename A, T tmplt_arg> A func(T arg)
+template <typename T, typename A = int (**)(const char *),
+          T tmplt_arg = 123 / 456, int other_tmplt_arg>
+A func(T arg)
 {
     auto x = arg + tmplt_arg;
+    other_tmplt_arg = 10;
     return *x;
 }

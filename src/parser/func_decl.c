@@ -460,14 +460,10 @@ static isize_t parse_func_type(struct Parser_ASTNode *node,
                                struct DiagVec *diags)
 {
     auto decl = &node->func_decl;
-    bool is_tmplt = Parser_node_is_templated(node);
 
-    // if the func is templated then the func ret type might be a template
-    // parameter so we need to search within the tmplt scope
-    auto type_scope = is_tmplt ? node->parent->tmplt.scope : parent_scope;
     isize_t type_end;
     isize_t name;
-    decl->type = Parser_parse_type(toks, start, &type_end, type_scope, &name,
+    decl->type = Parser_parse_type(toks, start, &type_end, parent_scope, &name,
                                    false, diags);
 
     auto res = name == -1 ? parent_scope

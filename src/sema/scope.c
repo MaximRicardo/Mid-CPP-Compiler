@@ -84,17 +84,6 @@ Sema_find_ident_const(const struct Sema_Scope *scope, const char *name,
         return ident;
     }
 
-    if (Parser_node_is_templated(scope->node)) {
-        // search in the template parameters
-        auto tmplt = scope->node->parent->tmplt.scope;
-        ident = find_ident_in_arr(name, tmplt->idents.arr, tmplt->idents.len);
-        if (ident) {
-            if (out_ident_scope)
-                *out_ident_scope = scope;
-            return ident;
-        }
-    }
-
     if (scope->parent)
         return Sema_find_ident_const(scope->parent, name, out_ident_scope);
     return NULL;
