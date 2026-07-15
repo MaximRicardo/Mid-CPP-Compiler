@@ -71,13 +71,32 @@ find_ident_in_arr(const char *name, const struct Sema_Ident *idents, isize_t n)
     return NULL;
 }
 
+static const struct Sema_Ident *
+search_child_tmplt_scopes(const char *name, const struct Sema_Scope *scope)
+{
+    for (isize_t i = 0; i < scope->childs.len; ++i) {
+        auto child = scope->childs.arr[i];
+        if (child->type != SEMA_SCOPETYPE_TEMPLATE)
+            continue;
+
+        auto ident = Parser_tmplt_ident_const(&child->node->tmplt);
+        if (!strcmp(ident->name, name))
+            return ident;
+    }
+
+    return NULL;
+}
+
 const struct Sema_Ident *
 Sema_find_ident_const(const struct Sema_Scope *scope, const char *name,
                       const struct Sema_Scope **out_ident_scope)
 {
-    const struct Sema_Ident *ident;
+    const struct Sema_Ident *ident = NULL;
+    if (!ident)
+        ident = find_ident_in_arr(name, scope->idents.arr, scope->idents.len);
+    if (!ident)
+        ident = search_child_tmplt_scopes(name, scope);
 
-    ident = find_ident_in_arr(name, scope->idents.arr, scope->idents.len);
     if (ident) {
         if (out_ident_scope)
             *out_ident_scope = scope;
@@ -225,23 +244,50 @@ static bool are_func_decls_same(const struct Parser_FuncDecl *a,
     return are_params_same(a, b);
 }
 
+static bool are_idents_equiv(const struct Sema_Ident *a,
+                             const struct Sema_Ident *b)
+{
+    if (strcmp(a->name, b->name))
+        return false;
+
+    if (a->type == SEMA_IDENTTYPE_FUNC && b->type == SEMA_IDENTTYPE_FUNC &&
+        !are_func_decls_same(&a->decl->func_decl, &b->decl->func_decl))
+        return false;
+
+    return true;
+}
+
+static struct Sema_Ident *
+find_ident_in_child_tmplt_scopes(const struct Sema_Scope *scope,
+                                 const struct Sema_Ident *search)
+{
+    for (isize_t i = 0; i < scope->childs.len; ++i) {
+        auto child = scope->childs.arr[i];
+        if (child->type != SEMA_SCOPETYPE_TEMPLATE)
+            continue;
+
+        auto ident = Parser_tmplt_ident(&child->node->tmplt);
+        if (are_idents_equiv(ident, search))
+            return ident;
+    }
+
+    return NULL;
+}
+
+// finds an equivalent identifier that could cause a name collision
 // only checks the scope itself and not its parents
 static struct Sema_Ident *find_ident_shallow(const struct Sema_Scope *scope,
                                              const struct Sema_Ident *search)
 {
     for (isize_t i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
-        if (strcmp(ident->name, search->name))
-            continue;
-
-        if (search->type == SEMA_IDENTTYPE_FUNC &&
-            ident->type == SEMA_IDENTTYPE_FUNC &&
-            !are_func_decls_same(&search->decl->func_decl,
-                                 &ident->decl->func_decl))
-            continue;
-
-        return ident;
+        if (are_idents_equiv(ident, search))
+            return ident;
     }
+
+    auto tmplt_ident = find_ident_in_child_tmplt_scopes(scope, search);
+    if (tmplt_ident)
+        return tmplt_ident;
 
     return NULL;
 }

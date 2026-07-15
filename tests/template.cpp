@@ -5,6 +5,15 @@ template <typename T, typename A = int (**)(const char *),
 A func(T arg)
 {
     auto x = arg + tmplt_arg;
-    other_tmplt_arg = 10;
     return *x;
+}
+
+template <typename T> class ClassTmplt {
+public:
+    T memb;
+};
+
+int main()
+{
+    func(10);
 }

@@ -28,6 +28,19 @@ void Parser_Tmplt_deinit(struct Parser_Tmplt *self)
     gen_dyndeinit(&self->params);
 }
 
+const struct Sema_Ident *
+Parser_tmplt_ident_const(const struct Parser_Tmplt *self)
+{
+    assert(self->scope->idents.len > 0);
+    // the last ident is always the templated identifier
+    return &self->scope->idents.arr[self->scope->idents.len - 1];
+}
+
+struct Sema_Ident *Parser_tmplt_ident(struct Parser_Tmplt *self)
+{
+    return (struct Sema_Ident *)Parser_tmplt_ident_const(self);
+}
+
 void Parser_TmpltNonTypeParam_deinit(struct Parser_TmpltNonTypeParam *self)
 {
     Parser_Type_deinit(&self->type);

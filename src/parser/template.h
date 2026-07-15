@@ -69,3 +69,6 @@ isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
                            const struct Lexer_Token *toks, isize_t start,
                            struct Parser_Allocators *allocs,
                            struct DiagVec *diags);
+const struct Sema_Ident *
+Parser_tmplt_ident_const(const struct Parser_Tmplt *self);
+struct Sema_Ident *Parser_tmplt_ident(struct Parser_Tmplt *self);
