@@ -310,10 +310,12 @@ static void add_class_to_scope(struct Sema_Scope *scope,
                                struct Parser_Class *self,
                                struct Parser_ASTNode *node)
 {
+    enum Sema_IdentType type = Parser_node_is_templated(node)
+                                   ? SEMA_IDENTTYPE_TMPLT_CLASS
+                                   : SEMA_IDENTTYPE_CLASS;
     const struct Sema_Ident *old = Sema_add_ident(
-        scope, &(struct Sema_Ident){.name = self->name,
-                                    .decl = node,
-                                    .type = SEMA_IDENTTYPE_CLASS});
+        scope,
+        &(struct Sema_Ident){.name = self->name, .decl = node, .type = type});
 
     if (old)
         self->ident_idx = old - scope->idents.arr;
