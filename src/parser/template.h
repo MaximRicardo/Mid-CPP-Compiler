@@ -16,6 +16,10 @@ struct Parser_Tmplt {
 };
 
 void Parser_Tmplt_deinit(struct Parser_Tmplt *self);
+void Parser_copy_tmplt(struct Parser_ASTNode *dest,
+                       const struct Parser_ASTNode *src,
+                       struct Sema_Scope *dest_scope,
+                       struct Parser_Allocators *allocs);
 
 enum Parser_TmpltParamType {
     PARSER_TMPLTPARAM_NONTYPE,
@@ -27,7 +31,6 @@ struct Parser_TmpltNonTypeParam {
     struct Parser_Type type;
     const char *name;
     struct Parser_Expr *def_arg;
-    struct Parser_ASTNode *parent;
     i32 ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
@@ -37,7 +40,6 @@ void Parser_TmpltNonTypeParam_deinit(struct Parser_TmpltNonTypeParam *self);
 struct Parser_TmpltTypeParam {
     const char *name;
     struct Parser_Type *def_arg;
-    struct Parser_ASTNode *parent;
     i32 ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
@@ -47,9 +49,8 @@ void Parser_TmpltTypeParam_deinit(struct Parser_TmpltTypeParam *self);
 struct Parser_TmpltTmpltParam {
     struct Parser_ASTNode *tmplt;
     const char *name;
-    struct Parser_ASTNode *def_arg;
-    struct Parser_ASTNode *parent;
-    i32 ident_idx; // idx of the identifier in the tmplt scope
+    struct Sema_Ident *def_arg; // FIXME: COULD GET INVALIDATED
+    i32 ident_idx;              // idx of the identifier in the tmplt scope
     bool variadic;
 };
 
@@ -65,18 +66,21 @@ struct Parser_TmpltParam {
 };
 
 void Parser_TmpltParam_deinit(struct Parser_TmpltParam *self);
+void Parser_copy_tmplt_param(struct Parser_ASTNode *dest,
+                             const struct Parser_ASTNode *src,
+                             struct Parser_Allocators *allocs);
 
 enum Parser_TmpltArgType {
-    PARSER_TMPLTARG_EXPR,  // used by nontype params
-    PARSER_TMPLTARG_TYPE,  // used by type params
-    PARSER_TMPLTARG_IDENT, // used by template template params
+    PARSER_TMPLTARG_NONTYPE,
+    PARSER_TMPLTARG_TYPE,
+    PARSER_TMPLTARG_TMPLT,
 };
 
 struct Parser_TmpltArg {
     union {
-        struct Parser_Expr expr;
+        struct Parser_Expr non_type;
         struct Parser_Type type;
-        struct Sema_Ident *ident;
+        struct Sema_Ident *tmplt; // FIXME: COULD GET INVALIDATED
     };
     enum Parser_TmpltArgType kind;
 };

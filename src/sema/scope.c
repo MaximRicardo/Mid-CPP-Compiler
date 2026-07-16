@@ -1,4 +1,5 @@
 #include "scope.h"
+#include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
@@ -16,6 +17,33 @@ void Sema_Scope_deinit(struct Sema_Scope *self)
 {
     gen_dyndeinit(&self->childs);
     gen_dyndeinit(&self->idents, Sema_Ident_deinit);
+}
+
+void Sema_copy_scope(struct Sema_Scope *dest, const struct Sema_Scope *src,
+                     struct Sema_Scope *dest_parent,
+                     struct Parser_Allocators *allocs)
+{
+    *dest = *src;
+
+    dest->parent = dest_parent;
+    dest->idents = (struct Sema_IdentVec){};
+    gen_dynreserve(&dest->idents, src->idents.len);
+    dest->childs = (struct Sema_ScopePVec){};
+    gen_dynreserve(&dest->childs, src->childs.len);
+
+    for (isize_t i = 0; i < src->idents.len; ++i) {
+        gen_dynpush(&dest->idents,
+                    Sema_copy_ident(&src->idents.arr[i], dest, allocs));
+    }
+
+    for (isize_t i = 0; i < src->childs.len; ++i) {
+        struct Sema_Scope *cpy_child;
+        gen_bumpmalloc(&allocs->scope, &cpy_child);
+
+        Sema_copy_scope(cpy_child, src->childs.arr[i], dest, allocs);
+
+        gen_dynpush(&dest->childs, cpy_child);
+    }
 }
 
 bool Sema_is_rnce_scope(enum Sema_ScopeType type)
@@ -191,9 +219,9 @@ struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
             }
         } else if (ident->decl->type == PARSER_ASTNODETYPE_TMPLT_PARAM) {
             assert(ident->decl->tmplt_param.kind == PARSER_TMPLTPARAM_TYPE);
+            auto scope = ident->decl->parent->tmplt.scope;
             auto param = &ident->decl->tmplt_param.type;
-            return Parser_create_templated_type(param->parent->tmplt.scope,
-                                                param->ident_idx);
+            return Parser_create_templated_type(scope, param->ident_idx);
         }
         CRASH("name not typedefed in node");
 
@@ -293,13 +321,25 @@ static struct Sema_Ident *find_ident_shallow(const struct Sema_Scope *scope,
 }
 
 struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
-                                  const struct Sema_Ident *ident)
+                                  struct Sema_Ident *ident)
 {
     auto old_ident = find_ident_shallow(scope, ident);
     if (old_ident)
         return old_ident;
 
     gen_dynpush(&scope->idents, *ident);
+    return NULL;
+}
+
+struct Sema_Ident *Sema_add_ident_copy(struct Sema_Scope *scope,
+                                       const struct Sema_Ident *ident,
+                                       struct Parser_Allocators *allocs)
+{
+    auto old_ident = find_ident_shallow(scope, ident);
+    if (old_ident)
+        return old_ident;
+
+    gen_dynpush(&scope->idents, Sema_copy_ident(ident, scope, allocs));
     return NULL;
 }
 

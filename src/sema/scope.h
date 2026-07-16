@@ -2,6 +2,7 @@
 
 #include "ident.h"
 #include "lexer/token.h"
+#include "parser/allocator.h"
 
 struct Parser_ASTNode;
 
@@ -26,6 +27,9 @@ struct Sema_Scope {
 };
 
 void Sema_Scope_deinit(struct Sema_Scope *self);
+void Sema_copy_scope(struct Sema_Scope *dest, const struct Sema_Scope *src,
+                     struct Sema_Scope *dest_parent,
+                     struct Parser_Allocators *allocs);
 
 // RNCE - Root, Namespace, Class, or Enum
 bool Sema_is_rnce_scope(enum Sema_ScopeType type);
@@ -61,7 +65,11 @@ struct Parser_Type Sema_tok_type(struct Sema_Scope *scope,
 // if the scope already has an identifier of the same name, nothing is added and
 // the old identifier is returned
 struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
-                                  const struct Sema_Ident *ident);
+                                  struct Sema_Ident *ident);
+// same as Sema_add_ident but adds a copy of the ident instead
+struct Sema_Ident *Sema_add_ident_copy(struct Sema_Scope *scope,
+                                       const struct Sema_Ident *ident,
+                                       struct Parser_Allocators *allocs);
 // returns 0 on success, returns 1 if the identifier already has a declaration
 i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,
                        struct Parser_ASTNode *def);

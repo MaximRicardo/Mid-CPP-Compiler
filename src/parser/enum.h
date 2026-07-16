@@ -9,3 +9,7 @@ struct Parser_Enum {
 };
 
 void Parser_Enum_deinit(struct Parser_Enum *self);
+void Parser_copy_enum(struct Parser_ASTNode *dest,
+                      const struct Parser_ASTNode *src,
+                      struct Sema_Scope *dest_scope,
+                      struct Parser_Allocators *allocs);

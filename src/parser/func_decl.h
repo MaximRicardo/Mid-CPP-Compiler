@@ -41,6 +41,10 @@ struct Parser_FuncDecl {
 };
 
 void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self);
+void Parser_copy_func_decl(struct Parser_ASTNode *dest,
+                           const struct Parser_ASTNode *src,
+                           struct Sema_Scope *dest_scope,
+                           struct Parser_Allocators *allocs);
 struct Sema_Scope *Parser_func_parent(const struct Parser_FuncDecl *func);
 struct Sema_Ident *Parser_func_ident(const struct Parser_FuncDecl *func);
 struct Parser_ASTNodePVec

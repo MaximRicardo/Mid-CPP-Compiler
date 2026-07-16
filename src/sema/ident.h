@@ -1,6 +1,7 @@
 #pragma once
 
 #include "generics/dynarray.h"
+#include "parser/allocator.h"
 #include "parser/expr.h"
 #include <assert.h>
 
@@ -46,6 +47,9 @@ struct Sema_Ident {
 gen_dynarray_struct_named(Sema_IdentVec, struct Sema_Ident);
 
 void Sema_Ident_deinit(struct Sema_Ident *self);
+struct Sema_Ident Sema_copy_ident(const struct Sema_Ident *src,
+                                  struct Sema_Scope *dest_parent,
+                                  struct Parser_Allocators *allocs);
 struct Sema_Scope *Sema_ident_scope(const struct Sema_Ident *self);
 bool Sema_ident_is_tmplt(enum Sema_IdentType type);
 

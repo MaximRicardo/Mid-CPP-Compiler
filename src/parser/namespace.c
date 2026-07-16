@@ -7,6 +7,7 @@
 #include "lexer/token_type.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
+#include "parser/astvec.h"
 #include "parser/find_twin.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
@@ -14,6 +15,30 @@
 void Parser_Namespace_deinit(struct Parser_Namespace *self)
 {
     gen_dyndeinit(&self->childs);
+}
+
+void Parser_copy_namespace(struct Parser_ASTNode *dest_node,
+                           const struct Parser_ASTNode *src_node,
+                           struct Sema_Scope *dest_scope,
+                           struct Parser_Allocators *allocs)
+{
+    auto dest = &dest_node->nmspace;
+    auto src = &src_node->nmspace;
+
+    *dest = *src;
+
+    auto old_ident =
+        Sema_add_ident_copy(dest_scope, Parser_namespace_ident(src), allocs);
+    if (old_ident)
+        dest->ident_idx = old_ident - dest_scope->idents.arr;
+    else
+        dest->ident_idx = dest_scope->idents.len - 1;
+
+    gen_bumpmalloc(&allocs->scope, &dest->scope);
+    Sema_copy_scope(dest->scope, src->scope, dest_scope, allocs);
+
+    dest->childs =
+        Parser_copy_nodepvec(&src->childs, dest_node, dest->scope, allocs);
 }
 
 struct Sema_Ident *Parser_namespace_ident(const struct Parser_Namespace *self)

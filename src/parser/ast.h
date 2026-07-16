@@ -47,6 +47,11 @@ struct Parser_ASTNode {
 };
 
 void Parser_ASTNode_deinit(struct Parser_ASTNode *self);
+void Parser_copy_node(struct Parser_ASTNode *dest,
+                      const struct Parser_ASTNode *src,
+                      struct Parser_ASTNode *dest_parent,
+                      struct Sema_Scope *dest_scope,
+                      struct Parser_Allocators *allocs);
 
 struct Parser_ParseNodeFlags {
     bool skip_def;

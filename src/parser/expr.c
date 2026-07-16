@@ -1210,6 +1210,23 @@ void Parser_Expr_deinit(struct Parser_Expr *expr)
     Parser_Type_deinit(&expr->ret);
 }
 
+struct Parser_Expr Parser_copy_expr(const struct Parser_Expr *expr)
+{
+    struct Parser_Expr ret = *expr;
+
+    ret.ret = Parser_copy_type(&expr->ret);
+
+    if (Parser_expr_uses_args(expr->type)) {
+        ret.info.args = (struct Parser_ExprVec){};
+        gen_dynreserve(&ret.info.args, expr->info.args.len);
+        for (isize_t i = 0; i < expr->info.args.len; ++i)
+            gen_dynpush(&ret.info.args,
+                        Parser_copy_expr(&expr->info.args.arr[i]));
+    }
+
+    return ret;
+}
+
 bool Parser_expr_uses_args(enum Parser_ExprType type)
 {
     return Parser_is_op(type);

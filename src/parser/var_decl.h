@@ -36,6 +36,9 @@ struct Parser_VarDeclInst {
 gen_dynarray_struct_named(Parser_VarDeclInstVec, struct Parser_VarDeclInst);
 
 void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self);
+struct Parser_VarDeclInst
+Parser_copy_var_decl_inst(const struct Parser_VarDeclInst *self,
+                          struct Parser_Allocators *allocs);
 
 struct Parser_VarDecl {
     struct Parser_VarDeclInstVec insts;
@@ -43,6 +46,9 @@ struct Parser_VarDecl {
 gen_dynarray_struct_named(Parser_VarDeclVec, struct Parser_VarDecl);
 
 void Parser_VarDecl_deinit(struct Parser_VarDecl *self);
+void Parser_copy_var_decl(struct Parser_ASTNode *dest,
+                          const struct Parser_ASTNode *src,
+                          struct Parser_Allocators *allocs);
 
 struct Parser_ParseVarDeclFlags {
     bool add_to_scope; // if true, the variable is added as an identifier in

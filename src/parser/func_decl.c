@@ -42,6 +42,37 @@ void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self)
     Parser_Type_deinit(&self->type);
 }
 
+void Parser_copy_func_decl(struct Parser_ASTNode *dest_node,
+                           const struct Parser_ASTNode *src_node,
+                           struct Sema_Scope *dest_scope,
+                           struct Parser_Allocators *allocs)
+{
+    auto dest = &dest_node->func_decl;
+    auto src = &src_node->func_decl;
+
+    *dest = *src;
+
+    auto old_ident =
+        Sema_add_ident_copy(dest_scope, Parser_func_ident(src), allocs);
+    if (old_ident)
+        dest->ident_idx = old_ident - dest_scope->idents.arr;
+    else
+        dest->ident_idx = dest_scope->idents.len - 1;
+
+    dest->type = Parser_copy_type(&src->type);
+
+    gen_bumpmalloc(&allocs->scope, &dest->param_scope);
+    Sema_copy_scope(dest->param_scope, src->param_scope, dest_scope, allocs);
+
+    dest->params = Parser_copy_nodepvec(&src->params, dest_node,
+                                        dest->param_scope, allocs);
+    if (src->nodes.len > 0) {
+        auto def_scope = Parser_func_ident(dest)->func_info.def_scope;
+        dest->nodes =
+            Parser_copy_nodepvec(&src->nodes, dest_node, def_scope, allocs);
+    }
+}
+
 struct Sema_Scope *Parser_func_parent(const struct Parser_FuncDecl *func)
 {
     auto ret = func->param_scope->parent;

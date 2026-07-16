@@ -29,9 +29,47 @@ void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self)
     Parser_Type_deinit(&self->type);
 }
 
+struct Parser_VarDeclInst
+Parser_copy_var_decl_inst(const struct Parser_VarDeclInst *self,
+                          struct Parser_Allocators *allocs)
+{
+    struct Parser_VarDeclInst ret = *self;
+    ret.type = Parser_copy_type(&self->type);
+
+    if (self->has_ctor) {
+        ret.ctor.args = (struct Parser_ExprVec){};
+        gen_dynreserve(&ret.ctor.args, self->ctor.args.len);
+        for (isize_t i = 0; i < self->ctor.args.len; ++i) {
+            gen_dynpush(&ret.ctor.args,
+                        Parser_copy_expr(&self->ctor.args.arr[i]));
+        }
+    } else {
+        gen_bumpmalloc(&allocs->expr, &ret.init.expr);
+        *ret.init.expr = Parser_copy_expr(self->init.expr);
+    }
+
+    return ret;
+}
+
 void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
 {
     gen_dyndeinit(&self->insts, Parser_VarDeclInst_deinit);
+}
+
+void Parser_copy_var_decl(struct Parser_ASTNode *dest_node,
+                          const struct Parser_ASTNode *src_node,
+                          struct Parser_Allocators *allocs)
+{
+    auto dest = &dest_node->var_decl;
+    auto src = &src_node->var_decl;
+
+    *dest = (struct Parser_VarDecl){};
+
+    gen_dynreserve(&dest->insts, src->insts.len);
+    for (isize_t i = 0; i < src->insts.len; ++i) {
+        gen_dynpush(&dest->insts,
+                    Parser_copy_var_decl_inst(&src->insts.arr[i], allocs));
+    }
 }
 
 static struct Sema_Ident *add_ident(const struct Parser_VarDeclInst *inst,

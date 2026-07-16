@@ -40,6 +40,10 @@ struct Parser_Class {
 };
 
 void Parser_Class_deinit(struct Parser_Class *self);
+void Parser_copy_class(struct Parser_ASTNode *dest,
+                       const struct Parser_ASTNode *src,
+                       struct Sema_Scope *dest_scope,
+                       struct Parser_Allocators *allocs);
 struct Sema_Ident *Parser_class_ident(const struct Parser_Class *self);
 // returns the end of the class
 isize_t Parser_parse_class(struct Parser_ASTNode *node,

@@ -68,6 +68,7 @@ struct Parser_Expr {
 };
 
 void Parser_Expr_deinit(struct Parser_Expr *expr);
+struct Parser_Expr Parser_copy_expr(const struct Parser_Expr *expr);
 // stops when reaching end_type
 struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                                      isize_t start,

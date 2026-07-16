@@ -1,10 +1,24 @@
 #include "return.h"
 #include "end_types.h"
+#include "generics/bumpalloc.h"
 #include "ints.h"
 #include "lexer/token_type.h"
 #include "parser/ast.h"
 #include "parser/expr.h"
 #include "sema/type.h"
+
+void Parser_copy_return(struct Parser_ASTNode *dest_node,
+                        const struct Parser_ASTNode *src_node,
+                        struct Parser_Allocators *allocs)
+{
+    auto dest = &dest_node->ret;
+    auto src = &src_node->ret;
+
+    if (src->expr) {
+        gen_bumpmalloc(&allocs->expr, &dest->expr);
+        *dest->expr = Parser_copy_expr(src->expr);
+    }
+}
 
 isize_t Parser_parse_return(const struct Lexer_Token *toks, isize_t start,
                             struct Parser_ASTNode *node,

@@ -29,6 +29,66 @@ void Parser_Class_deinit(struct Parser_Class *self)
     gen_dyndeinit(&self->prot_childs);
 }
 
+// takes an array of ptrs to nodes in old_nodes and transforms each ptr to the
+// one at the same idx in new_nodes
+static struct Parser_ASTNodePVec
+transf_node_ptrs(const struct Parser_ASTNodePVec *ptrs,
+                 struct Parser_ASTNode *const *old_nodes,
+                 struct Parser_ASTNode *const *new_nodes, isize_t n_nodes)
+{
+    struct Parser_ASTNodePVec ret = {};
+    gen_dynreserve(&ret, ptrs->len);
+
+    for (isize_t p_i = 0; p_i < ptrs->len; ++p_i) {
+        isize_t n_i;
+        for (n_i = 0; n_i < n_nodes; ++n_i) {
+            if (old_nodes[n_i] == ptrs->arr[p_i])
+                break;
+        }
+
+        if (n_i == n_nodes)
+            CRASH("ptr not in old_nodes");
+
+        gen_dynpush(&ret, new_nodes[n_i]);
+    }
+
+    return ret;
+}
+
+void Parser_copy_class(struct Parser_ASTNode *dest_node,
+                       const struct Parser_ASTNode *src_node,
+                       struct Sema_Scope *dest_scope,
+                       struct Parser_Allocators *allocs)
+{
+    auto dest = &dest_node->class_;
+    auto src = &src_node->class_;
+
+    *dest = *src;
+
+    dest->parent = dest_scope;
+    auto old_ident =
+        Sema_add_ident_copy(dest_scope, Parser_class_ident(src), allocs);
+    if (old_ident)
+        dest->ident_idx = old_ident - dest->parent->idents.arr;
+    else
+        dest->ident_idx = dest->parent->idents.len - 1;
+
+    dest->childs =
+        Parser_copy_nodepvec(&src->childs, dest_node, dest->parent, allocs);
+    dest->pub_childs = transf_node_ptrs(&src->pub_childs, src->childs.arr,
+                                        dest->childs.arr, src->childs.len);
+    dest->priv_childs = transf_node_ptrs(&src->priv_childs, src->childs.arr,
+                                         dest->childs.arr, src->childs.len);
+    dest->prot_childs = transf_node_ptrs(&src->prot_childs, src->childs.arr,
+                                         dest->childs.arr, src->childs.len);
+
+    if (src->var_decl) {
+        gen_bumpmalloc(&allocs->ast, &dest->var_decl);
+        Parser_copy_node(dest->var_decl, src->var_decl, dest_node, dest->parent,
+                         allocs);
+    }
+}
+
 struct Sema_Ident *Parser_class_ident(const struct Parser_Class *self)
 {
     assert(self->ident_idx != -1);

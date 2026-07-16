@@ -7,6 +7,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/token_type.h"
+#include "parser/astvec.h"
 #include "parser/class.h"
 #include "parser/end_types.h"
 #include "parser/enum.h"
@@ -62,6 +63,61 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
     case PARSER_ASTNODETYPE_TMPLT_PARAM:
         Parser_TmpltParam_deinit(&self->tmplt_param);
         break;
+    }
+}
+
+void Parser_copy_node(struct Parser_ASTNode *dest,
+                      const struct Parser_ASTNode *src,
+                      struct Parser_ASTNode *dest_parent,
+                      struct Sema_Scope *dest_scope,
+                      struct Parser_Allocators *allocs)
+{
+    *dest = (struct Parser_ASTNode){
+        .parent = dest_parent, .start = src->start, .type = src->type};
+
+    switch (src->type) {
+    case PARSER_ASTNODETYPE_ROOT:
+        dest->root = Parser_copy_nodepvec(&src->root, dest, dest_scope, allocs);
+        break;
+
+    case PARSER_ASTNODETYPE_EXPR:
+        dest->expr = Parser_copy_expr(&src->expr);
+        break;
+
+    case PARSER_ASTNODETYPE_VAR_DECL:
+        Parser_copy_var_decl(dest, src, allocs);
+        break;
+
+    case PARSER_ASTNODETYPE_FUNC_DECL:
+        Parser_copy_func_decl(dest, src, dest_scope, allocs);
+        break;
+
+    case PARSER_ASTNODETYPE_CLASS:
+        Parser_copy_class(dest, src, dest_scope, allocs);
+        break;
+
+    case PARSER_ASTNODETYPE_ENUM:
+        Parser_copy_enum(dest, src, dest_scope, allocs);
+        break;
+
+    case PARSER_ASTNODETYPE_NAMESPACE:
+        Parser_copy_namespace(dest, src, dest_scope, allocs);
+        break;
+
+    case PARSER_ASTNODETYPE_RETURN:
+        Parser_copy_return(dest, src, allocs);
+        break;
+
+    case PARSER_ASTNODETYPE_TMPLT:
+        Parser_copy_tmplt(dest, src, dest_scope, allocs);
+        break;
+
+    case PARSER_ASTNODETYPE_TMPLT_PARAM:
+        Parser_copy_tmplt_param(dest, src, allocs);
+        break;
+
+    default:
+        CRASH("invalid ast node type");
     }
 }
 
