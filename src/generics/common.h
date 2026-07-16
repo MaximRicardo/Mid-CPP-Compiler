@@ -1,6 +1,9 @@
 #pragma once
 
 #include "mid_alloc.h"
+#include <stdint.h>
+
+uintmax_t ceil_pow2(uintmax_t x);
 
 #define GEN_EXPAND(x) x
 #define GEN_GET_MACRO_2(_1, _2, name, ...) name

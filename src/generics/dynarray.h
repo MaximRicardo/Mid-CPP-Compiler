@@ -4,6 +4,8 @@
 
 #include "common.h"
 #include <assert.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "ints.h"
@@ -57,10 +59,8 @@
 
 #define GEN_DYNARRAY_ALLOC_SPACE(self)                                         \
     do {                                                                       \
-        while ((self)->len >= (self)->cap) {                                   \
-            (self)->cap = (self)->cap > 0 ? (self)->cap * 2 : 1;               \
-            GEN_DYNARRAY_REALLOC(self);                                        \
-        }                                                                      \
+        self->cap = ceil_pow2(self->len);                                      \
+        GEN_DYNARRAY_REALLOC(self);                                            \
     } while (0)
 
 #define GEN_DYNARRAY_IDX_VALID(self, idx)                                      \
@@ -94,6 +94,28 @@
 #define gen_dyndeinit(...)                                                     \
     GEN_EXPAND(GEN_GET_MACRO_2(__VA_ARGS__, GEN_DYNDEINIT_W_FREE,              \
                                GEN_DYNDEINIT_NO_FREE)(__VA_ARGS__))
+
+// rounds new_cap up to a power of 2
+// void gen_dynreserve(gen_dynarray<elem_type> *self, size_type new_cap)
+#define gen_dynreserve(self_arg, new_cap_arg)                                  \
+    do {                                                                       \
+        typeof(self_arg) self_super_specific_name______ = self_arg;            \
+        typeof(new_cap_arg) new_cap_super_specific_name______ = new_cap_arg;   \
+        self_super_specific_name______->cap =                                  \
+            ceil_pow2(new_cap_super_specific_name______);                      \
+        GEN_DYNARRAY_REALLOC(self_arg);                                        \
+    } while (0)
+
+// DOES NOT round new_cap
+// void gen_dynreserve(gen_dynarray<elem_type> *self, size_type new_cap)
+#define gen_dynreserve_no_round(self_arg, new_cap_arg)                         \
+    do {                                                                       \
+        typeof(self_arg) self_super_specific_name______ = self_arg;            \
+        typeof(new_cap_arg) new_cap_super_specific_name______ = new_cap_arg;   \
+        self_super_specific_name______->cap =                                  \
+            new_cap_super_specific_name______;                                 \
+        GEN_DYNARRAY_REALLOC(self_arg);                                        \
+    } while (0)
 
 // void gen_dynpush(gen_dynarray<elem_type> *self, elem_type elem)
 #define gen_dynpush(self_arg, elem_arg)                                        \
