@@ -197,8 +197,6 @@ static void log_expr(const struct Parser_Expr *expr, FILE *out)
         log_generic_expr(expr, out);
 }
 
-static void log_node(const struct Parser_ASTNode *node, FILE *out, int indent);
-
 static void log_func_params(const struct Parser_ASTNode *node, FILE *out)
 {
     isize_t end = node->func_decl.params.len;
@@ -271,7 +269,7 @@ static void log_func_node(const struct Parser_ASTNode *node, FILE *out,
 
     for (isize_t i = 0; i < node->func_decl.nodes.len; ++i) {
         const struct Parser_ASTNode *child = node->func_decl.nodes.arr[i];
-        log_node(child, out, indent + 1);
+        Parser_log_node(child, out, indent + 1);
     }
 
     log_w_indent(out, indent, "}\n\n");
@@ -333,25 +331,25 @@ static void log_class_node(const struct Parser_ASTNode *node, FILE *out,
     log_w_indent(out, indent, "public:\n");
     for (isize_t i = 0; i < node->class_.pub_childs.len; ++i) {
         const struct Parser_ASTNode *child = node->class_.pub_childs.arr[i];
-        log_node(child, out, indent + 1);
+        Parser_log_node(child, out, indent + 1);
     }
 
     log_w_indent(out, indent, "private:\n");
     for (isize_t i = 0; i < node->class_.priv_childs.len; ++i) {
         const struct Parser_ASTNode *child = node->class_.priv_childs.arr[i];
-        log_node(child, out, indent + 1);
+        Parser_log_node(child, out, indent + 1);
     }
 
     log_w_indent(out, indent, "protected:\n");
     for (isize_t i = 0; i < node->class_.prot_childs.len; ++i) {
         const struct Parser_ASTNode *child = node->class_.prot_childs.arr[i];
-        log_node(child, out, indent + 1);
+        Parser_log_node(child, out, indent + 1);
     }
 
     log_w_indent(out, indent, "};\n");
 
     if (node->class_.var_decl)
-        log_node(node->class_.var_decl, out, indent);
+        Parser_log_node(node->class_.var_decl, out, indent);
     else
         fprintf(out, "\n");
 }
@@ -364,7 +362,7 @@ static void log_namespace_node(const struct Parser_ASTNode *node, FILE *out,
 
     for (isize_t i = 0; i < node->nmspace.childs.len; ++i) {
         const struct Parser_ASTNode *child = node->nmspace.childs.arr[i];
-        log_node(child, out, indent);
+        Parser_log_node(child, out, indent);
     }
 
     log_w_indent(out, indent, "} // namespace %s\n\n", node->nmspace.name);
@@ -428,7 +426,7 @@ static void log_expr_node(const struct Parser_ASTNode *node, FILE *out,
     fprintf(out, "\n\n");
 }
 
-static void log_node(const struct Parser_ASTNode *node, FILE *out, int indent)
+void Parser_log_node(const struct Parser_ASTNode *node, FILE *out, int indent)
 {
     if (node->type == PARSER_ASTNODETYPE_FUNC_DECL)
         log_func_node(node, out, indent);
@@ -450,6 +448,6 @@ void Parser_log_ast(const struct Parser_ASTNode *root, FILE *out)
 
     for (isize_t i = 0; i < root->root.len; ++i) {
         const struct Parser_ASTNode *child = root->root.arr[i];
-        log_node(child, out, 0);
+        Parser_log_node(child, out, 0);
     }
 }

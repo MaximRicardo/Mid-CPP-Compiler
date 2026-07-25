@@ -17,6 +17,7 @@
 #include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include <string.h>
 
 static isize_t parse_tmplt_impl(struct Parser_ASTNode *node,
                                 struct Sema_Scope *parent_scope,
@@ -24,8 +25,39 @@ static isize_t parse_tmplt_impl(struct Parser_ASTNode *node,
                                 struct Parser_Allocators *allocs, bool is_param,
                                 struct DiagVec *diags);
 
+struct Parser_TmpltArg Parser_copy_tmplt_arg(struct Parser_TmpltArg *src)
+{
+    struct Parser_TmpltArg ret = {.kind = src->kind};
+
+    switch (src->kind) {
+    case PARSER_TMPLTARG_NONTYPE:
+        ret.non_type = Parser_copy_expr(&src->non_type);
+        break;
+
+    case PARSER_TMPLTARG_TYPE:
+        ret.type = Parser_copy_type(&src->type);
+        break;
+
+    case PARSER_TMPLTARG_TMPLT:
+        ret.tmplt = src->tmplt;
+        break;
+
+    default:
+        CRASH("invalid tmplt arg kind");
+    }
+
+    return ret;
+}
+
 void Parser_Tmplt_deinit(struct Parser_Tmplt *self)
 {
+    if (self->has_cur_args) {
+        for (isize_t i = 0; i < self->params.len; ++i) {
+            Parser_TmpltArg_deinit(&self->cur_args[i]);
+        }
+    }
+    free(self->cur_args);
+
     gen_dyndeinit(&self->params);
 }
 
@@ -45,6 +77,12 @@ void Parser_copy_tmplt(struct Parser_ASTNode *dest_node,
 
     dest->params =
         Parser_copy_nodepvec(&src->params, dest_node, dest->scope, allocs);
+
+    dest->cur_args = mid_malloc(src->params.len * sizeof(*dest->cur_args));
+    if (src->has_cur_args) {
+        for (isize_t i = 0; i < src->params.len; ++i)
+            dest->cur_args[i] = Parser_copy_tmplt_arg(&src->cur_args[i]);
+    }
 
     gen_bumpmalloc(&allocs->ast, &dest->child);
     Parser_copy_node(dest->child, src->child, dest_node, dest->scope, allocs);
@@ -110,6 +148,25 @@ get_tmplt_scope_const(const struct Parser_ASTNode *tmplt_param)
 static struct Sema_Scope *get_tmplt_scope(struct Parser_ASTNode *tmplt_param)
 {
     return (struct Sema_Scope *)get_tmplt_scope_const(tmplt_param);
+}
+
+static const char *tmplt_param_name(const struct Parser_ASTNode *tmplt_param)
+{
+    auto param = &tmplt_param->tmplt_param;
+
+    switch (param->kind) {
+    case PARSER_TMPLTPARAM_NONTYPE:
+        return param->non_type.name;
+
+    case PARSER_TMPLTPARAM_TYPE:
+        return param->type.name;
+
+    case PARSER_TMPLTPARAM_TMPLT:
+        return param->tmplt.name;
+
+    default:
+        CRASH("invalid tmplt param kind");
+    }
 }
 
 static const struct Sema_Ident *
@@ -240,9 +297,18 @@ static struct Sema_Ident *add_ident(const char *name,
                                     struct Sema_Scope *scope,
                                     enum Sema_IdentType type)
 {
-    return Sema_add_ident(
+    auto old = Sema_add_ident(
         scope, &(struct Sema_Ident){
                    .name = name, .decl = node, .def = NULL, .type = type});
+
+    if (node->type == PARSER_ASTNODETYPE_TMPLT_PARAM) {
+        if (old)
+            set_ident_idx(&node->tmplt_param, Sema_ident_idx(old));
+        else
+            set_ident_idx(&node->tmplt_param, scope->idents.len - 1);
+    }
+
+    return old;
 }
 
 static void parse_tmplt_nontype_param(struct Parser_ASTNode *node,
@@ -445,6 +511,7 @@ static isize_t parse_tmplt_impl(struct Parser_ASTNode *node,
     isize_t r_angle;
     tmplt->params = parse_tmplt_param_list(node, tmplt->scope, toks, l_angle,
                                            &r_angle, allocs, diags);
+    tmplt->cur_args = mid_malloc(tmplt->params.len * sizeof(*tmplt->cur_args));
 
     if (is_param) {
         if (toks[r_angle + 1].type != LEXER_TOKENTYPE_CLASS) {
@@ -590,4 +657,28 @@ Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
     }
 
     return args;
+}
+
+isize_t Parser_tmplt_param_idx(const struct Parser_Tmplt *tmplt,
+                               const char *name)
+{
+    for (isize_t i = 0; i < tmplt->params.len; ++i) {
+        const char *p_name = tmplt_param_name(tmplt->params.arr[i]);
+        if (!strcmp(name, p_name))
+            return i;
+    }
+
+    return -1;
+}
+
+struct Parser_TmpltArg *Parser_get_tmplt_param_value(struct Parser_Tmplt *tmplt,
+                                                     const char *name)
+{
+    assert(tmplt->has_cur_args);
+
+    isize_t idx = Parser_tmplt_param_idx(tmplt, name);
+    if (idx != -1)
+        return &tmplt->cur_args[idx];
+    else
+        return NULL;
 }

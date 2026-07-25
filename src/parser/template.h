@@ -10,6 +10,25 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 
+enum Parser_TmpltArgType {
+    PARSER_TMPLTARG_NONTYPE,
+    PARSER_TMPLTARG_TYPE,
+    PARSER_TMPLTARG_TMPLT,
+};
+
+struct Parser_TmpltArg {
+    union {
+        struct Parser_Expr non_type;
+        struct Parser_Type type;
+        struct Sema_IdentPtr tmplt;
+    };
+    enum Parser_TmpltArgType kind;
+};
+gen_dynarray_struct_named(Parser_TmpltArgVec, struct Parser_TmpltArg);
+
+void Parser_TmpltArg_deinit(struct Parser_TmpltArg *self);
+struct Parser_TmpltArg Parser_copy_tmplt_arg(struct Parser_TmpltArg *src);
+
 struct Parser_TmpltInst {
     struct Parser_ASTNode *inst;
     struct Sema_Scope *scope; // the inst node's parent scope, which is a child
@@ -21,6 +40,8 @@ struct Parser_Tmplt {
     struct Parser_ASTNodePVec params; // of type PARSER_ASTNODETYPE_TMPLT_PARAM
     struct Parser_ASTNode *child;
     struct Sema_Scope *scope;
+    struct Parser_TmpltArg *cur_args; // always same size as params
+    bool has_cur_args; // if false, cur_args is full of invalid data
 };
 
 void Parser_Tmplt_deinit(struct Parser_Tmplt *self);
@@ -78,24 +99,6 @@ void Parser_copy_tmplt_param(struct Parser_ASTNode *dest,
                              const struct Parser_ASTNode *src,
                              struct Parser_Allocators *allocs);
 
-enum Parser_TmpltArgType {
-    PARSER_TMPLTARG_NONTYPE,
-    PARSER_TMPLTARG_TYPE,
-    PARSER_TMPLTARG_TMPLT,
-};
-
-struct Parser_TmpltArg {
-    union {
-        struct Parser_Expr non_type;
-        struct Parser_Type type;
-        struct Sema_IdentPtr tmplt;
-    };
-    enum Parser_TmpltArgType kind;
-};
-gen_dynarray_struct_named(Parser_TmpltArgVec, struct Parser_TmpltArg);
-
-void Parser_TmpltArg_deinit(struct Parser_TmpltArg *self);
-
 isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
                            struct Sema_Scope *scope,
                            const struct Lexer_Token *toks, isize_t start,
@@ -109,3 +112,8 @@ Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
                         isize_t *out_r_angle, struct Sema_Scope *scope,
                         struct Parser_Allocators *allocs,
                         struct DiagVec *diags);
+
+isize_t Parser_tmplt_param_idx(const struct Parser_Tmplt *tmplt,
+                               const char *name);
+struct Parser_TmpltArg *Parser_get_tmplt_param_value(struct Parser_Tmplt *tmplt,
+                                                     const char *name);

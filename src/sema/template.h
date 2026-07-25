@@ -4,5 +4,5 @@
 
 struct Parser_Type
 Sema_instantiate_class_tmplt(struct Parser_ASTNode *tmplt,
-                             struct Parser_TmpltArgVec *args,
+                             const struct Parser_TmpltArgVec *args,
                              struct Parser_Allocators *allocs);

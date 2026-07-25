@@ -8,13 +8,13 @@ A func(T arg)
     return *x;
 }
 
-template <typename T> class ClassTmplt {
+template <typename T, typename U> class ClassTmplt {
 public:
     T memb;
-    T var_a, var_b;
+    U &var_a, &&var_b;
 };
 
 int main()
 {
-    ClassTmplt<int, 12323 + 1, ClassTmplt> var;
+    ClassTmplt<const char32_t *, unsigned long long> var;
 }

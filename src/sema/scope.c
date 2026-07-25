@@ -221,9 +221,17 @@ struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
             }
         } else if (ident->decl->type == PARSER_ASTNODETYPE_TMPLT_PARAM) {
             assert(ident->decl->tmplt_param.kind == PARSER_TMPLTPARAM_TYPE);
-            auto scope = ident->decl->parent->tmplt.scope;
-            auto param = &ident->decl->tmplt_param.type;
-            return Parser_create_templated_type(scope, param->ident_idx);
+            auto tmplt = &ident->decl->parent->tmplt;
+            if (!tmplt->has_cur_args) {
+                auto scope = tmplt->scope;
+                auto param = &ident->decl->tmplt_param.type;
+                return Parser_create_templated_type(scope, param->ident_idx);
+            } else {
+                struct Parser_TmpltArg *arg =
+                    Parser_get_tmplt_param_value(tmplt, ident->name);
+                assert(arg->kind == PARSER_TMPLTARG_TYPE);
+                return Parser_copy_type(&arg->type);
+            }
         }
         CRASH("name not typedefed in node");
 
