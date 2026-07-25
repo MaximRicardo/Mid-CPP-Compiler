@@ -5,6 +5,7 @@
 #include "lexer/token.h"
 #include "parser/allocator.h"
 #include "parser/astvec.h"
+#include "sema/ident.h"
 #include "sema/scope.h"
 
 enum Parser_ClassType {
@@ -32,9 +33,7 @@ struct Parser_Class {
     const char *name;
     struct Parser_ASTNodePVec supers;    // classes this class inherits from
     const struct Lexer_Token *def_start; // the left curly '{'
-    struct Sema_Scope *parent;
-    i32 ident_idx; // index of the identifier holding the class in the parent
-                   // scope. -1 if there is no identifier
+    struct Sema_IdentPtr ident;
     enum Parser_ClassType type;
     bool has_def;
 };
@@ -44,7 +43,7 @@ void Parser_copy_class(struct Parser_ASTNode *dest,
                        const struct Parser_ASTNode *src,
                        struct Sema_Scope *dest_scope,
                        struct Parser_Allocators *allocs);
-struct Sema_Ident *Parser_class_ident(const struct Parser_Class *self);
+struct Sema_Scope *Parser_class_parent(const struct Parser_Class *self);
 // returns the end of the class
 isize_t Parser_parse_class(struct Parser_ASTNode *node,
                            struct Sema_Scope *scope,

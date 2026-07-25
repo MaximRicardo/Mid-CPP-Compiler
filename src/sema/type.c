@@ -51,8 +51,7 @@ static struct Parser_Type class_node_type(const struct Parser_ASTNode *node)
     struct Parser_Type ret = {};
     ret.spec = class_->type == PARSER_CLASSTYPE_UNION ? PARSER_TYPESPEC_UNION
                                                       : PARSER_TYPESPEC_CLASS;
-    ret.named.parent = class_->parent;
-    ret.named.ident = class_->ident_idx;
+    ret.named = class_->ident;
     gen_dynpush(&ret.dquals, (struct Parser_TypeDataQual){});
 
     return ret;
@@ -223,7 +222,7 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
 {
     assert(expr->type == PARSER_EXPRTYPE_IDENTIFIER);
 
-    auto ident = Sema_find_ident_const(scope, expr->tok->ident, NULL);
+    auto ident = Sema_find_ident_const(scope, expr->tok->ident);
     if (!ident) {
         gen_dynpush(diags,
                     Diag_ident_undeclared_err(expr->tok->ident, expr->tok,
@@ -252,7 +251,7 @@ static void typecheck_ident_expr(struct Parser_Expr *expr,
             expr->ret.spec = PARSER_TYPESPEC_FUNC;
             expr->ret.func.is_tor = true;
             expr->ret.func.scope = scope;
-            expr->ret.func.name = Parser_named_type_ident(&type.named)->name;
+            expr->ret.func.name = Sema_deref_identptr(&type.named)->name;
         }
 
         Parser_Type_deinit(&type);
@@ -302,8 +301,7 @@ static void typecheck_this_expr(struct Parser_Expr *expr,
     expr->ret.spec = class_->type == PARSER_CLASSTYPE_UNION
                          ? PARSER_TYPESPEC_UNION
                          : PARSER_TYPESPEC_CLASS;
-    expr->ret.named.parent = class_->parent;
-    expr->ret.named.ident = class_->ident_idx;
+    expr->ret.named = class_->ident;
 
     gen_dynpush(
         &expr->ret.dquals,
@@ -1022,7 +1020,7 @@ static void typecheck_memb_sel(struct Parser_Expr *expr,
     }
 
     const struct Parser_Class *class_ =
-        &Parser_named_type_ident(&lhs->ret.named)->decl->class_;
+        &Sema_deref_identptr(&lhs->ret.named)->decl->class_;
     const char *field_name = rhs->info.ident;
     isize_t field_idx = Parser_find_field(class_, field_name);
     if (field_idx == -1) {
@@ -1041,7 +1039,7 @@ static void typecheck_memb_sel(struct Parser_Expr *expr,
         expr->valtype = PARSER_EXPRVALUE_LVALUE;
     } else {
         expr->ret = Parser_create_func_type(
-            Parser_class_ident(class_)->class_info.def_scope,
+            Sema_deref_identptr(&class_->ident)->class_info.def_scope,
             field->func_decl.name);
         expr->valtype = PARSER_EXPRVALUE_LVALUE;
     }
@@ -1175,7 +1173,7 @@ static bool typecheck_vdecl_class_type_ctor(struct Parser_VarDeclInst *inst)
 {
     assert(inst->has_ctor);
 
-    auto ident = Parser_named_type_ident(&inst->type.named);
+    auto ident = Sema_deref_identptr(&inst->type.named);
     inst->ctor.node =
         Sema_find_func(ident->name, inst->ctor.args.arr, inst->ctor.args.len,
                        ident->class_info.def_scope, true);

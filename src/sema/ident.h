@@ -1,8 +1,8 @@
 #pragma once
 
 #include "generics/dynarray.h"
+#include "ints.h"
 #include "parser/allocator.h"
-#include "parser/expr.h"
 #include <assert.h>
 
 enum Sema_IdentType {
@@ -40,6 +40,7 @@ struct Sema_Ident {
     };
 
     const char *name;
+    struct Sema_Scope *parent;
     struct Parser_ASTNode *decl;
     struct Parser_ASTNode *def;
     enum Sema_IdentType type;
@@ -56,6 +57,8 @@ struct Sema_Ident Sema_copy_ident(const struct Sema_Ident *src,
                                   bool copy_scopes,
                                   struct Parser_Allocators *allocs);
 
+isize_t Sema_ident_idx(const struct Sema_Ident *self);
+
 // this is here in case i eventually need to make a more complex copy function
 static inline struct Sema_Ident
 Sema_copy_var_ident(const struct Sema_Ident *self)
@@ -63,3 +66,17 @@ Sema_copy_var_ident(const struct Sema_Ident *self)
     assert(self->type == SEMA_IDENTTYPE_VAR);
     return *self;
 }
+
+// only gets invalidated if the identifier's idx in its scope gets invalidated
+struct Sema_IdentPtr {
+    struct Sema_Scope *parent; // NULL means the ptr is null
+    i32 idx;                   // -1 means the ptr is null
+};
+gen_dynarray_struct_named(Sema_IdentPtrVec, struct Sema_IdentPtr);
+
+struct Sema_IdentPtr Sema_create_identptr(struct Sema_Ident *ident);
+// creates an ident ptr pointing to the last identifier in parent
+struct Sema_IdentPtr Sema_identptr_to_last(struct Sema_Scope *parent);
+struct Sema_IdentPtr Sema_IdentPtr_null(struct Sema_Scope *parent);
+bool Sema_is_identptr_null(const struct Sema_IdentPtr *self);
+struct Sema_Ident *Sema_deref_identptr(const struct Sema_IdentPtr *self);

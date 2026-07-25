@@ -65,21 +65,20 @@ void Parser_copy_class(struct Parser_ASTNode *dest_node,
 
     *dest = *src;
 
-    dest->parent = dest_scope;
-    auto old_ident =
-        Sema_add_ident_copy(dest_scope, Parser_class_ident(src), false, allocs);
+    auto old_ident = Sema_add_ident_copy(
+        dest_scope, Sema_deref_identptr(&src->ident), false, allocs);
     if (old_ident)
-        dest->ident_idx = old_ident - dest->parent->idents.arr;
+        dest->ident = Sema_create_identptr(old_ident);
     else
-        dest->ident_idx = dest->parent->idents.len - 1;
+        dest->ident = Sema_identptr_to_last(dest_scope);
 
     if (dest->childs.len > 0) {
         struct Sema_Scope *child_scope;
         gen_bumpmalloc(&allocs->scope, &child_scope);
-        *child_scope = (struct Sema_Scope){.parent = dest->parent,
+        *child_scope = (struct Sema_Scope){.parent = Parser_class_parent(dest),
                                            .node = dest_node,
                                            .type = SEMA_SCOPETYPE_CLASS};
-        Parser_class_ident(dest)->class_info.def_scope = child_scope;
+        Sema_deref_identptr(&dest->ident)->class_info.def_scope = child_scope;
 
         dest->childs =
             Parser_copy_nodepvec(&src->childs, dest_node, child_scope, allocs);
@@ -93,15 +92,14 @@ void Parser_copy_class(struct Parser_ASTNode *dest_node,
 
     if (src->var_decl) {
         gen_bumpmalloc(&allocs->ast, &dest->var_decl);
-        Parser_copy_node(dest->var_decl, src->var_decl, dest_node, dest->parent,
-                         allocs);
+        Parser_copy_node(dest->var_decl, src->var_decl, dest_node,
+                         Parser_class_parent(dest), allocs);
     }
 }
 
-struct Sema_Ident *Parser_class_ident(const struct Parser_Class *self)
+struct Sema_Scope *Parser_class_parent(const struct Parser_Class *self)
 {
-    assert(self->ident_idx != -1);
-    return &self->parent->idents.arr[self->ident_idx];
+    return self->ident.parent;
 }
 
 // parses the inheritance part of a class
@@ -121,7 +119,7 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
 
     const char *super_name = toks[ident].ident;
     struct Parser_ASTNode *super =
-        Sema_find_ident_const(self->parent, super_name, NULL)->def;
+        Sema_find_ident_const(Parser_class_parent(self), super_name)->def;
 
     if (!super)
         gen_dynpush(
@@ -169,7 +167,7 @@ static isize_t parse_class_entry(struct Parser_Class *self,
     self->type = parse_class_type(toks, start);
 
     isize_t ident = start + 1;
-    self->parent =
+    self->ident.parent =
         Parser_parse_scope_res(toks, ident, &ident, parent_scope, diags);
     if (toks[ident].type != LEXER_TOKENTYPE_IDENTIFIER) {
         gen_dynpush(diags, Diag_expected_token_err("identifier", &toks[start],
@@ -259,7 +257,7 @@ static void add_class_def(struct Parser_Class *self,
     if (!self->name)
         return;
 
-    auto ident = Parser_class_ident(self);
+    auto ident = Sema_deref_identptr(&self->ident);
     if (ident->def)
         gen_dynpush(diags, Diag_ident_redefined_err(self->name, self->def_start,
                                                     ERRORTYPE_BAD_IDENTIFIER));
@@ -272,13 +270,14 @@ static struct Sema_Scope *setup_def_scope(struct Parser_Class *self,
                                           struct Parser_Allocators *allocs,
                                           struct DiagVec *diags)
 {
-    auto def = &Parser_class_ident(self)->class_info.def_scope;
+    auto def = &Sema_deref_identptr(&self->ident)->class_info.def_scope;
     if (*def) {
         gen_dynpush(diags, Diag_ident_redefined_err(self->name, node->start,
                                                     ERRORTYPE_BAD_IDENTIFIER));
     }
 
-    *def = create_scope(self->parent, node, allocs, SEMA_SCOPETYPE_CLASS);
+    *def = create_scope(Parser_class_parent(self), node, allocs,
+                        SEMA_SCOPETYPE_CLASS);
 
     return *def;
 }
@@ -294,7 +293,7 @@ static void parse_decls(struct Parser_Class *self, struct Parser_ASTNode *node,
                                        ? PARSER_CLASSACCESS_PRIVATE
                                        : PARSER_CLASSACCESS_PUBLIC;
 
-    auto def_scope = Parser_class_ident(self)->class_info.def_scope;
+    auto def_scope = Sema_deref_identptr(&self->ident)->class_info.def_scope;
 
     for (isize_t i = lcurly + 1; i < rcurly;) {
         if (Lexer_is_accessspec(toks[i].type)) {
@@ -322,7 +321,7 @@ static void parse_defs(struct Parser_Class *self,
                        const struct Lexer_Token *toks,
                        struct Parser_Allocators *allocs, struct DiagVec *diags)
 {
-    auto def_scope = Parser_class_ident(self)->class_info.def_scope;
+    auto def_scope = Sema_deref_identptr(&self->ident)->class_info.def_scope;
 
     for (isize_t i = 0; i < self->childs.len; ++i)
         parse_node_def(self->childs.arr[i], def_scope, toks, allocs, diags);
@@ -386,10 +385,14 @@ static void add_class_to_scope(struct Sema_Scope *scope,
         scope,
         &(struct Sema_Ident){.name = self->name, .decl = node, .type = type});
 
-    if (old)
-        self->ident_idx = old - scope->idents.arr;
-    else
-        self->ident_idx = scope->idents.len - 1;
+    if (old) {
+        // if this is false then the class exists across multiple scopes which
+        // is bad
+        assert(old->parent == self->ident.parent);
+        self->ident.idx = Sema_ident_idx(old);
+    } else {
+        self->ident.idx = scope->idents.len - 1;
+    }
 }
 
 static isize_t parse_class_till_instances(struct Parser_Class *self,
@@ -400,11 +403,11 @@ static isize_t parse_class_till_instances(struct Parser_Class *self,
                                           struct Parser_Allocators *allocs,
                                           struct DiagVec *diags)
 {
-    *self = (struct Parser_Class){.ident_idx = -1};
+    *self = (struct Parser_Class){};
     isize_t lcurly = parse_class_entry(self, toks, start, parent_scope, diags);
 
     if (self->name)
-        add_class_to_scope(self->parent, self, node);
+        add_class_to_scope(Parser_class_parent(self), self, node);
 
     if (toks[lcurly].type == LEXER_TOKENTYPE_SEMICOLON) {
         return lcurly;

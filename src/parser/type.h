@@ -4,6 +4,7 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
+#include "sema/ident.h"
 
 struct Sema_Scope;
 
@@ -76,11 +77,6 @@ isize_t Parser_parse_quals(const struct Lexer_Token *toks, isize_t start,
                            struct Parser_TypeStorQual *squals,
                            struct Parser_TypeDataQual *dquals);
 
-struct Parser_TypeNamed {
-    struct Sema_Scope *parent;
-    i32 ident;
-};
-
 // not to be confused with an fptr. a func type can refer to multiple overloads
 // of the same name, while a fptr refers to a specific overload without any
 // specific name.
@@ -98,12 +94,9 @@ struct Parser_TypeFunc {
     bool is_tor; // is a ctor or dtor
 };
 
-struct Sema_Ident *
-Parser_named_type_ident(const struct Parser_TypeNamed *named);
-
 struct Parser_Type {
     union {
-        struct Parser_TypeNamed named; // used by classes, structs, enums, etc.
+        struct Sema_IdentPtr named; // used by classes, structs, enums, etc.
         struct Parser_TypeFunc func;
         struct Parser_TypeFPtr *fptr;
         struct Parser_TypeArray *array;

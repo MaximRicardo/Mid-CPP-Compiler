@@ -56,16 +56,17 @@ struct Sema_Ident Sema_copy_ident(const struct Sema_Ident *src,
                                   struct Parser_Allocators *allocs)
 {
     struct Sema_Ident ret = *src;
+    ret.parent = dest_parent;
 
     if (src->type == SEMA_IDENTTYPE_FUNC) {
-        ret.func_info = copy_func_info(&src->func_info, dest_parent,
+        ret.func_info = copy_func_info(&src->func_info, ret.parent,
                                        src->decl->func_decl.params.len,
                                        copy_scopes, allocs);
     } else if (src->type == SEMA_IDENTTYPE_CLASS) {
         if (copy_scopes) {
             gen_bumpmalloc(&allocs->scope, &ret.class_info.def_scope);
             Sema_copy_scope(ret.class_info.def_scope, src->class_info.def_scope,
-                            dest_parent, allocs);
+                            ret.parent, allocs);
         } else {
             ret.class_info.def_scope = NULL;
         }
@@ -99,4 +100,36 @@ bool Sema_ident_is_tmplt(enum Sema_IdentType type)
     return type == SEMA_IDENTTYPE_TMPLT_ALIAS ||
            type == SEMA_IDENTTYPE_TMPLT_FUNC ||
            type == SEMA_IDENTTYPE_TMPLT_CLASS;
+}
+
+isize_t Sema_ident_idx(const struct Sema_Ident *self)
+{
+    return self - self->parent->idents.arr;
+}
+
+struct Sema_IdentPtr Sema_create_identptr(struct Sema_Ident *ident)
+{
+    return (struct Sema_IdentPtr){.parent = ident->parent,
+                                  .idx = Sema_ident_idx(ident)};
+}
+
+struct Sema_IdentPtr Sema_identptr_to_last(struct Sema_Scope *parent)
+{
+    return (struct Sema_IdentPtr){.parent = parent,
+                                  .idx = parent->idents.len - 1};
+}
+
+struct Sema_IdentPtr Sema_IdentPtr_null(struct Sema_Scope *parent)
+{
+    return (struct Sema_IdentPtr){.parent = parent, .idx = -1};
+}
+
+bool Sema_is_identptr_null(const struct Sema_IdentPtr *self)
+{
+    return !self->parent || self->idx == -1;
+}
+
+struct Sema_Ident *Sema_deref_identptr(const struct Sema_IdentPtr *self)
+{
+    return &self->parent->idents.arr[self->idx];
 }

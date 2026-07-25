@@ -126,9 +126,8 @@ search_child_tmplt_scopes(const char *name, const struct Sema_Scope *scope)
     return NULL;
 }
 
-const struct Sema_Ident *
-Sema_find_ident_const(const struct Sema_Scope *scope, const char *name,
-                      const struct Sema_Scope **out_ident_scope)
+const struct Sema_Ident *Sema_find_ident_const(const struct Sema_Scope *scope,
+                                               const char *name)
 {
     const struct Sema_Ident *ident = NULL;
     if (!ident)
@@ -136,27 +135,22 @@ Sema_find_ident_const(const struct Sema_Scope *scope, const char *name,
     if (!ident)
         ident = search_child_tmplt_scopes(name, scope);
 
-    if (ident) {
-        if (out_ident_scope)
-            *out_ident_scope = scope;
+    if (ident)
         return ident;
-    }
 
     if (scope->parent)
-        return Sema_find_ident_const(scope->parent, name, out_ident_scope);
+        return Sema_find_ident_const(scope->parent, name);
     return NULL;
 }
 
-struct Sema_Ident *Sema_find_ident(struct Sema_Scope *scope, const char *name,
-                                   struct Sema_Scope **out_ident_scope)
+struct Sema_Ident *Sema_find_ident(struct Sema_Scope *scope, const char *name)
 {
-    return (struct Sema_Ident *)Sema_find_ident_const(
-        scope, name, (const struct Sema_Scope **)out_ident_scope);
+    return (struct Sema_Ident *)Sema_find_ident_const(scope, name);
 }
 
 bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name)
 {
-    auto ident = Sema_find_ident_const(scope, name, NULL);
+    auto ident = Sema_find_ident_const(scope, name);
     if (!ident)
         return false;
 
@@ -167,7 +161,7 @@ bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name)
 
 bool Sema_is_namespace_name(const struct Sema_Scope *scope, const char *name)
 {
-    auto ident = Sema_find_ident_const(scope, name, NULL);
+    auto ident = Sema_find_ident_const(scope, name);
     if (!ident)
         return false;
 
@@ -188,7 +182,7 @@ bool Sema_ident_type(struct Sema_Scope *scope, const struct Sema_Ident *ident,
 bool Sema_name_type(struct Sema_Scope *scope, const char *name,
                     struct Parser_Type *out_type)
 {
-    auto ident = Sema_find_ident_const(scope, name, NULL);
+    auto ident = Sema_find_ident_const(scope, name);
     if (!ident)
         return false;
 
@@ -198,8 +192,7 @@ bool Sema_name_type(struct Sema_Scope *scope, const char *name,
 struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
                                        const char *name)
 {
-    struct Sema_Scope *ident_scope;
-    auto ident = Sema_find_ident(scope, name, &ident_scope);
+    auto ident = Sema_find_ident(scope, name);
     if (!ident->decl)
         CRASH("identifier doesn't exist");
 
@@ -209,15 +202,13 @@ struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
                                                    PARSER_CLASSTYPE_UNION
                                                ? LEXER_TOKENTYPE_UNION
                                                : LEXER_TOKENTYPE_CLASS);
-        type.named.parent = ident_scope;
-        type.named.ident = ident - ident_scope->idents.arr;
+        type.named = Sema_create_identptr(ident);
         return type;
     }
 
     case SEMA_IDENTTYPE_ENUM: {
         auto type = Parser_toktype_to_type(LEXER_TOKENTYPE_ENUM);
-        type.named.parent = ident_scope;
-        type.named.ident = ident - ident_scope->idents.arr;
+        type.named = Sema_create_identptr(ident);
         return type;
     }
 
@@ -338,6 +329,7 @@ struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
     if (old_ident)
         return old_ident;
 
+    ident->parent = scope;
     gen_dynpush(&scope->idents, *ident);
     return NULL;
 }
@@ -351,15 +343,16 @@ struct Sema_Ident *Sema_add_ident_copy(struct Sema_Scope *scope,
     if (old_ident)
         return old_ident;
 
-    gen_dynpush(&scope->idents,
-                Sema_copy_ident(ident, scope, copy_ident_scopes, allocs));
+    auto cpy = Sema_copy_ident(ident, scope, copy_ident_scopes, allocs);
+    cpy.parent = scope;
+    gen_dynpush(&scope->idents, cpy);
     return NULL;
 }
 
 i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,
                        struct Parser_ASTNode *def)
 {
-    auto ident = Sema_find_ident(scope, name, NULL);
+    auto ident = Sema_find_ident(scope, name);
     assert(ident);
 
     if (ident->def)

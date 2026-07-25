@@ -5,6 +5,7 @@
 #include "parser/allocator.h"
 
 struct Parser_ASTNode;
+struct Parser_Type;
 
 enum Sema_ScopeType {
     SEMA_SCOPETYPE_ROOT,
@@ -48,11 +49,9 @@ Sema_closest_scope_of_type_const(const struct Sema_Scope *self,
 struct Sema_Scope *Sema_closest_scope_of_type(struct Sema_Scope *self,
                                               enum Sema_ScopeType type);
 
-const struct Sema_Ident *
-Sema_find_ident_const(const struct Sema_Scope *scope, const char *name,
-                      const struct Sema_Scope **out_ident_scope);
-struct Sema_Ident *Sema_find_ident(struct Sema_Scope *scope, const char *name,
-                                   struct Sema_Scope **out_ident_scope);
+const struct Sema_Ident *Sema_find_ident_const(const struct Sema_Scope *scope,
+                                               const char *name);
+struct Sema_Ident *Sema_find_ident(struct Sema_Scope *scope, const char *name);
 
 bool Sema_is_type_name(const struct Sema_Scope *scope, const char *name);
 bool Sema_is_namespace_name(const struct Sema_Scope *scope, const char *name);
@@ -68,9 +67,11 @@ struct Parser_Type Sema_tok_type(struct Sema_Scope *scope,
 
 // if the scope already has an identifier of the same name, nothing is added and
 // the old identifier is returned
+// ident->parent is changed to scope
 struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
                                   struct Sema_Ident *ident);
 // same as Sema_add_ident but adds a copy of the ident instead
+// ident's copy's parent is changed to scope
 struct Sema_Ident *Sema_add_ident_copy(struct Sema_Scope *scope,
                                        const struct Sema_Ident *ident,
                                        bool copy_ident_scopes,

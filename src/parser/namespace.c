@@ -28,11 +28,11 @@ void Parser_copy_namespace(struct Parser_ASTNode *dest_node,
     *dest = *src;
 
     auto old_ident = Sema_add_ident_copy(
-        dest_scope, Parser_namespace_ident(src), false, allocs);
+        dest_scope, Sema_deref_identptr(&src->ident), false, allocs);
     if (old_ident)
-        dest->ident_idx = old_ident - dest_scope->idents.arr;
+        dest->ident = Sema_create_identptr(old_ident);
     else
-        dest->ident_idx = dest_scope->idents.len - 1;
+        dest->ident = Sema_identptr_to_last(dest_scope);
 
     gen_bumpmalloc(&allocs->scope, &dest->scope);
     *dest->scope =
@@ -40,12 +40,6 @@ void Parser_copy_namespace(struct Parser_ASTNode *dest_node,
 
     dest->childs =
         Parser_copy_nodepvec(&src->childs, dest_node, dest->scope, allocs);
-}
-
-struct Sema_Ident *Parser_namespace_ident(const struct Parser_Namespace *self)
-{
-    assert(self->ident_idx != -1);
-    return &self->scope->parent->idents.arr[self->ident_idx];
 }
 
 static void add_nmspace_to_scope(struct Sema_Scope *scope,
@@ -64,7 +58,7 @@ static void add_nmspace_to_scope(struct Sema_Scope *scope,
         gen_dynpush(diags, Diag_ident_redefined_err(self->name, node->start,
                                                     ERRORTYPE_BAD_IDENTIFIER));
     else
-        self->ident_idx = scope->idents.len - 1;
+        self->ident = Sema_identptr_to_last(scope);
 }
 
 //   namespace Name { ... }
@@ -119,7 +113,7 @@ isize_t Parser_parse_namespace(struct Parser_ASTNode *node,
                                struct DiagVec *diags)
 {
     auto self = &node->nmspace;
-    *self = (struct Parser_Namespace){.ident_idx = -1};
+    *self = (struct Parser_Namespace){};
     setup_scope(parent, self, node, allocs);
 
     isize_t lcurly = parse_entry(node, parent, toks, start, diags);

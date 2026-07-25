@@ -4,11 +4,12 @@
 #include "ints.h"
 #include "parser/class.h"
 #include "parser/type.h"
+#include "sema/ident.h"
 #include <llvm-c/Types.h>
 
 LLVMTypeRef CGLLVM_convert_parser_type(const struct Parser_Type *type,
                                        LLVMContextRef context, bool ref_is_ptr);
-char *CGLLVM_named_type_full_name(const struct Parser_TypeNamed *named);
+char *CGLLVM_named_type_full_name(const struct Sema_IdentPtr *named);
 
 struct CGLLVM_TypeRefVec
 CGLLVM_class_to_struct_fields(const struct Parser_Class *src,

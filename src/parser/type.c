@@ -476,7 +476,7 @@ static struct Parser_Type type_name_type(const struct Lexer_Token *toks,
 {
     assert(toks[start].type == LEXER_TOKENTYPE_IDENTIFIER);
 
-    auto ident = Sema_find_ident_const(scope, toks[start].ident, NULL);
+    auto ident = Sema_find_ident_const(scope, toks[start].ident);
     if (!Sema_ident_is_tmplt(ident->type)) {
         if (out_end)
             *out_end = start + 1;
@@ -1048,7 +1048,7 @@ static void regular_type_to_str(const struct Parser_Type *type,
     Dynstr_append(str, Parser_typespec_to_str(type->spec));
     if (Parser_is_typespec_named(type->spec))
         Dynstr_append_printf(
-            str, " %s", type->named.parent->idents.arr[type->named.ident].name);
+            str, " %s", type->named.parent->idents.arr[type->named.idx].name);
 
     for (isize_t i = Parser_n_indir(type); i > 0; --i) {
         Dynstr_append_char(str, '*');
@@ -1410,15 +1410,9 @@ bool Parser_are_types_same(const struct Parser_Type *a,
         return are_arrays_same(a->array, b->array);
     else if (Parser_is_typespec_named(a->spec))
         return a->named.parent == b->named.parent &&
-               a->named.ident == b->named.ident;
+               a->named.idx == b->named.idx;
     else
         return true;
-}
-
-struct Sema_Ident *Parser_named_type_ident(const struct Parser_TypeNamed *named)
-{
-    assert(named->ident != -1);
-    return &named->parent->idents.arr[named->ident];
 }
 
 struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
@@ -1438,7 +1432,7 @@ struct Parser_Type Parser_create_templated_type(struct Sema_Scope *scope,
                                                 i32 ident)
 {
     struct Parser_Type ret = {.spec = PARSER_TYPESPEC_TEMPLATED};
-    ret.named.ident = ident;
+    ret.named.idx = ident;
     ret.named.parent = scope;
 
     gen_dynpush(&ret.dquals, ((struct Parser_TypeDataQual){}));

@@ -519,7 +519,7 @@ static bool is_tmplt_tmplt_arg(const struct Lexer_Token *tok,
     if (tok->type != LEXER_TOKENTYPE_IDENTIFIER)
         return false;
 
-    auto ident = Sema_find_ident(scope, tok->ident, NULL);
+    auto ident = Sema_find_ident(scope, tok->ident);
     if (out_ident)
         *out_ident = ident;
     if (!ident)
@@ -539,7 +539,7 @@ static struct Parser_TmpltArg parse_tmplt_arg(const struct Lexer_Token *toks,
     struct Sema_Ident *ident;
     if (is_tmplt_tmplt_arg(&toks[start], scope, &ident)) {
         arg.kind = PARSER_TMPLTARG_TMPLT;
-        arg.tmplt = ident;
+        arg.tmplt = Sema_create_identptr(ident);
     } else if (Parser_valid_type_start(toks, start, scope)) {
         arg.kind = PARSER_TMPLTARG_TYPE;
         arg.type = Parser_parse_type(toks, start, out_end, scope, NULL, true,

@@ -741,7 +741,8 @@ isize_t Parser_parse_tor(const struct Lexer_Token *toks, isize_t start,
 
     decl->name = decl->is_dtor ? Parser_dtor_name : Parser_ctor_name;
 
-    auto c_scope = Parser_class_ident(&class_->class_)->class_info.def_scope;
+    auto c_scope =
+        Sema_deref_identptr(&class_->class_.ident)->class_info.def_scope;
     decl->param_scope =
         create_scope(c_scope, node, allocs, SEMA_SCOPETYPE_FUNC_PARAMS);
 

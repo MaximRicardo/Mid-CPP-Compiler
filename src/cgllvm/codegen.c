@@ -17,6 +17,7 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "scope.h"
+#include "sema/ident.h"
 #include "sema/scope.h"
 #include "type.h"
 #include "types.h"
@@ -556,14 +557,14 @@ static LLVMValueRef codegen_memb_sel(const struct Parser_Expr *expr,
 
     assert(rhs_expr->type == PARSER_EXPRTYPE_IDENTIFIER);
 
-    auto class_ = &Parser_named_type_ident(&lhs_expr->ret.named)->decl->class_;
+    auto class_ = &Sema_deref_identptr(&lhs_expr->ret.named)->decl->class_;
     isize_t idx =
         CGLLVM_class_field_to_struct_field_idx(class_, rhs_expr->info.ident);
     if (idx == -1)
         return NULL;
 
     auto struct_type = CGLLVM_create_struct(
-        &Parser_named_type_ident(&lhs_expr->ret.named)->decl->class_, context);
+        &Sema_deref_identptr(&lhs_expr->ret.named)->decl->class_, context);
     LLVMValueRef ptr_idxs[2] = {
         LLVMConstNull(LLVMInt32TypeInContext(context)),
         LLVMConstInt(LLVMInt32TypeInContext(context), idx, true)};

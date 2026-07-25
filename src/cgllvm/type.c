@@ -82,7 +82,7 @@ LLVMTypeRef CGLLVM_convert_parser_type(const struct Parser_Type *type,
 
     case PARSER_TYPESPEC_CLASS:
         return CGLLVM_create_struct(
-            &Parser_named_type_ident(&type->named)->def->class_, context);
+            &Sema_deref_identptr(&type->named)->def->class_, context);
 
     default:
         CRASH("converting this type is not supported");
@@ -111,7 +111,7 @@ static const struct Sema_Scope *get_start_scope(const struct Sema_Ident *ident)
 {
     switch (ident->type) {
     case SEMA_IDENTTYPE_CLASS:
-        return ident->decl->class_.parent;
+        return Parser_class_parent(&ident->decl->class_);
 
     case SEMA_IDENTTYPE_ENUM:
         CRASH("enums not supported yet");
@@ -121,11 +121,11 @@ static const struct Sema_Scope *get_start_scope(const struct Sema_Ident *ident)
     }
 }
 
-char *CGLLVM_named_type_full_name(const struct Parser_TypeNamed *named)
+char *CGLLVM_named_type_full_name(const struct Sema_IdentPtr *named)
 {
     struct Dynstr str = {};
 
-    auto ident = Parser_named_type_ident(named);
+    auto ident = Sema_deref_identptr(named);
     add_scopes_to_str(get_start_scope(ident), &str);
 
     Dynstr_append_printf(&str, "::%s", ident->name);

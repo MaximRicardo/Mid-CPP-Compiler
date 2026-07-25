@@ -52,7 +52,8 @@ static void add_super_classes(const struct Parser_Class *self,
         assert(super);
         assert(super->type == PARSER_ASTNODETYPE_CLASS);
 
-        auto scope = Parser_class_ident(&super->class_)->class_info.def_scope;
+        auto scope =
+            Sema_deref_identptr(&super->class_.ident)->class_info.def_scope;
         if (scope) {
             add_scope(scopes, scope);
             add_nmspace_scope(scope, scopes);
@@ -66,13 +67,13 @@ static void get_assoc_scopes_class(const struct Parser_Expr *arg,
 {
     assert(Parser_is_typespec_named(arg->ret.spec));
 
-    auto ident = &arg->ret.named.parent->idents.arr[arg->ret.named.ident];
+    auto ident = Sema_deref_identptr(&arg->ret.named);
     auto node = ident->decl;
     assert(node);
     auto class_ = &node->class_;
     assert(class_);
 
-    auto scope = Parser_class_ident(class_)->class_info.def_scope;
+    auto scope = Sema_deref_identptr(&class_->ident)->class_info.def_scope;
     if (scope) {
         add_scope(scopes, scope);
         add_nmspace_scope(scope, scopes);
@@ -246,7 +247,7 @@ static bool valid_this_arg(const struct Parser_FuncDecl *func,
         return false;
     if (Parser_n_indir(&arg->ret) > 0)
         return false;
-    if (Parser_named_type_ident(&func->type.named)->class_info.def_scope !=
+    if (Sema_deref_identptr(&func->type.named)->class_info.def_scope !=
         Parser_func_parent(func))
         return false;
     if (arg->ret.dquals.arr[0].is_const && !func->quals.is_const)

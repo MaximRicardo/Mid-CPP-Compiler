@@ -7,6 +7,7 @@
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/ident.h"
 #include "sema/scope.h"
 #include <string.h>
 
@@ -50,7 +51,7 @@ static void mangle_type_spec_class(const struct Parser_Type *type,
                                    struct Dynstr *str)
 {
     const struct Sema_Scope *scope =
-        Parser_named_type_ident(&type->named)->class_info.def_scope;
+        Sema_deref_identptr(&type->named)->class_info.def_scope;
 
     if (scope->parent->type != SEMA_SCOPETYPE_ROOT)
         Dynstr_append_char(str, 'N');

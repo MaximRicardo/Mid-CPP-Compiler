@@ -7,6 +7,7 @@
 #include "parser/allocator.h"
 #include "parser/expr.h"
 #include "parser/type.h"
+#include "sema/ident.h"
 #include "sema/scope.h"
 
 struct Parser_TmpltInst {
@@ -56,8 +57,8 @@ void Parser_TmpltTypeParam_deinit(struct Parser_TmpltTypeParam *self);
 struct Parser_TmpltTmpltParam {
     struct Parser_ASTNode *tmplt;
     const char *name;
-    struct Sema_Ident *def_arg; // FIXME: COULD GET INVALIDATED
-    i32 ident_idx;              // idx of the identifier in the tmplt scope
+    struct Sema_IdentPtr def_arg;
+    i32 ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 
@@ -87,7 +88,7 @@ struct Parser_TmpltArg {
     union {
         struct Parser_Expr non_type;
         struct Parser_Type type;
-        struct Sema_Ident *tmplt; // FIXME: COULD GET INVALIDATED
+        struct Sema_IdentPtr tmplt;
     };
     enum Parser_TmpltArgType kind;
 };
