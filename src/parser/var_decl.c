@@ -22,6 +22,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+static struct Sema_Ident *add_ident(const struct Parser_VarDeclInst *inst,
+                                    struct Sema_Scope *scope)
+{
+
+    return Sema_add_ident(
+        scope, &(struct Sema_Ident){.name = inst->name,
+                                    .decl = inst->decl,
+                                    .def = NULL,
+                                    .type = inst->type.squals.is_typedef
+                                                ? SEMA_IDENTTYPE_TYPEDEF
+                                                : SEMA_IDENTTYPE_VAR});
+}
+
 void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self)
 {
     if (self->has_ctor)
@@ -29,11 +42,12 @@ void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self)
     Parser_Type_deinit(&self->type);
 }
 
-struct Parser_VarDeclInst
-Parser_copy_var_decl_inst(const struct Parser_VarDeclInst *self,
-                          struct Parser_Allocators *allocs)
+struct Parser_VarDeclInst Parser_copy_var_decl_inst(
+    const struct Parser_VarDeclInst *self, struct Parser_ASTNode *dest_decl,
+    struct Sema_Scope *dest_scope, struct Parser_Allocators *allocs)
 {
     struct Parser_VarDeclInst ret = *self;
+    ret.decl = dest_decl;
     ret.type = Parser_copy_type(&self->type);
 
     if (self->has_ctor) {
@@ -44,9 +58,13 @@ Parser_copy_var_decl_inst(const struct Parser_VarDeclInst *self,
                         Parser_copy_expr(&self->ctor.args.arr[i]));
         }
     } else {
-        gen_bumpmalloc(&allocs->expr, &ret.init.expr);
-        *ret.init.expr = Parser_copy_expr(self->init.expr);
+        if (self->init.expr) {
+            gen_bumpmalloc(&allocs->expr, &ret.init.expr);
+            *ret.init.expr = Parser_copy_expr(self->init.expr);
+        }
     }
+
+    add_ident(&ret, dest_scope);
 
     return ret;
 }
@@ -58,6 +76,7 @@ void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
 
 void Parser_copy_var_decl(struct Parser_ASTNode *dest_node,
                           const struct Parser_ASTNode *src_node,
+                          struct Sema_Scope *dest_scope,
                           struct Parser_Allocators *allocs)
 {
     auto dest = &dest_node->var_decl;
@@ -68,22 +87,9 @@ void Parser_copy_var_decl(struct Parser_ASTNode *dest_node,
     gen_dynreserve(&dest->insts, src->insts.len);
     for (isize_t i = 0; i < src->insts.len; ++i) {
         gen_dynpush(&dest->insts,
-                    Parser_copy_var_decl_inst(&src->insts.arr[i], allocs));
+                    Parser_copy_var_decl_inst(&src->insts.arr[i], dest_node,
+                                              dest_scope, allocs));
     }
-}
-
-static struct Sema_Ident *add_ident(const struct Parser_VarDeclInst *inst,
-                                    struct Parser_ASTNode *node,
-                                    struct Sema_Scope *scope)
-{
-
-    return Sema_add_ident(
-        scope, &(struct Sema_Ident){.name = inst->name,
-                                    .decl = node,
-                                    .def = NULL,
-                                    .type = inst->type.squals.is_typedef
-                                                ? SEMA_IDENTTYPE_TYPEDEF
-                                                : SEMA_IDENTTYPE_VAR});
 }
 
 static void resolve_auto(struct Parser_VarDeclInst *inst)
@@ -230,12 +236,13 @@ isize_t Parser_parse_var_decl_inst(
     struct Parser_ParseVarDeclFlags flags, struct Parser_Allocators *allocs,
     struct DiagVec *diags)
 {
-    *inst = (struct Parser_VarDeclInst){.start = &toks[start]};
+    *inst = (struct Parser_VarDeclInst){.start = &toks[start], .decl = node};
 
     isize_t type_end;
     isize_t name;
-    inst->type = Parser_parse_type_no_base(toks, start, &type_end, base,
-                                           parent_scope, &name, false, diags);
+    inst->type =
+        Parser_parse_type_no_base(toks, start, &type_end, base, parent_scope,
+                                  &name, false, allocs, diags);
 
     auto res = name == -1 ? parent_scope
                           : Parser_parse_scope_res(toks, name, &name,
@@ -245,7 +252,7 @@ isize_t Parser_parse_var_decl_inst(
         gen_dynpush(diags, void_var_err(inst->name, &toks[start],
                                         ERRORTYPE_BAD_VAR_DECLARATION));
 
-    if (inst->name && flags.add_to_scope && add_ident(inst, node, res))
+    if (inst->name && flags.add_to_scope && add_ident(inst, res))
         gen_dynpush(diags, Diag_ident_redefined_err(inst->name, &toks[start],
                                                     ERRORTYPE_BAD_IDENTIFIER));
 
@@ -317,7 +324,8 @@ isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
     *decl = (struct Parser_VarDecl){};
 
     isize_t base_end;
-    auto base = Parser_parse_base(toks, start, &base_end, parent_scope, diags);
+    auto base =
+        Parser_parse_base(toks, start, &base_end, parent_scope, allocs, diags);
 
     isize_t end = Parser_parse_var_decl_inst_list(
         toks, base_end, end_types, n_end_types, &base, &decl->insts, node,

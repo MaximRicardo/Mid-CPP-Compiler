@@ -14,6 +14,8 @@ struct Parser_VarDeclInst {
     struct Parser_Type type;
     const char *name;
     const struct Lexer_Token *start;
+    struct Parser_ASTNode *decl; // the Parser_VarDecl node to which this inst
+                                 // belongs
 
     // a var decl can have: an initializer, a ctor, or neither
     union {
@@ -36,9 +38,9 @@ struct Parser_VarDeclInst {
 gen_dynarray_struct_named(Parser_VarDeclInstVec, struct Parser_VarDeclInst);
 
 void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self);
-struct Parser_VarDeclInst
-Parser_copy_var_decl_inst(const struct Parser_VarDeclInst *self,
-                          struct Parser_Allocators *allocs);
+struct Parser_VarDeclInst Parser_copy_var_decl_inst(
+    const struct Parser_VarDeclInst *self, struct Parser_ASTNode *dest_decl,
+    struct Sema_Scope *dest_scope, struct Parser_Allocators *allocs);
 
 struct Parser_VarDecl {
     struct Parser_VarDeclInstVec insts;
@@ -48,6 +50,7 @@ gen_dynarray_struct_named(Parser_VarDeclVec, struct Parser_VarDecl);
 void Parser_VarDecl_deinit(struct Parser_VarDecl *self);
 void Parser_copy_var_decl(struct Parser_ASTNode *dest,
                           const struct Parser_ASTNode *src,
+                          struct Sema_Scope *dest_scope,
                           struct Parser_Allocators *allocs);
 
 struct Parser_ParseVarDeclFlags {

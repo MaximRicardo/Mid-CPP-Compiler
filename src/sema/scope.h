@@ -15,6 +15,7 @@ enum Sema_ScopeType {
     SEMA_SCOPETYPE_NAMESPACE,
     SEMA_SCOPETYPE_COMPOUND_STMT,
     SEMA_SCOPETYPE_TEMPLATE,
+    SEMA_SCOPETYPE_TEMPLATE_INST,
 };
 
 gen_dynarray_struct_named(Sema_ScopePVec, struct Sema_Scope *);
@@ -30,6 +31,9 @@ void Sema_Scope_deinit(struct Sema_Scope *self);
 void Sema_copy_scope(struct Sema_Scope *dest, const struct Sema_Scope *src,
                      struct Sema_Scope *dest_parent,
                      struct Parser_Allocators *allocs);
+struct Sema_Scope Sema_create_empty_scope(enum Sema_ScopeType type,
+                                          struct Sema_Scope *parent,
+                                          struct Parser_ASTNode *node);
 
 // RNCE - Root, Namespace, Class, or Enum
 bool Sema_is_rnce_scope(enum Sema_ScopeType type);
@@ -69,6 +73,7 @@ struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
 // same as Sema_add_ident but adds a copy of the ident instead
 struct Sema_Ident *Sema_add_ident_copy(struct Sema_Scope *scope,
                                        const struct Sema_Ident *ident,
+                                       bool copy_ident_scopes,
                                        struct Parser_Allocators *allocs);
 // returns 0 on success, returns 1 if the identifier already has a declaration
 i32 Sema_add_ident_def(struct Sema_Scope *scope, const char *name,

@@ -9,6 +9,13 @@
 #include "parser/type.h"
 #include "sema/scope.h"
 
+struct Parser_TmpltInst {
+    struct Parser_ASTNode *inst;
+    struct Sema_Scope *scope; // the inst node's parent scope, which is a child
+                              // of the template scope
+};
+gen_dynarray_struct_named(Parser_TmpltInstVec, struct Parser_TmpltInst);
+
 struct Parser_Tmplt {
     struct Parser_ASTNodePVec params; // of type PARSER_ASTNODETYPE_TMPLT_PARAM
     struct Parser_ASTNode *child;
@@ -99,4 +106,5 @@ struct Sema_Ident *Parser_tmplt_ident(struct Parser_Tmplt *self);
 struct Parser_TmpltArgVec
 Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
                         isize_t *out_r_angle, struct Sema_Scope *scope,
+                        struct Parser_Allocators *allocs,
                         struct DiagVec *diags);

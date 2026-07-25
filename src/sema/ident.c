@@ -29,7 +29,7 @@ void Sema_Ident_deinit(struct Sema_Ident *self)
 static struct Sema_IdentFuncInfo
 copy_func_info(const struct Sema_IdentFuncInfo *src,
                struct Sema_Scope *dest_parent, isize_t n_params,
-               struct Parser_Allocators *allocs)
+               bool copy_scopes, struct Parser_Allocators *allocs)
 {
     struct Sema_IdentFuncInfo ret = {};
 
@@ -40,25 +40,35 @@ copy_func_info(const struct Sema_IdentFuncInfo *src,
             *ret.default_args[i] = Parser_copy_expr(src->default_args[i]);
     }
 
-    gen_bumpmalloc(&allocs->scope, &ret.def_scope);
-    Sema_copy_scope(ret.def_scope, src->def_scope, dest_parent, allocs);
+    if (copy_scopes) {
+        gen_bumpmalloc(&allocs->scope, &ret.def_scope);
+        Sema_copy_scope(ret.def_scope, src->def_scope, dest_parent, allocs);
+    } else {
+        ret.def_scope = NULL;
+    }
 
     return ret;
 }
 
 struct Sema_Ident Sema_copy_ident(const struct Sema_Ident *src,
                                   struct Sema_Scope *dest_parent,
+                                  bool copy_scopes,
                                   struct Parser_Allocators *allocs)
 {
     struct Sema_Ident ret = *src;
 
     if (src->type == SEMA_IDENTTYPE_FUNC) {
         ret.func_info = copy_func_info(&src->func_info, dest_parent,
-                                       src->decl->func_decl.params.len, allocs);
+                                       src->decl->func_decl.params.len,
+                                       copy_scopes, allocs);
     } else if (src->type == SEMA_IDENTTYPE_CLASS) {
-        gen_bumpmalloc(&allocs->scope, &ret.class_info.def_scope);
-        Sema_copy_scope(ret.class_info.def_scope, src->class_info.def_scope,
-                        dest_parent, allocs);
+        if (copy_scopes) {
+            gen_bumpmalloc(&allocs->scope, &ret.class_info.def_scope);
+            Sema_copy_scope(ret.class_info.def_scope, src->class_info.def_scope,
+                            dest_parent, allocs);
+        } else {
+            ret.class_info.def_scope = NULL;
+        }
     }
 
     return ret;

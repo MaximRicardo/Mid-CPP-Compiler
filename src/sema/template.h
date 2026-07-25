@@ -1,7 +1,8 @@
 #pragma once
 
-#include "parser/template.h"
+#include "parser/ast.h"
 
 struct Parser_Type
-Parser_instantiate_class_tmplt(struct Parser_Tmplt *tmplt,
-                               struct Parser_TmpltArgVec *args);
+Sema_instantiate_class_tmplt(struct Parser_ASTNode *tmplt,
+                             struct Parser_TmpltArgVec *args,
+                             struct Parser_Allocators *allocs);

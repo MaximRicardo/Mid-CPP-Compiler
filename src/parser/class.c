@@ -67,20 +67,29 @@ void Parser_copy_class(struct Parser_ASTNode *dest_node,
 
     dest->parent = dest_scope;
     auto old_ident =
-        Sema_add_ident_copy(dest_scope, Parser_class_ident(src), allocs);
+        Sema_add_ident_copy(dest_scope, Parser_class_ident(src), false, allocs);
     if (old_ident)
         dest->ident_idx = old_ident - dest->parent->idents.arr;
     else
         dest->ident_idx = dest->parent->idents.len - 1;
 
-    dest->childs =
-        Parser_copy_nodepvec(&src->childs, dest_node, dest->parent, allocs);
-    dest->pub_childs = transf_node_ptrs(&src->pub_childs, src->childs.arr,
-                                        dest->childs.arr, src->childs.len);
-    dest->priv_childs = transf_node_ptrs(&src->priv_childs, src->childs.arr,
-                                         dest->childs.arr, src->childs.len);
-    dest->prot_childs = transf_node_ptrs(&src->prot_childs, src->childs.arr,
-                                         dest->childs.arr, src->childs.len);
+    if (dest->childs.len > 0) {
+        struct Sema_Scope *child_scope;
+        gen_bumpmalloc(&allocs->scope, &child_scope);
+        *child_scope = (struct Sema_Scope){.parent = dest->parent,
+                                           .node = dest_node,
+                                           .type = SEMA_SCOPETYPE_CLASS};
+        Parser_class_ident(dest)->class_info.def_scope = child_scope;
+
+        dest->childs =
+            Parser_copy_nodepvec(&src->childs, dest_node, child_scope, allocs);
+        dest->pub_childs = transf_node_ptrs(&src->pub_childs, src->childs.arr,
+                                            dest->childs.arr, src->childs.len);
+        dest->priv_childs = transf_node_ptrs(&src->priv_childs, src->childs.arr,
+                                             dest->childs.arr, src->childs.len);
+        dest->prot_childs = transf_node_ptrs(&src->prot_childs, src->childs.arr,
+                                             dest->childs.arr, src->childs.len);
+    }
 
     if (src->var_decl) {
         gen_bumpmalloc(&allocs->ast, &dest->var_decl);

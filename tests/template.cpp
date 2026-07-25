@@ -11,6 +11,7 @@ A func(T arg)
 template <typename T> class ClassTmplt {
 public:
     T memb;
+    T var_a, var_b;
 };
 
 int main()

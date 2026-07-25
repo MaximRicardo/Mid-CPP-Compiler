@@ -33,7 +33,7 @@ void Sema_copy_scope(struct Sema_Scope *dest, const struct Sema_Scope *src,
 
     for (isize_t i = 0; i < src->idents.len; ++i) {
         gen_dynpush(&dest->idents,
-                    Sema_copy_ident(&src->idents.arr[i], dest, allocs));
+                    Sema_copy_ident(&src->idents.arr[i], dest, true, allocs));
     }
 
     for (isize_t i = 0; i < src->childs.len; ++i) {
@@ -44,6 +44,17 @@ void Sema_copy_scope(struct Sema_Scope *dest, const struct Sema_Scope *src,
 
         gen_dynpush(&dest->childs, cpy_child);
     }
+}
+
+struct Sema_Scope Sema_create_empty_scope(enum Sema_ScopeType type,
+                                          struct Sema_Scope *parent,
+                                          struct Parser_ASTNode *node)
+{
+    return (struct Sema_Scope){
+        .type = type,
+        .parent = parent,
+        .node = node,
+    };
 }
 
 bool Sema_is_rnce_scope(enum Sema_ScopeType type)
@@ -333,13 +344,15 @@ struct Sema_Ident *Sema_add_ident(struct Sema_Scope *scope,
 
 struct Sema_Ident *Sema_add_ident_copy(struct Sema_Scope *scope,
                                        const struct Sema_Ident *ident,
+                                       bool copy_ident_scopes,
                                        struct Parser_Allocators *allocs)
 {
     auto old_ident = find_ident_shallow(scope, ident);
     if (old_ident)
         return old_ident;
 
-    gen_dynpush(&scope->idents, Sema_copy_ident(ident, scope, allocs));
+    gen_dynpush(&scope->idents,
+                Sema_copy_ident(ident, scope, copy_ident_scopes, allocs));
     return NULL;
 }
 

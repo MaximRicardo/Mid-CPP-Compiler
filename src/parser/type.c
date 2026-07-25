@@ -13,6 +13,7 @@
 #include "scope.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/template.h"
 #include "types.h"
 #include <assert.h>
 #include <stdint.h>
@@ -470,6 +471,7 @@ isize_t Parser_parse_quals(const struct Lexer_Token *toks, isize_t start,
 static struct Parser_Type type_name_type(const struct Lexer_Token *toks,
                                          isize_t start, isize_t *out_end,
                                          struct Sema_Scope *scope,
+                                         struct Parser_Allocators *allocs,
                                          struct DiagVec *diags)
 {
     assert(toks[start].type == LEXER_TOKENTYPE_IDENTIFIER);
@@ -489,11 +491,13 @@ static struct Parser_Type type_name_type(const struct Lexer_Token *toks,
     isize_t l_angle = start + 1;
     isize_t r_angle;
     struct Parser_TmpltArgVec args =
-        Parser_parse_tmplt_args(toks, l_angle, &r_angle, scope, diags);
+        Parser_parse_tmplt_args(toks, l_angle, &r_angle, scope, allocs, diags);
     if (out_end)
         *out_end = r_angle;
 
     printf("n args = %" PRIisz "\n", args.len);
+    auto tmplt = ident->decl->parent;
+    Sema_instantiate_class_tmplt(tmplt, &args, allocs);
 
     gen_dyndeinit(&args, Parser_TmpltArg_deinit);
     CRASH("asdf");
@@ -505,6 +509,7 @@ static struct Parser_Type type_name_type(const struct Lexer_Token *toks,
 struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
                                      struct Sema_Scope *scope,
+                                     struct Parser_Allocators *allocs,
                                      struct DiagVec *diags)
 {
     struct Parser_Type ret = {};
@@ -566,7 +571,7 @@ struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
             missing_spec = false;
             auto res = Parser_parse_scope_res(toks, i, &i, scope, diags);
             if (toks[i].type == LEXER_TOKENTYPE_IDENTIFIER) {
-                ret = type_name_type(toks, i, &i, res, diags);
+                ret = type_name_type(toks, i, &i, res, allocs, diags);
                 --i;
             } else {
                 ret = Parser_toktype_to_type(toks[i].type);
@@ -617,7 +622,7 @@ static struct Parser_Type
 parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
                      isize_t *out_end, struct Sema_Scope *scope,
                      const struct Parser_TypeStorQual *squals,
-                     struct DiagVec *diags);
+                     struct Parser_Allocators *allocs, struct DiagVec *diags);
 
 // returns the end of the function ptr
 // void (*func_ptr)(int, float)
@@ -626,6 +631,7 @@ parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
 static isize_t parse_fptr(struct Parser_Type *type,
                           const struct Lexer_Token *toks, isize_t lparen,
                           isize_t rparen, isize_t min, struct Sema_Scope *scope,
+                          struct Parser_Allocators *allocs,
                           struct DiagVec *diags)
 {
     isize_t p_lparen = rparen + 1;
@@ -635,13 +641,14 @@ static isize_t parse_fptr(struct Parser_Type *type,
     type->fptr = mid_malloc(sizeof(*type->fptr));
     type->fptr->ret =
         parse_recursive_part(toks, lparen - 1, min, NULL, scope,
-                             &(struct Parser_TypeStorQual){}, diags);
+                             &(struct Parser_TypeStorQual){}, allocs, diags);
     type->fptr->params = (struct Parser_TypeVec){};
 
     isize_t i = p_lparen + 1;
     while (i < p_rparen) {
-        gen_dynpush(&type->fptr->params,
-                    Parser_parse_type(toks, i, &i, scope, NULL, false, diags));
+        gen_dynpush(
+            &type->fptr->params,
+            Parser_parse_type(toks, i, &i, scope, NULL, false, allocs, diags));
 
         if (toks[i].type != LEXER_TOKENTYPE_COMMA &&
             toks[i].type != LEXER_TOKENTYPE_R_PAREN) {
@@ -662,7 +669,9 @@ static isize_t parse_fptr(struct Parser_Type *type,
 static isize_t parse_array(struct Parser_Type *type,
                            const struct Lexer_Token *toks, isize_t lparen,
                            isize_t rparen, isize_t min,
-                           struct Sema_Scope *scope, struct DiagVec *diags)
+                           struct Sema_Scope *scope,
+                           struct Parser_Allocators *allocs,
+                           struct DiagVec *diags)
 {
     // TODO: implement this
     CRASH("parse_array not implemented yet");
@@ -672,6 +681,7 @@ static isize_t parse_array(struct Parser_Type *type,
     (void)rparen;
     (void)min;
     (void)scope;
+    (void)allocs;
     (void)diags;
 }
 
@@ -679,7 +689,7 @@ static struct Parser_Type
 parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
                      isize_t *out_end, struct Sema_Scope *scope,
                      const struct Parser_TypeStorQual *squals,
-                     struct DiagVec *diags)
+                     struct Parser_Allocators *allocs, struct DiagVec *diags)
 {
     struct Parser_Type ret = {.squals = *squals};
 
@@ -726,9 +736,11 @@ parse_recursive_part(const struct Lexer_Token *toks, isize_t start, isize_t min,
             gen_dynpush(diags, expected_paren(false, &toks[i]));
         } else {
             if (toks[rparen + 1].type == LEXER_TOKENTYPE_L_PAREN)
-                end = parse_fptr(&ret, toks, i, rparen, min, scope, diags);
+                end = parse_fptr(&ret, toks, i, rparen, min, scope, allocs,
+                                 diags);
             else if (toks[rparen + 1].type == LEXER_TOKENTYPE_L_SQBRACKET)
-                end = parse_array(&ret, toks, i, rparen, min, scope, diags);
+                end = parse_array(&ret, toks, i, rparen, min, scope, allocs,
+                                  diags);
         }
     } else if (toks[end].type == LEXER_TOKENTYPE_IDENTIFIER) {
         ++end;
@@ -815,13 +827,15 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
                                      struct Sema_Scope *scope,
                                      isize_t *out_declname, bool is_type_id,
+                                     struct Parser_Allocators *allocs,
                                      struct DiagVec *diags)
 {
     isize_t i;
-    auto base = Parser_parse_base(toks, start, &i, scope, diags);
+    auto base = Parser_parse_base(toks, start, &i, scope, allocs, diags);
 
-    auto ret = Parser_parse_type_no_base(toks, i, out_end, &base, scope,
-                                         out_declname, is_type_id, diags);
+    auto ret =
+        Parser_parse_type_no_base(toks, i, out_end, &base, scope, out_declname,
+                                  is_type_id, allocs, diags);
 
     Parser_Type_deinit(&base);
     return ret;
@@ -831,7 +845,8 @@ struct Parser_Type
 Parser_parse_type_no_base(const struct Lexer_Token *toks, isize_t start,
                           isize_t *out_end, const struct Parser_Type *base,
                           struct Sema_Scope *scope, isize_t *out_declname,
-                          bool is_type_id, struct DiagVec *diags)
+                          bool is_type_id, struct Parser_Allocators *allocs,
+                          struct DiagVec *diags)
 {
     isize_t c = find_type_center(toks, start);
 
@@ -842,7 +857,7 @@ Parser_parse_type_no_base(const struct Lexer_Token *toks, isize_t start,
                     Diag_type_id_w_name_err(&toks[c], ERRORTYPE_BAD_TYPE));
 
     auto ret = parse_recursive_part(toks, c - has_declname, start, out_end,
-                                    scope, &base->squals, diags);
+                                    scope, &base->squals, allocs, diags);
     add_base(&ret, base, &toks[start], diags);
 
     if (out_declname)

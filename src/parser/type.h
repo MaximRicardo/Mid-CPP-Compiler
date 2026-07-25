@@ -130,6 +130,7 @@ struct Parser_TypeArray {
 };
 
 struct Parser_ASTNode;
+struct Parser_Allocators;
 
 void Parser_Type_deinit(struct Parser_Type *self);
 struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type);
@@ -137,16 +138,19 @@ struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
                                      struct Sema_Scope *scope,
                                      isize_t *out_declname, bool is_type_id,
+                                     struct Parser_Allocators *allocs,
                                      struct DiagVec *diags);
 struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
                                      isize_t start, isize_t *out_end,
                                      struct Sema_Scope *scope,
+                                     struct Parser_Allocators *allocs,
                                      struct DiagVec *diags);
 struct Parser_Type
 Parser_parse_type_no_base(const struct Lexer_Token *toks, isize_t start,
                           isize_t *out_end, const struct Parser_Type *base,
                           struct Sema_Scope *scope, isize_t *out_declname,
-                          bool is_type_id, struct DiagVec *diags);
+                          bool is_type_id, struct Parser_Allocators *allocs,
+                          struct DiagVec *diags);
 isize_t Parser_n_indir(const struct Parser_Type *type);
 struct Parser_Type Parser_copy_type(const struct Parser_Type *type);
 struct Parser_TypeFPtr

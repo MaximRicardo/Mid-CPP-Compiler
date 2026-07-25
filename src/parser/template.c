@@ -40,7 +40,8 @@ void Parser_copy_tmplt(struct Parser_ASTNode *dest_node,
     *dest = *src;
 
     gen_bumpmalloc(&allocs->scope, &dest->scope);
-    Sema_copy_scope(dest->scope, src->scope, dest_scope, allocs);
+    *dest->scope =
+        Sema_create_empty_scope(SEMA_SCOPETYPE_TEMPLATE, dest_scope, dest_node);
 
     dest->params =
         Parser_copy_nodepvec(&src->params, dest_node, dest->scope, allocs);
@@ -213,7 +214,7 @@ void Parser_copy_tmplt_param(struct Parser_ASTNode *dest_node,
 
     auto scope = get_tmplt_scope(dest_node);
     auto old_ident =
-        Sema_add_ident_copy(scope, tmplt_param_ident(src_node), allocs);
+        Sema_add_ident_copy(scope, tmplt_param_ident(src_node), false, allocs);
     if (old_ident)
         set_ident_idx(dest, old_ident - scope->idents.arr);
     else
@@ -257,7 +258,7 @@ static void parse_tmplt_nontype_param(struct Parser_ASTNode *node,
     isize_t name_idx;
     isize_t type_end;
     param->type = Parser_parse_type(toks, start, &type_end, scope, &name_idx,
-                                    false, diags);
+                                    false, allocs, diags);
 
     if (name_idx != -1) {
         param->name = toks[name_idx].ident;
@@ -283,6 +284,7 @@ static void parse_tmplt_type_param(struct Parser_ASTNode *node,
                                    struct Sema_Scope *scope,
                                    const struct Lexer_Token *toks,
                                    isize_t start, isize_t *out_end,
+                                   struct Parser_Allocators *allocs,
                                    struct DiagVec *diags)
 {
     auto param = &node->tmplt_param.type;
@@ -305,7 +307,7 @@ static void parse_tmplt_type_param(struct Parser_ASTNode *node,
         isize_t def_name_idx;
         param->def_arg = mid_malloc(sizeof(*param->def_arg));
         *param->def_arg = Parser_parse_type(toks, type_start, out_end, scope,
-                                            &def_name_idx, true, diags);
+                                            &def_name_idx, true, allocs, diags);
     } else if (out_end) {
         *out_end = assign_idx;
     }
@@ -365,7 +367,8 @@ void parse_tmplt_param(struct Parser_ASTNode *node, struct Sema_Scope *scope,
     } else if (toks[start].type == LEXER_TOKENTYPE_CLASS ||
                toks[start].type == LEXER_TOKENTYPE_TYPENAME) {
         param->kind = PARSER_TMPLTPARAM_TYPE;
-        parse_tmplt_type_param(node, scope, toks, start, out_end, diags);
+        parse_tmplt_type_param(node, scope, toks, start, out_end, allocs,
+                               diags);
     } else {
         param->kind = PARSER_TMPLTPARAM_NONTYPE;
         parse_tmplt_nontype_param(node, scope, toks, start, out_end, allocs,
@@ -528,6 +531,7 @@ static bool is_tmplt_tmplt_arg(const struct Lexer_Token *tok,
 static struct Parser_TmpltArg parse_tmplt_arg(const struct Lexer_Token *toks,
                                               isize_t start, isize_t *out_end,
                                               struct Sema_Scope *scope,
+                                              struct Parser_Allocators *allocs,
                                               struct DiagVec *diags)
 {
     struct Parser_TmpltArg arg = {};
@@ -538,8 +542,8 @@ static struct Parser_TmpltArg parse_tmplt_arg(const struct Lexer_Token *toks,
         arg.tmplt = ident;
     } else if (Parser_valid_type_start(toks, start, scope)) {
         arg.kind = PARSER_TMPLTARG_TYPE;
-        arg.type =
-            Parser_parse_type(toks, start, out_end, scope, NULL, true, diags);
+        arg.type = Parser_parse_type(toks, start, out_end, scope, NULL, true,
+                                     allocs, diags);
     } else {
         arg.kind = PARSER_TMPLTARG_NONTYPE;
         arg.non_type = Parser_parse_expr(toks, start, PARSER_TMPLT_ARG_ENDTYPES,
@@ -552,7 +556,7 @@ static struct Parser_TmpltArg parse_tmplt_arg(const struct Lexer_Token *toks,
 struct Parser_TmpltArgVec
 Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
                         isize_t *out_r_angle, struct Sema_Scope *scope,
-                        struct DiagVec *diags)
+                        struct Parser_Allocators *allocs, struct DiagVec *diags)
 {
     struct Parser_TmpltArgVec args = {};
 
@@ -577,7 +581,7 @@ Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
         *out_r_angle = r_angle;
 
     for (isize_t i = l_angle + 1; i < r_angle; ++i) {
-        auto arg = parse_tmplt_arg(toks, i, &i, scope, diags);
+        auto arg = parse_tmplt_arg(toks, i, &i, scope, allocs, diags);
         if (i < r_angle && toks[i].type != LEXER_TOKENTYPE_COMMA)
             gen_dynpush(diags, Diag_expected_token_err(
                                    "','", &toks[i], ERRORTYPE_MISSING_COMMA));

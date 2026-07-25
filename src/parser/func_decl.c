@@ -53,7 +53,7 @@ void Parser_copy_func_decl(struct Parser_ASTNode *dest_node,
     *dest = *src;
 
     auto old_ident =
-        Sema_add_ident_copy(dest_scope, Parser_func_ident(src), allocs);
+        Sema_add_ident_copy(dest_scope, Parser_func_ident(src), false, allocs);
     if (old_ident)
         dest->ident_idx = old_ident - dest_scope->idents.arr;
     else
@@ -62,12 +62,18 @@ void Parser_copy_func_decl(struct Parser_ASTNode *dest_node,
     dest->type = Parser_copy_type(&src->type);
 
     gen_bumpmalloc(&allocs->scope, &dest->param_scope);
-    Sema_copy_scope(dest->param_scope, src->param_scope, dest_scope, allocs);
+    *dest->param_scope =
+        Sema_create_empty_scope(src->param_scope->type, dest_scope, dest_node);
 
     dest->params = Parser_copy_nodepvec(&src->params, dest_node,
                                         dest->param_scope, allocs);
     if (src->nodes.len > 0) {
-        auto def_scope = Parser_func_ident(dest)->func_info.def_scope;
+        struct Sema_Scope *def_scope;
+        gen_bumpmalloc(&allocs->scope, &def_scope);
+        *def_scope = (struct Sema_Scope){.parent = dest_scope,
+                                         .node = dest_node,
+                                         .type = SEMA_SCOPETYPE_FUNC};
+        Parser_func_ident(dest)->func_info.def_scope = def_scope;
         dest->nodes =
             Parser_copy_nodepvec(&src->nodes, dest_node, def_scope, allocs);
     }
@@ -488,6 +494,7 @@ static isize_t parse_func_type(struct Parser_ASTNode *node,
                                const struct Lexer_Token *toks, isize_t start,
                                struct Sema_Scope *parent_scope,
                                struct Sema_Scope **out_res,
+                               struct Parser_Allocators *allocs,
                                struct DiagVec *diags)
 {
     auto decl = &node->func_decl;
@@ -495,7 +502,7 @@ static isize_t parse_func_type(struct Parser_ASTNode *node,
     isize_t type_end;
     isize_t name;
     decl->type = Parser_parse_type(toks, start, &type_end, parent_scope, &name,
-                                   false, diags);
+                                   false, allocs, diags);
 
     auto res = name == -1 ? parent_scope
                           : Parser_parse_scope_res(toks, name, &name,
@@ -684,7 +691,7 @@ isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
 
     struct Sema_Scope *res;
     isize_t type_end =
-        parse_func_type(node, toks, start, parent_scope, &res, diags);
+        parse_func_type(node, toks, start, parent_scope, &res, allocs, diags);
     if (toks[type_end].type != LEXER_TOKENTYPE_L_PAREN)
         CRASH("function missing left paren");
 

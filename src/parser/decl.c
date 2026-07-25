@@ -106,8 +106,8 @@ bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
 
     isize_t type_end;
     isize_t name;
-    auto type =
-        Parser_parse_type(toks, start, &type_end, scope, &name, false, diags);
+    auto type = Parser_parse_type(toks, start, &type_end, scope, &name, false,
+                                  allocs, diags);
 
     auto res = name == -1
                    ? scope

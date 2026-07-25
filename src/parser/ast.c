@@ -85,7 +85,7 @@ void Parser_copy_node(struct Parser_ASTNode *dest,
         break;
 
     case PARSER_ASTNODETYPE_VAR_DECL:
-        Parser_copy_var_decl(dest, src, allocs);
+        Parser_copy_var_decl(dest, src, dest_scope, allocs);
         break;
 
     case PARSER_ASTNODETYPE_FUNC_DECL:

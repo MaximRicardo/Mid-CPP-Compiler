@@ -27,15 +27,16 @@ void Parser_copy_namespace(struct Parser_ASTNode *dest_node,
 
     *dest = *src;
 
-    auto old_ident =
-        Sema_add_ident_copy(dest_scope, Parser_namespace_ident(src), allocs);
+    auto old_ident = Sema_add_ident_copy(
+        dest_scope, Parser_namespace_ident(src), false, allocs);
     if (old_ident)
         dest->ident_idx = old_ident - dest_scope->idents.arr;
     else
         dest->ident_idx = dest_scope->idents.len - 1;
 
     gen_bumpmalloc(&allocs->scope, &dest->scope);
-    Sema_copy_scope(dest->scope, src->scope, dest_scope, allocs);
+    *dest->scope =
+        Sema_create_empty_scope(src->scope->type, dest_scope, dest_node);
 
     dest->childs =
         Parser_copy_nodepvec(&src->childs, dest_node, dest->scope, allocs);
