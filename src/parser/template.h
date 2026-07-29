@@ -28,20 +28,24 @@ gen_dynarray_struct_named(Parser_TmpltArgVec, struct Parser_TmpltArg);
 
 void Parser_TmpltArg_deinit(struct Parser_TmpltArg *self);
 struct Parser_TmpltArg Parser_copy_tmplt_arg(struct Parser_TmpltArg *src);
+struct Parser_TmpltArgVec
+Parser_copy_tmplt_argvec(const struct Parser_TmpltArgVec *src);
 
 struct Parser_TmpltInst {
+    struct Parser_TmpltArgVec args;
     struct Parser_ASTNode *inst;
     struct Sema_Scope *scope; // the inst node's parent scope, which is a child
                               // of the template scope
 };
 gen_dynarray_struct_named(Parser_TmpltInstVec, struct Parser_TmpltInst);
 
+void Parser_TmpltInst_deinit(struct Parser_TmpltInst *self);
+
 struct Parser_Tmplt {
+    struct Parser_TmpltInstVec insts;
     struct Parser_ASTNodePVec params; // of type PARSER_ASTNODETYPE_TMPLT_PARAM
     struct Parser_ASTNode *child;
     struct Sema_Scope *scope;
-    struct Parser_TmpltArg *cur_args; // always same size as params
-    bool has_cur_args; // if false, cur_args is full of invalid data
 };
 
 void Parser_Tmplt_deinit(struct Parser_Tmplt *self);
@@ -104,9 +108,7 @@ isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
                            const struct Lexer_Token *toks, isize_t start,
                            struct Parser_Allocators *allocs,
                            struct DiagVec *diags);
-const struct Sema_Ident *
-Parser_tmplt_ident_const(const struct Parser_Tmplt *self);
-struct Sema_Ident *Parser_tmplt_ident(struct Parser_Tmplt *self);
+struct Sema_Ident *Parser_tmplt_ident(const struct Parser_Tmplt *self);
 struct Parser_TmpltArgVec
 Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
                         isize_t *out_r_angle, struct Sema_Scope *scope,
@@ -115,5 +117,3 @@ Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
 
 isize_t Parser_tmplt_param_idx(const struct Parser_Tmplt *tmplt,
                                const char *name);
-struct Parser_TmpltArg *Parser_get_tmplt_param_value(struct Parser_Tmplt *tmplt,
-                                                     const char *name);

@@ -3,28 +3,17 @@
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "macros.h"
+#include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/ast_log.h"
+#include "parser/class.h"
 #include "parser/template.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include <stdio.h>
-
-static void apply_tmplt_args(struct Parser_ASTNode *tmplt_node,
-                             const struct Parser_TmpltArgVec *args)
-{
-    auto tmplt = &tmplt_node->tmplt;
-
-    assert(args->len == tmplt->params.len);
-
-    for (isize_t i = 0; i < tmplt->params.len; ++i)
-        tmplt->cur_args[i] = Parser_copy_tmplt_arg(&args->arr[i]);
-
-    tmplt->has_cur_args = true;
-}
 
 static void transf_type(struct Parser_Type *type,
                         const struct Parser_ASTNode *tmplt_node,
@@ -146,11 +135,11 @@ Sema_instantiate_class_tmplt(struct Parser_ASTNode *tmplt_node,
                              const struct Parser_TmpltArgVec *args,
                              struct Parser_Allocators *allocs)
 {
-    (void)args;
     auto tmplt = &tmplt_node->tmplt;
     assert(tmplt->child->type == PARSER_ASTNODETYPE_CLASS);
 
     struct Parser_TmpltInst inst = {};
+    inst.args = Parser_copy_tmplt_argvec(args);
     gen_bumpmalloc(&allocs->scope, &inst.scope);
     gen_bumpmalloc(&allocs->ast, &inst.inst);
 
@@ -162,10 +151,19 @@ Sema_instantiate_class_tmplt(struct Parser_ASTNode *tmplt_node,
     Parser_copy_node(inst.inst, tmplt->child, tmplt_node, inst.scope, allocs);
     printf("copy done\n");
 
-    apply_tmplt_args(tmplt_node, args);
-    transf_node(inst.inst, tmplt_node, args);
+    // the ident needs to be a class instead of a class template
+    auto class = &inst.inst->class_;
+    Sema_deref_identptr(&class->ident)->type = SEMA_IDENTTYPE_CLASS;
+
+    transf_node(inst.inst, tmplt_node, &inst.args);
 
     Parser_log_node(inst.inst, stdout, 0);
 
-    CRASH("class instantiation done");
+    gen_dynpush(&tmplt->insts, inst);
+
+    bool is_union = class->type == PARSER_CLASSTYPE_UNION;
+    struct Parser_Type type = Parser_create_named_type(
+        class->ident, is_union ? PARSER_TYPESPEC_UNION : PARSER_TYPESPEC_CLASS);
+
+    return type;
 }

@@ -493,14 +493,14 @@ static struct Parser_Type type_name_type(const struct Lexer_Token *toks,
     struct Parser_TmpltArgVec args =
         Parser_parse_tmplt_args(toks, l_angle, &r_angle, scope, allocs, diags);
     if (out_end)
-        *out_end = r_angle;
+        *out_end = r_angle + 1;
 
     printf("n args = %" PRIisz "\n", args.len);
     auto tmplt = ident->decl->parent;
-    Sema_instantiate_class_tmplt(tmplt, &args, allocs);
+    struct Parser_Type ret = Sema_instantiate_class_tmplt(tmplt, &args, allocs);
 
     gen_dyndeinit(&args, Parser_TmpltArg_deinit);
-    CRASH("asdf");
+    return ret;
 }
 
 // parses the type specifier and its preceding qualifiers
@@ -1428,16 +1428,20 @@ struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
     return ret;
 }
 
-struct Parser_Type Parser_create_templated_type(struct Sema_Scope *scope,
-                                                i32 ident)
+struct Parser_Type Parser_create_named_type(struct Sema_IdentPtr ident,
+                                            enum Parser_TypeSpec spec)
 {
-    struct Parser_Type ret = {.spec = PARSER_TYPESPEC_TEMPLATED};
-    ret.named.idx = ident;
-    ret.named.parent = scope;
+    struct Parser_Type ret = {.spec = spec};
+    ret.named = ident;
 
     gen_dynpush(&ret.dquals, ((struct Parser_TypeDataQual){}));
 
     return ret;
+}
+
+struct Parser_Type Parser_create_templated_type(struct Sema_IdentPtr ident)
+{
+    return Parser_create_named_type(ident, PARSER_TYPESPEC_TEMPLATED);
 }
 
 struct Parser_Type Parser_create_unknown_type()

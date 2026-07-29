@@ -118,7 +118,8 @@ search_child_tmplt_scopes(const char *name, const struct Sema_Scope *scope)
         if (child->type != SEMA_SCOPETYPE_TEMPLATE)
             continue;
 
-        auto ident = Parser_tmplt_ident_const(&child->node->tmplt);
+        const struct Sema_Ident *ident =
+            Parser_tmplt_ident(&child->node->tmplt);
         if (!strcmp(ident->name, name))
             return ident;
     }
@@ -222,16 +223,10 @@ struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
         } else if (ident->decl->type == PARSER_ASTNODETYPE_TMPLT_PARAM) {
             assert(ident->decl->tmplt_param.kind == PARSER_TMPLTPARAM_TYPE);
             auto tmplt = &ident->decl->parent->tmplt;
-            if (!tmplt->has_cur_args) {
-                auto scope = tmplt->scope;
-                auto param = &ident->decl->tmplt_param.type;
-                return Parser_create_templated_type(scope, param->ident_idx);
-            } else {
-                struct Parser_TmpltArg *arg =
-                    Parser_get_tmplt_param_value(tmplt, ident->name);
-                assert(arg->kind == PARSER_TMPLTARG_TYPE);
-                return Parser_copy_type(&arg->type);
-            }
+            auto scope = tmplt->scope;
+            auto param = &ident->decl->tmplt_param.type;
+            return Parser_create_templated_type((struct Sema_IdentPtr){
+                .parent = scope, .idx = param->ident_idx});
         }
         CRASH("name not typedefed in node");
 

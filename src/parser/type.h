@@ -174,8 +174,9 @@ bool Parser_are_types_same(const struct Parser_Type *a,
                            const struct Parser_Type *b);
 struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
                                            const char *name);
-struct Parser_Type Parser_create_templated_type(struct Sema_Scope *scope,
-                                                i32 ident);
+struct Parser_Type Parser_create_named_type(struct Sema_IdentPtr ident,
+                                            enum Parser_TypeSpec spec);
+struct Parser_Type Parser_create_templated_type(struct Sema_IdentPtr ident);
 struct Parser_Type Parser_create_unknown_type();
 bool Parser_type_is_void(const struct Parser_Type *type);
 bool Parser_type_is_void_ptr(const struct Parser_Type *type);

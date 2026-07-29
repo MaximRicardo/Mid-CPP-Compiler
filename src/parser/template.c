@@ -49,15 +49,27 @@ struct Parser_TmpltArg Parser_copy_tmplt_arg(struct Parser_TmpltArg *src)
     return ret;
 }
 
+struct Parser_TmpltArgVec
+Parser_copy_tmplt_argvec(const struct Parser_TmpltArgVec *src)
+{
+    struct Parser_TmpltArgVec ret = {};
+    gen_dynreserve(&ret, src->len);
+
+    for (isize_t i = 0; i < src->len; ++i) {
+        gen_dynpush(&ret, Parser_copy_tmplt_arg(&src->arr[i]));
+    }
+
+    return ret;
+}
+
+void Parser_TmpltInst_deinit(struct Parser_TmpltInst *self)
+{
+    gen_dyndeinit(&self->args, Parser_TmpltArg_deinit);
+}
+
 void Parser_Tmplt_deinit(struct Parser_Tmplt *self)
 {
-    if (self->has_cur_args) {
-        for (isize_t i = 0; i < self->params.len; ++i) {
-            Parser_TmpltArg_deinit(&self->cur_args[i]);
-        }
-    }
-    free(self->cur_args);
-
+    gen_dyndeinit(&self->insts, Parser_TmpltInst_deinit);
     gen_dyndeinit(&self->params);
 }
 
@@ -78,27 +90,15 @@ void Parser_copy_tmplt(struct Parser_ASTNode *dest_node,
     dest->params =
         Parser_copy_nodepvec(&src->params, dest_node, dest->scope, allocs);
 
-    dest->cur_args = mid_malloc(src->params.len * sizeof(*dest->cur_args));
-    if (src->has_cur_args) {
-        for (isize_t i = 0; i < src->params.len; ++i)
-            dest->cur_args[i] = Parser_copy_tmplt_arg(&src->cur_args[i]);
-    }
-
     gen_bumpmalloc(&allocs->ast, &dest->child);
     Parser_copy_node(dest->child, src->child, dest_node, dest->scope, allocs);
 }
 
-const struct Sema_Ident *
-Parser_tmplt_ident_const(const struct Parser_Tmplt *self)
+struct Sema_Ident *Parser_tmplt_ident(const struct Parser_Tmplt *self)
 {
     assert(self->scope->idents.len > 0);
     // the last ident is always the templated identifier
     return &self->scope->idents.arr[self->scope->idents.len - 1];
-}
-
-struct Sema_Ident *Parser_tmplt_ident(struct Parser_Tmplt *self)
-{
-    return (struct Sema_Ident *)Parser_tmplt_ident_const(self);
 }
 
 void Parser_TmpltNonTypeParam_deinit(struct Parser_TmpltNonTypeParam *self)
@@ -511,7 +511,6 @@ static isize_t parse_tmplt_impl(struct Parser_ASTNode *node,
     isize_t r_angle;
     tmplt->params = parse_tmplt_param_list(node, tmplt->scope, toks, l_angle,
                                            &r_angle, allocs, diags);
-    tmplt->cur_args = mid_malloc(tmplt->params.len * sizeof(*tmplt->cur_args));
 
     if (is_param) {
         if (toks[r_angle + 1].type != LEXER_TOKENTYPE_CLASS) {
@@ -669,16 +668,4 @@ isize_t Parser_tmplt_param_idx(const struct Parser_Tmplt *tmplt,
     }
 
     return -1;
-}
-
-struct Parser_TmpltArg *Parser_get_tmplt_param_value(struct Parser_Tmplt *tmplt,
-                                                     const char *name)
-{
-    assert(tmplt->has_cur_args);
-
-    isize_t idx = Parser_tmplt_param_idx(tmplt, name);
-    if (idx != -1)
-        return &tmplt->cur_args[idx];
-    else
-        return NULL;
 }
