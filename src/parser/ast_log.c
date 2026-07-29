@@ -38,60 +38,60 @@ static void log_lit_expr(const struct Parser_Expr *expr, FILE *out)
     switch (expr->type) {
     case PARSER_EXPRTYPE_CHAR_LIT:
     case PARSER_EXPRTYPE_STRING_LIT:
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         break;
 
     case PARSER_EXPRTYPE_WCHAR_LIT:
     case PARSER_EXPRTYPE_WSTRING_LIT:
         fputc('L', out);
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         break;
 
     case PARSER_EXPRTYPE_CHAR16_LIT:
     case PARSER_EXPRTYPE_STRING16_LIT:
         fputc('u', out);
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         break;
 
     case PARSER_EXPRTYPE_CHAR32_LIT:
     case PARSER_EXPRTYPE_STRING32_LIT:
         fputc('U', out);
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         break;
 
     case PARSER_EXPRTYPE_UINT_LIT:
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "u");
         break;
 
     case PARSER_EXPRTYPE_LONG_LIT:
     case PARSER_EXPRTYPE_LONGDOUBLE_LIT:
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "l");
         break;
 
     case PARSER_EXPRTYPE_ULONG_LIT:
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "ul");
         break;
 
     case PARSER_EXPRTYPE_LONGLONG_LIT:
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "ll");
         break;
 
     case PARSER_EXPRTYPE_ULONGLONG_LIT:
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "ull");
         break;
 
     case PARSER_EXPRTYPE_FLOAT_LIT:
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "f");
         break;
 
     default:
-        Literal_fprint(out, expr->info.val, expr->type);
+        Lit_fprint(out, expr->info.val, expr->type);
         break;
     }
 }

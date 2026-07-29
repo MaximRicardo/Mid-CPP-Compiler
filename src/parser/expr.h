@@ -43,8 +43,8 @@ gen_dynarray_struct_named(Parser_ExprVec, struct Parser_Expr);
 struct Parser_Expr {
     union {
         struct Parser_ExprVec args;
-        union Literal_Value val; // NOTE: NON-OWNING! LIFETIME IS MANAGED BY
-                                 //       STR_LITS TABLE
+        union Lit_Value val; // NOTE: NON-OWNING! LIFETIME IS MANAGED BY
+                             //       STR_LITS TABLE
         const char *ident;
     } info;
 

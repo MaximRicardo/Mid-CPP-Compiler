@@ -9,22 +9,22 @@
 #include <stdio.h>
 #include <wchar.h>
 
-void Literal_String_deinit(struct Literal_String *self)
+void Lit_String_deinit(struct Lit_String *self)
 {
     switch (self->type) {
-    case LITERAL_STRINGTYPE_CHAR:
+    case LIT_STRINGTYPE_CHAR:
         free(self->c);
         break;
 
-    case LITERAL_STRINGTYPE_WCHAR:
+    case LIT_STRINGTYPE_WCHAR:
         free(self->wc);
         break;
 
-    case LITERAL_STRINGTYPE_CHAR16:
+    case LIT_STRINGTYPE_CHAR16:
         free(self->c16);
         break;
 
-    case LITERAL_STRINGTYPE_CHAR32:
+    case LIT_STRINGTYPE_CHAR32:
         free(self->c32);
         break;
     }
@@ -62,25 +62,24 @@ static isize_t c32_str_len(const u32 *str)
     return i;
 }
 
-isize_t Literal_strlit_len(const struct Literal_String *strlit)
+isize_t Lit_strlit_len(const struct Lit_String *strlit)
 {
     switch (strlit->type) {
-    case LITERAL_STRINGTYPE_CHAR:
+    case LIT_STRINGTYPE_CHAR:
         return c_str_len(strlit->c);
 
-    case LITERAL_STRINGTYPE_WCHAR:
+    case LIT_STRINGTYPE_WCHAR:
         return wc_str_len(strlit->wc);
 
-    case LITERAL_STRINGTYPE_CHAR16:
+    case LIT_STRINGTYPE_CHAR16:
         return c16_str_len(strlit->c16);
 
-    case LITERAL_STRINGTYPE_CHAR32:
+    case LIT_STRINGTYPE_CHAR32:
         return c32_str_len(strlit->c32);
     }
 }
 
-void Literal_fprint(FILE *out, union Literal_Value val,
-                    enum Parser_ExprType type)
+void Lit_fprint(FILE *out, union Lit_Value val, enum Parser_ExprType type)
 {
     switch (type) {
     case PARSER_EXPRTYPE_CHAR_LIT:
@@ -155,84 +154,84 @@ void Literal_fprint(FILE *out, union Literal_Value val,
     }
 }
 
-void Literal_fprint_toktype(FILE *out, union Literal_Value val,
-                            enum Lexer_TokenType type)
+void Lit_fprint_toktype(FILE *out, union Lit_Value val,
+                        enum Lexer_TokenType type)
 {
     switch (type) {
     case LEXER_TOKENTYPE_CHAR_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_CHAR_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_CHAR_LIT);
         break;
 
     case LEXER_TOKENTYPE_WCHAR_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_WCHAR_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_WCHAR_LIT);
         break;
 
     case LEXER_TOKENTYPE_CHAR16_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_CHAR16_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_CHAR16_LIT);
         break;
 
     case LEXER_TOKENTYPE_CHAR32_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_CHAR32_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_CHAR32_LIT);
         break;
 
     case LEXER_TOKENTYPE_STRING_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_STRING_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_STRING_LIT);
         break;
 
     case LEXER_TOKENTYPE_WSTRING_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_WSTRING_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_WSTRING_LIT);
         break;
 
     case LEXER_TOKENTYPE_STRING16_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_STRING16_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_STRING16_LIT);
         break;
 
     case LEXER_TOKENTYPE_STRING32_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_STRING32_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_STRING32_LIT);
         break;
 
     case LEXER_TOKENTYPE_INT_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_INT_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_INT_LIT);
         break;
 
     case LEXER_TOKENTYPE_UINT_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_UINT_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_UINT_LIT);
         break;
 
     case LEXER_TOKENTYPE_LONG_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_LONG_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_LONG_LIT);
         break;
 
     case LEXER_TOKENTYPE_ULONG_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_ULONG_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_ULONG_LIT);
         break;
 
     case LEXER_TOKENTYPE_LONGLONG_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_LONGLONG_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_LONGLONG_LIT);
         break;
 
     case LEXER_TOKENTYPE_ULONGLONG_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_ULONGLONG_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_ULONGLONG_LIT);
         break;
 
     case LEXER_TOKENTYPE_FLOAT_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_FLOAT_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_FLOAT_LIT);
         break;
 
     case LEXER_TOKENTYPE_DOUBLE_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_DOUBLE_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_DOUBLE_LIT);
         break;
 
     case LEXER_TOKENTYPE_LONGDOUBLE_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_LONGDOUBLE_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_LONGDOUBLE_LIT);
         break;
 
     case LEXER_TOKENTYPE_BOOL_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_BOOL_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_BOOL_LIT);
         break;
 
     case LEXER_TOKENTYPE_NULLPTR_LIT:
-        Literal_fprint(out, val, PARSER_EXPRTYPE_NULLPTR_LIT);
+        Lit_fprint(out, val, PARSER_EXPRTYPE_NULLPTR_LIT);
         break;
 
     default:
@@ -240,14 +239,14 @@ void Literal_fprint_toktype(FILE *out, union Literal_Value val,
     }
 }
 
-void Literal_print(union Literal_Value val, enum Parser_ExprType type)
+void Lit_print(union Lit_Value val, enum Parser_ExprType type)
 {
-    Literal_fprint(stdout, val, type);
+    Lit_fprint(stdout, val, type);
 }
 
-void Literal_print_toktype(union Literal_Value val, enum Lexer_TokenType type)
+void Lit_print_toktype(union Lit_Value val, enum Lexer_TokenType type)
 {
-    Literal_fprint_toktype(stdout, val, type);
+    Lit_fprint_toktype(stdout, val, type);
 }
 
 static bool is_hex_digit(char c)
@@ -363,12 +362,12 @@ static u64 read_intlit_decimal(const char *str, isize_t start, isize_t *out_end)
     return ret;
 }
 
-struct Literal_ReadIntLitInfo
-Literal_read_intlit(const char *str, isize_t start, isize_t *out_end)
+struct Lit_ReadIntLitInfo Lit_read_intlit(const char *str, isize_t start,
+                                          isize_t *out_end)
 {
     assert(isdigit(str[start]));
 
-    struct Literal_ReadIntLitInfo ret = {};
+    struct Lit_ReadIntLitInfo ret = {};
 
     if (str[start] == '0') {
         if (str[start + 1] == 'x') {

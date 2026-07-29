@@ -132,15 +132,14 @@ static LLVMValueRef codegen_expr_ref(const struct Parser_Expr *expr,
                                      LLVMContextRef context, LLVMModuleRef mod,
                                      LLVMBuilderRef builder);
 
-static LLVMValueRef codegen_strlit(const struct Literal_String *lit,
+static LLVMValueRef codegen_strlit(const struct Lit_String *lit,
                                    LLVMContextRef context, LLVMModuleRef mod)
 {
-    isize_t len = Literal_strlit_len(lit) + 1;
-    int elem_size = lit->type == LITERAL_STRINGTYPE_CHAR ? Types_char_size * 8
-                    : lit->type == LITERAL_STRINGTYPE_WCHAR
-                        ? Types_wchar_size * 8
-                    : lit->type == LITERAL_STRINGTYPE_CHAR16 ? 16
-                                                             : 32;
+    isize_t len = Lit_strlit_len(lit) + 1;
+    int elem_size = lit->type == LIT_STRINGTYPE_CHAR     ? Types_char_size * 8
+                    : lit->type == LIT_STRINGTYPE_WCHAR  ? Types_wchar_size * 8
+                    : lit->type == LIT_STRINGTYPE_CHAR16 ? 16
+                                                         : 32;
 
     auto ret = LLVMAddGlobal(
         mod, LLVMArrayType2(LLVMIntTypeInContext(context, elem_size), len), "");
@@ -151,22 +150,22 @@ static LLVMValueRef codegen_strlit(const struct Literal_String *lit,
     LLVMValueRef *elems = mid_malloc(len * sizeof(*elems));
     for (isize_t i = 0; i < len - 1; ++i) {
         switch (lit->type) {
-        case LITERAL_STRINGTYPE_CHAR:
+        case LIT_STRINGTYPE_CHAR:
             elems[i] = LLVMConstInt(LLVMIntTypeInContext(context, elem_size),
                                     lit->c[i], Types_char_signed);
             break;
 
-        case LITERAL_STRINGTYPE_WCHAR:
+        case LIT_STRINGTYPE_WCHAR:
             elems[i] = LLVMConstInt(LLVMIntTypeInContext(context, elem_size),
                                     lit->wc[i], Types_wchar_signed);
             break;
 
-        case LITERAL_STRINGTYPE_CHAR16:
+        case LIT_STRINGTYPE_CHAR16:
             elems[i] = LLVMConstInt(LLVMIntTypeInContext(context, elem_size),
                                     lit->c16[i], false);
             break;
 
-        case LITERAL_STRINGTYPE_CHAR32:
+        case LIT_STRINGTYPE_CHAR32:
             elems[i] = LLVMConstInt(LLVMIntTypeInContext(context, elem_size),
                                     lit->c32[i], false);
             break;

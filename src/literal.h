@@ -7,45 +7,44 @@
 #include "types.h"
 #include <uchar.h>
 
-struct Literal_String {
+struct Lit_String {
     TypesCharType *c;
     TypesWCharType *wc;
     char16_t *c16;
     char32_t *c32;
 
-    enum Literal_StringType {
-        LITERAL_STRINGTYPE_CHAR,
-        LITERAL_STRINGTYPE_WCHAR,
-        LITERAL_STRINGTYPE_CHAR16,
-        LITERAL_STRINGTYPE_CHAR32,
+    enum Lit_StringType {
+        LIT_STRINGTYPE_CHAR,
+        LIT_STRINGTYPE_WCHAR,
+        LIT_STRINGTYPE_CHAR16,
+        LIT_STRINGTYPE_CHAR32,
     } type;
 };
 
-isize_t Literal_strlit_len(const struct Literal_String *strlit);
+isize_t Lit_strlit_len(const struct Lit_String *strlit);
 
-union Literal_Value {
+union Lit_Value {
     // scalars
     i64 sint;
     u64 uint;
     long double flt;
 
     // strings
-    struct Literal_String str;
+    struct Lit_String str;
 };
-gen_dynarray_struct_named(Literal_ValueVec, union Literal_Value);
+gen_dynarray_struct_named(Lit_ValueVec, union Lit_Value);
 
-void Literal_String_deinit(struct Literal_String *self);
+void Lit_String_deinit(struct Lit_String *self);
 
-gen_dynarray_struct_named(Literal_StringVec, struct Literal_String);
+gen_dynarray_struct_named(Lit_StringVec, struct Lit_String);
 
-void Literal_fprint(FILE *out, union Literal_Value val,
-                    enum Parser_ExprType type);
-void Literal_fprint_toktype(FILE *out, union Literal_Value val,
-                            enum Lexer_TokenType type);
-void Literal_print(union Literal_Value val, enum Parser_ExprType type);
-void Literal_print_toktype(union Literal_Value val, enum Lexer_TokenType type);
+void Lit_fprint(FILE *out, union Lit_Value val, enum Parser_ExprType type);
+void Lit_fprint_toktype(FILE *out, union Lit_Value val,
+                        enum Lexer_TokenType type);
+void Lit_print(union Lit_Value val, enum Parser_ExprType type);
+void Lit_print_toktype(union Lit_Value val, enum Lexer_TokenType type);
 
-struct Literal_ReadIntLitInfo {
+struct Lit_ReadIntLitInfo {
     u64 value;
     int base;
-} Literal_read_intlit(const char *str, isize_t start, isize_t *out_end);
+} Lit_read_intlit(const char *str, isize_t start, isize_t *out_end);

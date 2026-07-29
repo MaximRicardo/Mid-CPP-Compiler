@@ -183,7 +183,7 @@ static bool numlit_is_decimal(const char *src, isize_t start, isize_t end)
 }
 
 struct NumLit {
-    union Literal_Value val;
+    union Lit_Value val;
     enum NumLitType type;
 };
 
@@ -423,7 +423,7 @@ static struct NumLit read_numlit(const char *src, isize_t start,
     case NUMLIT_UINT:
     case NUMLIT_ULONG:
     case NUMLIT_ULONGLONG:
-        auto info = Literal_read_intlit(src, start, NULL);
+        auto info = Lit_read_intlit(src, start, NULL);
         ret.val.uint = info.value;
         ret.type = sel_numlit_type(ret.val.uint, info.base, ret.type, pos, line,
                                    diags);
@@ -488,9 +488,9 @@ create_numlit_tok(const char *src, isize_t start, isize_t *out_end,
     return ret;
 }
 
-enum Literal_StringType charlit_type(const char *src, isize_t start,
-                                     isize_t *prefix_end, struct Position pos,
-                                     const char *line, struct DiagVec *diags)
+enum Lit_StringType charlit_type(const char *src, isize_t start,
+                                 isize_t *prefix_end, struct Position pos,
+                                 const char *line, struct DiagVec *diags)
 {
     if (prefix_end)
         *prefix_end = start + 1;
@@ -500,22 +500,22 @@ enum Literal_StringType charlit_type(const char *src, isize_t start,
     case '"':
         if (prefix_end)
             *prefix_end = start;
-        return LITERAL_STRINGTYPE_CHAR;
+        return LIT_STRINGTYPE_CHAR;
 
     case 'u':
         if (prefix_end)
             *prefix_end = start + 1;
-        return LITERAL_STRINGTYPE_CHAR16;
+        return LIT_STRINGTYPE_CHAR16;
 
     case 'U':
         if (prefix_end)
             *prefix_end = start + 1;
-        return LITERAL_STRINGTYPE_CHAR32;
+        return LIT_STRINGTYPE_CHAR32;
 
     case 'L':
         if (prefix_end)
             *prefix_end = start + 1;
-        return LITERAL_STRINGTYPE_WCHAR;
+        return LIT_STRINGTYPE_WCHAR;
 
     default:
         gen_dynpush(diags,
@@ -527,7 +527,7 @@ enum Literal_StringType charlit_type(const char *src, isize_t start,
                         .err = ERRORTYPE_BAD_LITERAL,
                         .type = DIAGTYPE_ERROR,
                     }));
-        return LITERAL_STRINGTYPE_CHAR;
+        return LIT_STRINGTYPE_CHAR;
     }
 }
 
@@ -543,62 +543,61 @@ static struct Diag expected_tok_err(const char *name, struct Position pos,
     };
 }
 
-static enum Lexer_TokenType
-charlit_type_to_tok_type(enum Literal_StringType type)
+static enum Lexer_TokenType charlit_type_to_tok_type(enum Lit_StringType type)
 {
     switch (type) {
-    case LITERAL_STRINGTYPE_CHAR:
+    case LIT_STRINGTYPE_CHAR:
         return LEXER_TOKENTYPE_CHAR_LIT;
 
-    case LITERAL_STRINGTYPE_WCHAR:
+    case LIT_STRINGTYPE_WCHAR:
         return LEXER_TOKENTYPE_WCHAR_LIT;
 
-    case LITERAL_STRINGTYPE_CHAR16:
+    case LIT_STRINGTYPE_CHAR16:
         return LEXER_TOKENTYPE_CHAR16_LIT;
 
-    case LITERAL_STRINGTYPE_CHAR32:
+    case LIT_STRINGTYPE_CHAR32:
         return LEXER_TOKENTYPE_CHAR32_LIT;
     }
 }
 
 static enum Lexer_TokenType
-charlit_type_to_str_tok_type(enum Literal_StringType type)
+charlit_type_to_str_tok_type(enum Lit_StringType type)
 {
     switch (type) {
-    case LITERAL_STRINGTYPE_CHAR:
+    case LIT_STRINGTYPE_CHAR:
         return LEXER_TOKENTYPE_STRING_LIT;
 
-    case LITERAL_STRINGTYPE_WCHAR:
+    case LIT_STRINGTYPE_WCHAR:
         return LEXER_TOKENTYPE_WSTRING_LIT;
 
-    case LITERAL_STRINGTYPE_CHAR16:
+    case LIT_STRINGTYPE_CHAR16:
         return LEXER_TOKENTYPE_STRING16_LIT;
 
-    case LITERAL_STRINGTYPE_CHAR32:
+    case LIT_STRINGTYPE_CHAR32:
         return LEXER_TOKENTYPE_STRING32_LIT;
     }
 }
 
-bool verify_charlit_value(u32 val, enum Literal_StringType type,
+bool verify_charlit_value(u32 val, enum Lit_StringType type,
                           struct Position pos, const char *line,
                           struct DiagVec *diags)
 {
     bool too_big = false;
 
     switch (type) {
-    case LITERAL_STRINGTYPE_CHAR:
+    case LIT_STRINGTYPE_CHAR:
         too_big = val > Types_char_umax;
         break;
 
-    case LITERAL_STRINGTYPE_WCHAR:
+    case LIT_STRINGTYPE_WCHAR:
         too_big = val > Types_wchar_umax;
         break;
 
-    case LITERAL_STRINGTYPE_CHAR16:
+    case LIT_STRINGTYPE_CHAR16:
         too_big = val > UINT16_MAX;
         break;
 
-    case LITERAL_STRINGTYPE_CHAR32:
+    case LIT_STRINGTYPE_CHAR32:
         // val is exactly 32 bits
         break;
     }
@@ -648,57 +647,55 @@ create_charlit_tok(const char *src, isize_t start, isize_t *out_end,
     return ret;
 }
 
-void realloc_strlit(struct Literal_String *str, isize_t cap)
+void realloc_strlit(struct Lit_String *str, isize_t cap)
 {
     switch (str->type) {
-    case LITERAL_STRINGTYPE_CHAR:
+    case LIT_STRINGTYPE_CHAR:
         str->c = mid_realloc(str->c, cap * sizeof(*str->c));
         break;
 
-    case LITERAL_STRINGTYPE_WCHAR:
+    case LIT_STRINGTYPE_WCHAR:
         str->wc = mid_realloc(str->wc, cap * sizeof(*str->wc));
         break;
 
-    case LITERAL_STRINGTYPE_CHAR16:
+    case LIT_STRINGTYPE_CHAR16:
         str->c16 = mid_realloc(str->c16, cap * sizeof(*str->c16));
         break;
 
-    case LITERAL_STRINGTYPE_CHAR32:
+    case LIT_STRINGTYPE_CHAR32:
         str->c32 = mid_realloc(str->c32, cap * sizeof(*str->c32));
         break;
     }
 }
 
-static void strlit_add(struct Literal_String *str, isize_t idx, u32 c)
+static void strlit_add(struct Lit_String *str, isize_t idx, u32 c)
 {
     switch (str->type) {
-    case LITERAL_STRINGTYPE_CHAR:
+    case LIT_STRINGTYPE_CHAR:
         str->c[idx] = c;
         break;
 
-    case LITERAL_STRINGTYPE_WCHAR:
+    case LIT_STRINGTYPE_WCHAR:
         str->wc[idx] = c;
         break;
 
-    case LITERAL_STRINGTYPE_CHAR16:
+    case LIT_STRINGTYPE_CHAR16:
         str->c16[idx] = c;
         break;
 
-    case LITERAL_STRINGTYPE_CHAR32:
+    case LIT_STRINGTYPE_CHAR32:
         str->c32[idx] = c;
         break;
     }
 }
 
-struct Literal_String read_strlit(const char *src, isize_t lquote,
-                                  isize_t *out_end,
-                                  enum Literal_StringType type,
-                                  struct Position pos, const char *line,
-                                  struct DiagVec *diags)
+struct Lit_String read_strlit(const char *src, isize_t lquote, isize_t *out_end,
+                              enum Lit_StringType type, struct Position pos,
+                              const char *line, struct DiagVec *diags)
 {
     isize_t len = 0;
     isize_t cap = 128;
-    struct Literal_String str = {.type = type};
+    struct Lit_String str = {.type = type};
     realloc_strlit(&str, cap);
 
     isize_t i;
@@ -723,7 +720,7 @@ struct Literal_String read_strlit(const char *src, isize_t lquote,
 }
 
 static struct Lexer_Token
-create_strlit_tok(const char *src, struct Literal_StringVec *str_lits,
+create_strlit_tok(const char *src, struct Lit_StringVec *str_lits,
                   isize_t start, isize_t *out_end, struct Position pos,
                   const char *line, struct DiagVec *diags)
 {
@@ -988,7 +985,7 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 {
     struct Lexer_TokenVec toks = {};
     struct SymbolTable symbtbl = {};
-    struct Literal_StringVec str_lits = {};
+    struct Lit_StringVec str_lits = {};
     struct DiagVec diags = {};
     struct Position pos = {.file = file, .line = 1, .column = 1};
 
@@ -1396,6 +1393,6 @@ void Lexer_Tokenize_deinit(struct Lexer_Tokenize *self)
 {
     gen_dyndeinit(&self->toks);
     gen_dyndeinit(&self->symtbl, Symbol_deinit_symbol);
-    gen_dyndeinit(&self->str_lits, Literal_String_deinit);
+    gen_dyndeinit(&self->str_lits, Lit_String_deinit);
     gen_dyndeinit(&self->diags, Diag_deinit);
 }

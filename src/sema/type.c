@@ -111,7 +111,7 @@ static void typecheck_strlit_expr(struct Parser_Expr *expr)
 
     expr->ret.array = malloc(sizeof(*expr->ret.array));
     // account for '\0'
-    expr->ret.array->len = Literal_strlit_len(&expr->info.val.str) + 1;
+    expr->ret.array->len = Lit_strlit_len(&expr->info.val.str) + 1;
     expr->ret.array->elem = (struct Parser_Type){.spec = elem_spec};
     gen_dynpush(&expr->ret.array->elem.dquals,
                 (struct Parser_TypeDataQual){.is_const = true});

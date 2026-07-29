@@ -26,8 +26,8 @@ bool Lexer_is_accessspec(enum Lexer_TokenType type);
 
 struct Lexer_Token {
     union {
-        union Literal_Value val; // NOTE: NON-OWNING! LIFE-TIME IS MANAGED BY
-                                 //       THE STR_LITS TABLE
+        union Lit_Value val; // NOTE: NON-OWNING! LIFE-TIME IS MANAGED BY
+                             //       THE STR_LITS TABLE
         const char *ident;
     };
     struct Position pos;
