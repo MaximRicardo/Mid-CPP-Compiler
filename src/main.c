@@ -1,11 +1,13 @@
 // #include "cgllvm/codegen.h"
 // #include "cgllvm/name_mangle.h"
+#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/tokenize.h"
+#include "macros.h"
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
@@ -148,10 +150,62 @@ static void test_mangling(const struct Sema_Scope *scope)
 }
 */
 
+/*
+static void apint_test()
+{
+    struct APInt a = APInt_zero(32);
+    struct APInt b = APInt_init(32, 1, false);
+    struct APInt c = {};
+
+    for (int i = 0; i < 49; ++i) {
+        printf("nr %d: ", i);
+        APInt_log(&a, stdout, false);
+        putchar('\n');
+
+        c = APInt_copy(&a);
+        APInt_add_w(&c, &b);
+
+        a = APInt_copy(&b);
+        b = APInt_copy(&c);
+    }
+
+    APInt_deinit(&c);
+    APInt_deinit(&b);
+    APInt_deinit(&a);
+}
+*/
+
+static void apint_test()
+{
+    struct APInt num =
+        APInt_init_arr(256,
+                       (APInt_Word[]){0x123456789aebcdef, 0x123456789aebcdef,
+                                      0x123456789aebcdef, 0x123456789aebcdef},
+                       4, false);
+
+    APInt_log_hex(&num, stdout);
+    putchar('\n');
+
+    i32 amt = 64 + 32;
+
+    APInt_shl(&num, amt);
+
+    APInt_log_hex(&num, stdout);
+    putchar('\n');
+
+    APInt_lshr(&num, amt);
+
+    APInt_log_hex(&num, stdout);
+    putchar('\n');
+}
+
 int main(int argc, char **argv)
 {
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
+
+    apint_test();
+    CRASH("asdf");
 
     CMD_init_args(argc, argv);
 
