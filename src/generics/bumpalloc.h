@@ -50,12 +50,26 @@
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         for (typeof(self_super_specific_name______->n_chunks) i = 0;           \
              i < self_super_specific_name______->n_chunks; ++i) {              \
-            for (long long j = 0;                                              \
-                 j < self_super_specific_name______->n_elems -                 \
-                         (self_super_specific_name______->n_chunks - 1) *      \
-                             GEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;                 \
-                 ++j) {                                                        \
-                free_func(&self_super_specific_name______->chunks[i][j]);      \
+            if (i == self_super_specific_name______->n_chunks - 1) {           \
+                /* on the last block we dont wanna free any extra elems so we  \
+                 * iterate until n_elems - (n_block - 1) * block_size, giving  \
+                 * the number of elements past the beginning of the last block \
+                 */                                                            \
+                for (long long j = 0;                                          \
+                     j < self_super_specific_name______->n_elems -             \
+                             (self_super_specific_name______->n_chunks - 1) *  \
+                                 GEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;             \
+                     ++j) {                                                    \
+                    free_func(&self_super_specific_name______->chunks[i][j]);  \
+                }                                                              \
+            } else {                                                           \
+                /* any blocks that are fully used can be fully iterated        \
+                 * through                                                     \
+                 */                                                            \
+                for (long long j = 0; j < GEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;    \
+                     ++j) {                                                    \
+                    free_func(&self_super_specific_name______->chunks[i][j]);  \
+                }                                                              \
             }                                                                  \
             free(self_super_specific_name______->chunks[i]);                   \
         }                                                                      \
