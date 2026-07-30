@@ -18,7 +18,6 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/type.h"
-#include <stdlib.h>
 #include <string.h>
 
 void Parser_Class_deinit(struct Parser_Class *self)
@@ -435,7 +434,7 @@ static isize_t parse_class_instances(struct Parser_Class *self,
     PARSER_GET_START(self->var) = &toks[start];
     PARSER_GET_TYPE(self->var) = PARSER_ASTNODETYPE_VAR_DECL;
 
-    auto base = Sema_node_type(PARSER_GET_NODE(self), parent_scope, NULL);
+    auto base = Sema_node_type(PARSER_GET_NODE(self), parent_scope);
     base.squals = *squals;
     base.dquals.arr[0] = *dquals;
 

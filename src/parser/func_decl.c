@@ -100,7 +100,7 @@ struct Sema_Ident *Parser_func_ident(const struct Parser_FuncDecl *func)
 static void account_for_void_param(struct Parser_VarDeclPVec *params)
 {
     if (params->len == 1 &&
-        Parser_type_is_void(&params->arr[0]->insts.arr[0].type)) {
+        Parser_type_is_void(&params->arr[0]->insts.arr[0]->type)) {
         gen_dyndeinit(params);
     }
 }
@@ -565,7 +565,7 @@ static isize_t parse_tor_type(struct Parser_FuncDecl *self,
     assert(class_);
     if (out_class)
         *out_class = class_;
-    self->ret = Sema_node_type(PARSER_GET_NODE(class_), res, NULL);
+    self->ret = Sema_node_type(PARSER_GET_NODE(class_), res);
 
     return name_idx + 1;
 }
@@ -657,7 +657,7 @@ static void register_default_args(struct Parser_FuncDecl *decl,
         auto default_arg = (*default_args)[i];
 
         auto node = (struct Parser_ASTNode *)decl->params.arr[i];
-        auto param = &node->var_decl.insts.arr[0];
+        auto param = node->var_decl.insts.arr[0];
         if (!param->init.expr) // not a default arg
             continue;
 
@@ -788,7 +788,7 @@ bool Parser_func_takes_implicit_this(const struct Parser_FuncDecl *self,
 struct Parser_Type Parser_implicit_this_type(const struct Parser_FuncDecl *self)
 {
     const struct Sema_Scope *parent = Parser_func_parent(self);
-    return Sema_node_type(parent->node, parent->parent, NULL);
+    return Sema_node_type(parent->node, parent->parent);
 }
 
 bool Parser_func_is_main(const struct Parser_FuncDecl *self)

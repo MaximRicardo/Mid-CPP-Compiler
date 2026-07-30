@@ -33,14 +33,14 @@ bool Sema_node_creates_type_name(const struct Parser_ASTNode *node)
     case PARSER_ASTNODETYPE_ENUM:
         return true;
 
-    case PARSER_ASTNODETYPE_VAR_DECL:
-        return node->var_decl.insts.arr[0].type.squals.is_typedef;
+    case PARSER_ASTNODETYPE_VAR_DECL_INST:
+        return node->var_inst.type.squals.is_typedef;
 
     case PARSER_ASTNODETYPE_TMPLT_PARAM:
         return node->tmplt_param.kind == PARSER_TMPLTPARAM_TYPE;
 
     default:
-        return NULL;
+        return false;
     }
 }
 
@@ -58,12 +58,10 @@ static struct Parser_Type class_node_type(const struct Parser_ASTNode *node)
 }
 
 struct Parser_Type Sema_node_type(const struct Parser_ASTNode *node,
-                                  struct Sema_Scope *scope, const char *name)
+                                  struct Sema_Scope *scope)
 {
-    if (node->type == PARSER_ASTNODETYPE_VAR_DECL) {
-        auto inst = Parser_decl_inst_of_name_const(&node->var_decl, name);
-        assert(inst);
-        return Parser_copy_type(&inst->type);
+    if (node->type == PARSER_ASTNODETYPE_VAR_DECL_INST) {
+        return Parser_copy_type(&node->var_inst.type);
     } else if (node->type == PARSER_ASTNODETYPE_FUNC_DECL) {
         return Parser_create_func_type(scope, node->func_decl.name);
     } else if (node->type == PARSER_ASTNODETYPE_CLASS) {
@@ -1210,7 +1208,8 @@ void Sema_typecheck_var_decl_inst(struct Parser_VarDeclInst *inst,
     }
 
     if (bad)
-        gen_dynpush(diags, no_matching_ctor_err(&inst->type, inst->start));
+        gen_dynpush(diags,
+                    no_matching_ctor_err(&inst->type, PARSER_GET_START(inst)));
 }
 
 static struct Diag

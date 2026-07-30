@@ -37,6 +37,10 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
         Parser_VarDecl_deinit(&self->var_decl);
         break;
 
+    case PARSER_ASTNODETYPE_VAR_DECL_INST:
+        Parser_VarDeclInst_deinit(&self->var_inst);
+        break;
+
     case PARSER_ASTNODETYPE_FUNC_DECL:
         Parser_FuncDecl_deinit(&self->func_decl);
         break;
@@ -63,6 +67,9 @@ void Parser_ASTNode_deinit(struct Parser_ASTNode *self)
     case PARSER_ASTNODETYPE_TMPLT_PARAM:
         Parser_TmpltParam_deinit(&self->tmplt_param);
         break;
+
+    default:
+        CRASH("invalid node type");
     }
 }
 
@@ -87,6 +94,11 @@ void Parser_copy_node(struct Parser_ASTNode *dest,
     case PARSER_ASTNODETYPE_VAR_DECL:
         Parser_copy_var_decl(&dest->var_decl, &src->var_decl, dest_scope,
                              allocs);
+        break;
+
+    case PARSER_ASTNODETYPE_VAR_DECL_INST:
+        Parser_copy_var_decl_inst(&dest->var_inst, &src->var_inst, dest_scope,
+                                  allocs);
         break;
 
     case PARSER_ASTNODETYPE_FUNC_DECL:

@@ -201,7 +201,7 @@ static void log_func_params(const struct Parser_ASTNode *node, FILE *out)
 {
     isize_t end = node->func_decl.params.len;
     for (isize_t i = 0; i < end; ++i) {
-        auto param = &node->func_decl.params.arr[i]->insts.arr[0];
+        auto param = node->func_decl.params.arr[i]->insts.arr[0];
 
         char *type = Parser_type_to_str(&param->type);
         fprintf(out, "%s", type);
@@ -395,7 +395,7 @@ static void log_var_node(const struct Parser_ASTNode *node, FILE *out,
     log_w_indent(out, indent, "");
 
     for (isize_t i = 0; i < node->var_decl.insts.len; ++i) {
-        log_var_inst(&node->var_decl.insts.arr[i], out);
+        log_var_inst(node->var_decl.insts.arr[i], out);
 
         if (i + 1 < node->var_decl.insts.len) {
             fprintf(out, ", ");

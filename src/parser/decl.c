@@ -37,7 +37,7 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
     if (out_end)
         *out_end = end;
 
-    auto inst = &decl.var_decl.insts.arr[0];
+    auto inst = decl.var_decl.insts.arr[0];
 
     bool has_init = !inst->has_ctor && inst->init.start;
 

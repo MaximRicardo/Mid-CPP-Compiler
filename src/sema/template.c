@@ -68,7 +68,7 @@ static void transf_var(struct Parser_ASTNode *var_node,
     auto var = &var_node->var_decl;
 
     for (isize_t i = 0; i < var->insts.len; ++i) {
-        auto inst = &var->insts.arr[i];
+        auto inst = var->insts.arr[i];
         transf_var_inst(inst, tmplt_node, args);
     }
 }

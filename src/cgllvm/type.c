@@ -147,7 +147,7 @@ CGLLVM_class_to_struct_fields(const struct Parser_Class *src,
 
         for (isize_t j = 0; j < child->var_decl.insts.len; ++j) {
             const struct Parser_VarDeclInst *inst =
-                &child->var_decl.insts.arr[j];
+                child->var_decl.insts.arr[j];
             gen_dynpush(&ret,
                         CGLLVM_convert_parser_type(&inst->type, context, true));
         }
@@ -169,7 +169,7 @@ isize_t CGLLVM_class_field_to_struct_field_idx(const struct Parser_Class *src,
 
         for (isize_t j = 0; j < child->var_decl.insts.len; ++j) {
             const struct Parser_VarDeclInst *inst =
-                &child->var_decl.insts.arr[j];
+                child->var_decl.insts.arr[j];
 
             if (!strcmp(inst->name, name))
                 return ret;

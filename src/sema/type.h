@@ -10,10 +10,8 @@
 // returns whether or not the node creates a new named type
 bool Sema_node_creates_type_name(const struct Parser_ASTNode *node);
 
-// if the node can contain multiple types, a name is needed to select which
-// declaration to use, otherwise name can be NULL.
 struct Parser_Type Sema_node_type(const struct Parser_ASTNode *node,
-                                  struct Sema_Scope *scope, const char *name);
+                                  struct Sema_Scope *scope);
 
 void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
                          struct DiagVec *diags);

@@ -20,9 +20,15 @@
 #define PARSER_GET_NODE_IMPL_MUT(node) ((struct Parser_ASTNode *)node)
 #define PARSER_GET_NODE_IMPL_CONST(node) ((const struct Parser_ASTNode *)node)
 
+/*
+ * generic macro to convert a piece of syntax to a generic Parser_ASTNode ptr.
+ * gives a compile time error if you use an invalid type.
+ * preserves const-ness.
+ */
 #define PARSER_GET_NODE(node)                                                  \
     _Generic((node),                                                           \
         struct Parser_VarDecl *: PARSER_GET_NODE_IMPL_MUT(node),               \
+        struct Parser_VarDeclInst *: PARSER_GET_NODE_IMPL_MUT(node),           \
         struct Parser_FuncDecl *: PARSER_GET_NODE_IMPL_MUT(node),              \
         struct Parser_Class *: PARSER_GET_NODE_IMPL_MUT(node),                 \
         struct Parser_Enum *: PARSER_GET_NODE_IMPL_MUT(node),                  \
@@ -34,6 +40,7 @@
         struct Parser_TmpltTypeParam *: PARSER_GET_NODE_IMPL_MUT(node),        \
         struct Parser_TmpltTmpltParam *: PARSER_GET_NODE_IMPL_MUT(node),       \
         const struct Parser_VarDecl *: PARSER_GET_NODE_IMPL_CONST(node),       \
+        const struct Parser_VarDeclInst *: PARSER_GET_NODE_IMPL_CONST(node),   \
         const struct Parser_FuncDecl *: PARSER_GET_NODE_IMPL_CONST(node),      \
         const struct Parser_Class *: PARSER_GET_NODE_IMPL_CONST(node),         \
         const struct Parser_Enum *: PARSER_GET_NODE_IMPL_CONST(node),          \
@@ -56,6 +63,7 @@ enum Parser_ASTNodeType {
     PARSER_ASTNODETYPE_ROOT,
     PARSER_ASTNODETYPE_EXPR,
     PARSER_ASTNODETYPE_VAR_DECL,
+    PARSER_ASTNODETYPE_VAR_DECL_INST,
     PARSER_ASTNODETYPE_FUNC_DECL,
     PARSER_ASTNODETYPE_CLASS,
     PARSER_ASTNODETYPE_ENUM,
@@ -71,6 +79,7 @@ struct Parser_ASTNode {
         struct Parser_ASTNodePVec root;
         struct Parser_Expr expr;
         struct Parser_VarDecl var_decl;
+        struct Parser_VarDeclInst var_inst;
         struct Parser_FuncDecl func_decl;
         struct Parser_Class class_;
         struct Parser_Enum enum_;

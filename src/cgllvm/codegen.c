@@ -481,7 +481,7 @@ static LLVMValueRef *get_call_args(const struct Parser_Expr *expr,
 
     for (isize_t i = 0; i < expr->info.args.len - 1; ++i) {
         auto arg = &expr->info.args.arr[i + 1];
-        auto param = &expr->node->func_decl.params.arr[i]->insts.arr[0];
+        auto param = expr->node->func_decl.params.arr[i]->insts.arr[0];
 
         LLVMValueRef val;
         if (Parser_type_is_ref(&param->type)) {
@@ -747,7 +747,7 @@ static void add_params_to_func(const struct Parser_FuncDecl *func,
                                LLVMBuilderRef builder)
 {
     for (isize_t i = 0; i < func->params.len; ++i) {
-        auto param = &func->params.arr[i]->insts.arr[0];
+        auto param = func->params.arr[i]->insts.arr[0];
 
         struct CGLLVM_Ident ident = {.name = strdup(param->name)};
 
@@ -827,7 +827,7 @@ static LLVMTypeRef *get_func_params(const struct Parser_ASTNode *node,
     LLVMTypeRef *params = mid_malloc(n_params * sizeof(*params));
     for (isize_t i = 0; i < node->func_decl.params.len; ++i) {
         params[i + implicit_this] = CGLLVM_convert_parser_type(
-            &node->func_decl.params.arr[i]->insts.arr[0].type, context, true);
+            &node->func_decl.params.arr[i]->insts.arr[0]->type, context, true);
     }
 
     if (implicit_this)
@@ -877,7 +877,7 @@ static void call_ctor(const struct Parser_VarDeclInst *inst,
     for (isize_t i = 0; i < inst->ctor.args.len; ++i) {
         auto arg = &args[i + 1];
         auto arg_expr = &inst->ctor.args.arr[i];
-        auto param = &inst->ctor.ctor->params.arr[i]->insts.arr[0];
+        auto param = inst->ctor.ctor->params.arr[i]->insts.arr[0];
 
         *arg = codegen_expr(arg_expr, scope, context, mod, builder);
         *arg = cast_value(*arg, &arg_expr->ret, &param->type, context, builder);
@@ -928,7 +928,7 @@ static void codegen_var_node(const struct Parser_ASTNode *node,
                              LLVMModuleRef mod, LLVMBuilderRef builder)
 {
     for (isize_t i = 0; i < node->var_decl.insts.len; ++i)
-        codegen_var_inst_node(&node->var_decl.insts.arr[i], scope, context, mod,
+        codegen_var_inst_node(node->var_decl.insts.arr[i], scope, context, mod,
                               builder);
 }
 

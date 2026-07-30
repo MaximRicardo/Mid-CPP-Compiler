@@ -168,7 +168,7 @@ static void mangle_func_params(const struct Parser_FuncDecl *func,
 
     for (isize_t i = 0; i < func->params.len; ++i) {
         const struct Parser_VarDeclInst *param =
-            &func->params.arr[i]->insts.arr[0];
+            func->params.arr[i]->insts.arr[0];
 
         mangle_type_impl(&param->type, str);
     }

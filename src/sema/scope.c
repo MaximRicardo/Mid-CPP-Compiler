@@ -175,7 +175,8 @@ bool Sema_ident_type(struct Sema_Scope *scope, const struct Sema_Ident *ident,
     if (ident->type == SEMA_IDENTTYPE_NAMESPACE || !ident->decl) {
         return false;
     } else {
-        *out_type = Sema_node_type(ident->decl, scope, ident->name);
+        if (out_type)
+            *out_type = Sema_node_type(ident->decl, scope);
         return true;
     }
 }
@@ -214,12 +215,9 @@ struct Parser_Type Sema_type_name_type(struct Sema_Scope *scope,
     }
 
     case SEMA_IDENTTYPE_TYPEDEF:
-        if (ident->decl->type == PARSER_ASTNODETYPE_VAR_DECL) {
-            for (isize_t i = 0; i < ident->decl->var_decl.insts.len; ++i) {
-                auto inst = &ident->decl->var_decl.insts.arr[i];
-                if (!strcmp(inst->name, name))
-                    return Parser_copy_type(&inst->type);
-            }
+        if (ident->decl->type == PARSER_ASTNODETYPE_VAR_DECL_INST) {
+            auto inst = &ident->decl->var_inst;
+            return Parser_copy_type(&inst->type);
         } else if (ident->decl->type == PARSER_ASTNODETYPE_TMPLT_PARAM) {
             assert(ident->decl->tmplt_param.kind == PARSER_TMPLTPARAM_TYPE);
             auto tmplt = &ident->decl->parent->tmplt;
@@ -253,8 +251,8 @@ static bool are_params_same(const struct Parser_FuncDecl *a,
         return false;
 
     for (isize_t i = 0; i < a->params.len; ++i) {
-        if (!Parser_are_types_same(&a->params.arr[i]->insts.arr[0].type,
-                                   &b->params.arr[i]->insts.arr[0].type))
+        if (!Parser_are_types_same(&a->params.arr[i]->insts.arr[0]->type,
+                                   &b->params.arr[i]->insts.arr[0]->type))
             return false;
     }
 
