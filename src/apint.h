@@ -42,8 +42,23 @@ bool APInt_get_sign_bit(const struct APInt *self);
 void APInt_log(const struct APInt *self, FILE *out, bool is_signed);
 void APInt_log_hex(const struct APInt *self, FILE *out);
 
+// in place operations
 void APInt_add(struct APInt *a, const struct APInt *b);
+void APInt_udiv(struct APInt *a, const struct APInt *b);
+void APInt_urem(struct APInt *a, const struct APInt *b);
 // logical left shift
 void APInt_shl(struct APInt *a, i32 count);
 // logical right shift
 void APInt_lshr(struct APInt *a, i32 count);
+
+// not in place operations
+struct APInt APInt_nip_udiv(const struct APInt *a, const struct APInt *b);
+struct APInt APInt_nip_urem(const struct APInt *a, const struct APInt *b);
+
+// comparisons
+bool APInt_is_zero(const struct APInt *self);
+bool APInt_is_eq(const struct APInt *a, const struct APInt *b);
+bool APInt_is_gt(const struct APInt *a, const struct APInt *b);
+bool APInt_is_gteq(const struct APInt *a, const struct APInt *b);
+bool APInt_is_lt(const struct APInt *a, const struct APInt *b);
+bool APInt_is_lteq(const struct APInt *a, const struct APInt *b);

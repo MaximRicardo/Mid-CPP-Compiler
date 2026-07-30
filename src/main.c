@@ -178,12 +178,14 @@ static void apint_test()
 static void apint_test()
 {
     struct APInt num =
-        APInt_init_arr(256,
+        APInt_init_arr(128,
                        (APInt_Word[]){0x123456789aebcdef, 0x123456789aebcdef,
                                       0x123456789aebcdef, 0x123456789aebcdef},
-                       4, false);
+                       2, false);
 
     APInt_log_hex(&num, stdout);
+    putchar('\n');
+    APInt_log(&num, stdout, false);
     putchar('\n');
 
     i32 amt = 64 + 32;
@@ -197,6 +199,8 @@ static void apint_test()
 
     APInt_log_hex(&num, stdout);
     putchar('\n');
+
+    APInt_deinit(&num);
 }
 
 int main(int argc, char **argv)
