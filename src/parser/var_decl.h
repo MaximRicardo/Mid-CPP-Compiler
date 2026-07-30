@@ -10,6 +10,7 @@
 #include "sema/scope.h"
 #include "type.h"
 
+// TODO: make this an AST node
 struct Parser_VarDeclInst {
     struct Parser_Type type;
     const char *name;
