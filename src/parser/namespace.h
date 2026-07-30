@@ -19,7 +19,7 @@ void Parser_copy_namespace(struct Parser_Namespace *dest,
                            const struct Parser_Namespace *src,
                            struct Sema_Scope *dest_scope,
                            struct Parser_Allocators *allocs);
-isize_t Parser_parse_namespace(struct Parser_ASTNode *node,
+isize_t Parser_parse_namespace(struct Parser_Namespace *self,
                                struct Sema_Scope *scope,
                                const struct Lexer_Token *toks, isize_t start,
                                struct Parser_Allocators *allocs,

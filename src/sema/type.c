@@ -393,11 +393,11 @@ method_call_this_quals(struct Parser_Expr *call)
     return &quals->arr[quals->len - 1];
 }
 
-static struct Diag note_func_candidate(const struct Parser_ASTNode *func)
+static struct Diag note_func_candidate(const struct Parser_FuncDecl *func)
 {
     return (struct Diag){
-        .pos = func->start->pos,
-        .line = func->start->line,
+        .pos = PARSER_GET_START(func)->pos,
+        .line = PARSER_GET_START(func)->line,
         .msg = Print_fmt_to_str("candidate not viable"),
         .type = DIAGTYPE_NOTE,
     };
@@ -449,13 +449,13 @@ static void set_func_call_node(struct Parser_Expr *expr,
         bool is_method = Parser_is_memb_sel(lhs->type);
 
         if (is_method)
-            expr->node = Sema_find_method(
+            expr->node = PARSER_GET_NODE(Sema_find_method(
                 lhs->ret.func.name, &expr->info.args.arr[1],
-                expr->info.args.len - 1, res, method_call_this_quals(expr));
+                expr->info.args.len - 1, res, method_call_this_quals(expr)));
         else
-            expr->node =
+            expr->node = PARSER_GET_NODE(
                 Sema_find_func(lhs->ret.func.name, &expr->info.args.arr[1],
-                               expr->info.args.len - 1, res, qualified);
+                               expr->info.args.len - 1, res, qualified));
 
         if (!expr->node) {
             gen_dynpush(diags, bad_overload_call_err(qual_name, lhs->tok));
@@ -1085,21 +1085,20 @@ static void typecheck_op_expr(struct Parser_Expr *expr,
 }
 
 static void typecheck_overloaded_op(struct Parser_Expr *expr,
-                                    struct Parser_ASTNode *overload)
+                                    struct Parser_FuncDecl *overload)
 {
     printf("found op overload at %d:%d\n", expr->tok->pos.line,
            expr->tok->pos.column);
-    const struct Parser_FuncDecl *func = &overload->func_decl;
-    printf("op overload decl at %d:%d\n", overload->start->pos.line,
-           overload->start->pos.column);
+    printf("op overload decl at %d:%d\n", PARSER_GET_START(overload)->pos.line,
+           PARSER_GET_START(overload)->pos.column);
 
     expr->overloaded = true;
-    expr->node = overload;
-    expr->ret = Parser_copy_type(&func->ret);
+    expr->node = PARSER_GET_NODE(overload);
+    expr->ret = Parser_copy_type(&overload->ret);
 
-    if (func->ret.lv_ref)
+    if (overload->ret.lv_ref)
         expr->valtype = PARSER_EXPRVALUE_LVALUE;
-    else if (func->ret.rv_ref)
+    else if (overload->ret.rv_ref)
         expr->valtype = PARSER_EXPRVALUE_XVALUE;
     else
         expr->valtype = PARSER_EXPRVALUE_PRVALUE;
@@ -1142,7 +1141,7 @@ void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
             }
         }
 
-        struct Parser_ASTNode *overload = Sema_find_op_overload(
+        struct Parser_FuncDecl *overload = Sema_find_op_overload(
             expr->type, expr->info.args.arr, expr->info.args.len, scope);
         if (!overload)
             typecheck_op_expr(expr, scope, diags);
@@ -1174,11 +1173,11 @@ static bool typecheck_vdecl_class_type_ctor(struct Parser_VarDeclInst *inst)
     assert(inst->has_ctor);
 
     auto ident = Sema_deref_identptr(&inst->type.named);
-    inst->ctor.node =
+    inst->ctor.ctor =
         Sema_find_func(ident->name, inst->ctor.args.arr, inst->ctor.args.len,
                        ident->class_info.def_scope, true);
 
-    return inst->ctor.node != NULL;
+    return inst->ctor.ctor != NULL;
 }
 
 // returns whether or not the ctor is correct
@@ -1264,14 +1263,14 @@ static struct Diag return_outside_func_err(const struct Lexer_Token *tok)
     };
 }
 
-void Sema_typecheck_return(const struct Parser_ASTNode *node,
+void Sema_typecheck_return(struct Parser_Return *self,
                            const struct Sema_Scope *scope,
                            struct DiagVec *diags)
 {
     auto func_scope =
         Sema_closest_scope_of_type_const(scope, SEMA_SCOPETYPE_FUNC);
     if (!func_scope) {
-        gen_dynpush(diags, return_outside_func_err(node->start));
+        gen_dynpush(diags, return_outside_func_err(PARSER_GET_START(self)));
         return;
     }
 
@@ -1282,17 +1281,16 @@ void Sema_typecheck_return(const struct Parser_ASTNode *node,
     bool is_void = func_type->spec == PARSER_TYPESPEC_VOID &&
                    Parser_n_indir(func_type) == 0;
 
-    if (node->ret.expr) {
-        if (!Parser_type_is_typecheckable(&node->ret.expr->ret))
+    if (self->expr) {
+        if (!Parser_type_is_typecheckable(&self->expr->ret))
             return;
-        if (!Sema_can_convert(&node->ret.expr->ret, node->ret.expr->valtype,
-                              func_type))
-            gen_dynpush(diags,
-                        invalid_return_stmt_type_err(
-                            func_type, &node->ret.expr->ret, node->start));
+        if (!Sema_can_convert(&self->expr->ret, self->expr->valtype, func_type))
+            gen_dynpush(
+                diags, invalid_return_stmt_type_err(func_type, &self->expr->ret,
+                                                    PARSER_GET_START(self)));
     } else if (!is_void) {
-        gen_dynpush(diags,
-                    invalid_return_stmt_type_err(func_type, NULL, node->start));
+        gen_dynpush(diags, invalid_return_stmt_type_err(
+                               func_type, NULL, PARSER_GET_START(self)));
     }
 }
 

@@ -83,7 +83,7 @@ struct Parser_TmpltTypeParam {
 void Parser_TmpltTypeParam_deinit(struct Parser_TmpltTypeParam *self);
 
 struct Parser_TmpltTmpltParam {
-    struct Parser_ASTNode *tmplt;
+    struct Parser_Tmplt *tmplt;
     const char *name;
     struct Sema_IdentPtr def_arg;
     i32 ident_idx; // idx of the identifier in the tmplt scope
@@ -107,8 +107,7 @@ void Parser_copy_tmplt_param(struct Parser_TmpltParam *dest,
                              const struct Parser_TmpltParam *src,
                              struct Parser_Allocators *allocs);
 
-isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
-                           struct Sema_Scope *scope,
+isize_t Parser_parse_tmplt(struct Parser_Tmplt *self, struct Sema_Scope *scope,
                            const struct Lexer_Token *toks, isize_t start,
                            struct Parser_Allocators *allocs,
                            struct DiagVec *diags);

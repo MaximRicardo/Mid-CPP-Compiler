@@ -17,7 +17,7 @@ struct Parser_Type Sema_node_type(const struct Parser_ASTNode *node,
 
 void Sema_typecheck_expr(struct Parser_Expr *expr, struct Sema_Scope *scope,
                          struct DiagVec *diags);
-void Sema_typecheck_return(const struct Parser_ASTNode *node,
+void Sema_typecheck_return(struct Parser_Return *self,
                            const struct Sema_Scope *scope,
                            struct DiagVec *diags);
 void Sema_typecheck_var_decl_inst(struct Parser_VarDeclInst *inst,

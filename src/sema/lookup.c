@@ -90,20 +90,20 @@ static void get_assoc_scopes(const struct Parser_Expr *args, isize_t n_args,
 }
 
 static void add_class_ctors(const struct Parser_Class *class_,
-                            struct Parser_ASTNodePVec *nodes)
+                            struct Parser_FuncDeclPVec *funcs)
 {
     auto ctors = Parser_class_ctors(class_);
     for (isize_t j = 0; j < ctors.len; ++j)
-        gen_dynpush(nodes, ctors.arr[j]);
+        gen_dynpush(funcs, ctors.arr[j]);
     gen_dyndeinit(&ctors);
 }
 
 static void find_funcs_in_scope(const char *name,
                                 const struct Sema_Scope *scope,
-                                struct Parser_ASTNodePVec *nodes)
+                                struct Parser_FuncDeclPVec *funcs)
 {
     if (scope->type == SEMA_SCOPETYPE_CLASS)
-        add_class_ctors(&scope->node->class_, nodes);
+        add_class_ctors(&scope->node->class_, funcs);
 
     for (isize_t i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
@@ -112,9 +112,9 @@ static void find_funcs_in_scope(const char *name,
             continue;
 
         if (ident->type == SEMA_IDENTTYPE_FUNC) {
-            gen_dynpush(nodes, ident->decl);
+            gen_dynpush(funcs, &ident->decl->func_decl);
         } else if (ident->type == SEMA_IDENTTYPE_CLASS && ident->def) {
-            add_class_ctors(&ident->def->class_, nodes);
+            add_class_ctors(&ident->def->class_, funcs);
         }
     }
 }
@@ -128,7 +128,7 @@ static bool func_is_op_overload(const struct Parser_FuncDecl *decl,
 
 static void find_op_overloads_in_scope(enum Parser_ExprType op,
                                        const struct Sema_Scope *scope,
-                                       struct Parser_ASTNodePVec *nodes)
+                                       struct Parser_FuncDeclPVec *funcs)
 {
     for (isize_t i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
@@ -137,11 +137,11 @@ static void find_op_overloads_in_scope(enum Parser_ExprType op,
             continue;
 
         if (func_is_op_overload(&ident->decl->func_decl, op))
-            gen_dynpush(nodes, ident->decl);
+            gen_dynpush(funcs, &ident->decl->func_decl);
     }
 }
 
-struct Parser_ASTNodePVec
+struct Parser_FuncDeclPVec
 Sema_find_candidate_funcs(const char *name, const struct Parser_Expr *args,
                           isize_t n_args, struct Sema_Scope *scope,
                           bool is_qualified)
@@ -154,7 +154,7 @@ Sema_find_candidate_funcs(const char *name, const struct Parser_Expr *args,
         get_assoc_scopes(args, n_args, &scopes);
     }
 
-    struct Parser_ASTNodePVec funcs = {};
+    struct Parser_FuncDeclPVec funcs = {};
     for (isize_t i = 0; i < scopes.len; ++i)
         find_funcs_in_scope(name, scopes.arr[i], &funcs);
 
@@ -162,15 +162,15 @@ Sema_find_candidate_funcs(const char *name, const struct Parser_Expr *args,
     return funcs;
 }
 
-struct Parser_ASTNode *Sema_find_func(const char *name,
-                                      const struct Parser_Expr *args,
-                                      isize_t n_args, struct Sema_Scope *scope,
-                                      bool is_qualified)
+struct Parser_FuncDecl *Sema_find_func(const char *name,
+                                       const struct Parser_Expr *args,
+                                       isize_t n_args, struct Sema_Scope *scope,
+                                       bool is_qualified)
 {
     auto funcs =
         Sema_find_candidate_funcs(name, args, n_args, scope, is_qualified);
 
-    struct Parser_ASTNode *ret = NULL;
+    struct Parser_FuncDecl *ret = NULL;
     if (funcs.len > 0)
         ret = Sema_best_viable_func(args, n_args, &funcs, NULL);
 
@@ -178,18 +178,18 @@ struct Parser_ASTNode *Sema_find_func(const char *name,
     return ret;
 }
 
-struct Parser_ASTNodePVec Sema_find_candidate_methods(const char *name,
-                                                      struct Sema_Scope *scope)
+struct Parser_FuncDeclPVec Sema_find_candidate_methods(const char *name,
+                                                       struct Sema_Scope *scope)
 {
     assert(scope->type == SEMA_SCOPETYPE_CLASS);
 
-    struct Parser_ASTNodePVec funcs = {};
+    struct Parser_FuncDeclPVec funcs = {};
     find_funcs_in_scope(name, scope, &funcs);
 
     return funcs;
 }
 
-struct Parser_ASTNode *
+struct Parser_FuncDecl *
 Sema_find_method(const char *name, const struct Parser_Expr *args,
                  isize_t n_args, struct Sema_Scope *scope,
                  const struct Parser_TypeDataQual *this_quals)
@@ -199,7 +199,7 @@ Sema_find_method(const char *name, const struct Parser_Expr *args,
 
     auto funcs = Sema_find_candidate_methods(name, scope);
 
-    struct Parser_ASTNode *ret = NULL;
+    struct Parser_FuncDecl *ret = NULL;
     if (funcs.len > 0)
         ret = Sema_best_viable_func(args, n_args, &funcs, this_quals);
 
@@ -207,21 +207,21 @@ Sema_find_method(const char *name, const struct Parser_Expr *args,
     return ret;
 }
 
-struct Parser_ASTNode *Sema_find_op_overload(enum Parser_ExprType op,
-                                             const struct Parser_Expr *args,
-                                             isize_t n_args,
-                                             struct Sema_Scope *scope)
+struct Parser_FuncDecl *Sema_find_op_overload(enum Parser_ExprType op,
+                                              const struct Parser_Expr *args,
+                                              isize_t n_args,
+                                              struct Sema_Scope *scope)
 {
     struct Sema_ScopePVec scopes = {};
     add_nmspace_scope(scope, &scopes);
     get_assoc_scopes(args, n_args, &scopes);
 
-    struct Parser_ASTNodePVec funcs = {};
+    struct Parser_FuncDeclPVec funcs = {};
     for (isize_t i = 0; i < scopes.len; ++i) {
         find_op_overloads_in_scope(op, scopes.arr[i], &funcs);
     }
 
-    struct Parser_ASTNode *ret = NULL;
+    struct Parser_FuncDecl *ret = NULL;
     if (funcs.len > 0)
         ret = Sema_best_viable_func(args, n_args, &funcs, NULL);
 
@@ -311,16 +311,16 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
     return true;
 }
 
-struct Parser_ASTNodePVec
+struct Parser_FuncDeclPVec
 Sema_viable_funcs(const struct Parser_Expr *args, isize_t n_args,
-                  const struct Parser_ASTNodePVec *funcs,
+                  const struct Parser_FuncDeclPVec *funcs,
                   const struct Parser_TypeDataQual *this_quals)
 {
-    struct Parser_ASTNodePVec ret = {};
+    struct Parser_FuncDeclPVec ret = {};
 
     for (isize_t i = 0; i < funcs->len; ++i) {
         auto func = funcs->arr[i];
-        if (Sema_is_func_viable(args, n_args, &func->func_decl, this_quals))
+        if (Sema_is_func_viable(args, n_args, func, this_quals))
             gen_dynpush(&ret, func);
     }
 
@@ -336,15 +336,15 @@ struct CmpViableFuncsInfo {
 static int compare_viable_funcs(const void *a_raw, const void *b_raw,
                                 const void *info_raw)
 {
-    auto a = *(const struct Parser_ASTNode **)a_raw;
-    auto b = *(const struct Parser_ASTNode **)b_raw;
+    auto a = *(const struct Parser_FuncDecl **)a_raw;
+    auto b = *(const struct Parser_FuncDecl **)b_raw;
     const struct CmpViableFuncsInfo *info = info_raw;
 
     bool has_better = false;
     for (isize_t i = 0; i < info->n_args; ++i) {
         // keep in mind that variadic params have the lowest conversion rank
-        bool in_a_variadic = i >= a->func_decl.params.len;
-        bool in_b_variadic = i >= b->func_decl.params.len;
+        bool in_a_variadic = i >= a->params.len;
+        bool in_b_variadic = i >= b->params.len;
         if (in_a_variadic && in_b_variadic) {
             break;
         } else if (in_b_variadic) {
@@ -355,8 +355,8 @@ static int compare_viable_funcs(const void *a_raw, const void *b_raw,
         }
 
         auto arg = &info->args[i];
-        auto a_param = &a->func_decl.params.arr[i]->insts.arr[0];
-        auto b_param = &b->func_decl.params.arr[i]->insts.arr[0];
+        auto a_param = &a->params.arr[i]->insts.arr[0];
+        auto b_param = &b->params.arr[i]->insts.arr[0];
 
         int a_rank = Sema_conversion_rank(&arg->ret, &a_param->type);
         int b_rank = Sema_conversion_rank(&arg->ret, &b_param->type);
@@ -370,9 +370,9 @@ static int compare_viable_funcs(const void *a_raw, const void *b_raw,
     return has_better;
 }
 
-struct Parser_ASTNode *
+struct Parser_FuncDecl *
 Sema_best_viable_func(const struct Parser_Expr *args, isize_t n_args,
-                      const struct Parser_ASTNodePVec *funcs,
+                      const struct Parser_FuncDeclPVec *funcs,
                       const struct Parser_TypeDataQual *this_quals)
 {
     auto viable = Sema_viable_funcs(args, n_args, funcs, this_quals);

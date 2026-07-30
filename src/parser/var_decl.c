@@ -28,7 +28,7 @@ static struct Sema_Ident *add_ident(const struct Parser_VarDeclInst *inst,
 
     return Sema_add_ident(
         scope, &(struct Sema_Ident){.name = inst->name,
-                                    .decl = inst->decl,
+                                    .decl = PARSER_GET_NODE(inst->decl),
                                     .def = NULL,
                                     .type = inst->type.squals.is_typedef
                                                 ? SEMA_IDENTTYPE_TYPEDEF
@@ -43,7 +43,7 @@ void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self)
 }
 
 struct Parser_VarDeclInst Parser_copy_var_decl_inst(
-    const struct Parser_VarDeclInst *self, struct Parser_ASTNode *dest_decl,
+    const struct Parser_VarDeclInst *self, struct Parser_VarDecl *dest_decl,
     struct Sema_Scope *dest_scope, struct Parser_Allocators *allocs)
 {
     struct Parser_VarDeclInst ret = *self;
@@ -83,9 +83,9 @@ void Parser_copy_var_decl(struct Parser_VarDecl *dest,
 
     gen_dynreserve(&dest->insts, src->insts.len);
     for (isize_t i = 0; i < src->insts.len; ++i) {
-        gen_dynpush(&dest->insts, Parser_copy_var_decl_inst(
-                                      &src->insts.arr[i], PARSER_GET_NODE(dest),
-                                      dest_scope, allocs));
+        gen_dynpush(&dest->insts,
+                    Parser_copy_var_decl_inst(&src->insts.arr[i], dest,
+                                              dest_scope, allocs));
     }
 }
 
@@ -229,11 +229,11 @@ isize_t Parser_parse_var_decl_inst(
     const struct Lexer_Token *toks, isize_t start,
     const enum Lexer_TokenType *end_types, isize_t n_end_types,
     const struct Parser_Type *base, struct Parser_VarDeclInst *inst,
-    struct Sema_Scope *parent_scope, struct Parser_ASTNode *node,
+    struct Sema_Scope *parent_scope, struct Parser_VarDecl *decl,
     struct Parser_ParseVarDeclFlags flags, struct Parser_Allocators *allocs,
     struct DiagVec *diags)
 {
-    *inst = (struct Parser_VarDeclInst){.start = &toks[start], .decl = node};
+    *inst = (struct Parser_VarDeclInst){.start = &toks[start], .decl = decl};
 
     isize_t type_end;
     isize_t name;
@@ -288,7 +288,7 @@ isize_t Parser_parse_var_decl_inst_list(
     const struct Lexer_Token *toks, isize_t start,
     const enum Lexer_TokenType *end_types, isize_t n_end_types,
     const struct Parser_Type *base, struct Parser_VarDeclInstVec *insts,
-    struct Parser_ASTNode *node, struct Sema_Scope *parent_scope,
+    struct Parser_VarDecl *decl, struct Sema_Scope *parent_scope,
     struct Parser_ParseVarDeclFlags flags, struct Parser_Allocators *allocs,
     struct DiagVec *diags)
 {
@@ -298,7 +298,7 @@ isize_t Parser_parse_var_decl_inst_list(
         auto inst = &insts->arr[insts->len - 1];
 
         i = Parser_parse_var_decl_inst(toks, i, end_types, n_end_types, base,
-                                       inst, parent_scope, node, flags, allocs,
+                                       inst, parent_scope, decl, flags, allocs,
                                        diags);
 
         if (flags.single_inst || toks[i].type != LEXER_TOKENTYPE_COMMA)
@@ -309,23 +309,18 @@ isize_t Parser_parse_var_decl_inst_list(
     return i;
 }
 
-isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
-                              const enum Lexer_TokenType *end_types,
-                              isize_t n_end_types, struct Parser_ASTNode *node,
-                              struct Parser_ParseVarDeclFlags flags,
-                              struct Sema_Scope *parent_scope,
-                              struct Parser_Allocators *allocs,
-                              struct DiagVec *diags)
+isize_t Parser_parse_var_decl(
+    struct Parser_VarDecl *self, const struct Lexer_Token *toks, isize_t start,
+    const enum Lexer_TokenType *end_types, isize_t n_end_types,
+    struct Parser_ParseVarDeclFlags flags, struct Sema_Scope *parent_scope,
+    struct Parser_Allocators *allocs, struct DiagVec *diags)
 {
-    auto decl = &node->var_decl;
-    *decl = (struct Parser_VarDecl){};
-
     isize_t base_end;
     auto base =
         Parser_parse_base(toks, start, &base_end, parent_scope, allocs, diags);
 
     isize_t end = Parser_parse_var_decl_inst_list(
-        toks, base_end, end_types, n_end_types, &base, &decl->insts, node,
+        toks, base_end, end_types, n_end_types, &base, &self->insts, self,
         parent_scope, flags, allocs, diags);
 
     Parser_Type_deinit(&base);

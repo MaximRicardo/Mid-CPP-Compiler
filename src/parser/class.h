@@ -49,12 +49,11 @@ void Parser_copy_class(struct Parser_Class *dest,
                        struct Parser_Allocators *allocs);
 struct Sema_Scope *Parser_class_parent(const struct Parser_Class *self);
 // returns the end of the class
-isize_t Parser_parse_class(struct Parser_ASTNode *node,
-                           struct Sema_Scope *scope,
+isize_t Parser_parse_class(struct Parser_Class *self, struct Sema_Scope *scope,
                            const struct Lexer_Token *toks, isize_t start,
                            bool skip_def, struct Parser_Allocators *allocs,
                            struct DiagVec *diags);
-void Parser_parse_class_def(struct Parser_ASTNode *node,
+void Parser_parse_class_def(struct Parser_Class *self,
                             const struct Lexer_Token *toks,
                             struct Sema_Scope *scope,
                             struct Parser_Allocators *allocs,
@@ -69,4 +68,4 @@ enum Parser_ClassAccess Parser_field_access(const struct Parser_Class *self,
                                             const struct Parser_ASTNode *child);
 // returns the idx of the field in self->childs
 isize_t Parser_find_field(const struct Parser_Class *self, const char *name);
-struct Parser_ASTNodePVec Parser_class_ctors(const struct Parser_Class *self);
+struct Parser_FuncDeclPVec Parser_class_ctors(const struct Parser_Class *self);

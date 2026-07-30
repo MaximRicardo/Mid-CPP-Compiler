@@ -30,7 +30,7 @@ static bool is_ambig_param(const struct Lexer_Token *toks, isize_t start,
     // really matters is whether or not there is one. it also avoids allocating
     // an expr tree to hold the initializer.
     isize_t end = Parser_parse_var_decl(
-        toks, start, PARSER_PARAM_ENDTYPES, &decl,
+        &decl.var_decl, toks, start, PARSER_PARAM_ENDTYPES,
         (struct Parser_ParseVarDeclFlags){
             .add_to_scope = false, .single_inst = true, .skip_init = true},
         scope, allocs, diags);

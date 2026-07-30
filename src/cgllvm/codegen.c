@@ -877,13 +877,13 @@ static void call_ctor(const struct Parser_VarDeclInst *inst,
     for (isize_t i = 0; i < inst->ctor.args.len; ++i) {
         auto arg = &args[i + 1];
         auto arg_expr = &inst->ctor.args.arr[i];
-        auto param = &inst->ctor.node->func_decl.params.arr[i]->insts.arr[0];
+        auto param = &inst->ctor.ctor->params.arr[i]->insts.arr[0];
 
         *arg = codegen_expr(arg_expr, scope, context, mod, builder);
         *arg = cast_value(*arg, &arg_expr->ret, &param->type, context, builder);
     }
 
-    char *name = CGLLVM_mangle_func(&inst->ctor.node->func_decl);
+    char *name = CGLLVM_mangle_func(inst->ctor.ctor);
     auto root = CGLLVM_find_root_scope_const(scope);
     auto func = CGLLVM_find_ident_const(root, name, NULL);
 

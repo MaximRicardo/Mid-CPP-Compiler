@@ -1,6 +1,7 @@
 #pragma once
 
 #include "diag.h"
+#include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "parser/allocator.h"
@@ -40,6 +41,7 @@ struct Parser_FuncDecl {
     bool is_tor; // if true the func is either a ctor or a dtor
     bool is_dtor;
 };
+gen_dynarray_struct_named(Parser_FuncDeclPVec, struct Parser_FuncDecl *);
 
 void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self);
 void Parser_copy_func_decl(struct Parser_FuncDecl *dest,
@@ -61,19 +63,20 @@ isize_t Parser_parse_func_quals(const struct Lexer_Token *toks, isize_t start,
 //             still be set to the first token of the definition and has_def
 //             will still be set to true if there is a definition. used by
 //             classes, which parse declarations first then definitions
-isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
-                               struct Parser_ASTNode *node,
+isize_t Parser_parse_func_decl(struct Parser_FuncDecl *self,
+                               const struct Lexer_Token *toks, isize_t start,
                                struct Sema_Scope *scope, bool skip_def,
                                struct Parser_Allocators *allocs,
                                struct DiagVec *diags);
-isize_t Parser_parse_tor(const struct Lexer_Token *toks, isize_t start,
-                         struct Parser_ASTNode *node, struct Sema_Scope *scope,
-                         bool skip_def, struct Parser_Allocators *allocs,
+isize_t Parser_parse_tor(struct Parser_FuncDecl *self,
+                         const struct Lexer_Token *toks, isize_t start,
+                         struct Sema_Scope *scope, bool skip_def,
+                         struct Parser_Allocators *allocs,
                          struct DiagVec *diags);
 
 // returns the idx of the closing curly bracket
-isize_t Parser_parse_func_body(const struct Lexer_Token *toks, isize_t lcurly,
-                               struct Parser_ASTNode *node,
+isize_t Parser_parse_func_body(struct Parser_FuncDecl *self,
+                               const struct Lexer_Token *toks, isize_t lcurly,
                                struct Parser_Allocators *allocs,
                                struct DiagVec *diags);
 

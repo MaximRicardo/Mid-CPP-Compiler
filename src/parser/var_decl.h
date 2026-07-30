@@ -10,12 +10,14 @@
 #include "sema/scope.h"
 #include "type.h"
 
+struct Parser_VarDecl;
+
 // TODO: make this an AST node
 struct Parser_VarDeclInst {
     struct Parser_Type type;
     const char *name;
     const struct Lexer_Token *start;
-    struct Parser_ASTNode *decl; // the Parser_VarDecl node to which this inst
+    struct Parser_VarDecl *decl; // the Parser_VarDecl node to which this inst
                                  // belongs
 
     // a var decl can have: an initializer, a ctor, or neither
@@ -29,7 +31,7 @@ struct Parser_VarDeclInst {
 
         struct {
             struct Parser_ExprVec args;
-            struct Parser_ASTNode *node;
+            struct Parser_FuncDecl *ctor;
         } ctor;
     };
     bool has_ctor;
@@ -40,7 +42,7 @@ gen_dynarray_struct_named(Parser_VarDeclInstVec, struct Parser_VarDeclInst);
 
 void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self);
 struct Parser_VarDeclInst Parser_copy_var_decl_inst(
-    const struct Parser_VarDeclInst *self, struct Parser_ASTNode *dest_decl,
+    const struct Parser_VarDeclInst *self, struct Parser_VarDecl *dest_decl,
     struct Sema_Scope *dest_scope, struct Parser_Allocators *allocs);
 
 struct Parser_VarDecl {
@@ -66,26 +68,24 @@ struct Parser_ParseVarDeclFlags {
                        // the initializer if there is one.
 };
 
-isize_t Parser_parse_var_decl(const struct Lexer_Token *toks, isize_t start,
-                              const enum Lexer_TokenType *end_types,
-                              isize_t n_end_types, struct Parser_ASTNode *node,
-                              struct Parser_ParseVarDeclFlags flags,
-                              struct Sema_Scope *scope,
-                              struct Parser_Allocators *allocs,
-                              struct DiagVec *diags);
+isize_t Parser_parse_var_decl(
+    struct Parser_VarDecl *self, const struct Lexer_Token *toks, isize_t start,
+    const enum Lexer_TokenType *end_types, isize_t n_end_types,
+    struct Parser_ParseVarDeclFlags flags, struct Sema_Scope *scope,
+    struct Parser_Allocators *allocs, struct DiagVec *diags);
 // node     - ignored if add_to_scope is false.
 isize_t Parser_parse_var_decl_inst(
     const struct Lexer_Token *toks, isize_t start,
     const enum Lexer_TokenType *end_types, isize_t n_end_types,
     const struct Parser_Type *base, struct Parser_VarDeclInst *inst,
-    struct Sema_Scope *scope, struct Parser_ASTNode *node,
+    struct Sema_Scope *scope, struct Parser_VarDecl *decl,
     struct Parser_ParseVarDeclFlags flags, struct Parser_Allocators *allocs,
     struct DiagVec *diags);
 isize_t Parser_parse_var_decl_inst_list(
     const struct Lexer_Token *toks, isize_t start,
     const enum Lexer_TokenType *end_types, isize_t n_end_types,
     const struct Parser_Type *base, struct Parser_VarDeclInstVec *insts,
-    struct Parser_ASTNode *node, struct Sema_Scope *scope,
+    struct Parser_VarDecl *decl, struct Sema_Scope *scope,
     struct Parser_ParseVarDeclFlags flags, struct Parser_Allocators *allocs,
     struct DiagVec *diags);
 

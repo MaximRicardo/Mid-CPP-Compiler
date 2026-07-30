@@ -3,7 +3,6 @@
 #include "generics/bumpalloc.h"
 #include "ints.h"
 #include "lexer/token_type.h"
-#include "parser/ast.h"
 #include "parser/expr.h"
 #include "sema/type.h"
 
@@ -17,15 +16,14 @@ void Parser_copy_return(struct Parser_Return *dest,
     }
 }
 
-isize_t Parser_parse_return(const struct Lexer_Token *toks, isize_t start,
-                            struct Parser_ASTNode *node,
+isize_t Parser_parse_return(struct Parser_Return *self,
+                            const struct Lexer_Token *toks, isize_t start,
                             struct Sema_Scope *scope,
                             struct Parser_Allocators *allocs,
                             struct DiagVec *diags)
 {
     assert(toks[start].type == LEXER_TOKENTYPE_RETURN);
 
-    auto self = &node->ret;
     *self = (struct Parser_Return){};
 
     isize_t end;
@@ -38,7 +36,7 @@ isize_t Parser_parse_return(const struct Lexer_Token *toks, isize_t start,
             toks, start + 1, PARSER_DEFAULT_ENDTYPES, &end, scope, diags);
     }
 
-    Sema_typecheck_return(node, scope, diags);
+    Sema_typecheck_return(self, scope, diags);
 
     return end;
 }

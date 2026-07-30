@@ -40,20 +40,19 @@ void Parser_copy_namespace(struct Parser_Namespace *dest,
 }
 
 static void add_nmspace_to_scope(struct Sema_Scope *scope,
-                                 struct Parser_ASTNode *node,
+                                 struct Parser_Namespace *self,
                                  struct DiagVec *diags)
 {
-    auto self = &node->nmspace;
-
     const struct Sema_Ident *old = Sema_add_ident(
         scope, &(struct Sema_Ident){.name = self->name,
-                                    .decl = node,
-                                    .def = node,
+                                    .decl = PARSER_GET_NODE(self),
+                                    .def = PARSER_GET_NODE(self),
                                     .type = SEMA_IDENTTYPE_NAMESPACE});
 
     if (old)
-        gen_dynpush(diags, Diag_ident_redefined_err(self->name, node->start,
-                                                    ERRORTYPE_BAD_IDENTIFIER));
+        gen_dynpush(diags,
+                    Diag_ident_redefined_err(self->name, PARSER_GET_START(self),
+                                             ERRORTYPE_BAD_IDENTIFIER));
     else
         self->ident = Sema_identptr_to_last(scope);
 }
@@ -61,13 +60,11 @@ static void add_nmspace_to_scope(struct Sema_Scope *scope,
 //   namespace Name { ... }
 //   ^              ^
 // start           ret
-static isize_t parse_entry(struct Parser_ASTNode *node,
+static isize_t parse_entry(struct Parser_Namespace *self,
                            struct Sema_Scope *scope,
                            const struct Lexer_Token *toks, isize_t start,
                            struct DiagVec *diags)
 {
-    auto self = &node->nmspace;
-
     isize_t name_idx = start + 1;
     if (toks[name_idx].type != LEXER_TOKENTYPE_IDENTIFIER) {
         gen_dynpush(diags, Diag_expected_token_err("identifier", &toks[start],
@@ -77,7 +74,7 @@ static isize_t parse_entry(struct Parser_ASTNode *node,
 
     self->name = toks[name_idx].ident;
 
-    add_nmspace_to_scope(scope, node, diags);
+    add_nmspace_to_scope(scope, self, diags);
     return name_idx + 1;
 }
 
@@ -94,26 +91,25 @@ static isize_t find_rcurly(isize_t lcurly, const struct Lexer_Token *toks,
 
 static void setup_scope(struct Sema_Scope *parent,
                         struct Parser_Namespace *self,
-                        struct Parser_ASTNode *node,
                         struct Parser_Allocators *allocs)
 {
     gen_bumpmalloc(&allocs->scope, &self->scope);
-    *self->scope = (struct Sema_Scope){
-        .parent = parent, .node = node, .type = SEMA_SCOPETYPE_NAMESPACE};
+    *self->scope = (struct Sema_Scope){.parent = parent,
+                                       .node = PARSER_GET_NODE(self),
+                                       .type = SEMA_SCOPETYPE_NAMESPACE};
     gen_dynpush(&parent->childs, self->scope);
 }
 
-isize_t Parser_parse_namespace(struct Parser_ASTNode *node,
+isize_t Parser_parse_namespace(struct Parser_Namespace *self,
                                struct Sema_Scope *parent,
                                const struct Lexer_Token *toks, isize_t start,
                                struct Parser_Allocators *allocs,
                                struct DiagVec *diags)
 {
-    auto self = &node->nmspace;
     *self = (struct Parser_Namespace){};
-    setup_scope(parent, self, node, allocs);
+    setup_scope(parent, self, allocs);
 
-    isize_t lcurly = parse_entry(node, parent, toks, start, diags);
+    isize_t lcurly = parse_entry(self, parent, toks, start, diags);
     if (toks[lcurly].type != LEXER_TOKENTYPE_L_CURLY) {
         gen_dynpush(diags, Diag_expected_token_err("'{'", &toks[start],
                                                    ERRORTYPE_MISSING_CURLY));
@@ -124,7 +120,7 @@ isize_t Parser_parse_namespace(struct Parser_ASTNode *node,
 
     for (isize_t i = lcurly + 1; i < rcurly;) {
         struct Parser_ASTNode *child = Parser_parse_node(
-            toks, i, &i, node, self->scope,
+            toks, i, &i, PARSER_GET_NODE(self), self->scope,
             (struct Parser_ParseNodeFlags){.skip_def = false}, allocs, diags);
 
         gen_dynpush(&self->childs, child);

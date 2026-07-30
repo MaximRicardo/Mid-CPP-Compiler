@@ -376,10 +376,10 @@ static void log_var_inst(const struct Parser_VarDeclInst *inst, FILE *out)
     type = NULL;
 
     if (inst->has_ctor) {
-        if (inst->ctor.node)
+        if (inst->ctor.ctor)
             fprintf(out, "#%" PRIi32 ":%" PRIi32,
-                    inst->ctor.node->start->pos.line,
-                    inst->ctor.node->start->pos.column);
+                    PARSER_GET_START(inst->ctor.ctor)->pos.line,
+                    PARSER_GET_START(inst->ctor.ctor)->pos.column);
         fprintf(out, "(");
         log_func_call_args(inst->ctor.args.arr, inst->ctor.args.len, out);
         fprintf(out, ")");

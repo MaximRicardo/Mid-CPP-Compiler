@@ -175,35 +175,36 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
     if (is_class_start(toks[check_type].type)) {
         printf("CLASS NODE\n");
         ret->type = PARSER_ASTNODETYPE_CLASS;
-        end = Parser_parse_class(ret, scope, toks, start, flags.skip_def,
-                                 allocs, diags);
+        end = Parser_parse_class(&ret->class_, scope, toks, start,
+                                 flags.skip_def, allocs, diags);
     } else if (flags.is_field && is_ctor_start(toks, check_type, parent)) {
         printf("CTOR NODE\n");
         ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
-        end = Parser_parse_tor(toks, start, ret, scope, flags.skip_def, allocs,
-                               diags);
+        end = Parser_parse_tor(&ret->func_decl, toks, start, scope,
+                               flags.skip_def, allocs, diags);
         check_semi = !ret->func_decl.has_def;
     } else if (flags.is_field && is_dtor_start(&toks[check_type])) {
         printf("DTOR NODE\n");
         ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
-        end = Parser_parse_tor(toks, start, ret, scope, flags.skip_def, allocs,
-                               diags);
+        end = Parser_parse_tor(&ret->func_decl, toks, start, scope,
+                               flags.skip_def, allocs, diags);
         check_semi = !ret->func_decl.has_def;
     } else if (toks[check_type].type == LEXER_TOKENTYPE_NAMESPACE) {
         printf("NAMESPACE NODE\n");
         check_semi = false;
         ret->type = PARSER_ASTNODETYPE_NAMESPACE;
-        ret->type = PARSER_ASTNODETYPE_NAMESPACE;
-        end = Parser_parse_namespace(ret, scope, toks, start, allocs, diags);
+        end = Parser_parse_namespace(&ret->nmspace, scope, toks, start, allocs,
+                                     diags);
     } else if (toks[start].type == LEXER_TOKENTYPE_RETURN) {
         printf("RETURN NODE\n");
         ret->type = PARSER_ASTNODETYPE_RETURN;
-        end = Parser_parse_return(toks, start, ret, scope, allocs, diags);
+        end = Parser_parse_return(&ret->ret, toks, start, scope, allocs, diags);
     } else if (toks[start].type == LEXER_TOKENTYPE_TEMPLATE) {
         printf("TEMPLATE NODE\n");
         check_semi = false;
         ret->type = PARSER_ASTNODETYPE_TMPLT;
-        end = Parser_parse_tmplt(ret, scope, toks, start, allocs, diags);
+        end =
+            Parser_parse_tmplt(&ret->tmplt, scope, toks, start, allocs, diags);
     } else if (Parser_valid_type_start(toks, start, scope)) {
         printf("DECL NODE\n");
         bool mvp;
@@ -212,13 +213,13 @@ Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
         if (is_func) {
             printf("mvp = %d\n", mvp);
             ret->type = PARSER_ASTNODETYPE_FUNC_DECL;
-            end = Parser_parse_func_decl(toks, start, ret, scope,
+            end = Parser_parse_func_decl(&ret->func_decl, toks, start, scope,
                                          flags.skip_def, allocs, diags);
             check_semi = !ret->func_decl.has_def;
         } else {
             ret->type = PARSER_ASTNODETYPE_VAR_DECL;
             end = Parser_parse_var_decl(
-                toks, start, PARSER_VARDECL_ENDTYPES, ret,
+                &ret->var_decl, toks, start, PARSER_VARDECL_ENDTYPES,
                 (struct Parser_ParseVarDeclFlags){.add_to_scope = true,
                                                   .skip_init = flags.skip_def},
                 scope, allocs, diags);
