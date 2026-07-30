@@ -1,6 +1,7 @@
 #pragma once
 
 #include "diag.h"
+#include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "parser/allocator.h"
@@ -20,18 +21,21 @@ enum Parser_ClassAccess {
     PARSER_CLASSACCESS_PROTECTED,
 };
 
+struct Parser_Class;
+gen_dynarray_struct_named(Parser_ClassPVec, struct Parser_Class *);
+
 // classes, structs and unions
 struct Parser_Class {
     struct Parser_ASTNodePVec childs;
     struct Parser_ASTNodePVec pub_childs;  // public
     struct Parser_ASTNodePVec priv_childs; // private
     struct Parser_ASTNodePVec prot_childs; // protected
-    struct Parser_ASTNode *var_decl;       // a class declaration can also act
+    struct Parser_VarDecl *var;            // a class declaration can also act
                                            // as a variable declaration cuz why
                                            // tf not i guess.
                                            // class A {...} x, *y, *const z;
     const char *name;
-    struct Parser_ASTNodePVec supers;    // classes this class inherits from
+    struct Parser_ClassPVec supers;      // classes this class inherits from
     const struct Lexer_Token *def_start; // the left curly '{'
     struct Sema_IdentPtr ident;
     enum Parser_ClassType type;
@@ -39,8 +43,8 @@ struct Parser_Class {
 };
 
 void Parser_Class_deinit(struct Parser_Class *self);
-void Parser_copy_class(struct Parser_ASTNode *dest,
-                       const struct Parser_ASTNode *src,
+void Parser_copy_class(struct Parser_Class *dest,
+                       const struct Parser_Class *src,
                        struct Sema_Scope *dest_scope,
                        struct Parser_Allocators *allocs);
 struct Sema_Scope *Parser_class_parent(const struct Parser_Class *self);

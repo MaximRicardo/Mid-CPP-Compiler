@@ -50,15 +50,13 @@ static void add_super_classes(const struct Parser_Class *self,
     for (isize_t i = 0; i < self->supers.len; ++i) {
         auto super = self->supers.arr[i];
         assert(super);
-        assert(super->type == PARSER_ASTNODETYPE_CLASS);
 
-        auto scope =
-            Sema_deref_identptr(&super->class_.ident)->class_info.def_scope;
+        auto scope = Sema_deref_identptr(&super->ident)->class_info.def_scope;
         if (scope) {
             add_scope(scopes, scope);
             add_nmspace_scope(scope, scopes);
         }
-        add_super_classes(&super->class_, scopes);
+        add_super_classes(super, scopes);
     }
 }
 

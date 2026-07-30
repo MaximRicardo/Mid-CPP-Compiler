@@ -11,8 +11,8 @@ struct Parser_Return {
     struct Parser_Expr *expr;
 };
 
-void Parser_copy_return(struct Parser_ASTNode *dest,
-                        const struct Parser_ASTNode *src,
+void Parser_copy_return(struct Parser_Return *dest,
+                        const struct Parser_Return *src,
                         struct Parser_Allocators *allocs);
 isize_t Parser_parse_return(const struct Lexer_Token *toks, isize_t start,
                             struct Parser_ASTNode *node,

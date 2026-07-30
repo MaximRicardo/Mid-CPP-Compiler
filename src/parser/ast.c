@@ -85,35 +85,38 @@ void Parser_copy_node(struct Parser_ASTNode *dest,
         break;
 
     case PARSER_ASTNODETYPE_VAR_DECL:
-        Parser_copy_var_decl(dest, src, dest_scope, allocs);
+        Parser_copy_var_decl(&dest->var_decl, &src->var_decl, dest_scope,
+                             allocs);
         break;
 
     case PARSER_ASTNODETYPE_FUNC_DECL:
-        Parser_copy_func_decl(dest, src, dest_scope, allocs);
+        Parser_copy_func_decl(&dest->func_decl, &src->func_decl, dest_scope,
+                              allocs);
         break;
 
     case PARSER_ASTNODETYPE_CLASS:
-        Parser_copy_class(dest, src, dest_scope, allocs);
+        Parser_copy_class(&dest->class_, &src->class_, dest_scope, allocs);
         break;
 
     case PARSER_ASTNODETYPE_ENUM:
-        Parser_copy_enum(dest, src, dest_scope, allocs);
+        Parser_copy_enum(&dest->enum_, &src->enum_, dest_scope, allocs);
         break;
 
     case PARSER_ASTNODETYPE_NAMESPACE:
-        Parser_copy_namespace(dest, src, dest_scope, allocs);
+        Parser_copy_namespace(&dest->nmspace, &src->nmspace, dest_scope,
+                              allocs);
         break;
 
     case PARSER_ASTNODETYPE_RETURN:
-        Parser_copy_return(dest, src, allocs);
+        Parser_copy_return(&dest->ret, &src->ret, allocs);
         break;
 
     case PARSER_ASTNODETYPE_TMPLT:
-        Parser_copy_tmplt(dest, src, dest_scope, allocs);
+        Parser_copy_tmplt(&dest->tmplt, &src->tmplt, dest_scope, allocs);
         break;
 
     case PARSER_ASTNODETYPE_TMPLT_PARAM:
-        Parser_copy_tmplt_param(dest, src, allocs);
+        Parser_copy_tmplt_param(&dest->tmplt_param, &src->tmplt_param, allocs);
         break;
 
     default:

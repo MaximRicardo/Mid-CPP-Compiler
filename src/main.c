@@ -1,13 +1,11 @@
 // #include "cgllvm/codegen.h"
 // #include "cgllvm/name_mangle.h"
-#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/tokenize.h"
-#include "macros.h"
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
@@ -18,7 +16,6 @@
 #include "symbol.h"
 #include <assert.h>
 #include <locale.h>
-#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -151,6 +148,7 @@ static void test_mangling(const struct Sema_Scope *scope)
 }
 */
 
+/*
 static void apint_test()
 {
     i32 bits = 64;
@@ -179,6 +177,7 @@ static void apint_test()
     APInt_deinit(&b);
     APInt_deinit(&a);
 }
+*/
 
 /*
 static void apint_test()
@@ -214,8 +213,10 @@ int main(int argc, char **argv)
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
 
+    /*
     apint_test();
     CRASH("asdf");
+    */
 
     CMD_init_args(argc, argv);
 

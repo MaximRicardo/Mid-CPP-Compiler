@@ -55,14 +55,11 @@ transf_node_ptrs(const struct Parser_ASTNodePVec *ptrs,
     return ret;
 }
 
-void Parser_copy_class(struct Parser_ASTNode *dest_node,
-                       const struct Parser_ASTNode *src_node,
+void Parser_copy_class(struct Parser_Class *dest,
+                       const struct Parser_Class *src,
                        struct Sema_Scope *dest_scope,
                        struct Parser_Allocators *allocs)
 {
-    auto dest = &dest_node->class_;
-    auto src = &src_node->class_;
-
     *dest = *src;
 
     auto old_ident = Sema_add_ident_copy(
@@ -76,12 +73,12 @@ void Parser_copy_class(struct Parser_ASTNode *dest_node,
         struct Sema_Scope *child_scope;
         gen_bumpmalloc(&allocs->scope, &child_scope);
         *child_scope = (struct Sema_Scope){.parent = Parser_class_parent(dest),
-                                           .node = dest_node,
+                                           .node = PARSER_GET_NODE(dest),
                                            .type = SEMA_SCOPETYPE_CLASS};
         Sema_deref_identptr(&dest->ident)->class_info.def_scope = child_scope;
 
-        dest->childs =
-            Parser_copy_nodepvec(&src->childs, dest_node, child_scope, allocs);
+        dest->childs = Parser_copy_nodepvec(&src->childs, PARSER_GET_NODE(dest),
+                                            child_scope, allocs);
         dest->pub_childs = transf_node_ptrs(&src->pub_childs, src->childs.arr,
                                             dest->childs.arr, src->childs.len);
         dest->priv_childs = transf_node_ptrs(&src->priv_childs, src->childs.arr,
@@ -90,10 +87,11 @@ void Parser_copy_class(struct Parser_ASTNode *dest_node,
                                              dest->childs.arr, src->childs.len);
     }
 
-    if (src->var_decl) {
-        gen_bumpmalloc(&allocs->ast, &dest->var_decl);
-        Parser_copy_node(dest->var_decl, src->var_decl, dest_node,
-                         Parser_class_parent(dest), allocs);
+    if (src->var) {
+        gen_bumpmalloc(&allocs->ast, (void **)&dest->var);
+        Parser_copy_node(PARSER_GET_NODE(dest->var), PARSER_GET_NODE(src->var),
+                         PARSER_GET_NODE(dest), Parser_class_parent(dest),
+                         allocs);
     }
 }
 
@@ -118,8 +116,9 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
     }
 
     const char *super_name = toks[ident].ident;
-    struct Parser_ASTNode *super =
-        Sema_find_ident_const(Parser_class_parent(self), super_name)->def;
+    struct Parser_Class *super =
+        &Sema_find_ident_const(Parser_class_parent(self), super_name)
+             ->def->class_;
 
     if (!super)
         gen_dynpush(
@@ -130,7 +129,7 @@ static isize_t parse_class_inheritance(struct Parser_Class *self,
                        .err = ERRORTYPE_BAD_SUPERCLASS,
                        .type = DIAGTYPE_ERROR,
                    }));
-    else if (super->type != PARSER_ASTNODETYPE_CLASS)
+    else if (PARSER_GET_TYPE(super) != PARSER_ASTNODETYPE_CLASS)
         gen_dynpush(diags, ((struct Diag){
                                .pos = toks[ident].pos,
                                .line = toks[ident].line,
@@ -369,9 +368,8 @@ void Parser_parse_class_def(struct Parser_ASTNode *node,
 
     parse_class_body(self, node, toks, self->def_start - toks, allocs, diags);
 
-    Parser_parse_var_decl_def(toks, PARSER_VARDECL_ENDTYPES,
-                              &self->var_decl->var_decl, false, scope, allocs,
-                              diags);
+    Parser_parse_var_decl_def(toks, PARSER_VARDECL_ENDTYPES, self->var, false,
+                              scope, allocs, diags);
 }
 
 static void add_class_to_scope(struct Sema_Scope *scope,
@@ -434,18 +432,18 @@ static isize_t parse_class_instances(
     isize_t start, bool skip_def, struct Parser_Allocators *allocs,
     struct DiagVec *diags)
 {
-    gen_bumpcalloc(&allocs->ast, &self->var_decl);
-    self->var_decl->parent = node;
-    self->var_decl->start = &toks[start];
-    self->var_decl->type = PARSER_ASTNODETYPE_VAR_DECL;
+    gen_bumpcalloc(&allocs->ast, (struct Parser_ASTNode **)&self->var);
+    PARSER_GET_PARENT(self->var) = node;
+    PARSER_GET_START(self->var) = &toks[start];
+    PARSER_GET_TYPE(self->var) = PARSER_ASTNODETYPE_VAR_DECL;
 
     auto base = Sema_node_type(node, parent_scope, NULL);
     base.squals = *squals;
     base.dquals.arr[0] = *dquals;
 
     isize_t end = Parser_parse_var_decl_inst_list(
-        toks, start, PARSER_VARDECL_ENDTYPES, &base,
-        &self->var_decl->var_decl.insts, self->var_decl, parent_scope,
+        toks, start, PARSER_VARDECL_ENDTYPES, &base, &self->var->insts,
+        PARSER_GET_NODE(self->var), parent_scope,
         (struct Parser_ParseVarDeclFlags){.add_to_scope = true,
                                           .skip_init = skip_def},
         allocs, diags);

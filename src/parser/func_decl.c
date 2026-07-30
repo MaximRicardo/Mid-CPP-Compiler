@@ -42,14 +42,11 @@ void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self)
     Parser_Type_deinit(&self->ret);
 }
 
-void Parser_copy_func_decl(struct Parser_ASTNode *dest_node,
-                           const struct Parser_ASTNode *src_node,
+void Parser_copy_func_decl(struct Parser_FuncDecl *dest,
+                           const struct Parser_FuncDecl *src,
                            struct Sema_Scope *dest_scope,
                            struct Parser_Allocators *allocs)
 {
-    auto dest = &dest_node->func_decl;
-    auto src = &src_node->func_decl;
-
     *dest = *src;
 
     auto old_ident =
@@ -62,12 +59,12 @@ void Parser_copy_func_decl(struct Parser_ASTNode *dest_node,
     dest->ret = Parser_copy_type(&src->ret);
 
     gen_bumpmalloc(&allocs->scope, &dest->param_scope);
-    *dest->param_scope =
-        Sema_create_empty_scope(src->param_scope->type, dest_scope, dest_node);
+    *dest->param_scope = Sema_create_empty_scope(
+        src->param_scope->type, dest_scope, PARSER_GET_NODE(dest));
 
     auto params_nodes =
         Parser_copy_nodepvec((struct Parser_ASTNodePVec *)&src->params,
-                             dest_node, dest->param_scope, allocs);
+                             PARSER_GET_NODE(dest), dest->param_scope, allocs);
     dest->params = (struct Parser_VarDeclPVec){.arr = (void *)params_nodes.arr,
                                                .len = params_nodes.len,
                                                .cap = params_nodes.cap};
@@ -76,11 +73,11 @@ void Parser_copy_func_decl(struct Parser_ASTNode *dest_node,
         struct Sema_Scope *def_scope;
         gen_bumpmalloc(&allocs->scope, &def_scope);
         *def_scope = (struct Sema_Scope){.parent = dest_scope,
-                                         .node = dest_node,
+                                         .node = PARSER_GET_NODE(dest),
                                          .type = SEMA_SCOPETYPE_FUNC};
         Parser_func_ident(dest)->func_info.def_scope = def_scope;
-        dest->nodes =
-            Parser_copy_nodepvec(&src->nodes, dest_node, def_scope, allocs);
+        dest->nodes = Parser_copy_nodepvec(&src->nodes, PARSER_GET_NODE(dest),
+                                           def_scope, allocs);
     }
 }
 

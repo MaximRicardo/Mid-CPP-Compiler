@@ -17,14 +17,11 @@ void Parser_Namespace_deinit(struct Parser_Namespace *self)
     gen_dyndeinit(&self->childs);
 }
 
-void Parser_copy_namespace(struct Parser_ASTNode *dest_node,
-                           const struct Parser_ASTNode *src_node,
+void Parser_copy_namespace(struct Parser_Namespace *dest,
+                           const struct Parser_Namespace *src,
                            struct Sema_Scope *dest_scope,
                            struct Parser_Allocators *allocs)
 {
-    auto dest = &dest_node->nmspace;
-    auto src = &src_node->nmspace;
-
     *dest = *src;
 
     auto old_ident = Sema_add_ident_copy(
@@ -35,11 +32,11 @@ void Parser_copy_namespace(struct Parser_ASTNode *dest_node,
         dest->ident = Sema_identptr_to_last(dest_scope);
 
     gen_bumpmalloc(&allocs->scope, &dest->scope);
-    *dest->scope =
-        Sema_create_empty_scope(src->scope->type, dest_scope, dest_node);
+    *dest->scope = Sema_create_empty_scope(src->scope->type, dest_scope,
+                                           PARSER_GET_NODE(dest));
 
-    dest->childs =
-        Parser_copy_nodepvec(&src->childs, dest_node, dest->scope, allocs);
+    dest->childs = Parser_copy_nodepvec(&src->childs, PARSER_GET_NODE(dest),
+                                        dest->scope, allocs);
 }
 
 static void add_nmspace_to_scope(struct Sema_Scope *scope,

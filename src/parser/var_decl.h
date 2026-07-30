@@ -50,8 +50,8 @@ gen_dynarray_struct_named(Parser_VarDeclVec, struct Parser_VarDecl);
 gen_dynarray_struct_named(Parser_VarDeclPVec, struct Parser_VarDecl *);
 
 void Parser_VarDecl_deinit(struct Parser_VarDecl *self);
-void Parser_copy_var_decl(struct Parser_ASTNode *dest,
-                          const struct Parser_ASTNode *src,
+void Parser_copy_var_decl(struct Parser_VarDecl *dest,
+                          const struct Parser_VarDecl *src,
                           struct Sema_Scope *dest_scope,
                           struct Parser_Allocators *allocs);
 

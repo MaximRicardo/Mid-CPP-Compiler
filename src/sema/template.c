@@ -27,8 +27,7 @@ static void transf_type(struct Parser_Type *type,
     const char *name = Sema_deref_identptr(&type->named)->name;
     isize_t idx = Parser_tmplt_param_idx(tmplt, name);
 
-    auto param_node = tmplt->params.arr[idx];
-    auto param = &param_node->tmplt_param;
+    auto param = tmplt->params.arr[idx];
     assert(param->kind == PARSER_TMPLTPARAM_TYPE);
 
     auto arg = &args->arr[idx];

@@ -15,8 +15,8 @@ struct Parser_Namespace {
 };
 
 void Parser_Namespace_deinit(struct Parser_Namespace *self);
-void Parser_copy_namespace(struct Parser_ASTNode *dest,
-                           const struct Parser_ASTNode *src,
+void Parser_copy_namespace(struct Parser_Namespace *dest,
+                           const struct Parser_Namespace *src,
                            struct Sema_Scope *dest_scope,
                            struct Parser_Allocators *allocs);
 isize_t Parser_parse_namespace(struct Parser_ASTNode *node,

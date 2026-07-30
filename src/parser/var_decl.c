@@ -74,21 +74,18 @@ void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
     gen_dyndeinit(&self->insts, Parser_VarDeclInst_deinit);
 }
 
-void Parser_copy_var_decl(struct Parser_ASTNode *dest_node,
-                          const struct Parser_ASTNode *src_node,
+void Parser_copy_var_decl(struct Parser_VarDecl *dest,
+                          const struct Parser_VarDecl *src,
                           struct Sema_Scope *dest_scope,
                           struct Parser_Allocators *allocs)
 {
-    auto dest = &dest_node->var_decl;
-    auto src = &src_node->var_decl;
-
     *dest = (struct Parser_VarDecl){};
 
     gen_dynreserve(&dest->insts, src->insts.len);
     for (isize_t i = 0; i < src->insts.len; ++i) {
-        gen_dynpush(&dest->insts,
-                    Parser_copy_var_decl_inst(&src->insts.arr[i], dest_node,
-                                              dest_scope, allocs));
+        gen_dynpush(&dest->insts, Parser_copy_var_decl_inst(
+                                      &src->insts.arr[i], PARSER_GET_NODE(dest),
+                                      dest_scope, allocs));
     }
 }
 

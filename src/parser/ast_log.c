@@ -284,7 +284,7 @@ static void log_class_supers(const struct Parser_ASTNode *node, FILE *out)
 
     isize_t end = node->class_.supers.len;
     for (isize_t i = 0; i < end; ++i) {
-        fprintf(out, "%s", node->class_.supers.arr[i]->class_.name);
+        fprintf(out, "%s", node->class_.supers.arr[i]->name);
 
         if (i + 1 < end)
             fprintf(out, ", ");
@@ -348,8 +348,8 @@ static void log_class_node(const struct Parser_ASTNode *node, FILE *out,
 
     log_w_indent(out, indent, "};\n");
 
-    if (node->class_.var_decl)
-        Parser_log_node(node->class_.var_decl, out, indent);
+    if (node->class_.var)
+        Parser_log_node(PARSER_GET_NODE(node->class_.var), out, indent);
     else
         fprintf(out, "\n");
 }

@@ -10,6 +10,9 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 
+struct Parser_TmpltParam;
+gen_dynarray_struct_named(Parser_TmpltParamPVec, struct Parser_TmpltParam *);
+
 enum Parser_TmpltArgType {
     PARSER_TMPLTARG_NONTYPE,
     PARSER_TMPLTARG_TYPE,
@@ -43,14 +46,14 @@ void Parser_TmpltInst_deinit(struct Parser_TmpltInst *self);
 
 struct Parser_Tmplt {
     struct Parser_TmpltInstVec insts;
-    struct Parser_ASTNodePVec params; // of type PARSER_ASTNODETYPE_TMPLT_PARAM
+    struct Parser_TmpltParamPVec params;
     struct Parser_ASTNode *child;
     struct Sema_Scope *scope;
 };
 
 void Parser_Tmplt_deinit(struct Parser_Tmplt *self);
-void Parser_copy_tmplt(struct Parser_ASTNode *dest,
-                       const struct Parser_ASTNode *src,
+void Parser_copy_tmplt(struct Parser_Tmplt *dest,
+                       const struct Parser_Tmplt *src,
                        struct Sema_Scope *dest_scope,
                        struct Parser_Allocators *allocs);
 
@@ -90,6 +93,7 @@ struct Parser_TmpltTmpltParam {
 void Parser_TmpltTmpltParam_deinit(struct Parser_TmpltTmpltParam *self);
 
 struct Parser_TmpltParam {
+    // NOTE: THIS UNION NEEDS TO GO FIRST TO ALLOW POINTER CONVERSIONS
     union {
         struct Parser_TmpltNonTypeParam non_type;
         struct Parser_TmpltTypeParam type;
@@ -99,8 +103,8 @@ struct Parser_TmpltParam {
 };
 
 void Parser_TmpltParam_deinit(struct Parser_TmpltParam *self);
-void Parser_copy_tmplt_param(struct Parser_ASTNode *dest,
-                             const struct Parser_ASTNode *src,
+void Parser_copy_tmplt_param(struct Parser_TmpltParam *dest,
+                             const struct Parser_TmpltParam *src,
                              struct Parser_Allocators *allocs);
 
 isize_t Parser_parse_tmplt(struct Parser_ASTNode *node,
