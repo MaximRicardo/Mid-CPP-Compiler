@@ -187,6 +187,19 @@ struct APInt APInt_copy(const struct APInt *src)
     return dest;
 }
 
+void APInt_copy_value(struct APInt *restrict dest,
+                      const struct APInt *restrict src)
+{
+    assert(dest->n_bits == src->n_bits);
+
+    if (is_bignum_used(dest->n_bits)) {
+        memcpy(dest->v.words, src->v.words,
+               get_n_words(dest->n_bits) * sizeof(*dest->v.words));
+    } else {
+        dest->v.val = src->v.val;
+    }
+}
+
 bool APInt_is_zero(const struct APInt *self)
 {
     if (is_bignum_used(self->n_bits)) {

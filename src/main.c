@@ -18,6 +18,7 @@
 #include "symbol.h"
 #include <assert.h>
 #include <locale.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -150,31 +151,36 @@ static void test_mangling(const struct Sema_Scope *scope)
 }
 */
 
-/*
 static void apint_test()
 {
-    struct APInt a = APInt_zero(32);
-    struct APInt b = APInt_init(32, 1, false);
-    struct APInt c = {};
+    i32 bits = 64;
 
-    for (int i = 0; i < 49; ++i) {
+    double phi = (1.0 + sqrt(5.0)) / 2.0;
+    i32 largest_fib =
+        ceil(bits * (log(2.0) / log(phi)) + 0.5 * (log(5.0) / log(phi)));
+
+    struct APInt a = APInt_zero(bits);
+    struct APInt b = APInt_init(bits, 1, false);
+    struct APInt c = APInt_zero(bits);
+
+    for (int i = 0; i < largest_fib; ++i) {
         printf("nr %d: ", i);
         APInt_log(&a, stdout, false);
         putchar('\n');
 
-        c = APInt_copy(&a);
-        APInt_add_w(&c, &b);
+        APInt_copy_value(&c, &a);
+        APInt_add(&c, &b);
 
-        a = APInt_copy(&b);
-        b = APInt_copy(&c);
+        APInt_copy_value(&a, &b);
+        APInt_copy_value(&b, &c);
     }
 
     APInt_deinit(&c);
     APInt_deinit(&b);
     APInt_deinit(&a);
 }
-*/
 
+/*
 static void apint_test()
 {
     struct APInt num = APInt_init_arr(
@@ -185,23 +191,23 @@ static void apint_test()
     APInt_log(&num, stdout, false);
     putchar('\n');
 
-    struct APInt divisor = APInt_init_arr(
+    struct APInt other = APInt_init_arr(
         128, (APInt_Word[]){0xdeadbeefdeadbeef, 0x00000000deadbeef}, 2, false);
 
     printf("rhs = ");
-    APInt_log(&divisor, stdout, false);
+    APInt_log(&other, stdout, false);
     putchar('\n');
 
-    printf("dividing\n");
-    APInt_udiv(&num, &divisor);
-    printf("done dividing\n");
+    APInt_add(&num, &other);
 
+    printf("sum = ");
     APInt_log(&num, stdout, false);
     putchar('\n');
 
-    APInt_deinit(&divisor);
+    APInt_deinit(&other);
     APInt_deinit(&num);
 }
+*/
 
 int main(int argc, char **argv)
 {

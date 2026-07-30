@@ -33,6 +33,8 @@ struct APInt APInt_init_arr(i32 n_bits, const APInt_Word *words, i32 n_words,
                             bool sign_ext);
 struct APInt APInt_zero(i32 n_bits);
 struct APInt APInt_copy(const struct APInt *src);
+void APInt_copy_value(struct APInt *restrict dest,
+                      const struct APInt *restrict src);
 // changes the width of the APInt. the new width can also be smaller than the
 // old width
 void APInt_ext(struct APInt *self, i32 new_n_bits, bool sign_ext);
