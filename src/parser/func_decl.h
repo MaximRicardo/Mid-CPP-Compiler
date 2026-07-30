@@ -6,6 +6,7 @@
 #include "parser/allocator.h"
 #include "parser/astvec.h"
 #include "parser/type.h"
+#include "parser/var_decl.h"
 
 constexpr char Parser_ctor_name[] = "__constructor";
 constexpr char Parser_dtor_name[] = "__destructor";
@@ -23,8 +24,8 @@ struct Parser_FuncQuals {
 };
 
 struct Parser_FuncDecl {
-    struct Parser_Type type;
-    struct Parser_ASTNodePVec params;
+    struct Parser_Type ret;
+    struct Parser_VarDeclPVec params;
     struct Parser_ASTNodePVec nodes;
     const char *name;
     struct Sema_Scope *param_scope;
@@ -47,7 +48,7 @@ void Parser_copy_func_decl(struct Parser_ASTNode *dest,
                            struct Parser_Allocators *allocs);
 struct Sema_Scope *Parser_func_parent(const struct Parser_FuncDecl *func);
 struct Sema_Ident *Parser_func_ident(const struct Parser_FuncDecl *func);
-struct Parser_ASTNodePVec
+struct Parser_VarDeclPVec
 Parser_parse_func_params(const struct Lexer_Token *toks, isize_t lparen,
                          isize_t *out_rparen, struct Parser_ASTNode *parent,
                          struct Sema_Scope *scope, bool add_to_scope,

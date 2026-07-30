@@ -15,6 +15,34 @@
 #include "sema/scope.h"
 #include "template.h"
 
+// generic access macros
+
+#define PARSER_GET_NODE_IMPL_MUT(node) ((struct Parser_ASTNode *)node)
+#define PARSER_GET_NODE_IMPL_CONST(node) ((const struct Parser_ASTNode *)node)
+
+#define PARSER_GET_NODE(node)                                                  \
+    _Generic((node),                                                           \
+        struct Parser_VarDecl *: PARSER_GET_NODE_IMPL_MUT(node),               \
+        struct Parser_FuncDecl *: PARSER_GET_NODE_IMPL_MUT(node),              \
+        struct Parser_Class *: PARSER_GET_NODE_IMPL_MUT(node),                 \
+        struct Parser_Enum *: PARSER_GET_NODE_IMPL_MUT(node),                  \
+        struct Parser_Namespace *: PARSER_GET_NODE_IMPL_MUT(node),             \
+        struct Parser_Return *: PARSER_GET_NODE_IMPL_MUT(node),                \
+        struct Parser_Tmplt *: PARSER_GET_NODE_IMPL_MUT(node),                 \
+        struct Parser_TmpltParam *: PARSER_GET_NODE_IMPL_MUT(node),            \
+        const struct Parser_VarDecl *: PARSER_GET_NODE_IMPL_CONST(node),       \
+        const struct Parser_FuncDecl *: PARSER_GET_NODE_IMPL_CONST(node),      \
+        const struct Parser_Class *: PARSER_GET_NODE_IMPL_CONST(node),         \
+        const struct Parser_Enum *: PARSER_GET_NODE_IMPL_CONST(node),          \
+        const struct Parser_Namespace *: PARSER_GET_NODE_IMPL_CONST(node),     \
+        const struct Parser_Return *: PARSER_GET_NODE_IMPL_CONST(node),        \
+        const struct Parser_Tmplt *: PARSER_GET_NODE_IMPL_CONST(node),         \
+        const struct Parser_TmpltParam *: PARSER_GET_NODE_IMPL_CONST(node))
+
+#define PARSER_GET_PARENT(node) (PARSER_GET_NODE(node)->parent)
+#define PARSER_GET_START(node) (PARSER_GET_NODE(node)->start)
+#define PARSER_GET_TYPE(node) (PARSER_GET_NODE(node)->type)
+
 enum Parser_ASTNodeType {
     PARSER_ASTNODETYPE_ROOT,
     PARSER_ASTNODETYPE_EXPR,
@@ -29,6 +57,7 @@ enum Parser_ASTNodeType {
 };
 
 struct Parser_ASTNode {
+    // NOTE: THIS UNION MUST GO FIRST TO ALLOW CASTING BETWEEN POINTER TYPES
     union {
         struct Parser_ASTNodePVec root;
         struct Parser_Expr expr;

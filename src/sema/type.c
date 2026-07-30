@@ -290,7 +290,7 @@ static void typecheck_this_expr(struct Parser_Expr *expr,
     }
 
     const struct Parser_FuncDecl *func = &func_scope->node->func_decl;
-    if (!Parser_func_is_method(func) || func->type.squals.is_static) {
+    if (!Parser_func_is_method(func) || func->ret.squals.is_static) {
         gen_dynpush(diags, this_outside_nonstatic_method_err(expr->tok));
         goto invalid_this;
     }
@@ -487,11 +487,11 @@ static void typecheck_call_expr(struct Parser_Expr *expr,
     if (!expr->node)
         return;
 
-    expr->ret = Parser_copy_type(&expr->node->func_decl.type);
+    expr->ret = Parser_copy_type(&expr->node->func_decl.ret);
 
-    if (expr->node->func_decl.type.lv_ref)
+    if (expr->node->func_decl.ret.lv_ref)
         expr->valtype = PARSER_EXPRVALUE_LVALUE;
-    else if (expr->node->func_decl.type.rv_ref)
+    else if (expr->node->func_decl.ret.rv_ref)
         expr->valtype = PARSER_EXPRVALUE_XVALUE;
     else
         expr->valtype = PARSER_EXPRVALUE_PRVALUE;
@@ -1095,11 +1095,11 @@ static void typecheck_overloaded_op(struct Parser_Expr *expr,
 
     expr->overloaded = true;
     expr->node = overload;
-    expr->ret = Parser_copy_type(&func->type);
+    expr->ret = Parser_copy_type(&func->ret);
 
-    if (func->type.lv_ref)
+    if (func->ret.lv_ref)
         expr->valtype = PARSER_EXPRVALUE_LVALUE;
-    else if (func->type.rv_ref)
+    else if (func->ret.rv_ref)
         expr->valtype = PARSER_EXPRVALUE_XVALUE;
     else
         expr->valtype = PARSER_EXPRVALUE_PRVALUE;
@@ -1275,7 +1275,7 @@ void Sema_typecheck_return(const struct Parser_ASTNode *node,
         return;
     }
 
-    const struct Parser_Type *func_type = &func_scope->node->func_decl.type;
+    const struct Parser_Type *func_type = &func_scope->node->func_decl.ret;
     if (!Parser_type_is_typecheckable(func_type))
         return;
 

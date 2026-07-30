@@ -253,9 +253,8 @@ static bool are_params_same(const struct Parser_FuncDecl *a,
         return false;
 
     for (isize_t i = 0; i < a->params.len; ++i) {
-        if (!Parser_are_types_same(
-                &a->params.arr[i]->var_decl.insts.arr[0].type,
-                &b->params.arr[i]->var_decl.insts.arr[0].type))
+        if (!Parser_are_types_same(&a->params.arr[i]->insts.arr[0].type,
+                                   &b->params.arr[i]->insts.arr[0].type))
             return false;
     }
 

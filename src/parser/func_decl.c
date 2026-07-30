@@ -39,7 +39,7 @@ void Parser_FuncDecl_deinit(struct Parser_FuncDecl *self)
 {
     gen_dyndeinit(&self->nodes);
     gen_dyndeinit(&self->params);
-    Parser_Type_deinit(&self->type);
+    Parser_Type_deinit(&self->ret);
 }
 
 void Parser_copy_func_decl(struct Parser_ASTNode *dest_node,
@@ -59,14 +59,19 @@ void Parser_copy_func_decl(struct Parser_ASTNode *dest_node,
     else
         dest->ident_idx = dest_scope->idents.len - 1;
 
-    dest->type = Parser_copy_type(&src->type);
+    dest->ret = Parser_copy_type(&src->ret);
 
     gen_bumpmalloc(&allocs->scope, &dest->param_scope);
     *dest->param_scope =
         Sema_create_empty_scope(src->param_scope->type, dest_scope, dest_node);
 
-    dest->params = Parser_copy_nodepvec(&src->params, dest_node,
-                                        dest->param_scope, allocs);
+    auto params_nodes =
+        Parser_copy_nodepvec((struct Parser_ASTNodePVec *)&src->params,
+                             dest_node, dest->param_scope, allocs);
+    dest->params = (struct Parser_VarDeclPVec){.arr = (void *)params_nodes.arr,
+                                               .len = params_nodes.len,
+                                               .cap = params_nodes.cap};
+
     if (src->nodes.len > 0) {
         struct Sema_Scope *def_scope;
         gen_bumpmalloc(&allocs->scope, &def_scope);
@@ -95,20 +100,20 @@ struct Sema_Ident *Parser_func_ident(const struct Parser_FuncDecl *func)
 
 // accounts for functions taking a singular void parameter
 // example: int f(void)
-static void account_for_void_param(struct Parser_ASTNodePVec *params)
+static void account_for_void_param(struct Parser_VarDeclPVec *params)
 {
     if (params->len == 1 &&
-        Parser_type_is_void(&params->arr[0]->var_decl.insts.arr[0].type)) {
+        Parser_type_is_void(&params->arr[0]->insts.arr[0].type)) {
         gen_dyndeinit(params);
     }
 }
 
-struct Parser_ASTNodePVec Parser_parse_func_params(
+struct Parser_VarDeclPVec Parser_parse_func_params(
     const struct Lexer_Token *toks, isize_t lparen, isize_t *out_rparen,
     struct Parser_ASTNode *parent, struct Sema_Scope *scope, bool add_to_scope,
     bool *out_variadic, struct Parser_Allocators *allocs, struct DiagVec *diags)
 {
-    struct Parser_ASTNodePVec params = {};
+    struct Parser_VarDeclPVec params = {};
 
     isize_t rparen = Parser_find_twin_paren(toks, lparen, ISIZE_MAX);
     if (out_rparen)
@@ -144,7 +149,7 @@ struct Parser_ASTNodePVec Parser_parse_func_params(
                 (struct Parser_ParseVarDeclFlags){.add_to_scope = add_to_scope,
                                                   .single_inst = true},
                 scope, allocs, diags);
-            gen_dynpush(&params, child);
+            gen_dynpush(&params, (void *)child);
         }
     }
 
@@ -501,8 +506,8 @@ static isize_t parse_func_type(struct Parser_ASTNode *node,
 
     isize_t type_end;
     isize_t name;
-    decl->type = Parser_parse_type(toks, start, &type_end, parent_scope, &name,
-                                   false, allocs, diags);
+    decl->ret = Parser_parse_type(toks, start, &type_end, parent_scope, &name,
+                                  false, allocs, diags);
 
     auto res = name == -1 ? parent_scope
                           : Parser_parse_scope_res(toks, name, &name,
@@ -567,7 +572,7 @@ static isize_t parse_tor_type(struct Parser_FuncDecl *decl,
     assert(class_);
     if (out_class)
         *out_class = class_;
-    decl->type = Sema_node_type(class_, res, NULL);
+    decl->ret = Sema_node_type(class_, res, NULL);
 
     return name_idx + 1;
 }
@@ -658,7 +663,7 @@ static void register_default_args(struct Parser_FuncDecl *decl,
     for (isize_t i = 0; i < decl->params.len; ++i) {
         auto default_arg = (*default_args)[i];
 
-        auto node = decl->params.arr[i];
+        auto node = (struct Parser_ASTNode *)decl->params.arr[i];
         auto param = &node->var_decl.insts.arr[0];
         if (!param->init.expr) // not a default arg
             continue;
@@ -675,9 +680,10 @@ static void register_default_args(struct Parser_FuncDecl *decl,
 
     isize_t bad;
     if (missing_default_args(*default_args, decl->params.len, &bad))
-        gen_dynpush(diags, missing_default_arg_err(
-                               decl->name, decl->params.arr[bad]->start,
-                               ERRORTYPE_BAD_DEFAULT_ARGUMENT));
+        gen_dynpush(diags,
+                    missing_default_arg_err(
+                        decl->name, PARSER_GET_START(decl->params.arr[bad]),
+                        ERRORTYPE_BAD_DEFAULT_ARGUMENT));
 }
 
 isize_t Parser_parse_func_decl(const struct Lexer_Token *toks, isize_t start,
@@ -786,7 +792,7 @@ bool Parser_func_takes_implicit_this(const struct Parser_FuncDecl *self,
     if (cnt_ctors && Parser_func_is_ctor(self))
         return true;
     return Parser_func_is_method(self) && !Parser_func_is_ctor(self) &&
-           !self->type.squals.is_static;
+           !self->ret.squals.is_static;
 }
 
 struct Parser_Type Parser_implicit_this_type(const struct Parser_FuncDecl *self)

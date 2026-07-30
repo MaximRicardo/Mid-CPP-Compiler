@@ -247,7 +247,7 @@ static bool valid_this_arg(const struct Parser_FuncDecl *func,
         return false;
     if (Parser_n_indir(&arg->ret) > 0)
         return false;
-    if (Sema_deref_identptr(&func->type.named)->class_info.def_scope !=
+    if (Sema_deref_identptr(&func->ret.named)->class_info.def_scope !=
         Parser_func_parent(func))
         return false;
     if (arg->ret.dquals.arr[0].is_const && !func->quals.is_const)
@@ -306,7 +306,7 @@ bool Sema_is_func_viable(const struct Parser_Expr *args, isize_t n_args,
                 ? i + 1
                 : i;
         if (!Sema_can_convert(&args[j].ret, args[j].valtype,
-                              &func->params.arr[i]->var_decl.insts.arr[0].type))
+                              &func->params.arr[i]->insts.arr[0].type))
             return false;
     }
 
@@ -357,8 +357,8 @@ static int compare_viable_funcs(const void *a_raw, const void *b_raw,
         }
 
         auto arg = &info->args[i];
-        auto a_param = &a->func_decl.params.arr[i]->var_decl.insts.arr[0];
-        auto b_param = &b->func_decl.params.arr[i]->var_decl.insts.arr[0];
+        auto a_param = &a->func_decl.params.arr[i]->insts.arr[0];
+        auto b_param = &b->func_decl.params.arr[i]->insts.arr[0];
 
         int a_rank = Sema_conversion_rank(&arg->ret, &a_param->type);
         int b_rank = Sema_conversion_rank(&arg->ret, &b_param->type);

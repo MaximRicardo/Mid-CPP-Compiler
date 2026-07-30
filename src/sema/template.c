@@ -80,10 +80,10 @@ static void transf_func(struct Parser_ASTNode *func_node,
 {
     auto func = &func_node->func_decl;
 
-    transf_type(&func->type, tmplt_node, args);
+    transf_type(&func->ret, tmplt_node, args);
 
     for (isize_t i = 0; i < func->params.len; ++i)
-        transf_node(func->params.arr[i], tmplt_node, args);
+        transf_node(PARSER_GET_NODE(func->params.arr[i]), tmplt_node, args);
 
     for (isize_t i = 0; i < func->nodes.len; ++i)
         transf_node(func->nodes.arr[i], tmplt_node, args);

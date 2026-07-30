@@ -47,6 +47,7 @@ struct Parser_VarDecl {
     struct Parser_VarDeclInstVec insts;
 };
 gen_dynarray_struct_named(Parser_VarDeclVec, struct Parser_VarDecl);
+gen_dynarray_struct_named(Parser_VarDeclPVec, struct Parser_VarDecl *);
 
 void Parser_VarDecl_deinit(struct Parser_VarDecl *self);
 void Parser_copy_var_decl(struct Parser_ASTNode *dest,
