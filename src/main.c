@@ -177,29 +177,29 @@ static void apint_test()
 
 static void apint_test()
 {
-    struct APInt num =
-        APInt_init_arr(128,
-                       (APInt_Word[]){0x123456789aebcdef, 0x123456789aebcdef,
-                                      0x123456789aebcdef, 0x123456789aebcdef},
-                       2, false);
+    struct APInt num = APInt_init_arr(
+        128, (APInt_Word[]){0x123456789aebcdef, 0x123456789aebcdef}, 2, false);
 
     APInt_log_hex(&num, stdout);
-    putchar('\n');
+    printf("\nlhs = ");
     APInt_log(&num, stdout, false);
     putchar('\n');
 
-    i32 amt = 64 + 32;
+    struct APInt divisor = APInt_init_arr(
+        128, (APInt_Word[]){0xdeadbeefdeadbeef, 0x00000000deadbeef}, 2, false);
 
-    APInt_shl(&num, amt);
-
-    APInt_log_hex(&num, stdout);
+    printf("rhs = ");
+    APInt_log(&divisor, stdout, false);
     putchar('\n');
 
-    APInt_lshr(&num, amt);
+    printf("dividing\n");
+    APInt_udiv(&num, &divisor);
+    printf("done dividing\n");
 
-    APInt_log_hex(&num, stdout);
+    APInt_log(&num, stdout, false);
     putchar('\n');
 
+    APInt_deinit(&divisor);
     APInt_deinit(&num);
 }
 

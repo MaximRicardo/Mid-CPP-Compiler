@@ -41,6 +41,8 @@ bool APInt_get_bit(const struct APInt *self, i32 n);
 bool APInt_get_sign_bit(const struct APInt *self);
 void APInt_log(const struct APInt *self, FILE *out, bool is_signed);
 void APInt_log_hex(const struct APInt *self, FILE *out);
+// nr of bits required to represent the number in self
+i32 APInt_n_active_bits(const struct APInt *self);
 
 // in place operations
 void APInt_add(struct APInt *a, const struct APInt *b);
@@ -50,13 +52,24 @@ void APInt_urem(struct APInt *a, const struct APInt *b);
 void APInt_shl(struct APInt *a, i32 count);
 // logical right shift
 void APInt_lshr(struct APInt *a, i32 count);
+// lo is inclusive, hi is exclusive
+void APInt_clear_bits(struct APInt *self, i32 lo, i32 hi);
 
 // not in place operations
 struct APInt APInt_nip_udiv(const struct APInt *a, const struct APInt *b);
 struct APInt APInt_nip_urem(const struct APInt *a, const struct APInt *b);
 
+/*
+ * computes the div and rem at the same time for the cost of only one
+ * a and b can also be passed as the outputs of the function
+ * BOTH OUTPUTS ARE REQUIRED AND CAN NOT BE NULL!
+ */
+void APInt_udivrem(const struct APInt *a, const struct APInt *b,
+                   struct APInt *out_quot, struct APInt *out_rem);
+
 // comparisons
 bool APInt_is_zero(const struct APInt *self);
+bool APInt_is_pow2(const struct APInt *self);
 bool APInt_is_eq(const struct APInt *a, const struct APInt *b);
 bool APInt_is_gt(const struct APInt *a, const struct APInt *b);
 bool APInt_is_gteq(const struct APInt *a, const struct APInt *b);
