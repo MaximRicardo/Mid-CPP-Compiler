@@ -108,6 +108,8 @@ struct Mid_APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words,
         return MidAPInt_init_no_limit_check(n_bits, words[0], sign_ext);
     }
 
+    bool is_signed = words[n_words - 1] & (1ULL << (MidAPInt_word_n_bits - 1));
+
     i32 dest_n_words = get_n_words(n_bits);
 
     struct Mid_APInt ret = {.n_bits = n_bits};
@@ -117,7 +119,7 @@ struct Mid_APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words,
         if (i < n_words)
             ret.v.words[i] = words[i];
         else
-            ret.v.words[i] = sign_ext ? MidAPInt_word_max : 0;
+            ret.v.words[i] = (sign_ext && is_signed) ? MidAPInt_word_max : 0;
     }
 
     auto last = &ret.v.words[dest_n_words - 1];
@@ -215,6 +217,65 @@ bool MidAPInt_is_zero(const struct Mid_APInt *self)
     }
 }
 
+static bool is_word_signed_min(MidAPInt_Word word, int n_bits)
+{
+    if (word == 0)
+        return false;
+
+    // mask away the sign bit
+    // if the result is zero then that was the only active bit and the value
+    // is the signed minimum
+    return (word & ~(1ULL << (n_bits - 1))) == 0;
+}
+
+bool MidAPInt_is_signed_min(const struct Mid_APInt *self)
+{
+    if (is_bignum_used(self->n_bits)) {
+        i32 n_words = get_n_words(self->n_bits);
+        for (i32 i = 0; i < n_words - 1; ++i) {
+            if (self->v.words[i] != 0)
+                return false;
+        }
+
+        return is_word_signed_min(self->v.words[n_words - 1],
+                                  n_bits_in_last_word(self->n_bits));
+    } else {
+        return is_word_signed_min(self->v.val, self->n_bits);
+    }
+}
+
+static bool word_is_all_ones(MidAPInt_Word word, int n_bits)
+{
+    if (n_bits == MidAPInt_word_n_bits) {
+        return word == MidAPInt_word_max;
+    } else {
+        // set all unused bits high
+        MidAPInt_Word mask = ~((1ULL << n_bits) - 1);
+        word = word | mask;
+
+        return word == MidAPInt_word_max;
+    }
+}
+
+bool MidAPInt_is_all_ones(const struct Mid_APInt *self)
+{
+    if (is_bignum_used(self->n_bits)) {
+        i32 n_words = get_n_words(self->n_bits);
+        if (!word_is_all_ones(self->v.words[n_words - 1],
+                              n_bits_in_last_word(self->n_bits)))
+            return false;
+
+        for (i32 i = 0; i < n_words - 1; ++i) {
+            if (self->v.words[i] != MidAPInt_word_max)
+                return false;
+        }
+
+        return true;
+    } else {
+        return word_is_all_ones(self->v.val, self->n_bits);
+    }
+}
+
 void MidAPInt_ext(struct Mid_APInt *self, i32 new_n_bits, bool sign_ext)
 {
     bool old_uses_bignum = is_bignum_used(self->n_bits);
@@ -261,7 +322,7 @@ bool MidAPInt_get_bit(const struct Mid_APInt *self, i32 n)
         i32 word_idx = get_n_words(n + 1) - 1;
         const MidAPInt_Word *word = &self->v.words[word_idx];
 
-        i32 n_in_word = n_bits_in_last_word(n + 1);
+        i32 n_in_word = n - word_idx * MidAPInt_word_n_bits;
         return (*word >> n_in_word) & 1;
     } else {
         return (self->v.val >> n) & 1;
@@ -315,10 +376,45 @@ static void log_uint(const struct Mid_APInt *self, FILE *out)
     }
 }
 
+static void log_sint(const struct Mid_APInt *self, FILE *out)
+{
+    if (is_bignum_used(self->n_bits)) {
+        bool is_negative = MidAPInt_get_sign_bit(self);
+        if (!is_negative) {
+            log_uint_bignum(self, out);
+        } else if (MidAPInt_is_signed_min(self)) {
+            // we can't negate self without overflowing so we need to
+            // allocate an extra bit
+            assert(self->n_bits < INT32_MAX);
+
+            fputc('-', out);
+
+            auto tmp = MidAPInt_copy(self);
+            MidAPInt_ext(&tmp, self->n_bits + 1, true);
+
+            MidAPInt_negate(&tmp);
+            log_uint_bignum(&tmp, out);
+
+            MidAPInt_deinit(&tmp);
+        } else {
+            // negate the number and print its unsigned version
+            fputc('-', out);
+
+            auto tmp = MidAPInt_copy(self);
+            MidAPInt_negate(&tmp);
+            log_uint_bignum(&tmp, out);
+            MidAPInt_deinit(&tmp);
+        }
+    } else {
+        fprintf(out, "%" MIDAPINT_WORD_SIGNED_FORMAT,
+                sign_ext_word(self->v.val, self->n_bits, MidAPInt_word_n_bits));
+    }
+}
+
 void MidAPInt_log(const struct Mid_APInt *self, FILE *out, bool is_signed)
 {
     if (is_signed)
-        ;
+        log_sint(self, out);
     else
         log_uint(self, out);
 }
@@ -981,9 +1077,15 @@ struct Mid_APInt MidAPInt_nip_sdiv(const struct Mid_APInt *a,
     bool a_neg = MidAPInt_get_sign_bit(a);
     bool b_neg = MidAPInt_get_sign_bit(b);
 
-    if (!a_neg && !b_neg) {
-        // +a / +b = +c
-        return MidAPInt_nip_udiv(a, b);
+    if (a_neg && b_neg) {
+        // -a / -b = +c
+        auto pos_a = MidAPInt_nip_negate(a);
+        auto pos_b = MidAPInt_nip_negate(b);
+        auto res = MidAPInt_nip_udiv(&pos_a, &pos_b);
+
+        MidAPInt_deinit(&pos_a);
+        MidAPInt_deinit(&pos_b);
+        return res;
     } else if (a_neg) {
         // -a / +b = -c
         auto pos_a = MidAPInt_nip_negate(a);
@@ -1001,14 +1103,8 @@ struct Mid_APInt MidAPInt_nip_sdiv(const struct Mid_APInt *a,
         MidAPInt_deinit(&pos_b);
         return res;
     } else {
-        // -a / -b = +c
-        auto pos_a = MidAPInt_nip_negate(a);
-        auto pos_b = MidAPInt_nip_negate(b);
-        auto res = MidAPInt_nip_udiv(&pos_a, &pos_b);
-
-        MidAPInt_deinit(&pos_a);
-        MidAPInt_deinit(&pos_b);
-        return res;
+        // +a / +b = +c
+        return MidAPInt_nip_udiv(a, b);
     }
 }
 
@@ -1095,13 +1191,20 @@ struct Mid_APInt MidAPInt_nip_srem(const struct Mid_APInt *a,
     bool a_neg = MidAPInt_get_sign_bit(a);
     bool b_neg = MidAPInt_get_sign_bit(b);
 
-    if (!a_neg && !b_neg) {
-        // +a % +b = +c
-        return MidAPInt_nip_udiv(a, b);
+    if (a_neg && b_neg) {
+        // -a % -b = -c
+        auto pos_a = MidAPInt_nip_negate(a);
+        auto pos_b = MidAPInt_nip_negate(b);
+        auto res = MidAPInt_nip_urem(&pos_a, &pos_b);
+        MidAPInt_negate(&res);
+
+        MidAPInt_deinit(&pos_a);
+        MidAPInt_deinit(&pos_b);
+        return res;
     } else if (a_neg) {
         // -a % +b = -c
         auto pos_a = MidAPInt_nip_negate(a);
-        auto res = MidAPInt_nip_udiv(&pos_a, b);
+        auto res = MidAPInt_nip_urem(&pos_a, b);
         MidAPInt_negate(&res);
 
         MidAPInt_deinit(&pos_a);
@@ -1109,20 +1212,13 @@ struct Mid_APInt MidAPInt_nip_srem(const struct Mid_APInt *a,
     } else if (b_neg) {
         // +a % -b = +c
         auto pos_b = MidAPInt_nip_negate(b);
-        auto res = MidAPInt_nip_udiv(a, &pos_b);
+        auto res = MidAPInt_nip_urem(a, &pos_b);
 
         MidAPInt_deinit(&pos_b);
         return res;
     } else {
-        // -a % -b = -c
-        auto pos_a = MidAPInt_nip_negate(a);
-        auto pos_b = MidAPInt_nip_negate(b);
-        auto res = MidAPInt_nip_udiv(&pos_a, &pos_b);
-        MidAPInt_negate(&res);
-
-        MidAPInt_deinit(&pos_a);
-        MidAPInt_deinit(&pos_b);
-        return res;
+        // +a % +b = +c
+        return MidAPInt_nip_urem(a, b);
     }
 }
 
@@ -1214,10 +1310,16 @@ void MidAPInt_sdivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
     bool a_neg = MidAPInt_get_sign_bit(a);
     bool b_neg = MidAPInt_get_sign_bit(b);
 
-    if (!a_neg && !b_neg) {
-        // +a / +b = +c
-        // +a % +b = +c
-        MidAPInt_udivrem(a, b, out_quot, out_rem);
+    if (a_neg && b_neg) {
+        // -a / -b = +c
+        // -a % -b = -c
+        auto pos_a = MidAPInt_nip_negate(a);
+        auto pos_b = MidAPInt_nip_negate(b);
+        MidAPInt_udivrem(&pos_a, &pos_b, out_quot, out_rem);
+        MidAPInt_negate(out_rem);
+
+        MidAPInt_deinit(&pos_a);
+        MidAPInt_deinit(&pos_b);
     } else if (a_neg) {
         // -a / +b = -c
         // -a % +b = -c
@@ -1236,16 +1338,9 @@ void MidAPInt_sdivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
 
         MidAPInt_deinit(&pos_b);
     } else {
-        // -a / -b = -c
-        // -a % -b = -c
-        auto pos_a = MidAPInt_nip_negate(a);
-        auto pos_b = MidAPInt_nip_negate(b);
-        MidAPInt_udivrem(&pos_a, &pos_b, out_quot, out_rem);
-        MidAPInt_negate(out_quot);
-        MidAPInt_negate(out_rem);
-
-        MidAPInt_deinit(&pos_a);
-        MidAPInt_deinit(&pos_b);
+        // +a / +b = +c
+        // +a % +b = +c
+        MidAPInt_udivrem(a, b, out_quot, out_rem);
     }
 }
 

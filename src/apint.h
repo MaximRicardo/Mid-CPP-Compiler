@@ -28,7 +28,8 @@ struct Mid_APInt MidAPInt_init_no_limit_check(i32 n_bits, MidAPInt_Word val,
                                               bool is_signed);
 // n_words can be smaller or larger than n_bits, but any extraneous words will
 // be ignored and missing words will be either zero or sign extended to fill the
-// remaining bits
+// remaining bits.
+// the sign is evaluated based on the last bit in the last word of words
 struct Mid_APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words,
                                    i32 n_words, bool sign_ext);
 struct Mid_APInt MidAPInt_zero(i32 n_bits);
@@ -111,6 +112,8 @@ void MidAPInt_sdivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
 
 // comparisons
 bool MidAPInt_is_zero(const struct Mid_APInt *self);
+bool MidAPInt_is_signed_min(const struct Mid_APInt *self);
+bool MidAPInt_is_all_ones(const struct Mid_APInt *self);
 bool MidAPInt_is_pow2(const struct Mid_APInt *self);
 bool MidAPInt_is_eq(const struct Mid_APInt *a, const struct Mid_APInt *b);
 // unsigned comparisons

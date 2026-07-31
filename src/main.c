@@ -1,11 +1,13 @@
 // #include "cgllvm/codegen.h"
 // #include "cgllvm/name_mangle.h"
+#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/tokenize.h"
+#include "macros.h"
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
@@ -183,7 +185,8 @@ static void apint_test()
 static void apint_test()
 {
     struct APInt num = MidAPInt_init_arr(
-        128, (MidAPInt_Word[]){0x123456789aebcdef, 0x123456789aebcdef}, 2, false);
+        128, (MidAPInt_Word[]){0x123456789aebcdef, 0x123456789aebcdef}, 2,
+false);
 
     MidAPInt_log_hex(&num, stdout);
     printf("\nlhs = ");
@@ -191,7 +194,8 @@ static void apint_test()
     putchar('\n');
 
     struct APInt other = MidAPInt_init_arr(
-        128, (MidAPInt_Word[]){0xdeadbeefdeadbeef, 0x00000000deadbeef}, 2, false);
+        128, (MidAPInt_Word[]){0xdeadbeefdeadbeef, 0x00000000deadbeef}, 2,
+false);
 
     printf("rhs = ");
     MidAPInt_log(&other, stdout, false);
@@ -208,15 +212,37 @@ static void apint_test()
 }
 */
 
+static void apint_test()
+{
+    auto a = MidAPInt_init(128, -1128, true);
+    auto b = MidAPInt_init(128, -10, true);
+
+    printf("a = ");
+    MidAPInt_log(&a, stdout, true);
+    putchar('\n');
+
+    printf("b = ");
+    MidAPInt_log(&b, stdout, true);
+    putchar('\n');
+
+    auto c = MidAPInt_nip_sub(&a, &b);
+
+    printf("c = ");
+    MidAPInt_log(&c, stdout, true);
+    putchar('\n');
+
+    MidAPInt_deinit(&a);
+    MidAPInt_deinit(&b);
+    MidAPInt_deinit(&c);
+}
+
 int main(int argc, char **argv)
 {
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
 
-    /*
     apint_test();
     MID_CRASH("asdf");
-    */
 
     MidCMD_init_args(argc, argv);
 
@@ -241,13 +267,14 @@ int main(int argc, char **argv)
     struct MidDiag_DiagVec parser_diags = MidGen_dyninit();
 
     struct MidParser_ASTNode root = {.type = MIDPARSER_ASTNODETYPE_ROOT};
-    struct MidSema_Scope scope = {.type = MIDSEMA_SCOPETYPE_ROOT, .node = &root};
+    struct MidSema_Scope scope = {.type = MIDSEMA_SCOPETYPE_ROOT,
+                                  .node = &root};
 
     for (mid_isize i = 0; lex.toks.arr[i].type != MIDLEXER_TOKENTYPE_END;) {
-        auto node =
-            MidParser_parse_node(lex.toks.arr, i, &i, &root, &scope,
-                              (struct MidParser_ParseNodeFlags){.skip_def = false},
-                              &allocs, &parser_diags);
+        auto node = MidParser_parse_node(
+            lex.toks.arr, i, &i, &root, &scope,
+            (struct MidParser_ParseNodeFlags){.skip_def = false}, &allocs,
+            &parser_diags);
         MidGen_dynpush(&root.root, node);
     }
     if (print_diags(&parser_diags)) {
