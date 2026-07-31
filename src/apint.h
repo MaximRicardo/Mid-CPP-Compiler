@@ -34,8 +34,6 @@ struct Mid_APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words,
                                    i32 n_words, bool sign_ext);
 struct Mid_APInt MidAPInt_zero(i32 n_bits);
 struct Mid_APInt MidAPInt_copy(const struct Mid_APInt *src);
-void MidAPInt_copy_value(struct Mid_APInt *restrict dest,
-                         const struct Mid_APInt *restrict src);
 // changes the width of the APInt. the new width can also be smaller than the
 // old width
 void MidAPInt_ext(struct Mid_APInt *self, i32 new_n_bits, bool sign_ext);
@@ -50,6 +48,7 @@ i32 MidAPInt_n_active_bits(const struct Mid_APInt *self);
 void MidAPInt_mask_extra_bits(struct Mid_APInt *self);
 
 // in place operations
+void MidAPInt_assign(struct Mid_APInt *dest, const struct Mid_APInt *src);
 void MidAPInt_add(struct Mid_APInt *a, const struct Mid_APInt *b);
 void MidAPInt_add_imm(struct Mid_APInt *a, u64 b);
 void MidAPInt_sub(struct Mid_APInt *a, const struct Mid_APInt *b);
@@ -71,9 +70,12 @@ void MidAPInt_ashr(struct Mid_APInt *a, const struct Mid_APInt *b);
 void MidAPInt_ashr_imm(struct Mid_APInt *a, u64 count);
 // lo is inclusive, hi is exclusive
 void MidAPInt_clear_bits(struct Mid_APInt *self, i32 lo, i32 hi);
-// bitwise not
-void MidAPInt_not(struct Mid_APInt *self);
 void MidAPInt_negate(struct Mid_APInt *self);
+// bitwise operations
+void MidAPInt_not(struct Mid_APInt *self);
+void MidAPInt_and(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_or(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_xor(struct Mid_APInt *a, const struct Mid_APInt *b);
 
 // not in place operations
 struct Mid_APInt MidAPInt_nip_add(const struct Mid_APInt *a,
@@ -102,8 +104,14 @@ struct Mid_APInt MidAPInt_nip_lshr_imm(const struct Mid_APInt *a, u64 b);
 struct Mid_APInt MidAPInt_nip_ashr(const struct Mid_APInt *a,
                                    const struct Mid_APInt *b);
 struct Mid_APInt MidAPInt_nip_ashr_imm(const struct Mid_APInt *a, u64 b);
-struct Mid_APInt MidAPInt_nip_not(const struct Mid_APInt *self);
 struct Mid_APInt MidAPInt_nip_negate(const struct Mid_APInt *self);
+struct Mid_APInt MidAPInt_nip_not(const struct Mid_APInt *self);
+struct Mid_APInt MidAPInt_nip_and(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_or(const struct Mid_APInt *a,
+                                 const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_xor(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b);
 
 /*
  * computes the div and rem at the same time for the cost of only one

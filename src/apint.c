@@ -190,10 +190,12 @@ struct Mid_APInt MidAPInt_copy(const struct Mid_APInt *src)
     return dest;
 }
 
-void MidAPInt_copy_value(struct Mid_APInt *restrict dest,
-                         const struct Mid_APInt *restrict src)
+void MidAPInt_assign(struct Mid_APInt *dest, const struct Mid_APInt *src)
 {
     assert(dest->n_bits == src->n_bits);
+
+    if (dest == src)
+        return;
 
     if (is_bignum_used(dest->n_bits)) {
         memcpy(dest->v.words, src->v.words,
@@ -1719,4 +1721,64 @@ void MidAPInt_clear_bits(struct Mid_APInt *self, i32 lo, i32 hi)
     } else {
         self->v.val = clear_word_bits(self->v.val, lo, hi);
     }
+}
+
+void MidAPInt_and(struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    if (is_bignum_used(a->n_bits)) {
+        for (i32 i = 0; i < get_n_words(a->n_bits); ++i)
+            a->v.words[i] &= b->v.words[i];
+    } else {
+        a->v.val &= b->v.val;
+    }
+}
+
+void MidAPInt_or(struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    if (is_bignum_used(a->n_bits)) {
+        for (i32 i = 0; i < get_n_words(a->n_bits); ++i)
+            a->v.words[i] |= b->v.words[i];
+    } else {
+        a->v.val |= b->v.val;
+    }
+}
+
+void MidAPInt_xor(struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    if (is_bignum_used(a->n_bits)) {
+        for (i32 i = 0; i < get_n_words(a->n_bits); ++i)
+            a->v.words[i] ^= b->v.words[i];
+    } else {
+        a->v.val ^= b->v.val;
+    }
+}
+
+struct Mid_APInt MidAPInt_nip_and(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b)
+{
+    auto res = MidAPInt_copy(a);
+    MidAPInt_and(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_or(const struct Mid_APInt *a,
+                                 const struct Mid_APInt *b)
+{
+    auto res = MidAPInt_copy(a);
+    MidAPInt_or(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_xor(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b)
+{
+    auto res = MidAPInt_copy(a);
+    MidAPInt_xor(&res, b);
+    return res;
 }
