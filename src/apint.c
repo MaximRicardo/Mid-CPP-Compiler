@@ -8,7 +8,46 @@
 #include <string.h>
 #include <strings.h>
 
-static int get_active_bits(MidAPInt_Word word)
+static int countl_zero_32(u32 num)
+{
+    if (num == 0)
+        return 32;
+
+    int zeroes = 0;
+    for (u32 shift = 16; shift; shift >>= 1) {
+        auto tmp = num >> shift;
+        if (tmp)
+            num = tmp;
+        else
+            zeroes |= shift;
+    }
+
+    return zeroes;
+}
+
+static int countl_zero_word(MidAPInt_Word num)
+{
+    if (num == 0)
+        return MidAPInt_word_n_bits;
+
+    int zeroes = 0;
+    for (u32 shift = MidAPInt_word_n_bits / 2; shift; shift >>= 1) {
+        auto tmp = num >> shift;
+        if (tmp)
+            num = tmp;
+        else
+            zeroes |= shift;
+    }
+
+    return zeroes;
+}
+
+static int countl_one_word(MidAPInt_Word num)
+{
+    return countl_zero_word(~num);
+}
+
+static int unsigned_sig_bits(MidAPInt_Word word)
 {
     // OPTIM: does the compiler optimize this to __builtin_clz?
 
@@ -441,19 +480,69 @@ void MidAPInt_log_hex(const struct Mid_APInt *self, FILE *out)
     }
 }
 
-i32 MidAPInt_n_active_bits(const struct Mid_APInt *self)
+i32 MidAPInt_unsigned_sig_bits(const struct Mid_APInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         for (i32 i = get_n_words(self->n_bits) - 1; i >= 0; --i) {
             auto word = self->v.words[i];
             if (word != 0)
-                return get_active_bits(word) + i * MidAPInt_word_n_bits;
+                return unsigned_sig_bits(word) + i * MidAPInt_word_n_bits;
         }
 
         return 0;
     } else {
-        return get_active_bits(self->v.val);
+        return unsigned_sig_bits(self->v.val);
     }
+}
+
+static i32 countl_zero(const struct Mid_APInt *self)
+{
+    if (is_bignum_used(self->n_bits)) {
+        auto n_words = get_n_words(self->n_bits);
+
+        i32 zeroes = 0;
+        for (i32 i = n_words - 1; i >= 0; --i) {
+            if (self->v.words[i] != 0) {
+                zeroes += countl_zero_word(self->v.words[i]);
+                return zeroes;
+            }
+
+            zeroes += MidAPInt_word_n_bits;
+        }
+
+        return self->n_bits;
+    } else {
+        return countl_zero_word(self->v.val);
+    }
+}
+
+static i32 countl_one(const struct Mid_APInt *self)
+{
+    if (is_bignum_used(self->n_bits)) {
+        auto n_words = get_n_words(self->n_bits);
+
+        i32 ones = 0;
+        for (i32 i = n_words - 1; i >= 0; --i) {
+            if (self->v.words[i] != MidAPInt_word_max) {
+                ones += countl_one_word(self->v.words[i]);
+                return ones;
+            }
+
+            ones += MidAPInt_word_n_bits;
+        }
+
+        return self->n_bits;
+    } else {
+        return countl_one_word(self->v.val);
+    }
+}
+
+i32 MidAPInt_signed_sig_bits(const struct Mid_APInt *self)
+{
+    i32 n_sign_bits =
+        MidAPInt_is_negative(self) ? countl_one(self) : countl_zero(self);
+
+    return self->n_bits - n_sign_bits + 1;
 }
 
 void MidAPInt_mask_extra_bits(struct Mid_APInt *self)
@@ -825,7 +914,7 @@ void MidAPInt_shl(struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
-    auto b_bits = MidAPInt_n_active_bits(b);
+    auto b_bits = MidAPInt_unsigned_sig_bits(b);
     if (b_bits >= log2(a->n_bits))
         MID_CRASH("shift amount too high");
 
@@ -854,7 +943,7 @@ void MidAPInt_lshr(struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
-    auto b_bits = MidAPInt_n_active_bits(b);
+    auto b_bits = MidAPInt_unsigned_sig_bits(b);
     if (b_bits >= log2(a->n_bits))
         MID_CRASH("shift amount too high");
 
@@ -883,7 +972,7 @@ void MidAPInt_ashr(struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
-    auto b_bits = MidAPInt_n_active_bits(b);
+    auto b_bits = MidAPInt_unsigned_sig_bits(b);
     if (b_bits >= log2(a->n_bits))
         MID_CRASH("shift amount too high");
 
@@ -983,23 +1072,6 @@ struct Mid_APInt MidAPInt_nip_ashr_imm(const struct Mid_APInt *a, u64 b)
     struct Mid_APInt res = MidAPInt_copy(a);
     MidAPInt_ashr_imm(&res, b);
     return res;
-}
-
-static int countl_zero_32(u32 num)
-{
-    if (num == 0)
-        return 32;
-
-    int zeroes = 0;
-    for (u32 shift = 16; shift; shift >>= 1) {
-        auto tmp = num >> shift;
-        if (tmp)
-            num = tmp;
-        else
-            zeroes |= shift;
-    }
-
-    return zeroes;
 }
 
 /*
@@ -1194,8 +1266,8 @@ struct Mid_APInt MidAPInt_nip_udiv(const struct Mid_APInt *a,
             MID_CRASH("division by zero");
         return MidAPInt_init(a->n_bits, a->v.val / b->v.val, false);
     } else {
-        i32 a_words = get_n_words(MidAPInt_n_active_bits(a));
-        i32 b_bits = MidAPInt_n_active_bits(b);
+        i32 a_words = get_n_words(MidAPInt_unsigned_sig_bits(a));
+        i32 b_bits = MidAPInt_unsigned_sig_bits(b);
         i32 b_words = get_n_words(b_bits);
 
         // degenerate cases
@@ -1300,8 +1372,8 @@ struct Mid_APInt MidAPInt_nip_urem(const struct Mid_APInt *a,
             MID_CRASH("remainder by zero");
         return MidAPInt_init(a->n_bits, a->v.val % b->v.val, false);
     } else {
-        i32 a_words = get_n_words(MidAPInt_n_active_bits(a));
-        i32 b_bits = MidAPInt_n_active_bits(b);
+        i32 a_words = get_n_words(MidAPInt_unsigned_sig_bits(a));
+        i32 b_bits = MidAPInt_unsigned_sig_bits(b);
         i32 b_words = get_n_words(b_bits);
 
         // degenerate cases
@@ -1394,8 +1466,8 @@ void MidAPInt_udivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
         goto finish_normal;
     }
 
-    i32 a_words = get_n_words(MidAPInt_n_active_bits(a));
-    i32 b_bits = MidAPInt_n_active_bits(b);
+    i32 a_words = get_n_words(MidAPInt_unsigned_sig_bits(a));
+    i32 b_bits = MidAPInt_unsigned_sig_bits(b);
     i32 b_words = get_n_words(b_bits);
 
     // degenerate cases
@@ -1781,4 +1853,31 @@ struct Mid_APInt MidAPInt_nip_xor(const struct Mid_APInt *a,
     auto res = MidAPInt_copy(a);
     MidAPInt_xor(&res, b);
     return res;
+}
+
+u64 MidAPInt_to_uint(const struct Mid_APInt *self)
+{
+    // make sure the number actually fits
+    assert(MidAPInt_unsigned_sig_bits(self) <= MidAPInt_word_n_bits);
+    if (is_bignum_used(self->n_bits))
+        return self->v.words[0];
+    else
+        return self->v.val;
+}
+
+i64 MidAPInt_to_sint(const struct Mid_APInt *self)
+{
+    // make sure the number actually fits
+    assert(MidAPInt_signed_sig_bits(self) <= MidAPInt_word_n_bits);
+
+    if (is_bignum_used(self->n_bits))
+        return self->v.words[0];
+    else
+        // some bits may be masked so make sure to sign extend
+        return sign_ext_word(self->v.val, self->n_bits, MidAPInt_word_n_bits);
+}
+
+bool MidAPInt_is_negative(const struct Mid_APInt *self)
+{
+    return MidAPInt_get_sign_bit(self);
 }

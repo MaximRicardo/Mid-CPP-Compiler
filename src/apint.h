@@ -42,10 +42,14 @@ bool MidAPInt_get_bit(const struct Mid_APInt *self, i32 n);
 bool MidAPInt_get_sign_bit(const struct Mid_APInt *self);
 void MidAPInt_log(const struct Mid_APInt *self, FILE *out, bool is_signed);
 void MidAPInt_log_hex(const struct Mid_APInt *self, FILE *out);
-// nr of bits required to represent the number in self
-i32 MidAPInt_n_active_bits(const struct Mid_APInt *self);
+// nr of bits required to represent the unsigned number in self
+i32 MidAPInt_unsigned_sig_bits(const struct Mid_APInt *self);
+// nr of bits required to represent the signed number in self
+i32 MidAPInt_signed_sig_bits(const struct Mid_APInt *self);
 // clears any extra bits that are set past self->n_bits
 void MidAPInt_mask_extra_bits(struct Mid_APInt *self);
+u64 MidAPInt_to_uint(const struct Mid_APInt *self);
+i64 MidAPInt_to_sint(const struct Mid_APInt *self);
 
 // in place operations
 void MidAPInt_assign(struct Mid_APInt *dest, const struct Mid_APInt *src);
@@ -127,6 +131,7 @@ void MidAPInt_sdivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
 bool MidAPInt_is_zero(const struct Mid_APInt *self);
 bool MidAPInt_is_signed_min(const struct Mid_APInt *self);
 bool MidAPInt_is_all_ones(const struct Mid_APInt *self);
+bool MidAPInt_is_negative(const struct Mid_APInt *self); // same as get_sign_bit
 bool MidAPInt_is_pow2(const struct Mid_APInt *self);
 bool MidAPInt_is_eq(const struct Mid_APInt *a, const struct Mid_APInt *b);
 // unsigned comparisons

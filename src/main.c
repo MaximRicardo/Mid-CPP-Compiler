@@ -231,6 +231,9 @@ static void apint_test()
     MidAPInt_log(&c, stdout, true);
     putchar('\n');
 
+    printf("a = %" PRIi64 ", b = %" PRIi64 ", c = %" PRIi64 "\n",
+           MidAPInt_to_sint(&a), MidAPInt_to_sint(&b), MidAPInt_to_sint(&c));
+
     MidAPInt_deinit(&a);
     MidAPInt_deinit(&b);
     MidAPInt_deinit(&c);
