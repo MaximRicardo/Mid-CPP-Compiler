@@ -358,6 +358,17 @@ i32 MidAPInt_n_active_bits(const struct Mid_APInt *self)
     }
 }
 
+void MidAPInt_mask_extra_bits(struct Mid_APInt *self)
+{
+    if (is_bignum_used(self->n_bits)) {
+        i32 last = get_n_words(self->n_bits) - 1;
+        self->v.words[last] = mask_extra_bits(
+            self->v.words[last], n_bits_in_last_word(self->n_bits));
+    } else {
+        self->v.val = mask_extra_bits(self->v.val, self->n_bits);
+    }
+}
+
 void MidAPInt_add(struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
@@ -382,6 +393,72 @@ void MidAPInt_add(struct Mid_APInt *a, const struct Mid_APInt *b)
         a->v.val += b->v.val;
         a->v.val = mask_extra_bits(a->v.val, a->n_bits);
     }
+
+    MidAPInt_mask_extra_bits(a);
+}
+
+void MidAPInt_add_imm(struct Mid_APInt *a, u64 b)
+{
+    if (is_bignum_used(a->n_bits)) {
+        a->v.words[0] += b;
+        bool carry = a->v.words[0] < b;
+
+        for (i32 i = 1; i < get_n_words(a->n_bits); ++i) {
+            a->v.words[i] += carry;
+            carry = carry && a->v.words[i] == MidAPInt_word_max;
+        }
+    } else {
+        a->v.val += b;
+        a->v.val = mask_extra_bits(a->v.val, a->n_bits);
+    }
+
+    MidAPInt_mask_extra_bits(a);
+}
+
+void MidAPInt_sub(struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    if (is_bignum_used(a->n_bits)) {
+        bool borrow = false;
+        for (i32 i = 0; i < get_n_words(a->n_bits); ++i) {
+            auto old = a->v.words[i];
+
+            a->v.words[i] -= b->v.words[i];
+
+            // the word might have wrapped around or might be about to wrap
+            // around due to the previous carry
+            bool new_borrow =
+                a->v.words[i] > old || (borrow && a->v.words[i] == 0);
+
+            a->v.words[i] -= borrow;
+
+            borrow = new_borrow;
+        }
+    } else {
+        a->v.val -= b->v.val;
+    }
+
+    MidAPInt_mask_extra_bits(a);
+}
+
+void MidAPInt_sub_imm(struct Mid_APInt *a, u64 b)
+{
+    if (is_bignum_used(a->n_bits)) {
+        auto old = a->v.words[0];
+        a->v.words[0] -= b;
+        bool borrow = old < a->v.words[0];
+
+        for (i32 i = 0; i < get_n_words(a->n_bits); ++i) {
+            a->v.words[i] -= borrow;
+            borrow = borrow && a->v.words[i] == 0;
+        }
+    } else {
+        a->v.val -= b;
+        a->v.val = mask_extra_bits(a->v.val, a->n_bits);
+    }
+
+    MidAPInt_mask_extra_bits(a);
 }
 
 static void shl_bignum_case(struct Mid_APInt *a, i32 count)
@@ -409,6 +486,8 @@ static void shl_bignum_case(struct Mid_APInt *a, i32 count)
 
     // fill the remainder with 0s
     memset(a->v.words, 0, word_shift * sizeof(*a->v.words));
+
+    MidAPInt_mask_extra_bits(a);
 }
 
 static void lshr_bignum_case(struct Mid_APInt *a, i32 count)
@@ -438,11 +517,77 @@ static void lshr_bignum_case(struct Mid_APInt *a, i32 count)
     // fill the remainder with 0s
     memset(&a->v.words[n_words - word_shift], 0,
            word_shift * sizeof(*a->v.words));
+
+    MidAPInt_mask_extra_bits(a);
 }
 
-void MidAPInt_shl(struct Mid_APInt *a, i32 count)
+// guarantees arithmetic right shift even on systems where right shifting
+// a signed integer is still logical
+static u64 shift_arith_right(u64 val, unsigned sh)
 {
-    assert(count >= 0 && count < a->n_bits);
+    u64 mask = (1ULL << 63);
+    u64 result = (val >> sh) | -((val & mask) >> sh);
+    return result;
+}
+
+static void ashr_bignum_case(struct Mid_APInt *a, i32 count)
+{
+    i32 word_shift = count / MidAPInt_word_n_bits;
+    i32 bit_shift = count % MidAPInt_word_n_bits;
+
+    i32 n_words = get_n_words(a->n_bits);
+    i32 words_to_move = n_words - word_shift;
+
+    bool is_neg = MidAPInt_get_sign_bit(a);
+
+    if (words_to_move != 0) {
+        // fill in the last word via sign extension
+        a->v.words[n_words - 1] =
+            sign_ext_word(a->v.words[n_words - 1],
+                          n_bits_in_last_word(a->n_bits), MidAPInt_word_n_bits);
+
+        if (bit_shift == 0) {
+            // shortcut for shifting whole words
+            memmove(a->v.words, &a->v.words[word_shift],
+                    words_to_move * sizeof(*a->v.words));
+        } else {
+            // move the words containing significant bits
+            for (i32 i = 0; i < words_to_move - 1; ++i) {
+                a->v.words[i] = (a->v.words[i + word_shift] >> bit_shift) |
+                                (a->v.words[i + word_shift + 1]
+                                 << (MidAPInt_word_n_bits - bit_shift));
+            }
+
+            // the last word needs to be arithmetic right shifted
+            a->v.words[words_to_move - 1] =
+                shift_arith_right(a->v.words[words_to_move - 1], bit_shift);
+        }
+    }
+
+    // fill the remainder with the sign bit
+    memset(&a->v.words[n_words - word_shift], is_neg ? -1 : 0,
+           word_shift * sizeof(*a->v.words));
+
+    MidAPInt_mask_extra_bits(a);
+}
+
+void MidAPInt_shl(struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    auto b_bits = MidAPInt_n_active_bits(b);
+    if (b_bits >= log2(a->n_bits))
+        MID_CRASH("shift amount too high");
+
+    // the maximum nr of bits is INT32_MAX so the maximum shift amount should
+    // be able to fit in a single word
+    assert(!is_bignum_used(b_bits));
+    MidAPInt_shl_imm(a, b->v.words[0]);
+}
+
+void MidAPInt_shl_imm(struct Mid_APInt *a, u64 count)
+{
+    assert(count < (u64)a->n_bits);
 
     if (count == 0)
         return;
@@ -451,13 +596,27 @@ void MidAPInt_shl(struct Mid_APInt *a, i32 count)
         shl_bignum_case(a, count);
     } else {
         a->v.val <<= count;
-        a->v.val = mask_extra_bits(a->v.val, a->n_bits);
+        MidAPInt_mask_extra_bits(a);
     }
 }
 
-void MidAPInt_lshr(struct Mid_APInt *a, i32 count)
+void MidAPInt_lshr(struct Mid_APInt *a, const struct Mid_APInt *b)
 {
-    assert(count >= 0 && count < a->n_bits);
+    assert(a->n_bits == b->n_bits);
+
+    auto b_bits = MidAPInt_n_active_bits(b);
+    if (b_bits >= log2(a->n_bits))
+        MID_CRASH("shift amount too high");
+
+    // the maximum nr of bits is INT32_MAX so the maximum shift amount should
+    // be able to fit in a single word
+    assert(!is_bignum_used(b_bits));
+    MidAPInt_lshr_imm(a, b->v.words[0]);
+}
+
+void MidAPInt_lshr_imm(struct Mid_APInt *a, u64 count)
+{
+    assert(count < (u64)a->n_bits);
 
     if (count == 0)
         return;
@@ -466,7 +625,114 @@ void MidAPInt_lshr(struct Mid_APInt *a, i32 count)
         lshr_bignum_case(a, count);
     } else {
         a->v.val >>= count;
+        MidAPInt_mask_extra_bits(a);
     }
+}
+
+void MidAPInt_ashr(struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    auto b_bits = MidAPInt_n_active_bits(b);
+    if (b_bits >= log2(a->n_bits))
+        MID_CRASH("shift amount too high");
+
+    // the maximum nr of bits is INT32_MAX so the maximum shift amount should
+    // be able to fit in a single word
+    assert(!is_bignum_used(b_bits));
+    MidAPInt_ashr_imm(a, b->v.words[0]);
+}
+
+void MidAPInt_ashr_imm(struct Mid_APInt *a, u64 count)
+{
+    assert(count < (u64)a->n_bits);
+
+    if (count == 0)
+        return;
+
+    if (is_bignum_used(a->n_bits)) {
+        ashr_bignum_case(a, count);
+    } else {
+        auto full_word =
+            sign_ext_word(a->v.val, a->n_bits, MidAPInt_word_n_bits);
+        a->v.val = shift_arith_right(full_word, count);
+        MidAPInt_mask_extra_bits(a);
+    }
+}
+
+struct Mid_APInt MidAPInt_nip_add(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_add(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_add_imm(const struct Mid_APInt *a, u64 b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_add_imm(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_sub(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_sub(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_sub_imm(const struct Mid_APInt *a, u64 b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_sub_imm(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_shl(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_shl(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_shl_imm(const struct Mid_APInt *a, u64 b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_shl_imm(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_lshr(const struct Mid_APInt *a,
+                                   const struct Mid_APInt *b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_lshr(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_lshr_imm(const struct Mid_APInt *a, u64 b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_lshr_imm(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_ashr(const struct Mid_APInt *a,
+                                   const struct Mid_APInt *b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_ashr(&res, b);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_ashr_imm(const struct Mid_APInt *a, u64 b)
+{
+    struct Mid_APInt res = MidAPInt_copy(a);
+    MidAPInt_ashr_imm(&res, b);
+    return res;
 }
 
 static int countl_zero_32(u32 num)
@@ -709,6 +975,43 @@ struct Mid_APInt MidAPInt_nip_udiv(const struct Mid_APInt *a,
     }
 }
 
+struct Mid_APInt MidAPInt_nip_sdiv(const struct Mid_APInt *a,
+                                   const struct Mid_APInt *b)
+{
+    bool a_neg = MidAPInt_get_sign_bit(a);
+    bool b_neg = MidAPInt_get_sign_bit(b);
+
+    if (!a_neg && !b_neg) {
+        // +a / +b = +c
+        return MidAPInt_nip_udiv(a, b);
+    } else if (a_neg) {
+        // -a / +b = -c
+        auto pos_a = MidAPInt_nip_negate(a);
+        auto res = MidAPInt_nip_udiv(&pos_a, b);
+        MidAPInt_negate(&res);
+
+        MidAPInt_deinit(&pos_a);
+        return res;
+    } else if (b_neg) {
+        // +a / -b = -c
+        auto pos_b = MidAPInt_nip_negate(b);
+        auto res = MidAPInt_nip_udiv(a, &pos_b);
+        MidAPInt_negate(&res);
+
+        MidAPInt_deinit(&pos_b);
+        return res;
+    } else {
+        // -a / -b = +c
+        auto pos_a = MidAPInt_nip_negate(a);
+        auto pos_b = MidAPInt_nip_negate(b);
+        auto res = MidAPInt_nip_udiv(&pos_a, &pos_b);
+
+        MidAPInt_deinit(&pos_a);
+        MidAPInt_deinit(&pos_b);
+        return res;
+    }
+}
+
 void MidAPInt_udiv(struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     auto tmp = MidAPInt_nip_udiv(a, b);
@@ -716,9 +1019,23 @@ void MidAPInt_udiv(struct Mid_APInt *a, const struct Mid_APInt *b)
     *a = tmp;
 }
 
+void MidAPInt_sdiv(struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    auto tmp = MidAPInt_nip_sdiv(a, b);
+    MidAPInt_deinit(a);
+    *a = tmp;
+}
+
 void MidAPInt_urem(struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     auto tmp = MidAPInt_nip_urem(a, b);
+    MidAPInt_deinit(a);
+    *a = tmp;
+}
+
+void MidAPInt_srem(struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    auto tmp = MidAPInt_nip_srem(a, b);
     MidAPInt_deinit(a);
     *a = tmp;
 }
@@ -772,11 +1089,48 @@ struct Mid_APInt MidAPInt_nip_urem(const struct Mid_APInt *a,
     }
 }
 
+struct Mid_APInt MidAPInt_nip_srem(const struct Mid_APInt *a,
+                                   const struct Mid_APInt *b)
+{
+    bool a_neg = MidAPInt_get_sign_bit(a);
+    bool b_neg = MidAPInt_get_sign_bit(b);
+
+    if (!a_neg && !b_neg) {
+        // +a % +b = +c
+        return MidAPInt_nip_udiv(a, b);
+    } else if (a_neg) {
+        // -a % +b = -c
+        auto pos_a = MidAPInt_nip_negate(a);
+        auto res = MidAPInt_nip_udiv(&pos_a, b);
+        MidAPInt_negate(&res);
+
+        MidAPInt_deinit(&pos_a);
+        return res;
+    } else if (b_neg) {
+        // +a % -b = +c
+        auto pos_b = MidAPInt_nip_negate(b);
+        auto res = MidAPInt_nip_udiv(a, &pos_b);
+
+        MidAPInt_deinit(&pos_b);
+        return res;
+    } else {
+        // -a % -b = -c
+        auto pos_a = MidAPInt_nip_negate(a);
+        auto pos_b = MidAPInt_nip_negate(b);
+        auto res = MidAPInt_nip_udiv(&pos_a, &pos_b);
+        MidAPInt_negate(&res);
+
+        MidAPInt_deinit(&pos_a);
+        MidAPInt_deinit(&pos_b);
+        return res;
+    }
+}
+
 void MidAPInt_udivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
                       struct Mid_APInt *out_quot, struct Mid_APInt *out_rem)
 {
-    assert(a->n_bits == b->n_bits);
     assert(out_quot && out_rem);
+    assert(a->n_bits == b->n_bits);
 
     struct Mid_APInt quot;
     struct Mid_APInt rem;
@@ -852,6 +1206,79 @@ finish_cpy_a_to_rem:
     *out_quot = quot;
 
     return;
+}
+
+void MidAPInt_sdivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
+                      struct Mid_APInt *out_quot, struct Mid_APInt *out_rem)
+{
+    bool a_neg = MidAPInt_get_sign_bit(a);
+    bool b_neg = MidAPInt_get_sign_bit(b);
+
+    if (!a_neg && !b_neg) {
+        // +a / +b = +c
+        // +a % +b = +c
+        MidAPInt_udivrem(a, b, out_quot, out_rem);
+    } else if (a_neg) {
+        // -a / +b = -c
+        // -a % +b = -c
+        auto pos_a = MidAPInt_nip_negate(a);
+        MidAPInt_udivrem(&pos_a, b, out_quot, out_rem);
+        MidAPInt_negate(out_quot);
+        MidAPInt_negate(out_rem);
+
+        MidAPInt_deinit(&pos_a);
+    } else if (b_neg) {
+        // +a / -b = -c
+        // +a % -b = +c
+        auto pos_b = MidAPInt_nip_negate(b);
+        MidAPInt_udivrem(a, &pos_b, out_quot, out_rem);
+        MidAPInt_negate(out_quot);
+
+        MidAPInt_deinit(&pos_b);
+    } else {
+        // -a / -b = -c
+        // -a % -b = -c
+        auto pos_a = MidAPInt_nip_negate(a);
+        auto pos_b = MidAPInt_nip_negate(b);
+        MidAPInt_udivrem(&pos_a, &pos_b, out_quot, out_rem);
+        MidAPInt_negate(out_quot);
+        MidAPInt_negate(out_rem);
+
+        MidAPInt_deinit(&pos_a);
+        MidAPInt_deinit(&pos_b);
+    }
+}
+
+void MidAPInt_not(struct Mid_APInt *self)
+{
+    if (is_bignum_used(self->n_bits)) {
+        for (i32 i = 0; i < get_n_words(self->n_bits); ++i)
+            self->v.words[i] = ~self->v.words[i];
+    } else {
+        self->v.val = ~self->v.val;
+    }
+
+    MidAPInt_mask_extra_bits(self);
+}
+
+struct Mid_APInt MidAPInt_nip_not(const struct Mid_APInt *self)
+{
+    auto res = MidAPInt_copy(self);
+    MidAPInt_not(&res);
+    return res;
+}
+
+void MidAPInt_negate(struct Mid_APInt *self)
+{
+    MidAPInt_not(self);
+    MidAPInt_add_imm(self, 1);
+}
+
+struct Mid_APInt MidAPInt_nip_negate(const struct Mid_APInt *self)
+{
+    auto res = MidAPInt_copy(self);
+    MidAPInt_negate(&res);
+    return res;
 }
 
 static bool is_word_pow2(MidAPInt_Word word)

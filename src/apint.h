@@ -45,23 +45,59 @@ void MidAPInt_log(const struct Mid_APInt *self, FILE *out, bool is_signed);
 void MidAPInt_log_hex(const struct Mid_APInt *self, FILE *out);
 // nr of bits required to represent the number in self
 i32 MidAPInt_n_active_bits(const struct Mid_APInt *self);
+// clears any extra bits that are set past self->n_bits
+void MidAPInt_mask_extra_bits(struct Mid_APInt *self);
 
 // in place operations
 void MidAPInt_add(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_add_imm(struct Mid_APInt *a, u64 b);
+void MidAPInt_sub(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_sub_imm(struct Mid_APInt *a, u64 b);
 void MidAPInt_udiv(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_sdiv(struct Mid_APInt *a, const struct Mid_APInt *b);
 void MidAPInt_urem(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_srem(struct Mid_APInt *a, const struct Mid_APInt *b);
 // logical left shift
-void MidAPInt_shl(struct Mid_APInt *a, i32 count);
+void MidAPInt_shl(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_shl_imm(struct Mid_APInt *a, u64 count);
 // logical right shift
-void MidAPInt_lshr(struct Mid_APInt *a, i32 count);
+void MidAPInt_lshr(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_lshr_imm(struct Mid_APInt *a, u64 count);
+// arithmetic right shift
+void MidAPInt_ashr(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_ashr_imm(struct Mid_APInt *a, u64 count);
 // lo is inclusive, hi is exclusive
 void MidAPInt_clear_bits(struct Mid_APInt *self, i32 lo, i32 hi);
+// bitwise not
+void MidAPInt_not(struct Mid_APInt *self);
+void MidAPInt_negate(struct Mid_APInt *self);
 
 // not in place operations
+struct Mid_APInt MidAPInt_nip_add(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_add_imm(const struct Mid_APInt *a, u64 b);
+struct Mid_APInt MidAPInt_nip_sub(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_sub_imm(const struct Mid_APInt *a, u64 b);
 struct Mid_APInt MidAPInt_nip_udiv(const struct Mid_APInt *a,
+                                   const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_sdiv(const struct Mid_APInt *a,
                                    const struct Mid_APInt *b);
 struct Mid_APInt MidAPInt_nip_urem(const struct Mid_APInt *a,
                                    const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_srem(const struct Mid_APInt *a,
+                                   const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_shl(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_shl_imm(const struct Mid_APInt *a, u64 b);
+struct Mid_APInt MidAPInt_nip_lshr(const struct Mid_APInt *a,
+                                   const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_lshr_imm(const struct Mid_APInt *a, u64 b);
+struct Mid_APInt MidAPInt_nip_ashr(const struct Mid_APInt *a,
+                                   const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_ashr_imm(const struct Mid_APInt *a, u64 b);
+struct Mid_APInt MidAPInt_nip_not(const struct Mid_APInt *self);
+struct Mid_APInt MidAPInt_nip_negate(const struct Mid_APInt *self);
 
 /*
  * computes the div and rem at the same time for the cost of only one
@@ -69,6 +105,8 @@ struct Mid_APInt MidAPInt_nip_urem(const struct Mid_APInt *a,
  * BOTH OUTPUTS ARE REQUIRED AND CAN NOT BE NULL!
  */
 void MidAPInt_udivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
+                      struct Mid_APInt *out_quot, struct Mid_APInt *out_rem);
+void MidAPInt_sdivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
                       struct Mid_APInt *out_quot, struct Mid_APInt *out_rem);
 
 // comparisons
