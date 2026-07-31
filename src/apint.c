@@ -557,6 +557,158 @@ void MidAPInt_sub_imm(struct Mid_APInt *a, u64 b)
     MidAPInt_mask_extra_bits(a);
 }
 
+static MidAPInt_Word get_low_half(MidAPInt_Word word)
+{
+    MidAPInt_Word mask = (1ULL << (MidAPInt_word_n_bits / 2)) - 1;
+    return word & mask;
+}
+
+static MidAPInt_Word get_high_half(MidAPInt_Word word)
+{
+    return word >> (MidAPInt_word_n_bits / 2);
+}
+
+// lowkirkenuinelly no idea how this works, look at LLVM's APInt source code
+// for documentation
+static int tc_multiply_part(MidAPInt_Word *dst, MidAPInt_Word *src,
+                            MidAPInt_Word mul, MidAPInt_Word carry,
+                            i32 src_parts, i32 dst_parts, bool add)
+{
+    assert(dst <= src || dst >= src + src_parts);
+    assert(0 <= dst_parts);
+    assert(dst_parts <= src_parts);
+
+    i32 n = MID_MIN(dst_parts, src_parts);
+
+    for (i32 i = 0; i < n; ++i) {
+        MidAPInt_Word src_part = src[i];
+        MidAPInt_Word low, mid, high;
+        if (mul == 0 || src_part == 0) {
+            low = carry;
+            high = 0;
+        } else {
+            low = get_low_half(src_part) * get_low_half(mul);
+            high = get_high_half(src_part) * get_high_half(mul);
+
+            mid = get_low_half(src_part) * get_high_half(mul);
+            high += get_high_half(mid);
+            mid <<= MidAPInt_word_n_bits / 2;
+            if (low + mid < low)
+                ++high;
+            low += mid;
+
+            mid = get_high_half(src_part) * get_low_half(mul);
+            high += get_high_half(mid);
+            mid <<= MidAPInt_word_n_bits / 2;
+            if (low + mid < low)
+                ++high;
+            low += mid;
+
+            // add carry
+            if (low + carry < low)
+                ++high;
+            low += carry;
+        }
+
+        if (add) {
+            if (low + dst[i] < low)
+                ++high;
+            dst[i] += low;
+        } else {
+            dst[i] = low;
+        }
+
+        carry = high;
+    }
+
+    if (src_parts < dst_parts) {
+        // full multiplication, there is no overflow
+        assert(src_parts + 1 == dst_parts);
+        dst[src_parts] = carry;
+        return 0;
+    }
+
+    // we overflowed if there is a carry
+    if (carry)
+        return 1;
+
+    // we would overflow if any significant unwritten parts would be non-zero.
+    // this is true if any remaining src parts are non-zero and the
+    // multiplier is non-zero.
+    if (mul) {
+        for (i32 i = dst_parts; i < src_parts; ++i) {
+            if (src[i])
+                return 1;
+        }
+    }
+
+    // we fit into the narrow destination
+    return 0;
+}
+
+// dst = lhs * rhs, where dst has the same width as the operands.
+// returns one if overflow occurred, otherwise zero.
+// dst can not alias with lhs or rhs
+static int tc_multiply(MidAPInt_Word *restrict dst, MidAPInt_Word *lhs,
+                       MidAPInt_Word *rhs, i32 parts)
+{
+    int overflow = 0;
+
+    for (i32 i = 0; i < parts; ++i) {
+        overflow |=
+            tc_multiply_part(&dst[i], lhs, rhs[i], 0, parts, parts - i, i != 0);
+    }
+
+    return overflow;
+}
+
+struct Mid_APInt MidAPInt_nip_mul(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    if (!is_bignum_used(a->n_bits))
+        return MidAPInt_init_no_limit_check(a->n_bits, a->v.val * b->v.val,
+                                            false);
+
+    auto res = MidAPInt_zero(a->n_bits);
+    tc_multiply(res.v.words, a->v.words, b->v.words, get_n_words(a->n_bits));
+    MidAPInt_mask_extra_bits(&res);
+    return res;
+}
+
+struct Mid_APInt MidAPInt_nip_mul_imm(const struct Mid_APInt *a, u64 b)
+{
+    if (!is_bignum_used(a->n_bits)) {
+        return MidAPInt_init_no_limit_check(a->n_bits, a->v.val * b, false);
+    } else {
+        auto n_words = get_n_words(a->n_bits);
+        auto res = MidAPInt_zero(a->n_bits);
+        tc_multiply_part(res.v.words, a->v.words, b, 0, n_words, n_words,
+                         false);
+        return res;
+    }
+}
+
+void MidAPInt_mul_imm(struct Mid_APInt *a, u64 b)
+{
+    if (!is_bignum_used(a->n_bits)) {
+        a->v.val *= b;
+    } else {
+        auto n_words = get_n_words(a->n_bits);
+        tc_multiply_part(a->v.words, a->v.words, b, 0, n_words, n_words, false);
+    }
+
+    MidAPInt_mask_extra_bits(a);
+}
+
+void MidAPInt_mul(struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    auto tmp = MidAPInt_nip_mul(a, b);
+    MidAPInt_deinit(a);
+    *a = tmp;
+}
+
 static void shl_bignum_case(struct Mid_APInt *a, i32 count)
 {
     i32 word_shift = count / MidAPInt_word_n_bits;

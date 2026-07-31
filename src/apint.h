@@ -54,6 +54,8 @@ void MidAPInt_add(struct Mid_APInt *a, const struct Mid_APInt *b);
 void MidAPInt_add_imm(struct Mid_APInt *a, u64 b);
 void MidAPInt_sub(struct Mid_APInt *a, const struct Mid_APInt *b);
 void MidAPInt_sub_imm(struct Mid_APInt *a, u64 b);
+void MidAPInt_mul(struct Mid_APInt *a, const struct Mid_APInt *b);
+void MidAPInt_mul_imm(struct Mid_APInt *a, u64 b);
 void MidAPInt_udiv(struct Mid_APInt *a, const struct Mid_APInt *b);
 void MidAPInt_sdiv(struct Mid_APInt *a, const struct Mid_APInt *b);
 void MidAPInt_urem(struct Mid_APInt *a, const struct Mid_APInt *b);
@@ -80,6 +82,9 @@ struct Mid_APInt MidAPInt_nip_add_imm(const struct Mid_APInt *a, u64 b);
 struct Mid_APInt MidAPInt_nip_sub(const struct Mid_APInt *a,
                                   const struct Mid_APInt *b);
 struct Mid_APInt MidAPInt_nip_sub_imm(const struct Mid_APInt *a, u64 b);
+struct Mid_APInt MidAPInt_nip_mul(const struct Mid_APInt *a,
+                                  const struct Mid_APInt *b);
+struct Mid_APInt MidAPInt_nip_mul_imm(const struct Mid_APInt *a, u64 b);
 struct Mid_APInt MidAPInt_nip_udiv(const struct Mid_APInt *a,
                                    const struct Mid_APInt *b);
 struct Mid_APInt MidAPInt_nip_sdiv(const struct Mid_APInt *a,

@@ -225,7 +225,7 @@ static void apint_test()
     MidAPInt_log(&b, stdout, true);
     putchar('\n');
 
-    auto c = MidAPInt_nip_sub(&a, &b);
+    auto c = MidAPInt_nip_mul(&a, &b);
 
     printf("c = ");
     MidAPInt_log(&c, stdout, true);
