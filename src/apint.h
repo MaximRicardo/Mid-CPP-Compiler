@@ -73,7 +73,8 @@ void MidAPInt_udivrem(const struct APInt *a, const struct APInt *b,
 bool MidAPInt_is_zero(const struct APInt *self);
 bool MidAPInt_is_pow2(const struct APInt *self);
 bool MidAPInt_is_eq(const struct APInt *a, const struct APInt *b);
-bool MidAPInt_is_gt(const struct APInt *a, const struct APInt *b);
-bool MidAPInt_is_gteq(const struct APInt *a, const struct APInt *b);
-bool MidAPInt_is_lt(const struct APInt *a, const struct APInt *b);
-bool MidAPInt_is_lteq(const struct APInt *a, const struct APInt *b);
+// unsigned comparisons
+bool MidAPInt_is_ugt(const struct APInt *a, const struct APInt *b);
+bool MidAPInt_is_ugteq(const struct APInt *a, const struct APInt *b);
+bool MidAPInt_is_ult(const struct APInt *a, const struct APInt *b);
+bool MidAPInt_is_ulteq(const struct APInt *a, const struct APInt *b);

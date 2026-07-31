@@ -85,7 +85,8 @@ static MidAPInt_Word mask_extra_bits(MidAPInt_Word word, int n_bits)
     }
 }
 
-static MidAPInt_Word sign_ext_word(MidAPInt_Word word, int old_n_bits, int new_n_bits)
+static MidAPInt_Word sign_ext_word(MidAPInt_Word word, int old_n_bits,
+                                   int new_n_bits)
 {
     MidAPInt_Word m = 1ULL << (old_n_bits - 1);
     MidAPInt_Word ret = (word ^ m) - m;
@@ -98,8 +99,8 @@ void MidAPInt_deinit(struct APInt *self)
         free(self->v.words);
 }
 
-struct APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words, i32 n_words,
-                            bool sign_ext)
+struct APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words,
+                               i32 n_words, bool sign_ext)
 {
     assert(n_words > 0);
 
@@ -125,8 +126,8 @@ struct APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words, i32 n_wor
     return ret;
 }
 
-static struct APInt apint_init_impl(i32 n_bits, MidAPInt_Word val, bool is_signed,
-                                    bool limit_check)
+static struct APInt apint_init_impl(i32 n_bits, MidAPInt_Word val,
+                                    bool is_signed, bool limit_check)
 {
     assert(n_bits > 0);
 
@@ -155,7 +156,7 @@ struct APInt MidAPInt_init(i32 n_bits, MidAPInt_Word val, bool is_signed)
 }
 
 struct APInt MidAPInt_init_no_limit_check(i32 n_bits, MidAPInt_Word val,
-                                       bool is_signed)
+                                          bool is_signed)
 {
     return apint_init_impl(n_bits, val, is_signed, false);
 }
@@ -188,7 +189,7 @@ struct APInt MidAPInt_copy(const struct APInt *src)
 }
 
 void MidAPInt_copy_value(struct APInt *restrict dest,
-                      const struct APInt *restrict src)
+                         const struct APInt *restrict src)
 {
     assert(dest->n_bits == src->n_bits);
 
@@ -280,7 +281,7 @@ static void log_uint_bignum(const struct APInt *self, FILE *out)
     char *digits = Mid_malloc(max_dec_digits(self->n_bits) * sizeof(*digits));
 
     mid_isize i = 0;
-    while (MidAPInt_is_gteq(&tmp, &ten)) {
+    while (MidAPInt_is_ugteq(&tmp, &ten)) {
         struct APInt d;
         MidAPInt_udivrem(&tmp, &ten, &tmp, &d);
 
@@ -578,8 +579,9 @@ static void convert_to_u32_digits(const MidAPInt_Word *words, i32 n_words,
 }
 
 // i would like to say i understand any of this but i really dont
-static void bignum_div(const MidAPInt_Word *a, i32 a_n_words, const MidAPInt_Word *b,
-                       i32 b_n_words, MidAPInt_Word *out_quot, MidAPInt_Word *out_rem)
+static void bignum_div(const MidAPInt_Word *a, i32 a_n_words,
+                       const MidAPInt_Word *b, i32 b_n_words,
+                       MidAPInt_Word *out_quot, MidAPInt_Word *out_rem)
 {
     assert(a_n_words >= b_n_words);
 
@@ -688,7 +690,7 @@ struct APInt MidAPInt_nip_udiv(const struct APInt *a, const struct APInt *b)
         if (b_bits == 1)
             // x / 1 = x
             return MidAPInt_copy(a);
-        if (a_words < b_words || MidAPInt_is_lt(a, b))
+        if (a_words < b_words || MidAPInt_is_ult(a, b))
             // x / y = 0 if x < y
             return MidAPInt_zero(a->n_bits);
         if (MidAPInt_is_eq(a, b))
@@ -696,7 +698,8 @@ struct APInt MidAPInt_nip_udiv(const struct APInt *a, const struct APInt *b)
             return MidAPInt_init(a->n_bits, 1, false);
         if (a_words == 1) // b_words must also be 1 in this case cuz it can't
                           // be less
-            return MidAPInt_init(a->n_bits, a->v.words[0] / b->v.words[0], false);
+            return MidAPInt_init(a->n_bits, a->v.words[0] / b->v.words[0],
+                                 false);
 
         struct APInt quot = MidAPInt_zero(a->n_bits);
         bignum_div(a->v.words, a_words, b->v.words, b_words, quot.v.words,
@@ -741,7 +744,7 @@ struct APInt MidAPInt_nip_urem(const struct APInt *a, const struct APInt *b)
         if (b_bits == 1)
             // x % 1 = 0
             return MidAPInt_zero(a->n_bits);
-        if (a_words < b_words || MidAPInt_is_lt(a, b))
+        if (a_words < b_words || MidAPInt_is_ult(a, b))
             // x % y = x if x < y
             return MidAPInt_copy(a);
         if (MidAPInt_is_eq(a, b))
@@ -749,7 +752,8 @@ struct APInt MidAPInt_nip_urem(const struct APInt *a, const struct APInt *b)
             return MidAPInt_zero(a->n_bits);
         if (a_words == 1) // b_words must also be 1 in this case cuz it can't
                           // be greater than a_words
-            return MidAPInt_init(a->n_bits, a->v.words[0] % b->v.words[0], false);
+            return MidAPInt_init(a->n_bits, a->v.words[0] % b->v.words[0],
+                                 false);
         if (MidAPInt_is_pow2(b)) {
             // x % 2^w == x & (2^w - 1)
             // TODO: implement this optimization
@@ -767,7 +771,7 @@ struct APInt MidAPInt_nip_urem(const struct APInt *a, const struct APInt *b)
 }
 
 void MidAPInt_udivrem(const struct APInt *a, const struct APInt *b,
-                   struct APInt *out_quot, struct APInt *out_rem)
+                      struct APInt *out_quot, struct APInt *out_rem)
 {
     assert(a->n_bits == b->n_bits);
     assert(out_quot && out_rem);
@@ -796,11 +800,11 @@ void MidAPInt_udivrem(const struct APInt *a, const struct APInt *b,
     }
     if (b_bits == 1) {
         rem = MidAPInt_zero(a->n_bits); // x % 1 = 0
-        goto finish_cpy_a_to_quot;   // x / 1 = x
+        goto finish_cpy_a_to_quot;      // x / 1 = x
     }
-    if (a_words < b_words || MidAPInt_is_lt(a, b)) {
+    if (a_words < b_words || MidAPInt_is_ult(a, b)) {
         quot = MidAPInt_zero(a->n_bits); // x / y = 0 if x < y
-        goto finish_cpy_a_to_rem;     // x % y = x if x < y
+        goto finish_cpy_a_to_rem;        // x % y = x if x < y
     }
     if (MidAPInt_is_eq(a, b)) {
         quot = MidAPInt_init(a->n_bits, 1, false); // x / x = 1
@@ -896,7 +900,7 @@ bool MidAPInt_is_eq(const struct APInt *a, const struct APInt *b)
     }
 }
 
-bool MidAPInt_is_gt(const struct APInt *a, const struct APInt *b)
+bool MidAPInt_is_ugt(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -919,7 +923,7 @@ bool MidAPInt_is_gt(const struct APInt *a, const struct APInt *b)
     }
 }
 
-bool MidAPInt_is_gteq(const struct APInt *a, const struct APInt *b)
+bool MidAPInt_is_ugteq(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -942,7 +946,7 @@ bool MidAPInt_is_gteq(const struct APInt *a, const struct APInt *b)
     }
 }
 
-bool MidAPInt_is_lt(const struct APInt *a, const struct APInt *b)
+bool MidAPInt_is_ult(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -965,7 +969,7 @@ bool MidAPInt_is_lt(const struct APInt *a, const struct APInt *b)
     }
 }
 
-bool MidAPInt_is_lteq(const struct APInt *a, const struct APInt *b)
+bool MidAPInt_is_ulteq(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -1025,7 +1029,8 @@ void MidAPInt_clear_bits(struct APInt *self, i32 lo, i32 hi)
         i32 start_next = start_base + MidAPInt_Word_n_bits;
 
         i32 start_lo = lo - start_base;
-        i32 start_hi = hi >= start_next ? MidAPInt_Word_n_bits : hi - start_base;
+        i32 start_hi =
+            hi >= start_next ? MidAPInt_Word_n_bits : hi - start_base;
 
         i32 end_lo = lo < end_base ? 0 : lo - end_base;
         i32 end_hi = hi - end_base;
