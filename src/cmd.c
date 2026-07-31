@@ -4,7 +4,7 @@
 #include <string.h>
 
 bool cmd_args_inited = false;
-static struct CMD_Args cmd_args;
+static struct MidCMD_Args cmd_args;
 
 static void print_help_menu(void)
 {
@@ -19,9 +19,9 @@ static void print_help_menu(void)
            "unit\n");
 }
 
-void CMD_init_args(int argc, char **argv)
+void MidCMD_init_args(int argc, char **argv)
 {
-    cmd_args = (struct CMD_Args){};
+    cmd_args = (struct MidCMD_Args){};
 
     bool help = false;
 
@@ -46,7 +46,7 @@ void CMD_init_args(int argc, char **argv)
         print_help_menu();
 }
 
-const struct CMD_Args *CMD_get_args(void)
+const struct MidCMD_Args *MidCMD_get_args(void)
 {
     assert(cmd_args_inited);
     return &cmd_args;

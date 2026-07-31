@@ -17,7 +17,7 @@ typedef int64_t i64;
 typedef uint64_t u64;
 
 // good nuff
-typedef i64 isize_t;
+typedef i64 mid_isize;
 #define PRIisz PRId64
-#define ISIZE_MAX INT64_MAX
-#define ISIZE_MIN INT64_MIN
+#define MID_ISIZE_MAX INT64_MAX
+#define MID_ISIZE_MIN INT64_MIN

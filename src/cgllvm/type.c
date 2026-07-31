@@ -15,160 +15,160 @@
 #include <llvm-c-20/llvm-c/Types.h>
 #include <string.h>
 
-static bool is_ptr(const struct Parser_Type *type, bool ref_is_ptr)
+static bool is_ptr(const struct MidParser_Type *type, bool ref_is_ptr)
 {
-    return Parser_n_indir(type) > 0 ||
+    return MidParser_n_indir(type) > 0 ||
            (ref_is_ptr && (type->lv_ref || type->rv_ref)) ||
-           type->spec == PARSER_TYPESPEC_FPTR ||
-           type->spec == PARSER_TYPESPEC_NULLPTR;
+           type->spec == MIDPARSER_TYPESPEC_FPTR ||
+           type->spec == MIDPARSER_TYPESPEC_NULLPTR;
 }
 
-LLVMTypeRef CGLLVM_convert_parser_type(const struct Parser_Type *type,
+LLVMTypeRef MidLLVM_convert_parser_type(const struct MidParser_Type *type,
                                        LLVMContextRef context, bool ref_is_ptr)
 {
     if (is_ptr(type, ref_is_ptr))
         return LLVMPointerTypeInContext(context, 0);
 
     switch (type->spec) {
-    case PARSER_TYPESPEC_VOID:
+    case MIDPARSER_TYPESPEC_VOID:
         return LLVMVoidTypeInContext(context);
 
-    case PARSER_TYPESPEC_BOOL:
+    case MIDPARSER_TYPESPEC_BOOL:
         return LLVMInt1TypeInContext(context);
 
-    case PARSER_TYPESPEC_CHAR:
-    case PARSER_TYPESPEC_SCHAR:
-    case PARSER_TYPESPEC_UCHAR:
-        return LLVMIntTypeInContext(context, Types_char_size * 8);
+    case MIDPARSER_TYPESPEC_CHAR:
+    case MIDPARSER_TYPESPEC_SCHAR:
+    case MIDPARSER_TYPESPEC_UCHAR:
+        return LLVMIntTypeInContext(context, MidTypes_char_size * 8);
 
-    case PARSER_TYPESPEC_WCHAR:
-        return LLVMIntTypeInContext(context, Types_wchar_size * 8);
+    case MIDPARSER_TYPESPEC_WCHAR:
+        return LLVMIntTypeInContext(context, MidTypes_wchar_size * 8);
 
-    case PARSER_TYPESPEC_CHAR16:
+    case MIDPARSER_TYPESPEC_CHAR16:
         return LLVMIntTypeInContext(context, 16);
 
-    case PARSER_TYPESPEC_CHAR32:
+    case MIDPARSER_TYPESPEC_CHAR32:
         return LLVMIntTypeInContext(context, 32);
 
-    case PARSER_TYPESPEC_SHORT:
-    case PARSER_TYPESPEC_USHORT:
-        return LLVMIntTypeInContext(context, Types_short_size * 8);
+    case MIDPARSER_TYPESPEC_SHORT:
+    case MIDPARSER_TYPESPEC_USHORT:
+        return LLVMIntTypeInContext(context, MidTypes_short_size * 8);
 
-    case PARSER_TYPESPEC_INT:
-    case PARSER_TYPESPEC_UINT:
-        return LLVMIntTypeInContext(context, Types_int_size * 8);
+    case MIDPARSER_TYPESPEC_INT:
+    case MIDPARSER_TYPESPEC_UINT:
+        return LLVMIntTypeInContext(context, MidTypes_int_size * 8);
 
-    case PARSER_TYPESPEC_LONG:
-    case PARSER_TYPESPEC_ULONG:
-        return LLVMIntTypeInContext(context, Types_long_size * 8);
+    case MIDPARSER_TYPESPEC_LONG:
+    case MIDPARSER_TYPESPEC_ULONG:
+        return LLVMIntTypeInContext(context, MidTypes_long_size * 8);
 
-    case PARSER_TYPESPEC_LONGLONG:
-    case PARSER_TYPESPEC_ULONGLONG:
-        return LLVMIntTypeInContext(context, Types_longlong_size * 8);
+    case MIDPARSER_TYPESPEC_LONGLONG:
+    case MIDPARSER_TYPESPEC_ULONGLONG:
+        return LLVMIntTypeInContext(context, MidTypes_longlong_size * 8);
 
-    case PARSER_TYPESPEC_FLOAT:
+    case MIDPARSER_TYPESPEC_FLOAT:
         return LLVMFloatTypeInContext(context);
 
-    case PARSER_TYPESPEC_DOUBLE:
+    case MIDPARSER_TYPESPEC_DOUBLE:
         return LLVMDoubleTypeInContext(context);
 
-    case PARSER_TYPESPEC_LONGDOUBLE:
+    case MIDPARSER_TYPESPEC_LONGDOUBLE:
         return LLVMDoubleTypeInContext(context);
 
-    case PARSER_TYPESPEC_ARRAY:
+    case MIDPARSER_TYPESPEC_ARRAY:
         return LLVMArrayType2(
-            CGLLVM_convert_parser_type(&type->array->elem, context, true),
+            MidLLVM_convert_parser_type(&type->array->elem, context, true),
             type->array->len);
 
-    case PARSER_TYPESPEC_CLASS:
-        return CGLLVM_create_struct(
-            &Sema_deref_identptr(&type->named)->def->class_, context);
+    case MIDPARSER_TYPESPEC_CLASS:
+        return MidLLVM_create_struct(
+            &MidSema_deref_identptr(&type->named)->def->class_, context);
 
     default:
-        CRASH("converting this type is not supported");
+        MID_CRASH("converting this type is not supported");
     }
 }
 
-static void add_scopes_to_str(const struct Sema_Scope *scope,
-                              struct Dynstr *str)
+static void add_scopes_to_str(const struct MidSema_Scope *scope,
+                              struct Mid_Dynstr *str)
 {
     if (!scope->parent) {
         return;
-    } else if (!Sema_is_rnce_scope(scope->type)) {
-        add_scopes_to_str(Sema_closest_rnce_scope_const(scope), str);
+    } else if (!MidSema_is_rnce_scope(scope->type)) {
+        add_scopes_to_str(MidSema_closest_rnce_scope_const(scope), str);
         return;
     }
 
-    auto next = Sema_closest_rnce_scope_const(scope->parent);
+    auto next = MidSema_closest_rnce_scope_const(scope->parent);
     add_scopes_to_str(next, str);
 
-    if (next->type != SEMA_SCOPETYPE_ROOT)
-        Dynstr_append(str, "::");
-    Dynstr_append(str, Sema_scope_name(scope));
+    if (next->type != MIDSEMA_SCOPETYPE_ROOT)
+        MidDynstr_append(str, "::");
+    MidDynstr_append(str, MidSema_scope_name(scope));
 }
 
-static const struct Sema_Scope *get_start_scope(const struct Sema_Ident *ident)
+static const struct MidSema_Scope *get_start_scope(const struct MidSema_Ident *ident)
 {
     switch (ident->type) {
-    case SEMA_IDENTTYPE_CLASS:
-        return Parser_class_parent(&ident->decl->class_);
+    case MIDSEMA_IDENTTYPE_CLASS:
+        return MidParser_class_parent(&ident->decl->class_);
 
-    case SEMA_IDENTTYPE_ENUM:
-        CRASH("enums not supported yet");
+    case MIDSEMA_IDENTTYPE_ENUM:
+        MID_CRASH("enums not supported yet");
 
     default:
-        CRASH("ident type not supported");
+        MID_CRASH("ident type not supported");
     }
 }
 
-char *CGLLVM_named_type_full_name(const struct Sema_IdentPtr *named)
+char *MidLLVM_named_type_full_name(const struct MidSema_IdentPtr *named)
 {
-    struct Dynstr str = {};
+    struct Mid_Dynstr str = {};
 
-    auto ident = Sema_deref_identptr(named);
+    auto ident = MidSema_deref_identptr(named);
     add_scopes_to_str(get_start_scope(ident), &str);
 
-    Dynstr_append_printf(&str, "::%s", ident->name);
+    MidDynstr_append_printf(&str, "::%s", ident->name);
 
     return str.str;
 }
 
-struct CGLLVM_TypeRefVec
-CGLLVM_class_to_struct_fields(const struct Parser_Class *src,
+struct MidLLVM_TypeRefVec
+MidLLVM_class_to_struct_fields(const struct MidParser_Class *src,
                               LLVMContextRef context)
 {
-    struct CGLLVM_TypeRefVec ret = {};
+    struct MidLLVM_TypeRefVec ret = {};
 
-    for (isize_t i = 0; i < src->childs.len; ++i) {
-        const struct Parser_ASTNode *child = src->childs.arr[i];
+    for (mid_isize i = 0; i < src->childs.len; ++i) {
+        const struct MidParser_ASTNode *child = src->childs.arr[i];
 
-        if (child->type != PARSER_ASTNODETYPE_VAR_DECL)
+        if (child->type != MIDPARSER_ASTNODETYPE_VAR_DECL)
             continue;
 
-        for (isize_t j = 0; j < child->var_decl.insts.len; ++j) {
-            const struct Parser_VarDeclInst *inst =
+        for (mid_isize j = 0; j < child->var_decl.insts.len; ++j) {
+            const struct MidParser_VarDeclInst *inst =
                 child->var_decl.insts.arr[j];
-            gen_dynpush(&ret,
-                        CGLLVM_convert_parser_type(&inst->type, context, true));
+            MidGen_dynpush(&ret,
+                        MidLLVM_convert_parser_type(&inst->type, context, true));
         }
     }
 
     return ret;
 }
 
-isize_t CGLLVM_class_field_to_struct_field_idx(const struct Parser_Class *src,
+mid_isize MidLLVM_class_field_to_struct_field_idx(const struct MidParser_Class *src,
                                                const char *name)
 {
-    isize_t ret = 0;
+    mid_isize ret = 0;
 
-    for (isize_t i = 0; i < src->childs.len; ++i) {
-        const struct Parser_ASTNode *child = src->childs.arr[i];
+    for (mid_isize i = 0; i < src->childs.len; ++i) {
+        const struct MidParser_ASTNode *child = src->childs.arr[i];
 
-        if (child->type != PARSER_ASTNODETYPE_VAR_DECL)
+        if (child->type != MIDPARSER_ASTNODETYPE_VAR_DECL)
             continue;
 
-        for (isize_t j = 0; j < child->var_decl.insts.len; ++j) {
-            const struct Parser_VarDeclInst *inst =
+        for (mid_isize j = 0; j < child->var_decl.insts.len; ++j) {
+            const struct MidParser_VarDeclInst *inst =
                 child->var_decl.insts.arr[j];
 
             if (!strcmp(inst->name, name))
@@ -181,13 +181,13 @@ isize_t CGLLVM_class_field_to_struct_field_idx(const struct Parser_Class *src,
     return -1;
 }
 
-LLVMTypeRef CGLLVM_create_struct(const struct Parser_Class *src,
+LLVMTypeRef MidLLVM_create_struct(const struct MidParser_Class *src,
                                  LLVMContextRef context)
 {
-    struct CGLLVM_TypeRefVec fields =
-        CGLLVM_class_to_struct_fields(src, context);
+    struct MidLLVM_TypeRefVec fields =
+        MidLLVM_class_to_struct_fields(src, context);
 
     auto ret = LLVMStructTypeInContext(context, fields.arr, fields.len, false);
-    gen_dyndeinit(&fields);
+    MidGen_dyndeinit(&fields);
     return ret;
 }

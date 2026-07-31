@@ -10,113 +10,113 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 
-struct Parser_TmpltParam;
-gen_dynarray_struct_named(Parser_TmpltParamPVec, struct Parser_TmpltParam *);
+struct MidParser_TmpltParam;
+MidGen_dynarray_struct_named(MidParser_TmpltParamPVec, struct MidParser_TmpltParam *);
 
-enum Parser_TmpltArgType {
-    PARSER_TMPLTARG_NONTYPE,
-    PARSER_TMPLTARG_TYPE,
-    PARSER_TMPLTARG_TMPLT,
+enum MidParser_TmpltArgType {
+    MIDPARSER_TMPLTARG_NONTYPE,
+    MIDPARSER_TMPLTARG_TYPE,
+    MIDPARSER_TMPLTARG_TMPLT,
 };
 
-struct Parser_TmpltArg {
+struct MidParser_TmpltArg {
     union {
-        struct Parser_Expr non_type;
-        struct Parser_Type type;
-        struct Sema_IdentPtr tmplt;
+        struct MidParser_Expr non_type;
+        struct MidParser_Type type;
+        struct MidSema_IdentPtr tmplt;
     };
-    enum Parser_TmpltArgType kind;
+    enum MidParser_TmpltArgType kind;
 };
-gen_dynarray_struct_named(Parser_TmpltArgVec, struct Parser_TmpltArg);
+MidGen_dynarray_struct_named(MidParser_TmpltArgVec, struct MidParser_TmpltArg);
 
-void Parser_TmpltArg_deinit(struct Parser_TmpltArg *self);
-struct Parser_TmpltArg Parser_copy_tmplt_arg(struct Parser_TmpltArg *src);
-struct Parser_TmpltArgVec
-Parser_copy_tmplt_argvec(const struct Parser_TmpltArgVec *src);
+void MidParser_TmpltArg_deinit(struct MidParser_TmpltArg *self);
+struct MidParser_TmpltArg MidParser_copy_tmplt_arg(struct MidParser_TmpltArg *src);
+struct MidParser_TmpltArgVec
+MidParser_copy_tmplt_argvec(const struct MidParser_TmpltArgVec *src);
 
-struct Parser_TmpltInst {
-    struct Parser_TmpltArgVec args;
-    struct Parser_ASTNode *inst;
-    struct Sema_Scope *scope; // the inst node's parent scope, which is a child
+struct MidParser_TmpltInst {
+    struct MidParser_TmpltArgVec args;
+    struct MidParser_ASTNode *inst;
+    struct MidSema_Scope *scope; // the inst node's parent scope, which is a child
                               // of the template scope
 };
-gen_dynarray_struct_named(Parser_TmpltInstVec, struct Parser_TmpltInst);
+MidGen_dynarray_struct_named(MidParser_TmpltInstVec, struct MidParser_TmpltInst);
 
-void Parser_TmpltInst_deinit(struct Parser_TmpltInst *self);
+void MidParser_TmpltInst_deinit(struct MidParser_TmpltInst *self);
 
-struct Parser_Tmplt {
-    struct Parser_TmpltInstVec insts;
-    struct Parser_TmpltParamPVec params;
-    struct Parser_ASTNode *child;
-    struct Sema_Scope *scope;
+struct MidParser_Tmplt {
+    struct MidParser_TmpltInstVec insts;
+    struct MidParser_TmpltParamPVec params;
+    struct MidParser_ASTNode *child;
+    struct MidSema_Scope *scope;
 };
 
-void Parser_Tmplt_deinit(struct Parser_Tmplt *self);
-void Parser_copy_tmplt(struct Parser_Tmplt *dest,
-                       const struct Parser_Tmplt *src,
-                       struct Sema_Scope *dest_scope,
-                       struct Parser_Allocators *allocs);
+void MidParser_Tmplt_deinit(struct MidParser_Tmplt *self);
+void MidParser_copy_tmplt(struct MidParser_Tmplt *dest,
+                       const struct MidParser_Tmplt *src,
+                       struct MidSema_Scope *dest_scope,
+                       struct MidParser_Allocators *allocs);
 
-enum Parser_TmpltParamType {
-    PARSER_TMPLTPARAM_NONTYPE,
-    PARSER_TMPLTPARAM_TYPE,
-    PARSER_TMPLTPARAM_TMPLT,
+enum MidParser_TmpltParamType {
+    MIDPARSER_TMPLTPARAM_NONTYPE,
+    MIDPARSER_TMPLTPARAM_TYPE,
+    MIDPARSER_TMPLTPARAM_TMPLT,
 };
 
-struct Parser_TmpltNonTypeParam {
-    struct Parser_Type type;
+struct MidParser_TmpltNonTypeParam {
+    struct MidParser_Type type;
     const char *name;
-    struct Parser_Expr *def_arg;
+    struct MidParser_Expr *def_arg;
     i32 ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 
-void Parser_TmpltNonTypeParam_deinit(struct Parser_TmpltNonTypeParam *self);
+void MidParser_TmpltNonTypeParam_deinit(struct MidParser_TmpltNonTypeParam *self);
 
-struct Parser_TmpltTypeParam {
+struct MidParser_TmpltTypeParam {
     const char *name;
-    struct Parser_Type *def_arg;
+    struct MidParser_Type *def_arg;
     i32 ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 
-void Parser_TmpltTypeParam_deinit(struct Parser_TmpltTypeParam *self);
+void MidParser_TmpltTypeParam_deinit(struct MidParser_TmpltTypeParam *self);
 
-struct Parser_TmpltTmpltParam {
-    struct Parser_Tmplt *tmplt;
+struct MidParser_TmpltTmpltParam {
+    struct MidParser_Tmplt *tmplt;
     const char *name;
-    struct Sema_IdentPtr def_arg;
+    struct MidSema_IdentPtr def_arg;
     i32 ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 
-void Parser_TmpltTmpltParam_deinit(struct Parser_TmpltTmpltParam *self);
+void MidParser_TmpltTmpltParam_deinit(struct MidParser_TmpltTmpltParam *self);
 
-struct Parser_TmpltParam {
+struct MidParser_TmpltParam {
     // NOTE: THIS UNION NEEDS TO GO FIRST TO ALLOW POINTER CONVERSIONS
     union {
-        struct Parser_TmpltNonTypeParam non_type;
-        struct Parser_TmpltTypeParam type;
-        struct Parser_TmpltTmpltParam tmplt;
+        struct MidParser_TmpltNonTypeParam non_type;
+        struct MidParser_TmpltTypeParam type;
+        struct MidParser_TmpltTmpltParam tmplt;
     };
-    enum Parser_TmpltParamType kind;
+    enum MidParser_TmpltParamType kind;
 };
 
-void Parser_TmpltParam_deinit(struct Parser_TmpltParam *self);
-void Parser_copy_tmplt_param(struct Parser_TmpltParam *dest,
-                             const struct Parser_TmpltParam *src,
-                             struct Parser_Allocators *allocs);
+void MidParser_TmpltParam_deinit(struct MidParser_TmpltParam *self);
+void MidParser_copy_tmplt_param(struct MidParser_TmpltParam *dest,
+                             const struct MidParser_TmpltParam *src,
+                             struct MidParser_Allocators *allocs);
 
-isize_t Parser_parse_tmplt(struct Parser_Tmplt *self, struct Sema_Scope *scope,
-                           const struct Lexer_Token *toks, isize_t start,
-                           struct Parser_Allocators *allocs,
-                           struct DiagVec *diags);
-struct Sema_Ident *Parser_tmplt_ident(const struct Parser_Tmplt *self);
-struct Parser_TmpltArgVec
-Parser_parse_tmplt_args(const struct Lexer_Token *toks, isize_t l_angle,
-                        isize_t *out_r_angle, struct Sema_Scope *scope,
-                        struct Parser_Allocators *allocs,
-                        struct DiagVec *diags);
+mid_isize MidParser_parse_tmplt(struct MidParser_Tmplt *self, struct MidSema_Scope *scope,
+                           const struct MidLexer_Token *toks, mid_isize start,
+                           struct MidParser_Allocators *allocs,
+                           struct MidDiag_DiagVec *diags);
+struct MidSema_Ident *MidParser_tmplt_ident(const struct MidParser_Tmplt *self);
+struct MidParser_TmpltArgVec
+MidParser_parse_tmplt_args(const struct MidLexer_Token *toks, mid_isize l_angle,
+                        mid_isize *out_r_angle, struct MidSema_Scope *scope,
+                        struct MidParser_Allocators *allocs,
+                        struct MidDiag_DiagVec *diags);
 
-isize_t Parser_tmplt_param_idx(const struct Parser_Tmplt *tmplt,
+mid_isize MidParser_tmplt_param_idx(const struct MidParser_Tmplt *tmplt,
                                const char *name);

@@ -23,259 +23,267 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct Sema_Ident *add_ident(struct Parser_VarDeclInst *inst,
-                                    struct Sema_Scope *scope)
+static struct MidSema_Ident *add_ident(struct MidParser_VarDeclInst *inst,
+                                       struct MidSema_Scope *scope)
 {
 
-    return Sema_add_ident(
-        scope, &(struct Sema_Ident){.name = inst->name,
-                                    .decl = PARSER_GET_NODE(inst),
-                                    .def = NULL,
-                                    .type = inst->type.squals.is_typedef
-                                                ? SEMA_IDENTTYPE_TYPEDEF
-                                                : SEMA_IDENTTYPE_VAR});
+    return MidSema_add_ident(
+        scope, &(struct MidSema_Ident){.name = inst->name,
+                                       .decl = MIDPARSER_GET_NODE(inst),
+                                       .def = NULL,
+                                       .type = inst->type.squals.is_typedef
+                                                   ? MIDSEMA_IDENTTYPE_TYPEDEF
+                                                   : MIDSEMA_IDENTTYPE_VAR});
 }
 
-void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self)
+void MidParser_VarDeclInst_deinit(struct MidParser_VarDeclInst *self)
 {
     if (self->has_ctor)
-        gen_dyndeinit(&self->ctor.args, Parser_Expr_deinit);
-    Parser_Type_deinit(&self->type);
+        MidGen_dyndeinit(&self->ctor.args, MidParser_Expr_deinit);
+    MidParser_Type_deinit(&self->type);
 }
 
-void Parser_copy_var_decl_inst(struct Parser_VarDeclInst *dest,
-                               const struct Parser_VarDeclInst *src,
-                               struct Sema_Scope *dest_scope,
-                               struct Parser_Allocators *allocs)
+void MidParser_copy_var_decl_inst(struct MidParser_VarDeclInst *dest,
+                                  const struct MidParser_VarDeclInst *src,
+                                  struct MidSema_Scope *dest_scope,
+                                  struct MidParser_Allocators *allocs)
 {
     *dest = *src;
 
-    dest->type = Parser_copy_type(&src->type);
+    dest->type = MidParser_copy_type(&src->type);
 
     if (src->has_ctor) {
-        dest->ctor.args = (struct Parser_ExprVec){};
-        gen_dynreserve(&dest->ctor.args, src->ctor.args.len);
-        for (isize_t i = 0; i < src->ctor.args.len; ++i) {
-            gen_dynpush(&dest->ctor.args,
-                        Parser_copy_expr(&src->ctor.args.arr[i]));
+        dest->ctor.args = (struct MidParser_ExprVec){};
+        MidGen_dynreserve(&dest->ctor.args, src->ctor.args.len);
+        for (mid_isize i = 0; i < src->ctor.args.len; ++i) {
+            MidGen_dynpush(&dest->ctor.args,
+                        MidParser_copy_expr(&src->ctor.args.arr[i]));
         }
     } else {
         if (src->init.expr) {
-            gen_bumpmalloc(&allocs->expr, &dest->init.expr);
-            *dest->init.expr = Parser_copy_expr(src->init.expr);
+            MidGen_bumpmalloc(&allocs->expr, &dest->init.expr);
+            *dest->init.expr = MidParser_copy_expr(src->init.expr);
         }
     }
 
     add_ident(dest, dest_scope);
 }
 
-void Parser_VarDecl_deinit(struct Parser_VarDecl *self)
+void MidParser_VarDecl_deinit(struct MidParser_VarDecl *self)
 {
-    gen_dyndeinit(&self->insts);
+    MidGen_dyndeinit(&self->insts);
 }
 
-void Parser_copy_var_decl(struct Parser_VarDecl *dest,
-                          const struct Parser_VarDecl *src,
-                          struct Sema_Scope *dest_scope,
-                          struct Parser_Allocators *allocs)
+void MidParser_copy_var_decl(struct MidParser_VarDecl *dest,
+                             const struct MidParser_VarDecl *src,
+                             struct MidSema_Scope *dest_scope,
+                             struct MidParser_Allocators *allocs)
 {
-    *dest = (struct Parser_VarDecl){};
+    *dest = (struct MidParser_VarDecl){};
 
-    auto inst_nodes =
-        Parser_copy_nodepvec((const struct Parser_ASTNodePVec *)&src->insts,
-                             PARSER_GET_NODE(dest), dest_scope, allocs);
-    dest->insts = (struct Parser_VarDeclInstPVec){.arr = (void *)inst_nodes.arr,
-                                                  .len = inst_nodes.len,
-                                                  .cap = inst_nodes.cap};
+    auto inst_nodes = MidParser_copy_nodepvec(
+        (const struct MidParser_ASTNodePVec *)&src->insts,
+        MIDPARSER_GET_NODE(dest), dest_scope, allocs);
+    dest->insts =
+        (struct MidParser_VarDeclInstPVec){.arr = (void *)inst_nodes.arr,
+                                           .len = inst_nodes.len,
+                                           .cap = inst_nodes.cap};
 }
 
-static void resolve_auto(struct Parser_VarDeclInst *inst)
+static void resolve_auto(struct MidParser_VarDeclInst *inst)
 {
     assert(inst->init.expr);
-    assert(inst->type.spec == PARSER_TYPESPEC_AUTO);
-    assert(Parser_n_indir(&inst->type) == 0); // "auto *" not supported yet
+    assert(inst->type.spec == MIDPARSER_TYPESPEC_AUTO);
+    assert(MidParser_n_indir(&inst->type) == 0); // "auto *" not supported yet
 
     auto init_type = &inst->init.expr->ret;
 
     inst->type.spec = init_type->spec;
-    if (init_type->spec == PARSER_TYPESPEC_FPTR) {
-        inst->type.fptr = mid_malloc(sizeof(*inst->type.fptr));
-        *inst->type.fptr = Parser_copy_fptr_type(init_type->fptr);
-    } else if (init_type->spec == PARSER_TYPESPEC_ARRAY) {
-        inst->type.array = mid_malloc(sizeof(*inst->type.array));
-        *inst->type.array = Parser_copy_array_type(init_type->array);
-    } else if (Parser_is_typespec_named(init_type->spec)) {
+    if (init_type->spec == MIDPARSER_TYPESPEC_FPTR) {
+        inst->type.fptr = Mid_malloc(sizeof(*inst->type.fptr));
+        *inst->type.fptr = MidParser_copy_fptr_type(init_type->fptr);
+    } else if (init_type->spec == MIDPARSER_TYPESPEC_ARRAY) {
+        inst->type.array = Mid_malloc(sizeof(*inst->type.array));
+        *inst->type.array = MidParser_copy_array_type(init_type->array);
+    } else if (MidParser_is_typespec_named(init_type->spec)) {
         inst->type.named = init_type->named;
     }
 
     // the top most CV qualifier is discarded
-    for (isize_t i = 1; i <= Parser_n_indir(init_type); ++i) {
-        gen_dynpush(&inst->type.dquals, init_type->dquals.arr[i]);
+    for (mid_isize i = 1; i <= MidParser_n_indir(init_type); ++i) {
+        MidGen_dynpush(&inst->type.dquals, init_type->dquals.arr[i]);
     }
 }
 
-isize_t Parser_parse_var_decl_inst_def(
-    const struct Lexer_Token *toks, const enum Lexer_TokenType *end_types,
-    isize_t n_end_types, struct Parser_VarDeclInst *inst, bool expr_prealloced,
-    struct Sema_Scope *scope, struct Parser_Allocators *allocs,
-    struct DiagVec *diags)
+mid_isize MidParser_parse_var_decl_inst_def(
+    const struct MidLexer_Token *toks, const enum MidLexer_TokenType *end_types,
+    mid_isize n_end_types, struct MidParser_VarDeclInst *inst,
+    bool expr_prealloced, struct MidSema_Scope *scope,
+    struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags)
 {
     if (!inst->init.start)
         return -1;
 
     if (!expr_prealloced)
-        gen_bumpmalloc(&allocs->expr, &inst->init.expr);
+        MidGen_bumpmalloc(&allocs->expr, &inst->init.expr);
 
-    isize_t start = inst->init.start - toks;
-    isize_t end;
-    *inst->init.expr = Parser_parse_expr(toks, start, end_types, n_end_types,
-                                         &end, scope, diags);
+    mid_isize start = inst->init.start - toks;
+    mid_isize end;
+    *inst->init.expr = MidParser_parse_expr(toks, start, end_types, n_end_types,
+                                            &end, scope, diags);
 
-    if (inst->type.spec == PARSER_TYPESPEC_AUTO)
+    if (inst->type.spec == MIDPARSER_TYPESPEC_AUTO)
         resolve_auto(inst);
 
     return end;
 }
 
-void Parser_parse_var_decl_def(const struct Lexer_Token *toks,
-                               const enum Lexer_TokenType *end_types,
-                               isize_t n_end_types, struct Parser_VarDecl *decl,
-                               bool exprs_prealloced, struct Sema_Scope *scope,
-                               struct Parser_Allocators *allocs,
-                               struct DiagVec *diags)
+void MidParser_parse_var_decl_def(
+    const struct MidLexer_Token *toks, const enum MidLexer_TokenType *end_types,
+    mid_isize n_end_types, struct MidParser_VarDecl *decl, bool exprs_prealloced,
+    struct MidSema_Scope *scope, struct MidParser_Allocators *allocs,
+    struct MidDiag_DiagVec *diags)
 {
-    for (isize_t i = 0; i < decl->insts.len; ++i) {
+    for (mid_isize i = 0; i < decl->insts.len; ++i) {
         auto inst = decl->insts.arr[i];
-        Parser_parse_var_decl_inst_def(toks, end_types, n_end_types, inst,
-                                       exprs_prealloced, scope, allocs, diags);
+        MidParser_parse_var_decl_inst_def(toks, end_types, n_end_types, inst,
+                                          exprs_prealloced, scope, allocs,
+                                          diags);
     }
 }
 
-static struct Diag uninited_deduced_type_err(const char *name, const char *type,
-                                             const struct Lexer_Token *tok)
+static struct MidDiag_Diag
+uninited_deduced_type_err(const char *name, const char *type,
+                          const struct MidLexer_Token *tok)
 {
-    return (struct Diag){
+    return (struct MidDiag_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = Print_fmt_to_str(
+        .msg = MidPrint_fmt_to_str(
             "declaration of '%s' as a deduced type '%s' needs an initializer",
             name, type),
-        .err = ERRORTYPE_BAD_VAR_DECLARATION,
-        .type = DIAGTYPE_ERROR,
+        .err = MIDDIAG_ERR_BAD_VAR_DECLARATION,
+        .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-static bool valid_name_idx(isize_t idx, const struct Lexer_Token *toks)
+static bool valid_name_idx(mid_isize idx, const struct MidLexer_Token *toks)
 {
-    return idx != -1 && toks[idx].type == LEXER_TOKENTYPE_IDENTIFIER;
+    return idx != -1 && toks[idx].type == MIDLEXER_TOKENTYPE_IDENTIFIER;
 }
 
-static isize_t parse_inst_ctor(const struct Lexer_Token *toks, isize_t lparen,
-                               struct Parser_VarDeclInst *inst,
-                               struct Sema_Scope *scope, struct DiagVec *diags)
+static mid_isize parse_inst_ctor(const struct MidLexer_Token *toks,
+                               mid_isize lparen,
+                               struct MidParser_VarDeclInst *inst,
+                               struct MidSema_Scope *scope,
+                               struct MidDiag_DiagVec *diags)
 {
-    isize_t rparen = Parser_find_twin_paren(toks, lparen, ISIZE_MAX);
+    mid_isize rparen = MidParser_find_twin_paren(toks, lparen, MID_ISIZE_MAX);
     if (rparen == -1) {
-        gen_dynpush(diags, Diag_expected_token_err("')'", &toks[lparen],
-                                                   ERRORTYPE_MISSING_PAREN));
+        MidGen_dynpush(diags,
+                    MidDiag_expected_token_err("')'", &toks[lparen],
+                                               MIDDIAG_ERR_MISSING_PAREN));
         rparen = lparen;
     }
 
-    for (isize_t i = lparen + 1; i < rparen; ++i) {
-        auto arg =
-            Parser_parse_expr(toks, i, PARSER_ARG_ENDTYPES, &i, scope, diags);
-        gen_dynpush(&inst->ctor.args, arg);
+    for (mid_isize i = lparen + 1; i < rparen; ++i) {
+        auto arg = MidParser_parse_expr(toks, i, MIDPARSER_ARG_ENDTYPES, &i,
+                                        scope, diags);
+        MidGen_dynpush(&inst->ctor.args, arg);
 
-        if (toks[i].type != LEXER_TOKENTYPE_R_PAREN &&
-            toks[i].type != LEXER_TOKENTYPE_COMMA) {
-            gen_dynpush(diags,
-                        Diag_expected_token_err("','", &toks[lparen],
-                                                ERRORTYPE_MISSING_PAREN));
+        if (toks[i].type != MIDLEXER_TOKENTYPE_R_PAREN &&
+            toks[i].type != MIDLEXER_TOKENTYPE_COMMA) {
+            MidGen_dynpush(diags,
+                        MidDiag_expected_token_err("','", &toks[lparen],
+                                                   MIDDIAG_ERR_MISSING_PAREN));
         }
     }
 
     return rparen + 1;
 }
 
-static isize_t parse_inst_init(const struct Lexer_Token *toks, isize_t start,
-                               const enum Lexer_TokenType *end_types,
-                               isize_t n_end_types,
-                               struct Parser_VarDeclInst *inst, bool skip_init,
-                               struct Sema_Scope *scope,
-                               struct Parser_Allocators *allocs,
-                               struct DiagVec *diags)
+static mid_isize parse_inst_init(const struct MidLexer_Token *toks, mid_isize start,
+                               const enum MidLexer_TokenType *end_types,
+                               mid_isize n_end_types,
+                               struct MidParser_VarDeclInst *inst,
+                               bool skip_init, struct MidSema_Scope *scope,
+                               struct MidParser_Allocators *allocs,
+                               struct MidDiag_DiagVec *diags)
 {
     inst->init.start = &toks[start];
     if (skip_init) {
-        return Parser_skip_expr(toks, start, end_types, n_end_types, NULL);
+        return MidParser_skip_expr(toks, start, end_types, n_end_types, NULL);
     }
-    return Parser_parse_var_decl_inst_def(toks, end_types, n_end_types, inst,
-                                          false, scope, allocs, diags);
+    return MidParser_parse_var_decl_inst_def(toks, end_types, n_end_types, inst,
+                                             false, scope, allocs, diags);
 }
 
-static struct Diag void_var_err(const char *name, const struct Lexer_Token *tok,
-                                enum ErrorType type)
+static struct MidDiag_Diag void_var_err(const char *name,
+                                        const struct MidLexer_Token *tok,
+                                        enum MidDiag_ErrT type)
 {
-    return (struct Diag){
+    return (struct MidDiag_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = Print_fmt_to_str("'%s' has incomplete type 'void'", name),
+        .msg = MidPrint_fmt_to_str("'%s' has incomplete type 'void'", name),
         .err = type,
-        .type = DIAGTYPE_ERROR,
+        .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-isize_t Parser_parse_var_decl_inst(
-    struct Parser_VarDeclInst *self, const struct Lexer_Token *toks,
-    isize_t start, const enum Lexer_TokenType *end_types, isize_t n_end_types,
-    const struct Parser_Type *base, struct Sema_Scope *parent_scope,
-    struct Parser_ParseVarDeclFlags flags, struct Parser_Allocators *allocs,
-    struct DiagVec *diags)
+mid_isize MidParser_parse_var_decl_inst(
+    struct MidParser_VarDeclInst *self, const struct MidLexer_Token *toks,
+    mid_isize start, const enum MidLexer_TokenType *end_types,
+    mid_isize n_end_types, const struct MidParser_Type *base,
+    struct MidSema_Scope *parent_scope,
+    struct MidParser_ParseVarDeclFlags flags,
+    struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags)
 {
-    *self = (struct Parser_VarDeclInst){};
+    *self = (struct MidParser_VarDeclInst){};
 
-    isize_t type_end;
-    isize_t name;
+    mid_isize type_end;
+    mid_isize name;
     self->type =
-        Parser_parse_type_no_base(toks, start, &type_end, base, parent_scope,
-                                  &name, false, allocs, diags);
+        MidParser_parse_type_no_base(toks, start, &type_end, base, parent_scope,
+                                     &name, false, allocs, diags);
 
     auto res = name == -1 ? parent_scope
-                          : Parser_parse_scope_res(toks, name, &name,
-                                                   parent_scope, diags);
+                          : MidParser_parse_scope_res(toks, name, &name,
+                                                      parent_scope, diags);
     self->name = valid_name_idx(name, toks) ? toks[name].ident : NULL;
-    if (Parser_type_is_void(&self->type) && self->name)
-        gen_dynpush(diags, void_var_err(self->name, &toks[start],
-                                        ERRORTYPE_BAD_VAR_DECLARATION));
+    if (MidParser_type_is_void(&self->type) && self->name)
+        MidGen_dynpush(diags, void_var_err(self->name, &toks[start],
+                                        MIDDIAG_ERR_BAD_VAR_DECLARATION));
 
     if (self->name && flags.add_to_scope && add_ident(self, res))
-        gen_dynpush(diags, Diag_ident_redefined_err(self->name, &toks[start],
-                                                    ERRORTYPE_BAD_IDENTIFIER));
+        MidGen_dynpush(diags,
+                    MidDiag_ident_redefined_err(self->name, &toks[start],
+                                                MIDDIAG_ERR_BAD_IDENTIFIER));
 
-    isize_t assign_idx = type_end;
-    self->has_ctor = toks[assign_idx].type == LEXER_TOKENTYPE_L_PAREN;
-    bool has_init = toks[assign_idx].type == LEXER_TOKENTYPE_ASSIGN;
+    mid_isize assign_idx = type_end;
+    self->has_ctor = toks[assign_idx].type == MIDLEXER_TOKENTYPE_L_PAREN;
+    bool has_init = toks[assign_idx].type == MIDLEXER_TOKENTYPE_ASSIGN;
 
-    isize_t ret = type_end;
+    mid_isize ret = type_end;
     if (self->has_ctor) {
         ret = parse_inst_ctor(toks, assign_idx, self, res, diags);
     } else if (has_init) {
         ret = parse_inst_init(toks, assign_idx + 1, end_types, n_end_types,
                               self, flags.skip_init, res, allocs, diags);
-    } else if (self->type.spec == PARSER_TYPESPEC_AUTO) {
-        gen_dynpush(
+    } else if (self->type.spec == MIDPARSER_TYPESPEC_AUTO) {
+        MidGen_dynpush(
             diags, uninited_deduced_type_err(self->name, "auto", &toks[start]));
     }
 
-    Sema_typecheck_var_decl_inst(self, diags);
+    MidSema_typecheck_var_decl_inst(self, diags);
 
     return ret;
 }
 
-static bool is_end_type(const enum Lexer_TokenType *end_types, isize_t n,
-                        enum Lexer_TokenType type)
+static bool is_end_type(const enum MidLexer_TokenType *end_types, mid_isize n,
+                        enum MidLexer_TokenType type)
 {
-    for (isize_t i = 0; i < n; ++i) {
+    for (mid_isize i = 0; i < n; ++i) {
         if (end_types[i] == type)
             return true;
     }
@@ -283,30 +291,30 @@ static bool is_end_type(const enum Lexer_TokenType *end_types, isize_t n,
     return false;
 }
 
-isize_t Parser_parse_var_decl_inst_list(
-    const struct Lexer_Token *toks, isize_t start,
-    const enum Lexer_TokenType *end_types, isize_t n_end_types,
-    const struct Parser_Type *base, struct Parser_VarDeclInstPVec *insts,
-    struct Parser_VarDecl *decl, struct Sema_Scope *parent_scope,
-    struct Parser_ParseVarDeclFlags flags, struct Parser_Allocators *allocs,
-    struct DiagVec *diags)
+mid_isize MidParser_parse_var_decl_inst_list(
+    const struct MidLexer_Token *toks, mid_isize start,
+    const enum MidLexer_TokenType *end_types, mid_isize n_end_types,
+    const struct MidParser_Type *base, struct MidParser_VarDeclInstPVec *insts,
+    struct MidParser_VarDecl *decl, struct MidSema_Scope *parent_scope,
+    struct MidParser_ParseVarDeclFlags flags,
+    struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags)
 {
-    isize_t i = start;
+    mid_isize i = start;
     do {
-        struct Parser_VarDeclInst *inst;
-        gen_bumpmalloc(&allocs->ast, (void **)&inst);
+        struct MidParser_VarDeclInst *inst;
+        MidGen_bumpmalloc(&allocs->ast, (void **)&inst);
 
-        PARSER_GET_PARENT(inst) = PARSER_GET_NODE(decl);
-        PARSER_GET_START(inst) = &toks[i];
-        PARSER_GET_TYPE(inst) = PARSER_ASTNODETYPE_VAR_DECL_INST;
+        MIDPARSER_GET_PARENT(inst) = MIDPARSER_GET_NODE(decl);
+        MIDPARSER_GET_START(inst) = &toks[i];
+        MIDPARSER_GET_TYPE(inst) = MIDPARSER_ASTNODETYPE_VAR_DECL_INST;
 
-        i = Parser_parse_var_decl_inst(inst, toks, i, end_types, n_end_types,
-                                       base, parent_scope, flags, allocs,
-                                       diags);
+        i = MidParser_parse_var_decl_inst(inst, toks, i, end_types, n_end_types,
+                                          base, parent_scope, flags, allocs,
+                                          diags);
 
-        gen_dynpush(insts, inst);
+        MidGen_dynpush(insts, inst);
 
-        if (flags.single_inst || toks[i].type != LEXER_TOKENTYPE_COMMA)
+        if (flags.single_inst || toks[i].type != MIDLEXER_TOKENTYPE_COMMA)
             break;
         ++i;
     } while (!is_end_type(end_types, n_end_types, toks[i].type));
@@ -314,28 +322,30 @@ isize_t Parser_parse_var_decl_inst_list(
     return i;
 }
 
-isize_t Parser_parse_var_decl(
-    struct Parser_VarDecl *self, const struct Lexer_Token *toks, isize_t start,
-    const enum Lexer_TokenType *end_types, isize_t n_end_types,
-    struct Parser_ParseVarDeclFlags flags, struct Sema_Scope *parent_scope,
-    struct Parser_Allocators *allocs, struct DiagVec *diags)
+mid_isize MidParser_parse_var_decl(
+    struct MidParser_VarDecl *self, const struct MidLexer_Token *toks,
+    mid_isize start, const enum MidLexer_TokenType *end_types,
+    mid_isize n_end_types, struct MidParser_ParseVarDeclFlags flags,
+    struct MidSema_Scope *parent_scope, struct MidParser_Allocators *allocs,
+    struct MidDiag_DiagVec *diags)
 {
-    isize_t base_end;
-    auto base =
-        Parser_parse_base(toks, start, &base_end, parent_scope, allocs, diags);
+    mid_isize base_end;
+    auto base = MidParser_parse_base(toks, start, &base_end, parent_scope,
+                                     allocs, diags);
 
-    isize_t end = Parser_parse_var_decl_inst_list(
+    mid_isize end = MidParser_parse_var_decl_inst_list(
         toks, base_end, end_types, n_end_types, &base, &self->insts, self,
         parent_scope, flags, allocs, diags);
 
-    Parser_Type_deinit(&base);
+    MidParser_Type_deinit(&base);
     return end;
 }
 
-struct Parser_VarDeclInst *
-Parser_decl_inst_of_name(const struct Parser_VarDecl *decl, const char *name)
+struct MidParser_VarDeclInst *
+MidParser_decl_inst_of_name(const struct MidParser_VarDecl *decl,
+                            const char *name)
 {
-    for (isize_t i = 0; i < decl->insts.len; ++i) {
+    for (mid_isize i = 0; i < decl->insts.len; ++i) {
         if (!strcmp(decl->insts.arr[i]->name, name))
             return decl->insts.arr[i];
     }

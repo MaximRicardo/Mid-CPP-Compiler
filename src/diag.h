@@ -3,108 +3,108 @@
 #include "generics/dynarray.h"
 #include "position.h"
 
-enum ErrorType {
-    ERRORTYPE_UNKNOWN_SYMBOL,
-    ERRORTYPE_MISSING_PAREN,
-    ERRORTYPE_MISSING_SQBRACKET,
-    ERRORTYPE_MISSING_ANGLE,
-    ERRORTYPE_MISSING_CURLY,
-    ERRORTYPE_MISSING_IDENTIFIER,
-    ERRORTYPE_MISSING_TOKEN,
-    ERRORTYPE_MISSING_TYPESPEC,
-    ERRORTYPE_MISSING_SEMICOLON,
-    ERRORTYPE_MISSING_QUOTE,
-    ERRORTYPE_MISSING_COMMA,
-    ERRORTYPE_INSUFFICIENT_OPERANDS,
-    ERRORTYPE_TYPE_UNSIGNABLE,
-    ERRORTYPE_PTR_TO_REF,
-    ERRORTYPE_MISPLACED_QUALIFIER,
-    ERRORTYPE_TYPE_ALREADY_REF,
-    ERRORTYPE_UNEXPECTED_TOKEN,
-    ERRORTYPE_TYPEDEF_MISSING_NAME,
-    ERRORTYPE_UNDECLARED_IDENTIFIER,
-    ERRORTYPE_UNDECLARED_FUNCTION,
-    ERRORTYPE_BAD_IDENTIFIER,
-    ERRORTYPE_BAD_ARRAY_SUBSCRIPT,
-    ERRORTYPE_BAD_ASSIGNMENT,
-    ERRORTYPE_BAD_DEREF,
-    ERRORTYPE_BAD_REF,
-    ERRORTYPE_BAD_CONDITIONAL,
-    ERRORTYPE_BAD_ARITHMETIC_OP,
-    ERRORTYPE_BAD_LOGICAL_OP,
-    ERRORTYPE_BAD_COMPARISON_OP,
-    ERRORTYPE_BAD_OP_OVERLOAD,
-    ERRORTYPE_BAD_SUPERCLASS,
-    ERRORTYPE_BAD_VAR_DECLARATION,
-    ERRORTYPE_BAD_DEFAULT_ARGUMENT,
-    ERRORTYPE_BAD_LITERAL,
-    ERRORTYPE_BAD_MEMB_SEL,
-    ERRORTYPE_BAD_RETURN_STMT_TYPE,
-    ERRORTYPE_RETURN_OUTSIDE_FUNC,
-    ERRORTYPE_BAD_THIS_USAGE,
-    ERRORTYPE_NO_MATCHING_CTOR,
-    ERRORTYPE_BAD_TYPE,
-    ERRORTYPE_BAD_TEMPLATE,
+enum MidDiag_ErrT {
+    MIDDIAG_ERR_UNKNOWN_SYMBOL,
+    MIDDIAG_ERR_MISSING_PAREN,
+    MIDDIAG_ERR_MISSING_SQBRACKET,
+    MIDDIAG_ERR_MISSING_ANGLE,
+    MIDDIAG_ERR_MISSING_CURLY,
+    MIDDIAG_ERR_MISSING_IDENTIFIER,
+    MIDDIAG_ERR_MISSING_TOKEN,
+    MIDDIAG_ERR_MISSING_TYPESPEC,
+    MIDDIAG_ERR_MISSING_SEMICOLON,
+    MIDDIAG_ERR_MISSING_QUOTE,
+    MIDDIAG_ERR_MISSING_COMMA,
+    MIDDIAG_ERR_INSUFFICIENT_OPERANDS,
+    MIDDIAG_ERR_TYPE_UNSIGNABLE,
+    MIDDIAG_ERR_PTR_TO_REF,
+    MIDDIAG_ERR_MISPLACED_QUALIFIER,
+    MIDDIAG_ERR_TYPE_ALREADY_REF,
+    MIDDIAG_ERR_UNEXPECTED_TOKEN,
+    MIDDIAG_ERR_TYPEDEF_MISSING_NAME,
+    MIDDIAG_ERR_UNDECLARED_IDENTIFIER,
+    MIDDIAG_ERR_UNDECLARED_FUNCTION,
+    MIDDIAG_ERR_BAD_IDENTIFIER,
+    MIDDIAG_ERR_BAD_ARRAY_SUBSCRIPT,
+    MIDDIAG_ERR_BAD_ASSIGNMENT,
+    MIDDIAG_ERR_BAD_DEREF,
+    MIDDIAG_ERR_BAD_REF,
+    MIDDIAG_ERR_BAD_CONDITIONAL,
+    MIDDIAG_ERR_BAD_ARITHMETIC_OP,
+    MIDDIAG_ERR_BAD_LOGICAL_OP,
+    MIDDIAG_ERR_BAD_COMPARISON_OP,
+    MIDDIAG_ERR_BAD_OP_OVERLOAD,
+    MIDDIAG_ERR_BAD_SUPERCLASS,
+    MIDDIAG_ERR_BAD_VAR_DECLARATION,
+    MIDDIAG_ERR_BAD_DEFAULT_ARGUMENT,
+    MIDDIAG_ERR_BAD_LITERAL,
+    MIDDIAG_ERR_BAD_MEMB_SEL,
+    MIDDIAG_ERR_BAD_RETURN_STMT_TYPE,
+    MIDDIAG_ERR_RETURN_OUTSIDE_FUNC,
+    MIDDIAG_ERR_BAD_THIS_USAGE,
+    MIDDIAG_ERR_NO_MATCHING_CTOR,
+    MIDDIAG_ERR_BAD_TYPE,
+    MIDDIAG_ERR_BAD_TEMPLATE,
 };
 
-enum WarnType {
-    WARNTYPE_UNNECESSARY_QUALIFIER,
+enum MidDiag_WarnT {
+    MIDDIAG_WARN_UNNECESSARY_QUALIFIER,
 };
 
-enum DiagType {
-    DIAGTYPE_ERROR,
-    DIAGTYPE_WARNING,
-    DIAGTYPE_NOTE,
+enum MidDiag_Type {
+    MIDDIAG_TYPE_ERROR,
+    MIDDIAG_TYPE_WARNING,
+    MIDDIAG_TYPE_NOTE,
 };
 
-struct Diag {
-    struct Position pos;
+struct MidDiag_Diag {
+    struct Mid_Position pos;
     const char *line; // terminated by '\n'
     char *msg;
     union {
-        enum ErrorType err;
-        enum WarnType warn;
+        enum MidDiag_ErrT err;
+        enum MidDiag_WarnT warn;
     };
-    enum DiagType type;
+    enum MidDiag_Type type;
 };
-gen_dynarray_struct_named(DiagVec, struct Diag);
+MidGen_dynarray_struct_named(MidDiag_DiagVec, struct MidDiag_Diag);
 
-void Diag_deinit(struct Diag *self);
-void Diag_print(const struct Diag *diag);
+void MidDiag_deinit(struct MidDiag_Diag *self);
+void MidDiag_print(const struct MidDiag_Diag *diag);
 
-struct Lexer_Token;
+struct MidLexer_Token;
 
-struct Diag Diag_expected_token_err(const char *name,
-                                    const struct Lexer_Token *tok,
-                                    enum ErrorType type);
-struct Diag Diag_expected_token_warn(const char *name,
-                                     const struct Lexer_Token *tok,
-                                     enum WarnType type);
-struct Diag Diag_unexpected_token_err(const char *name,
-                                      const struct Lexer_Token *tok,
-                                      enum ErrorType type);
-struct Diag Diag_unexpected_token_warn(const char *name,
-                                       const struct Lexer_Token *tok,
-                                       enum WarnType type);
-struct Diag Diag_ident_redefined_err(const char *name,
-                                     const struct Lexer_Token *tok,
-                                     enum ErrorType type);
-struct Diag Diag_ident_redefined_warn(const char *name,
-                                      const struct Lexer_Token *tok,
-                                      enum WarnType type);
-struct Diag Diag_ident_undeclared_err(const char *name,
-                                      const struct Lexer_Token *tok,
-                                      enum ErrorType type);
-struct Diag Diag_ident_undeclared_warn(const char *name,
-                                       const struct Lexer_Token *tok,
-                                       enum WarnType type);
-struct Diag Diag_func_undeclared_err(const char *name,
-                                     const struct Lexer_Token *tok,
-                                     enum ErrorType type);
-struct Diag Diag_func_undeclared_warn(const char *name,
-                                      const struct Lexer_Token *tok,
-                                      enum WarnType type);
-struct Diag Diag_type_id_w_name_err(const struct Lexer_Token *tok,
-                                    enum ErrorType type);
-struct Diag Diag_type_id_w_name_warn(const struct Lexer_Token *tok,
-                                     enum WarnType type);
+struct MidDiag_Diag MidDiag_expected_token_err(const char *name,
+                                    const struct MidLexer_Token *tok,
+                                    enum MidDiag_ErrT type);
+struct MidDiag_Diag MidDiag_expected_token_warn(const char *name,
+                                     const struct MidLexer_Token *tok,
+                                     enum MidDiag_WarnT type);
+struct MidDiag_Diag MidDiag_unexpected_token_err(const char *name,
+                                      const struct MidLexer_Token *tok,
+                                      enum MidDiag_ErrT type);
+struct MidDiag_Diag MidDiag_unexpected_token_warn(const char *name,
+                                       const struct MidLexer_Token *tok,
+                                       enum MidDiag_WarnT type);
+struct MidDiag_Diag MidDiag_ident_redefined_err(const char *name,
+                                     const struct MidLexer_Token *tok,
+                                     enum MidDiag_ErrT type);
+struct MidDiag_Diag MidDiag_ident_redefined_warn(const char *name,
+                                      const struct MidLexer_Token *tok,
+                                      enum MidDiag_WarnT type);
+struct MidDiag_Diag MidDiag_ident_undeclared_err(const char *name,
+                                      const struct MidLexer_Token *tok,
+                                      enum MidDiag_ErrT type);
+struct MidDiag_Diag MidDiag_ident_undeclared_warn(const char *name,
+                                       const struct MidLexer_Token *tok,
+                                       enum MidDiag_WarnT type);
+struct MidDiag_Diag MidDiag_func_undeclared_err(const char *name,
+                                     const struct MidLexer_Token *tok,
+                                     enum MidDiag_ErrT type);
+struct MidDiag_Diag MidDiag_func_undeclared_warn(const char *name,
+                                      const struct MidLexer_Token *tok,
+                                      enum MidDiag_WarnT type);
+struct MidDiag_Diag MidDiag_type_id_w_name_err(const struct MidLexer_Token *tok,
+                                    enum MidDiag_ErrT type);
+struct MidDiag_Diag MidDiag_type_id_w_name_warn(const struct MidLexer_Token *tok,
+                                     enum MidDiag_WarnT type);

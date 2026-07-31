@@ -2,14 +2,14 @@
 
 #include "generics/bumpalloc.h"
 
-gen_bumpalloc_struct_named(Parser_ExprBump, struct Parser_Expr);
-gen_bumpalloc_struct_named(Parser_ASTNodeBump, struct Parser_ASTNode);
-gen_bumpalloc_struct_named(Sema_ScopeBump, struct Sema_Scope);
+MidGen_bumpalloc_struct_named(MidParser_ExprBump, struct MidParser_Expr);
+MidGen_bumpalloc_struct_named(MidParser_ASTNodeBump, struct MidParser_ASTNode);
+MidGen_bumpalloc_struct_named(MidSema_ScopeBump, struct MidSema_Scope);
 
-struct Parser_Allocators {
-    struct Parser_ExprBump expr;
-    struct Parser_ASTNodeBump ast;
-    struct Sema_ScopeBump scope;
+struct MidParser_Allocators {
+    struct MidParser_ExprBump expr;
+    struct MidParser_ASTNodeBump ast;
+    struct MidSema_ScopeBump scope;
 };
 
-void Parser_Allocators_deinit(struct Parser_Allocators *allocers);
+void MidParser_Allocators_deinit(struct MidParser_Allocators *allocers);

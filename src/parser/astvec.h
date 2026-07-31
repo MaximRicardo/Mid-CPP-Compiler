@@ -4,11 +4,11 @@
 
 // arrays of ptrs are used so nodes don't get moved around in memory and ptrs
 // stay valid as the AST is being constructed
-gen_dynarray_struct_named(Parser_ASTNodePVec, struct Parser_ASTNode *);
+MidGen_dynarray_struct_named(MidParser_ASTNodePVec, struct MidParser_ASTNode *);
 
-struct Parser_Allocators;
-struct Sema_Scope;
+struct MidParser_Allocators;
+struct MidSema_Scope;
 
-struct Parser_ASTNodePVec Parser_copy_nodepvec(
-    const struct Parser_ASTNodePVec *src, struct Parser_ASTNode *dest_parent,
-    struct Sema_Scope *dest_scope, struct Parser_Allocators *allocs);
+struct MidParser_ASTNodePVec MidParser_copy_nodepvec(
+    const struct MidParser_ASTNodePVec *src, struct MidParser_ASTNode *dest_parent,
+    struct MidSema_Scope *dest_scope, struct MidParser_Allocators *allocs);

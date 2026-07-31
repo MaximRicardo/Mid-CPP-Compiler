@@ -2,14 +2,14 @@
 #include "ints.h"
 #include "lexer/token.h"
 
-isize_t Parser_find_twin_generic(const struct Lexer_Token *toks, isize_t l_idx,
-                                 isize_t end_idx, enum Lexer_TokenType l_type,
-                                 enum Lexer_TokenType r_type)
+mid_isize MidParser_find_twin_generic(const struct MidLexer_Token *toks, mid_isize l_idx,
+                                 mid_isize end_idx, enum MidLexer_TokenType l_type,
+                                 enum MidLexer_TokenType r_type)
 {
     i32 depth = 0;
 
-    for (isize_t i = l_idx + 1;
-         i < end_idx && toks[i].type != LEXER_TOKENTYPE_END; ++i) {
+    for (mid_isize i = l_idx + 1;
+         i < end_idx && toks[i].type != MIDLEXER_TOKENTYPE_END; ++i) {
         if (toks[i].type == l_type) {
             ++depth;
         } else if (toks[i].type == r_type) {
@@ -22,31 +22,31 @@ isize_t Parser_find_twin_generic(const struct Lexer_Token *toks, isize_t l_idx,
     return -1;
 }
 
-isize_t Parser_find_twin_paren(const struct Lexer_Token *toks, isize_t l_idx,
-                               isize_t end_idx)
+mid_isize MidParser_find_twin_paren(const struct MidLexer_Token *toks, mid_isize l_idx,
+                               mid_isize end_idx)
 {
-    return Parser_find_twin_generic(
-        toks, l_idx, end_idx, LEXER_TOKENTYPE_L_PAREN, LEXER_TOKENTYPE_R_PAREN);
+    return MidParser_find_twin_generic(
+        toks, l_idx, end_idx, MIDLEXER_TOKENTYPE_L_PAREN, MIDLEXER_TOKENTYPE_R_PAREN);
 }
 
-isize_t Parser_find_twin_sqbracket(const struct Lexer_Token *toks,
-                                   isize_t l_idx, isize_t end_idx)
+mid_isize MidParser_find_twin_sqbracket(const struct MidLexer_Token *toks,
+                                   mid_isize l_idx, mid_isize end_idx)
 {
-    return Parser_find_twin_generic(toks, l_idx, end_idx,
-                                    LEXER_TOKENTYPE_L_SQBRACKET,
-                                    LEXER_TOKENTYPE_R_SQBRACKET);
+    return MidParser_find_twin_generic(toks, l_idx, end_idx,
+                                    MIDLEXER_TOKENTYPE_L_SQBRACKET,
+                                    MIDLEXER_TOKENTYPE_R_SQBRACKET);
 }
 
-isize_t Parser_find_twin_curly(const struct Lexer_Token *toks, isize_t l_idx,
-                               isize_t end_idx)
+mid_isize MidParser_find_twin_curly(const struct MidLexer_Token *toks, mid_isize l_idx,
+                               mid_isize end_idx)
 {
-    return Parser_find_twin_generic(
-        toks, l_idx, end_idx, LEXER_TOKENTYPE_L_CURLY, LEXER_TOKENTYPE_R_CURLY);
+    return MidParser_find_twin_generic(
+        toks, l_idx, end_idx, MIDLEXER_TOKENTYPE_L_CURLY, MIDLEXER_TOKENTYPE_R_CURLY);
 }
 
-isize_t Parser_find_twin_angle(const struct Lexer_Token *toks, isize_t l_idx,
-                               isize_t end_idx)
+mid_isize MidParser_find_twin_angle(const struct MidLexer_Token *toks, mid_isize l_idx,
+                               mid_isize end_idx)
 {
-    return Parser_find_twin_generic(toks, l_idx, end_idx, LEXER_TOKENTYPE_LT,
-                                    LEXER_TOKENTYPE_GT);
+    return MidParser_find_twin_generic(toks, l_idx, end_idx, MIDLEXER_TOKENTYPE_LT,
+                                    MIDLEXER_TOKENTYPE_GT);
 }

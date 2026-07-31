@@ -2,5 +2,5 @@
 
 #include "generics/dynarray.h"
 
-gen_dynarray_struct_named(BoolVec, bool);
-gen_dynarray_struct_named(ConstStringVec, const char *);
+MidGen_dynarray_struct_named(Mid_BoolVec, bool);
+MidGen_dynarray_struct_named(Mid_ConstStringVec, const char *);

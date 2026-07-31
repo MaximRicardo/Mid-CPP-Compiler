@@ -4,21 +4,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define CRASH(msg)                                                             \
+#define MID_CRASH(msg)                                                             \
     do {                                                                       \
         printf("crashed at %s, line %d: '%s'\n", __FILE__, __LINE__, msg);     \
         abort();                                                               \
     } while (0)
 
-#define SWAP(x, y)                                                             \
+#define MID_SWAP(x, y)                                                             \
     do {                                                                       \
         typeof(x) tmp_super_specific_name______ = x;                           \
         x = y;                                                                 \
         y = tmp_super_specific_name______;                                     \
     } while (0)
 
-#define ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
-#define SARRLEN(arr) ((isize_t)(sizeof(arr) / sizeof((arr)[0])))
+#define MID_ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define MID_SARRLEN(arr) ((mid_isize)(sizeof(arr) / sizeof((arr)[0])))
 
-#define MAX(x, y) ((x) < (y) ? (y) : (x))
-#define MIN(x, y) ((x) > (y) ? (y) : (x))
+#define MID_MAX(x, y) ((x) < (y) ? (y) : (x))
+#define MID_MIN(x, y) ((x) > (y) ? (y) : (x))

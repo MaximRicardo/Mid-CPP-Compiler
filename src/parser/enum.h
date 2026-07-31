@@ -2,13 +2,13 @@
 
 #include "parser/astvec.h"
 
-struct Parser_Enum {
-    struct Parser_ASTNodePVec nodes;
+struct MidParser_Enum {
+    struct MidParser_ASTNodePVec nodes;
     const char *name;
     bool is_enumclass;
 };
 
-void Parser_Enum_deinit(struct Parser_Enum *self);
-void Parser_copy_enum(struct Parser_Enum *dest, const struct Parser_Enum *src,
-                      struct Sema_Scope *dest_scope,
-                      struct Parser_Allocators *allocs);
+void MidParser_Enum_deinit(struct MidParser_Enum *self);
+void MidParser_copy_enum(struct MidParser_Enum *dest, const struct MidParser_Enum *src,
+                      struct MidSema_Scope *dest_scope,
+                      struct MidParser_Allocators *allocs);

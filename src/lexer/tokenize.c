@@ -73,11 +73,11 @@
     case 'Y':                                                                  \
     case 'Z'
 
-static struct Lexer_Token create_basic_tok(enum Lexer_TokenType type,
-                                           struct Position pos,
-                                           const char *line)
+static struct MidLexer_Token create_basic_tok(enum MidLexer_TokenType type,
+                                              struct Mid_Position pos,
+                                              const char *line)
 {
-    return (struct Lexer_Token){.type = type, .pos = pos, .line = line};
+    return (struct MidLexer_Token){.type = type, .pos = pos, .line = line};
 }
 
 static bool valid_numlit_char(char c)
@@ -91,11 +91,11 @@ static bool valid_decimallit_char(char c)
     return isdigit(c) || c == '.';
 }
 
-static isize_t find_numlit_digits_end(const char *src, isize_t start)
+static mid_isize find_numlit_digits_end(const char *src, mid_isize start)
 {
     bool is_decimal = src[start] == '.';
 
-    isize_t end;
+    mid_isize end;
     // account for hex and binary literals
     if (src[start + 1] == 'x' || src[start + 1] == 'b')
         end = start + 2;
@@ -118,21 +118,21 @@ static isize_t find_numlit_digits_end(const char *src, isize_t start)
 }
 
 enum NumLitType {
-    NUMLIT_INT,
-    NUMLIT_UINT,
-    NUMLIT_LONG,
-    NUMLIT_ULONG,
-    NUMLIT_LONGLONG,
-    NUMLIT_ULONGLONG,
-    NUMLIT_FLOAT,
-    NUMLIT_DOUBLE,
-    NUMLIT_LONGDOUBLE,
+    NUMMIDLIT_INT,
+    NUMMIDLIT_UINT,
+    NUMMIDLIT_LONG,
+    NUMMIDLIT_ULONG,
+    NUMMIDLIT_LONGLONG,
+    NUMMIDLIT_ULONGLONG,
+    NUMMIDLIT_FLOAT,
+    NUMMIDLIT_DOUBLE,
+    NUMMIDLIT_LONGDOUBLE,
 };
 
 // end is the end of the digits
 // suffix_end is the end of the suffixes following, can be NULL to ignore
-static enum NumLitType numlit_type(const char *src, isize_t end,
-                                   bool is_decimal, isize_t *suffix_end)
+static enum NumLitType numlit_type(const char *src, mid_isize end,
+                                   bool is_decimal, mid_isize *suffix_end)
 {
     char c0 = tolower(src[end]);
     char c1 = c0 == '\0' ? '\0' : tolower(src[end + 1]);
@@ -143,38 +143,38 @@ static enum NumLitType numlit_type(const char *src, isize_t end,
             if (c2 == 'l') {
                 if (suffix_end)
                     *suffix_end = end + 3;
-                return NUMLIT_ULONGLONG;
+                return NUMMIDLIT_ULONGLONG;
             }
             if (suffix_end)
                 *suffix_end = end + 2;
-            return NUMLIT_ULONG;
+            return NUMMIDLIT_ULONG;
         }
         if (suffix_end)
             *suffix_end = end + 1;
-        return NUMLIT_UINT;
+        return NUMMIDLIT_UINT;
     } else if (c0 == 'l') {
         if (c1 == 'l') {
             if (suffix_end)
                 *suffix_end = end + 2;
-            return NUMLIT_LONGLONG;
+            return NUMMIDLIT_LONGLONG;
         }
         if (suffix_end)
             *suffix_end = end + 1;
-        return is_decimal ? NUMLIT_LONGDOUBLE : NUMLIT_LONG;
+        return is_decimal ? NUMMIDLIT_LONGDOUBLE : NUMMIDLIT_LONG;
     } else if (c0 == 'f') {
         if (suffix_end)
             *suffix_end = end + 1;
-        return NUMLIT_FLOAT;
+        return NUMMIDLIT_FLOAT;
     } else {
         if (suffix_end)
             *suffix_end = end;
-        return is_decimal ? NUMLIT_DOUBLE : NUMLIT_INT;
+        return is_decimal ? NUMMIDLIT_DOUBLE : NUMMIDLIT_INT;
     }
 }
 
-static bool numlit_is_decimal(const char *src, isize_t start, isize_t end)
+static bool numlit_is_decimal(const char *src, mid_isize start, mid_isize end)
 {
-    for (isize_t i = start; i < end; ++i) {
+    for (mid_isize i = start; i < end; ++i) {
         if (src[i] == '.')
             return true;
     }
@@ -183,304 +183,304 @@ static bool numlit_is_decimal(const char *src, isize_t start, isize_t end)
 }
 
 struct NumLit {
-    union Lit_Value val;
+    union MidLit_Value val;
     enum NumLitType type;
 };
 
-static struct Diag intlit_too_big_err(struct Position pos, const char *line)
+static struct MidDiag_Diag intlit_too_big_err(struct Mid_Position pos,
+                                              const char *line)
 {
-    return (struct Diag){
+    return (struct MidDiag_Diag){
         .pos = pos,
         .line = line,
-        .msg = Print_fmt_to_str("integer literal too big"),
-        .err = ERRORTYPE_BAD_LITERAL,
-        .type = DIAGTYPE_ERROR,
+        .msg = MidPrint_fmt_to_str("integer literal too big"),
+        .err = MIDDIAG_ERR_BAD_LITERAL,
+        .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-static enum NumLitType sel_numlit_type_int(u64 val, int base,
-                                           struct Position pos,
-                                           const char *line,
-                                           struct DiagVec *diags)
+static enum NumLitType
+sel_numlit_type_int(u64 val, int base, struct Mid_Position pos,
+                    const char *line, struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= Types_int_smax) {
-            return NUMLIT_INT;
-        } else if (val <= Types_long_smax) {
-            return NUMLIT_LONG;
-        } else if (val <= Types_longlong_smax) {
-            return NUMLIT_LONGLONG;
+        if (val <= MidTypes_int_smax) {
+            return NUMMIDLIT_INT;
+        } else if (val <= MidTypes_long_smax) {
+            return NUMMIDLIT_LONG;
+        } else if (val <= MidTypes_longlong_smax) {
+            return NUMMIDLIT_LONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_LONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_LONGLONG;
         }
     } else {
-        if (val <= Types_int_smax) {
-            return NUMLIT_INT;
-        } else if (val <= Types_int_umax) {
-            return NUMLIT_UINT;
-        } else if (val <= Types_long_smax) {
-            return NUMLIT_LONG;
-        } else if (val <= Types_long_umax) {
-            return NUMLIT_ULONG;
-        } else if (val <= Types_longlong_smax) {
-            return NUMLIT_LONGLONG;
-        } else if (val <= Types_longlong_umax) {
-            return NUMLIT_ULONGLONG;
+        if (val <= MidTypes_int_smax) {
+            return NUMMIDLIT_INT;
+        } else if (val <= MidTypes_int_umax) {
+            return NUMMIDLIT_UINT;
+        } else if (val <= MidTypes_long_smax) {
+            return NUMMIDLIT_LONG;
+        } else if (val <= MidTypes_long_umax) {
+            return NUMMIDLIT_ULONG;
+        } else if (val <= MidTypes_longlong_smax) {
+            return NUMMIDLIT_LONGLONG;
+        } else if (val <= MidTypes_longlong_umax) {
+            return NUMMIDLIT_ULONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_ULONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_ULONGLONG;
         }
     }
 }
 
-static enum NumLitType sel_numlit_type_uint(u64 val, int base,
-                                            struct Position pos,
-                                            const char *line,
-                                            struct DiagVec *diags)
+static enum NumLitType
+sel_numlit_type_uint(u64 val, int base, struct Mid_Position pos,
+                     const char *line, struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= Types_int_umax) {
-            return NUMLIT_UINT;
-        } else if (val <= Types_long_umax) {
-            return NUMLIT_ULONG;
-        } else if (val <= Types_longlong_umax) {
-            return NUMLIT_ULONGLONG;
+        if (val <= MidTypes_int_umax) {
+            return NUMMIDLIT_UINT;
+        } else if (val <= MidTypes_long_umax) {
+            return NUMMIDLIT_ULONG;
+        } else if (val <= MidTypes_longlong_umax) {
+            return NUMMIDLIT_ULONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_ULONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_ULONGLONG;
         }
     } else {
-        if (val <= Types_int_umax) {
-            return NUMLIT_UINT;
-        } else if (val <= Types_long_umax) {
-            return NUMLIT_ULONG;
-        } else if (val <= Types_longlong_umax) {
-            return NUMLIT_ULONGLONG;
+        if (val <= MidTypes_int_umax) {
+            return NUMMIDLIT_UINT;
+        } else if (val <= MidTypes_long_umax) {
+            return NUMMIDLIT_ULONG;
+        } else if (val <= MidTypes_longlong_umax) {
+            return NUMMIDLIT_ULONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_ULONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_ULONGLONG;
         }
     }
 }
 
-static enum NumLitType sel_numlit_type_long(u64 val, int base,
-                                            struct Position pos,
-                                            const char *line,
-                                            struct DiagVec *diags)
+static enum NumLitType
+sel_numlit_type_long(u64 val, int base, struct Mid_Position pos,
+                     const char *line, struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= Types_long_smax) {
-            return NUMLIT_LONG;
-        } else if (val <= Types_long_umax) {
-            return NUMLIT_ULONG;
-        } else if (val <= Types_longlong_smax) {
-            return NUMLIT_LONGLONG;
+        if (val <= MidTypes_long_smax) {
+            return NUMMIDLIT_LONG;
+        } else if (val <= MidTypes_long_umax) {
+            return NUMMIDLIT_ULONG;
+        } else if (val <= MidTypes_longlong_smax) {
+            return NUMMIDLIT_LONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_LONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_LONGLONG;
         }
     } else {
-        if (val <= Types_long_smax) {
-            return NUMLIT_LONG;
-        } else if (val <= Types_long_umax) {
-            return NUMLIT_ULONG;
-        } else if (val <= Types_longlong_smax) {
-            return NUMLIT_LONGLONG;
-        } else if (val <= Types_longlong_umax) {
-            return NUMLIT_ULONGLONG;
+        if (val <= MidTypes_long_smax) {
+            return NUMMIDLIT_LONG;
+        } else if (val <= MidTypes_long_umax) {
+            return NUMMIDLIT_ULONG;
+        } else if (val <= MidTypes_longlong_smax) {
+            return NUMMIDLIT_LONGLONG;
+        } else if (val <= MidTypes_longlong_umax) {
+            return NUMMIDLIT_ULONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_ULONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_ULONGLONG;
         }
     }
 }
 
-static enum NumLitType sel_numlit_type_ulong(u64 val, int base,
-                                             struct Position pos,
-                                             const char *line,
-                                             struct DiagVec *diags)
+static enum NumLitType
+sel_numlit_type_ulong(u64 val, int base, struct Mid_Position pos,
+                      const char *line, struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= Types_long_umax) {
-            return NUMLIT_ULONG;
-        } else if (val <= Types_longlong_umax) {
-            return NUMLIT_ULONGLONG;
+        if (val <= MidTypes_long_umax) {
+            return NUMMIDLIT_ULONG;
+        } else if (val <= MidTypes_longlong_umax) {
+            return NUMMIDLIT_ULONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_ULONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_ULONGLONG;
         }
     } else {
-        if (val <= Types_long_umax) {
-            return NUMLIT_ULONG;
-        } else if (val <= Types_longlong_umax) {
-            return NUMLIT_ULONGLONG;
+        if (val <= MidTypes_long_umax) {
+            return NUMMIDLIT_ULONG;
+        } else if (val <= MidTypes_longlong_umax) {
+            return NUMMIDLIT_ULONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_ULONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_ULONGLONG;
         }
     }
 }
 
-static enum NumLitType sel_numlit_type_longlong(u64 val, int base,
-                                                struct Position pos,
-                                                const char *line,
-                                                struct DiagVec *diags)
+static enum NumLitType
+sel_numlit_type_longlong(u64 val, int base, struct Mid_Position pos,
+                         const char *line,
+                         struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= Types_longlong_smax) {
-            return NUMLIT_LONGLONG;
+        if (val <= MidTypes_longlong_smax) {
+            return NUMMIDLIT_LONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_LONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_LONGLONG;
         }
     } else {
-        if (val <= Types_longlong_smax) {
-            return NUMLIT_LONGLONG;
-        } else if (val <= Types_longlong_umax) {
-            return NUMLIT_ULONGLONG;
+        if (val <= MidTypes_longlong_smax) {
+            return NUMMIDLIT_LONGLONG;
+        } else if (val <= MidTypes_longlong_umax) {
+            return NUMMIDLIT_ULONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_ULONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_ULONGLONG;
         }
     }
 }
 
-static enum NumLitType sel_numlit_type_ulonglong(u64 val, int base,
-                                                 struct Position pos,
-                                                 const char *line,
-                                                 struct DiagVec *diags)
+static enum NumLitType
+sel_numlit_type_ulonglong(u64 val, int base, struct Mid_Position pos,
+                          const char *line,
+                          struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= Types_longlong_umax) {
-            return NUMLIT_ULONGLONG;
+        if (val <= MidTypes_longlong_umax) {
+            return NUMMIDLIT_ULONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_ULONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_ULONGLONG;
         }
     } else {
-        if (val <= Types_longlong_umax) {
-            return NUMLIT_ULONGLONG;
+        if (val <= MidTypes_longlong_umax) {
+            return NUMMIDLIT_ULONGLONG;
         } else {
-            gen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMLIT_ULONGLONG;
+            MidGen_dynpush(diags, intlit_too_big_err(pos, line));
+            return NUMMIDLIT_ULONGLONG;
         }
     }
 }
 
 static enum NumLitType sel_numlit_type(u64 val, int base, enum NumLitType type,
-                                       struct Position pos, const char *line,
-                                       struct DiagVec *diags)
+                                       struct Mid_Position pos,
+                                       const char *line,
+                                       struct MidDiag_DiagVec *diags)
 {
     switch (type) {
-    case NUMLIT_INT:
+    case NUMMIDLIT_INT:
         return sel_numlit_type_int(val, base, pos, line, diags);
 
-    case NUMLIT_UINT:
+    case NUMMIDLIT_UINT:
         return sel_numlit_type_uint(val, base, pos, line, diags);
 
-    case NUMLIT_LONG:
+    case NUMMIDLIT_LONG:
         return sel_numlit_type_long(val, base, pos, line, diags);
 
-    case NUMLIT_ULONG:
+    case NUMMIDLIT_ULONG:
         return sel_numlit_type_ulong(val, base, pos, line, diags);
 
-    case NUMLIT_LONGLONG:
+    case NUMMIDLIT_LONGLONG:
         return sel_numlit_type_longlong(val, base, pos, line, diags);
 
-    case NUMLIT_ULONGLONG:
+    case NUMMIDLIT_ULONGLONG:
         return sel_numlit_type_ulonglong(val, base, pos, line, diags);
 
     default:
-        CRASH("type is not an integer lit");
+        MID_CRASH("type is not an integer lit");
     }
 }
 
 // end - out variable and can be NULL
-static struct NumLit read_numlit(const char *src, isize_t start,
-                                 isize_t *out_end, struct Position pos,
-                                 const char *line, struct DiagVec *diags)
+static struct NumLit read_numlit(const char *src, mid_isize start,
+                                 mid_isize *out_end, struct Mid_Position pos,
+                                 const char *line,
+                                 struct MidDiag_DiagVec *diags)
 {
-    isize_t digits_end = find_numlit_digits_end(src, start);
-    isize_t lit_end;
+    mid_isize digits_end = find_numlit_digits_end(src, start);
+    mid_isize lit_end;
     auto is_decimal = numlit_is_decimal(src, start, digits_end);
     auto type = numlit_type(src, digits_end, is_decimal, &lit_end);
 
     if (out_end)
         *out_end = lit_end;
 
-    struct Dynstr str = Dynstr();
-    for (isize_t i = start; i < lit_end; ++i)
-        Dynstr_append_char(&str, src[i]);
+    struct Mid_Dynstr str = MidDynstr_init();
+    for (mid_isize i = start; i < lit_end; ++i)
+        MidDynstr_append_char(&str, src[i]);
 
     struct NumLit ret;
     ret.type = type;
 
     switch (type) {
-    case NUMLIT_INT:
-    case NUMLIT_LONG:
-    case NUMLIT_LONGLONG:
-    case NUMLIT_UINT:
-    case NUMLIT_ULONG:
-    case NUMLIT_ULONGLONG:
-        auto info = Lit_read_intlit(src, start, NULL);
+    case NUMMIDLIT_INT:
+    case NUMMIDLIT_LONG:
+    case NUMMIDLIT_LONGLONG:
+    case NUMMIDLIT_UINT:
+    case NUMMIDLIT_ULONG:
+    case NUMMIDLIT_ULONGLONG:
+        auto info = MidLit_read_intlit(src, start, NULL);
         ret.val.uint = info.value;
         ret.type = sel_numlit_type(ret.val.uint, info.base, ret.type, pos, line,
                                    diags);
         break;
 
-    case NUMLIT_FLOAT:
-    case NUMLIT_DOUBLE:
-    case NUMLIT_LONGDOUBLE:
+    case NUMMIDLIT_FLOAT:
+    case NUMMIDLIT_DOUBLE:
+    case NUMMIDLIT_LONGDOUBLE:
         ret.val.flt = strtold(&src[start], NULL);
         break;
     }
 
-    Dynstr_deinit(&str);
+    MidDynstr_deinit(&str);
 
     return ret;
 }
 
-static enum Lexer_TokenType numlit_type_to_tok_type(enum NumLitType type)
+static enum MidLexer_TokenType numlit_type_to_tok_type(enum NumLitType type)
 {
     switch (type) {
-    case NUMLIT_INT:
-        return LEXER_TOKENTYPE_INT_LIT;
+    case NUMMIDLIT_INT:
+        return MIDLEXER_TOKENTYPE_INT_LIT;
 
-    case NUMLIT_UINT:
-        return LEXER_TOKENTYPE_UINT_LIT;
+    case NUMMIDLIT_UINT:
+        return MIDLEXER_TOKENTYPE_UINT_LIT;
 
-    case NUMLIT_LONG:
-        return LEXER_TOKENTYPE_LONG_LIT;
+    case NUMMIDLIT_LONG:
+        return MIDLEXER_TOKENTYPE_LONG_LIT;
 
-    case NUMLIT_ULONG:
-        return LEXER_TOKENTYPE_ULONG_LIT;
+    case NUMMIDLIT_ULONG:
+        return MIDLEXER_TOKENTYPE_ULONG_LIT;
 
-    case NUMLIT_LONGLONG:
-        return LEXER_TOKENTYPE_LONGLONG_LIT;
+    case NUMMIDLIT_LONGLONG:
+        return MIDLEXER_TOKENTYPE_LONGLONG_LIT;
 
-    case NUMLIT_ULONGLONG:
-        return LEXER_TOKENTYPE_ULONGLONG_LIT;
+    case NUMMIDLIT_ULONGLONG:
+        return MIDLEXER_TOKENTYPE_ULONGLONG_LIT;
 
-    case NUMLIT_FLOAT:
-        return LEXER_TOKENTYPE_FLOAT_LIT;
+    case NUMMIDLIT_FLOAT:
+        return MIDLEXER_TOKENTYPE_FLOAT_LIT;
 
-    case NUMLIT_DOUBLE:
-        return LEXER_TOKENTYPE_DOUBLE_LIT;
+    case NUMMIDLIT_DOUBLE:
+        return MIDLEXER_TOKENTYPE_DOUBLE_LIT;
 
-    case NUMLIT_LONGDOUBLE:
-        return LEXER_TOKENTYPE_LONGDOUBLE_LIT;
+    case NUMMIDLIT_LONGDOUBLE:
+        return MIDLEXER_TOKENTYPE_LONGDOUBLE_LIT;
     }
 }
 
 // end - out variable and can be NULL
-static struct Lexer_Token
-create_numlit_tok(const char *src, isize_t start, isize_t *out_end,
-                  struct Position pos, const char *line, struct DiagVec *diags)
+static struct MidLexer_Token
+create_numlit_tok(const char *src, mid_isize start, mid_isize *out_end,
+                  struct Mid_Position pos, const char *line,
+                  struct MidDiag_DiagVec *diags)
 {
     auto info = read_numlit(src, start, out_end, pos, line, diags);
 
-    struct Lexer_Token ret;
+    struct MidLexer_Token ret;
     ret.pos = pos;
     ret.line = line;
     ret.val = info.val;
@@ -488,9 +488,10 @@ create_numlit_tok(const char *src, isize_t start, isize_t *out_end,
     return ret;
 }
 
-enum Lit_StringType charlit_type(const char *src, isize_t start,
-                                 isize_t *prefix_end, struct Position pos,
-                                 const char *line, struct DiagVec *diags)
+enum MidLit_StringType charlit_type(const char *src, mid_isize start,
+                                    mid_isize *prefix_end,
+                                    struct Mid_Position pos, const char *line,
+                                    struct MidDiag_DiagVec *diags)
 {
     if (prefix_end)
         *prefix_end = start + 1;
@@ -500,144 +501,148 @@ enum Lit_StringType charlit_type(const char *src, isize_t start,
     case '"':
         if (prefix_end)
             *prefix_end = start;
-        return LIT_STRINGTYPE_CHAR;
+        return MIDLIT_STRINGTYPE_CHAR;
 
     case 'u':
         if (prefix_end)
             *prefix_end = start + 1;
-        return LIT_STRINGTYPE_CHAR16;
+        return MIDLIT_STRINGTYPE_CHAR16;
 
     case 'U':
         if (prefix_end)
             *prefix_end = start + 1;
-        return LIT_STRINGTYPE_CHAR32;
+        return MIDLIT_STRINGTYPE_CHAR32;
 
     case 'L':
         if (prefix_end)
             *prefix_end = start + 1;
-        return LIT_STRINGTYPE_WCHAR;
+        return MIDLIT_STRINGTYPE_WCHAR;
 
     default:
-        gen_dynpush(diags,
-                    ((struct Diag){
+        MidGen_dynpush(diags,
+                    ((struct MidDiag_Diag){
                         .pos = pos,
                         .line = line,
-                        .msg = Print_fmt_to_str(
+                        .msg = MidPrint_fmt_to_str(
                             "unknown char literal prefix '%c'", src[start]),
-                        .err = ERRORTYPE_BAD_LITERAL,
-                        .type = DIAGTYPE_ERROR,
+                        .err = MIDDIAG_ERR_BAD_LITERAL,
+                        .type = MIDDIAG_TYPE_ERROR,
                     }));
-        return LIT_STRINGTYPE_CHAR;
+        return MIDLIT_STRINGTYPE_CHAR;
     }
 }
 
-static struct Diag expected_tok_err(const char *name, struct Position pos,
-                                    const char *line, enum ErrorType type)
+static struct MidDiag_Diag expected_tok_err(const char *name,
+                                            struct Mid_Position pos,
+                                            const char *line,
+                                            enum MidDiag_ErrT type)
 {
-    return (struct Diag){
+    return (struct MidDiag_Diag){
         .pos = pos,
         .line = line,
-        .msg = Print_fmt_to_str("expected %s", name),
+        .msg = MidPrint_fmt_to_str("expected %s", name),
         .err = type,
-        .type = DIAGTYPE_ERROR,
+        .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-static enum Lexer_TokenType charlit_type_to_tok_type(enum Lit_StringType type)
+static enum MidLexer_TokenType
+charlit_type_to_tok_type(enum MidLit_StringType type)
 {
     switch (type) {
-    case LIT_STRINGTYPE_CHAR:
-        return LEXER_TOKENTYPE_CHAR_LIT;
+    case MIDLIT_STRINGTYPE_CHAR:
+        return MIDLEXER_TOKENTYPE_CHAR_LIT;
 
-    case LIT_STRINGTYPE_WCHAR:
-        return LEXER_TOKENTYPE_WCHAR_LIT;
+    case MIDLIT_STRINGTYPE_WCHAR:
+        return MIDLEXER_TOKENTYPE_WCHAR_LIT;
 
-    case LIT_STRINGTYPE_CHAR16:
-        return LEXER_TOKENTYPE_CHAR16_LIT;
+    case MIDLIT_STRINGTYPE_CHAR16:
+        return MIDLEXER_TOKENTYPE_CHAR16_LIT;
 
-    case LIT_STRINGTYPE_CHAR32:
-        return LEXER_TOKENTYPE_CHAR32_LIT;
+    case MIDLIT_STRINGTYPE_CHAR32:
+        return MIDLEXER_TOKENTYPE_CHAR32_LIT;
     }
 }
 
-static enum Lexer_TokenType
-charlit_type_to_str_tok_type(enum Lit_StringType type)
+static enum MidLexer_TokenType
+charlit_type_to_str_tok_type(enum MidLit_StringType type)
 {
     switch (type) {
-    case LIT_STRINGTYPE_CHAR:
-        return LEXER_TOKENTYPE_STRING_LIT;
+    case MIDLIT_STRINGTYPE_CHAR:
+        return MIDLEXER_TOKENTYPE_STRING_LIT;
 
-    case LIT_STRINGTYPE_WCHAR:
-        return LEXER_TOKENTYPE_WSTRING_LIT;
+    case MIDLIT_STRINGTYPE_WCHAR:
+        return MIDLEXER_TOKENTYPE_WSTRING_LIT;
 
-    case LIT_STRINGTYPE_CHAR16:
-        return LEXER_TOKENTYPE_STRING16_LIT;
+    case MIDLIT_STRINGTYPE_CHAR16:
+        return MIDLEXER_TOKENTYPE_STRING16_LIT;
 
-    case LIT_STRINGTYPE_CHAR32:
-        return LEXER_TOKENTYPE_STRING32_LIT;
+    case MIDLIT_STRINGTYPE_CHAR32:
+        return MIDLEXER_TOKENTYPE_STRING32_LIT;
     }
 }
 
-bool verify_charlit_value(u32 val, enum Lit_StringType type,
-                          struct Position pos, const char *line,
-                          struct DiagVec *diags)
+bool verify_charlit_value(u32 val, enum MidLit_StringType type,
+                          struct Mid_Position pos, const char *line,
+                          struct MidDiag_DiagVec *diags)
 {
     bool too_big = false;
 
     switch (type) {
-    case LIT_STRINGTYPE_CHAR:
-        too_big = val > Types_char_umax;
+    case MIDLIT_STRINGTYPE_CHAR:
+        too_big = val > MidTypes_char_umax;
         break;
 
-    case LIT_STRINGTYPE_WCHAR:
-        too_big = val > Types_wchar_umax;
+    case MIDLIT_STRINGTYPE_WCHAR:
+        too_big = val > MidTypes_wchar_umax;
         break;
 
-    case LIT_STRINGTYPE_CHAR16:
+    case MIDLIT_STRINGTYPE_CHAR16:
         too_big = val > UINT16_MAX;
         break;
 
-    case LIT_STRINGTYPE_CHAR32:
+    case MIDLIT_STRINGTYPE_CHAR32:
         // val is exactly 32 bits
         break;
     }
 
     if (too_big)
-        gen_dynpush(diags,
-                    ((struct Diag){
+        MidGen_dynpush(diags,
+                    ((struct MidDiag_Diag){
                         .pos = pos,
                         .line = line,
-                        .msg = Print_fmt_to_str(
+                        .msg = MidPrint_fmt_to_str(
                             "character to big to fit in character literal"),
-                        .err = ERRORTYPE_BAD_LITERAL,
-                        .type = DIAGTYPE_ERROR,
+                        .err = MIDDIAG_ERR_BAD_LITERAL,
+                        .type = MIDDIAG_TYPE_ERROR,
                     }));
 
     return !too_big;
 }
 
-static struct Lexer_Token
-create_charlit_tok(const char *src, isize_t start, isize_t *out_end,
-                   struct Position pos, const char *line, struct DiagVec *diags)
+static struct MidLexer_Token
+create_charlit_tok(const char *src, mid_isize start, mid_isize *out_end,
+                   struct Mid_Position pos, const char *line,
+                   struct MidDiag_DiagVec *diags)
 {
-    isize_t lquote;
+    mid_isize lquote;
     auto type = charlit_type(src, start, &lquote, pos, line, diags);
     // control flow shouldn't get here otherwise but better safe than sorry
     assert(src[lquote] == '\'');
 
-    struct Lexer_Token ret = {};
+    struct MidLexer_Token ret = {};
     ret.pos = pos;
     ret.line = line;
     ret.type = charlit_type_to_tok_type(type);
-    isize_t rquote;
-    ret.val.uint = UTF8_read_char(src, lquote + 1, &rquote);
+    mid_isize rquote;
+    ret.val.uint = MidUTF8_read_char(src, lquote + 1, &rquote);
 
     if (!verify_charlit_value(ret.val.uint, type, pos, line, diags))
         ret.val.uint = '\0';
 
     if (src[rquote] != '\'') {
-        gen_dynpush(diags,
-                    expected_tok_err("'", pos, line, ERRORTYPE_MISSING_QUOTE));
+        MidGen_dynpush(
+            diags, expected_tok_err("'", pos, line, MIDDIAG_ERR_MISSING_QUOTE));
         if (out_end)
             *out_end = rquote;
     } else if (out_end) {
@@ -647,60 +652,61 @@ create_charlit_tok(const char *src, isize_t start, isize_t *out_end,
     return ret;
 }
 
-void realloc_strlit(struct Lit_String *str, isize_t cap)
+void realloc_strlit(struct MidLit_String *str, mid_isize cap)
 {
     switch (str->type) {
-    case LIT_STRINGTYPE_CHAR:
-        str->c = mid_realloc(str->c, cap * sizeof(*str->c));
+    case MIDLIT_STRINGTYPE_CHAR:
+        str->c = Mid_realloc(str->c, cap * sizeof(*str->c));
         break;
 
-    case LIT_STRINGTYPE_WCHAR:
-        str->wc = mid_realloc(str->wc, cap * sizeof(*str->wc));
+    case MIDLIT_STRINGTYPE_WCHAR:
+        str->wc = Mid_realloc(str->wc, cap * sizeof(*str->wc));
         break;
 
-    case LIT_STRINGTYPE_CHAR16:
-        str->c16 = mid_realloc(str->c16, cap * sizeof(*str->c16));
+    case MIDLIT_STRINGTYPE_CHAR16:
+        str->c16 = Mid_realloc(str->c16, cap * sizeof(*str->c16));
         break;
 
-    case LIT_STRINGTYPE_CHAR32:
-        str->c32 = mid_realloc(str->c32, cap * sizeof(*str->c32));
+    case MIDLIT_STRINGTYPE_CHAR32:
+        str->c32 = Mid_realloc(str->c32, cap * sizeof(*str->c32));
         break;
     }
 }
 
-static void strlit_add(struct Lit_String *str, isize_t idx, u32 c)
+static void strlit_add(struct MidLit_String *str, mid_isize idx, u32 c)
 {
     switch (str->type) {
-    case LIT_STRINGTYPE_CHAR:
+    case MIDLIT_STRINGTYPE_CHAR:
         str->c[idx] = c;
         break;
 
-    case LIT_STRINGTYPE_WCHAR:
+    case MIDLIT_STRINGTYPE_WCHAR:
         str->wc[idx] = c;
         break;
 
-    case LIT_STRINGTYPE_CHAR16:
+    case MIDLIT_STRINGTYPE_CHAR16:
         str->c16[idx] = c;
         break;
 
-    case LIT_STRINGTYPE_CHAR32:
+    case MIDLIT_STRINGTYPE_CHAR32:
         str->c32[idx] = c;
         break;
     }
 }
 
-struct Lit_String read_strlit(const char *src, isize_t lquote, isize_t *out_end,
-                              enum Lit_StringType type, struct Position pos,
-                              const char *line, struct DiagVec *diags)
+struct MidLit_String read_strlit(const char *src, mid_isize lquote,
+                                 mid_isize *out_end, enum MidLit_StringType type,
+                                 struct Mid_Position pos, const char *line,
+                                 struct MidDiag_DiagVec *diags)
 {
-    isize_t len = 0;
-    isize_t cap = 128;
-    struct Lit_String str = {.type = type};
+    mid_isize len = 0;
+    mid_isize cap = 128;
+    struct MidLit_String str = {.type = type};
     realloc_strlit(&str, cap);
 
-    isize_t i;
+    mid_isize i;
     for (i = lquote + 1; src[i] != '"' && src[i] != '\n';) {
-        u32 c = UTF8_read_char(src, i, &i);
+        u32 c = MidUTF8_read_char(src, i, &i);
         verify_charlit_value(c, type, pos, line, diags);
 
         strlit_add(&str, len++, c);
@@ -711,30 +717,30 @@ struct Lit_String read_strlit(const char *src, isize_t lquote, isize_t *out_end,
     strlit_add(&str, len, '\0');
 
     if (src[i] != '"')
-        gen_dynpush(diags,
-                    expected_tok_err("\"", pos, line, ERRORTYPE_BAD_LITERAL));
+        MidGen_dynpush(diags,
+                    expected_tok_err("\"", pos, line, MIDDIAG_ERR_BAD_LITERAL));
 
     if (out_end)
         *out_end = i + (src[i] == '"');
     return str;
 }
 
-static struct Lexer_Token
-create_strlit_tok(const char *src, struct Lit_StringVec *str_lits,
-                  isize_t start, isize_t *out_end, struct Position pos,
-                  const char *line, struct DiagVec *diags)
+static struct MidLexer_Token
+create_strlit_tok(const char *src, struct MidLit_StringVec *str_lits,
+                  mid_isize start, mid_isize *out_end, struct Mid_Position pos,
+                  const char *line, struct MidDiag_DiagVec *diags)
 {
-    isize_t lquote;
+    mid_isize lquote;
     auto type = charlit_type(src, start, &lquote, pos, line, diags);
     assert(src[lquote] == '"');
 
-    struct Lexer_Token ret = {};
+    struct MidLexer_Token ret = {};
     ret.pos = pos;
     ret.line = line;
     ret.type = charlit_type_to_str_tok_type(type);
 
     auto lit = read_strlit(src, lquote, out_end, type, pos, line, diags);
-    gen_dynpush(str_lits, lit);
+    MidGen_dynpush(str_lits, lit);
     ret.val.str = lit;
 
     return ret;
@@ -745,204 +751,206 @@ static bool is_identifier_char(char c)
     return isalnum(c) || c == '_';
 }
 
-static isize_t identifier_end(const char *src, isize_t start)
+static mid_isize identifier_end(const char *src, mid_isize start)
 {
-    isize_t end;
+    mid_isize end;
     for (end = start; is_identifier_char(src[end]); ++end)
         ;
     return end;
 }
 
 // end - an out variable and can be NULL
-static char *read_identifier(const char *src, isize_t start, isize_t *end)
+static char *read_identifier(const char *src, mid_isize start, mid_isize *end)
 {
-    isize_t id_end = identifier_end(src, start);
+    mid_isize id_end = identifier_end(src, start);
     if (end)
         *end = id_end;
 
-    isize_t len = id_end - start;
-    char *str = mid_malloc((len + 1) * sizeof(*str));
+    mid_isize len = id_end - start;
+    char *str = Mid_malloc((len + 1) * sizeof(*str));
     str[len] = '\0';
 
-    for (isize_t i = 0; i < len; ++i)
+    for (mid_isize i = 0; i < len; ++i)
         str[i] = src[i + start];
 
     return str;
 }
 
-static struct Lexer_Token create_identifier_tok(char *id, struct Position pos,
-                                                const char *line)
+static struct MidLexer_Token
+create_identifier_tok(char *id, struct Mid_Position pos, const char *line)
 {
     if (!strcmp(id, "void"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_VOID};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_VOID};
     else if (!strcmp(id, "char"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_CHAR};
     else if (!strcmp(id, "wchar_t"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_WCHAR};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_WCHAR};
     else if (!strcmp(id, "char16_t"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR16};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_CHAR16};
     else if (!strcmp(id, "char32_t"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CHAR32};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_CHAR32};
     else if (!strcmp(id, "bool"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_BOOL};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_BOOL};
     else if (!strcmp(id, "int"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_INT};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_INT};
     else if (!strcmp(id, "float"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_FLOAT};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_FLOAT};
     else if (!strcmp(id, "double"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DOUBLE};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_DOUBLE};
     else if (!strcmp(id, "class"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CLASS};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_CLASS};
     else if (!strcmp(id, "struct"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_STRUCT};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_STRUCT};
     else if (!strcmp(id, "union"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_UNION};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_UNION};
     else if (!strcmp(id, "enum"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_ENUM};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_ENUM};
     else if (!strcmp(id, "auto"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_AUTO};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_AUTO};
 
     else if (!strcmp(id, "short"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SHORT};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_SHORT};
     else if (!strcmp(id, "long"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_LONG};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_LONG};
     else if (!strcmp(id, "signed"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_SIGNED};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_SIGNED};
     else if (!strcmp(id, "unsigned"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_UNSIGNED};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_UNSIGNED};
     else if (!strcmp(id, "static"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_STATIC};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_STATIC};
     else if (!strcmp(id, "constexpr"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONSTEXPR};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_CONSTEXPR};
     else if (!strcmp(id, "typedef"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_TYPEDEF};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_TYPEDEF};
 
     else if (!strcmp(id, "const"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONST};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_CONST};
     else if (!strcmp(id, "volatile"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_VOLATILE};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_VOLATILE};
 
     else if (!strcmp(id, "typeid"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_TYPEID};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_TYPEID};
 
     else if (!strcmp(id, "const_cast"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_CONSTCAST};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_CONSTCAST};
     else if (!strcmp(id, "dynamic_cast"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DYNAMICCAST};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_DYNAMICCAST};
     else if (!strcmp(id, "reinterpret_cast"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_REINTERPRETCAST};
+        return (struct MidLexer_Token){.pos = pos,
+                                       .line = line,
+                                       .type =
+                                           MIDLEXER_TOKENTYPE_REINTERPRETCAST};
     else if (!strcmp(id, "static_cast"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_STATICCAST};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_STATICCAST};
 
     else if (!strcmp(id, "new"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_NEW};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_NEW};
     else if (!strcmp(id, "delete"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DELETE};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_DELETE};
 
     else if (!strcmp(id, "throw"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_THROW};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_THROW};
 
     else if (!strcmp(id, "true"))
-        return (struct Lexer_Token){.pos = pos,
-                                    .line = line,
-                                    .type = LEXER_TOKENTYPE_BOOL_LIT,
-                                    .val.sint = true};
+        return (struct MidLexer_Token){.pos = pos,
+                                       .line = line,
+                                       .type = MIDLEXER_TOKENTYPE_BOOL_LIT,
+                                       .val.sint = true};
     else if (!strcmp(id, "false"))
-        return (struct Lexer_Token){.pos = pos,
-                                    .line = line,
-                                    .type = LEXER_TOKENTYPE_BOOL_LIT,
-                                    .val.sint = false};
+        return (struct MidLexer_Token){.pos = pos,
+                                       .line = line,
+                                       .type = MIDLEXER_TOKENTYPE_BOOL_LIT,
+                                       .val.sint = false};
     else if (!strcmp(id, "nullptr"))
-        return (struct Lexer_Token){.pos = pos,
-                                    .line = line,
-                                    .type = LEXER_TOKENTYPE_NULLPTR_LIT,
-                                    .val.uint = 0};
+        return (struct MidLexer_Token){.pos = pos,
+                                       .line = line,
+                                       .type = MIDLEXER_TOKENTYPE_NULLPTR_LIT,
+                                       .val.uint = 0};
 
     else if (!strcmp(id, "public"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_PUBLIC};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_PUBLIC};
     else if (!strcmp(id, "private"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_PRIVATE};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_PRIVATE};
     else if (!strcmp(id, "protected"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_PROTECTED};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_PROTECTED};
 
     else if (!strcmp(id, "this"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_THIS};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_THIS};
 
     else if (!strcmp(id, "namespace"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_NAMESPACE};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_NAMESPACE};
 
     else if (!strcmp(id, "return"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_RETURN};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_RETURN};
 
     else if (!strcmp(id, "noexcept"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_NOEXCEPT};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_NOEXCEPT};
     else if (!strcmp(id, "final"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_FINAL};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_FINAL};
     else if (!strcmp(id, "override"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_OVERRIDE};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_OVERRIDE};
 
     else if (!strcmp(id, "default"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_DEFAULT};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_DEFAULT};
 
     else if (!strcmp(id, "template"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_TEMPLATE};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_TEMPLATE};
     else if (!strcmp(id, "typename"))
-        return (struct Lexer_Token){
-            .pos = pos, .line = line, .type = LEXER_TOKENTYPE_TYPENAME};
+        return (struct MidLexer_Token){
+            .pos = pos, .line = line, .type = MIDLEXER_TOKENTYPE_TYPENAME};
 
     else
-        return (struct Lexer_Token){.pos = pos,
-                                    .line = line,
-                                    .type = LEXER_TOKENTYPE_IDENTIFIER,
-                                    .ident = id};
+        return (struct MidLexer_Token){.pos = pos,
+                                       .line = line,
+                                       .type = MIDLEXER_TOKENTYPE_IDENTIFIER,
+                                       .ident = id};
 }
 
-static isize_t skip_to_line_end(const char *src, isize_t start,
-                                struct Position *pos)
+static mid_isize skip_to_line_end(const char *src, mid_isize start,
+                                struct Mid_Position *pos)
 {
-    isize_t i = start;
+    mid_isize i = start;
     while (src[++i] != '\n')
         ++pos->column;
     return i - 1;
@@ -953,10 +961,10 @@ static isize_t skip_to_line_end(const char *src, isize_t start,
 //                start
 //                          ^
 //                        return
-static isize_t skip_c_comment(const char *src, isize_t start,
-                              struct Position *pos)
+static mid_isize skip_c_comment(const char *src, mid_isize start,
+                              struct Mid_Position *pos)
 {
-    isize_t i = start + 2;
+    mid_isize i = start + 2;
 
     while (src[i] != '*' || src[i + 1] != '/') {
         if (src[i] == '\n') {
@@ -971,9 +979,9 @@ static isize_t skip_c_comment(const char *src, isize_t start,
 }
 
 // very ugly function
-static char *symb_in_tbl(struct SymbolTable *tbl, const char *symb)
+static char *symb_in_tbl(struct MidSymbol_Table *tbl, const char *symb)
 {
-    for (isize_t i = 0; i < tbl->len; ++i) {
+    for (mid_isize i = 0; i < tbl->len; ++i) {
         if (!strcmp(tbl->arr[i], symb))
             return tbl->arr[i];
     }
@@ -981,17 +989,17 @@ static char *symb_in_tbl(struct SymbolTable *tbl, const char *symb)
     return NULL;
 }
 
-static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
+static struct MidLexer_Tokenize read_tokens(const char *src, const char *file)
 {
-    struct Lexer_TokenVec toks = {};
-    struct SymbolTable symbtbl = {};
-    struct Lit_StringVec str_lits = {};
-    struct DiagVec diags = {};
-    struct Position pos = {.file = file, .line = 1, .column = 1};
+    struct MidLexer_TokenVec toks = {};
+    struct MidSymbol_Table symbtbl = {};
+    struct MidLit_StringVec str_lits = {};
+    struct MidDiag_DiagVec diags = {};
+    struct Mid_Position pos = {.file = file, .line = 1, .column = 1};
 
     const char *line_start = src;
 
-    for (isize_t i = 0; src[i] != '\0'; ++i, ++pos.column) {
+    for (mid_isize i = 0; src[i] != '\0'; ++i, ++pos.column) {
         if (src[i] == '/' && src[i + 1] == '/') {
             i = skip_to_line_end(src, i, &pos);
             continue;
@@ -1017,89 +1025,94 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 
         case ':':
             if (src[i + 1] == ':') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_SCOPE_RES,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_SCOPE_RES, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_COLON, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_COLON,
+                                                    pos, line_start));
             }
             break;
 
         case '.':
             if (isdigit(src[i + 1])) { // literals like .5
                 auto old_i = i;
-                gen_dynpush(&toks, create_numlit_tok(src, i, &i, pos,
+                MidGen_dynpush(&toks, create_numlit_tok(src, i, &i, pos,
                                                      line_start, &diags));
                 --i;
                 pos.column += i - old_i;
             } else if (src[i + 1] == '*') {
-                gen_dynpush(&toks,
-                            create_basic_tok(LEXER_TOKENTYPE_PTR_TO_MEMB_SEL,
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_PTR_TO_MEMB_SEL,
                                              pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '.' && src[i + 2] == '.') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ELLIPSIS,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_ELLIPSIS,
                                                     pos, line_start));
                 i += 2;
                 pos.column += 2;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MEMB_SEL,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_MEMB_SEL,
                                                     pos, line_start));
             }
             break;
 
         case '*':
             if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MUL_ASSIGN,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_MUL_ASSIGN, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MUL, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_MUL, pos,
                                                     line_start));
             }
             break;
 
         case '/':
             if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_DIV_ASSIGN,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_DIV_ASSIGN, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_DIV, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_DIV, pos,
                                                     line_start));
             }
             break;
 
         case '%':
             if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MOD_ASSIGN,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_MOD_ASSIGN, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_MOD, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_MOD, pos,
                                                     line_start));
             }
             break;
 
         case '+':
             if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ADD_ASSIGN,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_ADD_ASSIGN, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '+') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_INC, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_INC, pos,
                                                     line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ADD, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_ADD, pos,
                                                     line_start));
             }
             break;
@@ -1107,27 +1120,29 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '-':
             if (src[i + 1] == '>') {
                 if (src[i + 2] == '*')
-                    gen_dynpush(&toks, create_basic_tok(
-                                           LEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL,
-                                           pos, line_start));
+                    MidGen_dynpush(
+                        &toks,
+                        create_basic_tok(MIDLEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL,
+                                         pos, line_start));
                 else
-                    gen_dynpush(&toks,
-                                create_basic_tok(LEXER_TOKENTYPE_PTR_MEMB_SEL,
-                                                 pos, line_start));
+                    MidGen_dynpush(
+                        &toks, create_basic_tok(MIDLEXER_TOKENTYPE_PTR_MEMB_SEL,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_SUB_ASSIGN,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_SUB_ASSIGN, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '-') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_DEC, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_DEC, pos,
                                                     line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_SUB, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_SUB, pos,
                                                     line_start));
             }
             break;
@@ -1135,22 +1150,22 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '<':
             if (src[i + 1] == '<') {
                 if (src[i + 1] == '=')
-                    gen_dynpush(&toks, create_basic_tok(
-                                           LEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN,
+                    MidGen_dynpush(&toks, create_basic_tok(
+                                           MIDLEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN,
                                            pos, line_start));
                 else
-                    gen_dynpush(&toks,
-                                create_basic_tok(LEXER_TOKENTYPE_LEFT_SHIFT,
+                    MidGen_dynpush(&toks,
+                                create_basic_tok(MIDLEXER_TOKENTYPE_LEFT_SHIFT,
                                                  pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LTEQ, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_LTEQ,
+                                                    pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LT, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_LT, pos,
                                                     line_start));
             }
             break;
@@ -1158,103 +1173,113 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '>':
             if (src[i + 1] == '>') {
                 if (src[i + 1] == '=')
-                    gen_dynpush(&toks, create_basic_tok(
-                                           LEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN,
-                                           pos, line_start));
+                    MidGen_dynpush(
+                        &toks,
+                        create_basic_tok(MIDLEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN,
+                                         pos, line_start));
                 else
-                    gen_dynpush(&toks,
-                                create_basic_tok(LEXER_TOKENTYPE_RIGHT_SHIFT,
+                    MidGen_dynpush(&toks,
+                                create_basic_tok(MIDLEXER_TOKENTYPE_RIGHT_SHIFT,
                                                  pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_GTEQ, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_GTEQ,
+                                                    pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_GT, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_GT, pos,
                                                     line_start));
             }
             break;
 
         case '=':
             if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_EQ, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_EQ, pos,
                                                     line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_ASSIGN, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_ASSIGN,
+                                                    pos, line_start));
             }
             break;
 
         case '!':
             if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_NEQ, pos,
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_NEQ, pos,
                                                     line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LOGICAL_NOT,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_LOGICAL_NOT,
+                                             pos, line_start));
             }
             break;
 
         case '&':
             if (src[i + 1] == '&') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LOGICAL_AND,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_LOGICAL_AND,
+                                             pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_AND_ASSIGN,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_AND_ASSIGN, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_BITWISE_AND,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_AND,
+                                             pos, line_start));
             }
             break;
 
         case '^':
             if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_XOR_ASSIGN,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_XOR_ASSIGN, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_BITWISE_XOR,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_XOR,
+                                             pos, line_start));
             }
             break;
 
         case '|':
             if (src[i + 1] == '|') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_LOGICAL_OR,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_LOGICAL_OR, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '=') {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_OR_ASSIGN,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_OR_ASSIGN, pos,
+                                             line_start));
                 ++i;
                 ++pos.column;
             } else {
-                gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_BITWISE_OR,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                            create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_OR, pos,
+                                             line_start));
             }
             break;
 
         case ',':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_COMMA, pos,
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_COMMA, pos,
                                                 line_start));
             break;
 
         case '~':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_BITWISE_NOT,
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_NOT,
                                                 pos, line_start));
             break;
 
@@ -1269,7 +1294,7 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '8':
         case '9': {
             auto old_i = i;
-            gen_dynpush(&toks,
+            MidGen_dynpush(&toks,
                         create_numlit_tok(src, i, &i, pos, line_start, &diags));
             --i;
             pos.column += i - old_i;
@@ -1277,33 +1302,33 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         }
 
         case '(':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_L_PAREN, pos,
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_L_PAREN, pos,
                                                 line_start));
             break;
         case ')':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_R_PAREN, pos,
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_R_PAREN, pos,
                                                 line_start));
             break;
         case '[':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_L_SQBRACKET,
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_L_SQBRACKET,
                                                 pos, line_start));
             break;
         case ']':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_R_SQBRACKET,
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_R_SQBRACKET,
                                                 pos, line_start));
             break;
         case '{':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_L_CURLY, pos,
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_L_CURLY, pos,
                                                 line_start));
             break;
         case '}':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_R_CURLY, pos,
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_R_CURLY, pos,
                                                 line_start));
             break;
 
         case ';':
-            gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_SEMICOLON, pos,
-                                                line_start));
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_SEMICOLON,
+                                                pos, line_start));
             break;
 
         // ew
@@ -1323,12 +1348,12 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
                     id = in_tbl;
                 }
                 auto tok = create_identifier_tok(id, pos, line_start);
-                gen_dynpush(&toks, tok);
+                MidGen_dynpush(&toks, tok);
                 // if the symbol is an actual identifier then it needs to be
                 // added to the symbol table, otherwise the identifier can be
                 // discarded
-                if (!in_tbl && tok.type == LEXER_TOKENTYPE_IDENTIFIER)
-                    gen_dynpush(&symbtbl, id);
+                if (!in_tbl && tok.type == MIDLEXER_TOKENTYPE_IDENTIFIER)
+                    MidGen_dynpush(&symbtbl, id);
                 else if (!in_tbl)
                     free(id);
                 pos.column += i - old_i;
@@ -1339,7 +1364,7 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '\'': {
         parse_char_lit:
             auto old_i = i;
-            gen_dynpush(
+            MidGen_dynpush(
                 &toks, create_charlit_tok(src, i, &i, pos, line_start, &diags));
             --i;
             pos.column += i - old_i;
@@ -1349,7 +1374,7 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
         case '"': {
         parse_str_lit:
             auto old_i = i;
-            gen_dynpush(&toks, create_strlit_tok(src, &str_lits, i, &i, pos,
+            MidGen_dynpush(&toks, create_strlit_tok(src, &str_lits, i, &i, pos,
                                                  line_start, &diags));
             --i;
             pos.column += i - old_i;
@@ -1358,23 +1383,24 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
 
         default: {
             // column isn't updated cuz it's still one character
-            char *c = UTF8_char_to_str(UTF8_read_char(src, i, &i));
+            char *c = MidUTF8_char_to_str(MidUTF8_read_char(src, i, &i));
             --i;
-            struct Diag err = {.type = DIAGTYPE_ERROR,
-                               .err = ERRORTYPE_UNKNOWN_SYMBOL,
-                               .msg =
-                                   Print_fmt_to_str("unknown symbol '%s'", c),
-                               .pos = pos,
-                               .line = line_start};
-            gen_dynpush(&diags, err);
+            struct MidDiag_Diag err = {
+                .type = MIDDIAG_TYPE_ERROR,
+                .err = MIDDIAG_ERR_UNKNOWN_SYMBOL,
+                .msg = MidPrint_fmt_to_str("unknown symbol '%s'", c),
+                .pos = pos,
+                .line = line_start};
+            MidGen_dynpush(&diags, err);
             free(c);
             break;
         }
         }
     }
-    gen_dynpush(&toks, create_basic_tok(LEXER_TOKENTYPE_END, pos, line_start));
+    MidGen_dynpush(&toks,
+                create_basic_tok(MIDLEXER_TOKENTYPE_END, pos, line_start));
 
-    struct Lexer_Tokenize ret;
+    struct MidLexer_Tokenize ret;
     ret.toks = toks;
     ret.symtbl = symbtbl;
     ret.str_lits = str_lits;
@@ -1382,17 +1408,17 @@ static struct Lexer_Tokenize read_tokens(const char *src, const char *file)
     return ret;
 }
 
-struct Lexer_Tokenize Lexer_tokenize(const char *src, const char *file)
+struct MidLexer_Tokenize MidLexer_tokenize(const char *src, const char *file)
 {
     auto lex = read_tokens(src, file);
 
     return lex;
 }
 
-void Lexer_Tokenize_deinit(struct Lexer_Tokenize *self)
+void MidLexer_Tokenize_deinit(struct MidLexer_Tokenize *self)
 {
-    gen_dyndeinit(&self->toks);
-    gen_dyndeinit(&self->symtbl, Symbol_deinit_symbol);
-    gen_dyndeinit(&self->str_lits, Lit_String_deinit);
-    gen_dyndeinit(&self->diags, Diag_deinit);
+    MidGen_dyndeinit(&self->toks);
+    MidGen_dyndeinit(&self->symtbl, MidSymbol_deinit_symbol);
+    MidGen_dyndeinit(&self->str_lits, MidLit_String_deinit);
+    MidGen_dyndeinit(&self->diags, MidDiag_deinit);
 }

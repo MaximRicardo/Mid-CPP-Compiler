@@ -6,12 +6,12 @@
 
 // all identifiers are put in a symbol table to reduce memory load
 // TODO: make this a hashmap for faster lookup during lexing
-struct SymbolTable {
+struct MidSymbol_Table {
     char **arr;
-    isize_t len, cap;
+    mid_isize len, cap;
 };
 
-static inline void Symbol_deinit_symbol(char **arr)
+static inline void MidSymbol_deinit_symbol(char **arr)
 {
     free(*arr);
     *arr = NULL;

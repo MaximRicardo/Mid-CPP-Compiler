@@ -15,927 +15,938 @@
 #include <assert.h>
 #include <stdio.h>
 
-bool Parser_is_strlit(enum Parser_ExprType type)
+bool MidParser_is_strlit(enum MidParser_ExprType type)
 {
-    return type == PARSER_EXPRTYPE_STRING_LIT ||
-           type == PARSER_EXPRTYPE_WSTRING_LIT ||
-           type == PARSER_EXPRTYPE_STRING16_LIT ||
-           type == PARSER_EXPRTYPE_STRING32_LIT;
+    return type == MIDPARSER_EXPRTYPE_STRING_LIT ||
+           type == MIDPARSER_EXPRTYPE_WSTRING_LIT ||
+           type == MIDPARSER_EXPRTYPE_STRING16_LIT ||
+           type == MIDPARSER_EXPRTYPE_STRING32_LIT;
 }
 
-bool Parser_is_numlit(enum Parser_ExprType type)
+bool MidParser_is_numlit(enum MidParser_ExprType type)
 {
-    return type > PARSER_EXPRTYPE_NUMLIT_START &&
-           type < PARSER_EXPRTYPE_NUMLIT_END;
+    return type > MIDPARSER_EXPRTYPE_NUMMIDLIT_START &&
+           type < MIDPARSER_EXPRTYPE_NUMMIDLIT_END;
 }
 
-bool Parser_is_ternaryop(enum Parser_ExprType type)
+bool MidParser_is_ternaryop(enum MidParser_ExprType type)
 {
-    return type > PARSER_EXPRTYPE_TERNARYOP_START &&
-           type < PARSER_EXPRTYPE_TERNARYOP_END;
+    return type > MIDPARSER_EXPRTYPE_TERNARYOP_START &&
+           type < MIDPARSER_EXPRTYPE_TERNARYOP_END;
 }
 
-bool Parser_is_binop(enum Parser_ExprType type)
+bool MidParser_is_binop(enum MidParser_ExprType type)
 {
-    return type > PARSER_EXPRTYPE_BINOP_START &&
-           type < PARSER_EXPRTYPE_BINOP_END;
+    return type > MIDPARSER_EXPRTYPE_BINOP_START &&
+           type < MIDPARSER_EXPRTYPE_BINOP_END;
 }
 
-bool Parser_is_unaryop(enum Parser_ExprType type)
+bool MidParser_is_unaryop(enum MidParser_ExprType type)
 {
-    return type > PARSER_EXPRTYPE_UNARYOP_START &&
-           type < PARSER_EXPRTYPE_UNARYOP_END;
+    return type > MIDPARSER_EXPRTYPE_UNARYOP_START &&
+           type < MIDPARSER_EXPRTYPE_UNARYOP_END;
 }
 
-bool Parser_is_scope_res(enum Parser_ExprType type)
+bool MidParser_is_scope_res(enum MidParser_ExprType type)
 {
-    return type == PARSER_EXPRTYPE_BIN_SCOPE_RES ||
-           type == PARSER_EXPRTYPE_UNARY_SCOPE_RES;
+    return type == MIDPARSER_EXPRTYPE_BIN_SCOPE_RES ||
+           type == MIDPARSER_EXPRTYPE_UNARY_SCOPE_RES;
 }
 
-bool Parser_is_op(enum Parser_ExprType type)
+bool MidParser_is_op(enum MidParser_ExprType type)
 {
-    return Parser_is_binop(type) || Parser_is_unaryop(type);
+    return MidParser_is_binop(type) || MidParser_is_unaryop(type);
 }
 
-bool Parser_is_arith_op(enum Parser_ExprType type)
+bool MidParser_is_arith_op(enum MidParser_ExprType type)
 {
-    return type == PARSER_EXPRTYPE_MUL || type == PARSER_EXPRTYPE_DIV ||
-           type == PARSER_EXPRTYPE_MOD || type == PARSER_EXPRTYPE_ADD ||
-           type == PARSER_EXPRTYPE_SUB || type == PARSER_EXPRTYPE_LEFT_SHIFT ||
-           type == PARSER_EXPRTYPE_RIGHT_SHIFT ||
-           type == PARSER_EXPRTYPE_BITWISE_AND ||
-           type == PARSER_EXPRTYPE_BITWISE_XOR ||
-           type == PARSER_EXPRTYPE_BITWISE_OR ||
-           type == PARSER_EXPRTYPE_BITWISE_NOT ||
-           type == PARSER_EXPRTYPE_UNARY_PLUS ||
-           type == PARSER_EXPRTYPE_UNARY_MINUS;
+    return type == MIDPARSER_EXPRTYPE_MUL || type == MIDPARSER_EXPRTYPE_DIV ||
+           type == MIDPARSER_EXPRTYPE_MOD || type == MIDPARSER_EXPRTYPE_ADD ||
+           type == MIDPARSER_EXPRTYPE_SUB ||
+           type == MIDPARSER_EXPRTYPE_LEFT_SHIFT ||
+           type == MIDPARSER_EXPRTYPE_RIGHT_SHIFT ||
+           type == MIDPARSER_EXPRTYPE_BITWISE_AND ||
+           type == MIDPARSER_EXPRTYPE_BITWISE_XOR ||
+           type == MIDPARSER_EXPRTYPE_BITWISE_OR ||
+           type == MIDPARSER_EXPRTYPE_BITWISE_NOT ||
+           type == MIDPARSER_EXPRTYPE_UNARY_PLUS ||
+           type == MIDPARSER_EXPRTYPE_UNARY_MINUS;
 }
 
-bool Parser_is_logical_op(enum Parser_ExprType type)
+bool MidParser_is_logical_op(enum MidParser_ExprType type)
 {
-    return type == PARSER_EXPRTYPE_LOGICAL_AND ||
-           type == PARSER_EXPRTYPE_LOGICAL_OR ||
-           type == PARSER_EXPRTYPE_LOGICAL_NOT;
+    return type == MIDPARSER_EXPRTYPE_LOGICAL_AND ||
+           type == MIDPARSER_EXPRTYPE_LOGICAL_OR ||
+           type == MIDPARSER_EXPRTYPE_LOGICAL_NOT;
 }
 
-bool Parser_is_comp_op(enum Parser_ExprType type)
+bool MidParser_is_comp_op(enum MidParser_ExprType type)
 {
-    return type == PARSER_EXPRTYPE_LT || type == PARSER_EXPRTYPE_GT ||
-           type == PARSER_EXPRTYPE_LTEQ || type == PARSER_EXPRTYPE_GTEQ ||
-           type == PARSER_EXPRTYPE_EQ || type == PARSER_EXPRTYPE_NEQ;
+    return type == MIDPARSER_EXPRTYPE_LT || type == MIDPARSER_EXPRTYPE_GT ||
+           type == MIDPARSER_EXPRTYPE_LTEQ || type == MIDPARSER_EXPRTYPE_GTEQ ||
+           type == MIDPARSER_EXPRTYPE_EQ || type == MIDPARSER_EXPRTYPE_NEQ;
 }
 
-bool Parser_is_assignment(enum Parser_ExprType type)
+bool MidParser_is_assignment(enum MidParser_ExprType type)
 {
-    return type == PARSER_EXPRTYPE_ASSIGN ||
-           type == PARSER_EXPRTYPE_MUL_ASSIGN ||
-           type == PARSER_EXPRTYPE_DIV_ASSIGN ||
-           type == PARSER_EXPRTYPE_MOD_ASSIGN ||
-           type == PARSER_EXPRTYPE_SUB_ASSIGN ||
-           type == PARSER_EXPRTYPE_ADD_ASSIGN ||
-           type == PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN ||
-           type == PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN ||
-           type == PARSER_EXPRTYPE_AND_ASSIGN ||
-           type == PARSER_EXPRTYPE_OR_ASSIGN ||
-           type == PARSER_EXPRTYPE_XOR_ASSIGN;
+    return type == MIDPARSER_EXPRTYPE_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_MUL_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_DIV_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_MOD_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_SUB_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_ADD_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_AND_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_OR_ASSIGN ||
+           type == MIDPARSER_EXPRTYPE_XOR_ASSIGN;
 }
 
-bool Parser_is_memb_sel(enum Parser_ExprType type)
+bool MidParser_is_memb_sel(enum MidParser_ExprType type)
 {
-    return type == PARSER_EXPRTYPE_MEMB_SEL ||
-           type == PARSER_EXPRTYPE_PTR_MEMB_SEL ||
-           type == PARSER_EXPRTYPE_PTR_TO_MEMB_SEL ||
-           type == PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
+    return type == MIDPARSER_EXPRTYPE_MEMB_SEL ||
+           type == MIDPARSER_EXPRTYPE_PTR_MEMB_SEL ||
+           type == MIDPARSER_EXPRTYPE_PTR_TO_MEMB_SEL ||
+           type == MIDPARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
 }
 
-i32 Parser_op_precedence(enum Parser_ExprType op)
+i32 MidParser_op_precedence(enum MidParser_ExprType op)
 {
     // goes from 16 to 1
     i32 flipped;
 
     switch (op) {
-    case PARSER_EXPRTYPE_BIN_SCOPE_RES:
-    case PARSER_EXPRTYPE_UNARY_SCOPE_RES:
+    case MIDPARSER_EXPRTYPE_BIN_SCOPE_RES:
+    case MIDPARSER_EXPRTYPE_UNARY_SCOPE_RES:
         flipped = 1;
         break;
 
-    case PARSER_EXPRTYPE_MEMB_SEL:
-    case PARSER_EXPRTYPE_PTR_MEMB_SEL:
-    case PARSER_EXPRTYPE_ARRAY_SUBSCR:
-    case PARSER_EXPRTYPE_FUNC_CALL:
-    case PARSER_EXPRTYPE_POSTFIX_INC:
-    case PARSER_EXPRTYPE_POSTFIX_DEC:
-    case PARSER_EXPRTYPE_TYPEID:
-    case PARSER_EXPRTYPE_CONSTCAST:
-    case PARSER_EXPRTYPE_DYNAMICCAST:
-    case PARSER_EXPRTYPE_REINTERPRETCAST:
-    case PARSER_EXPRTYPE_STATICCAST:
+    case MIDPARSER_EXPRTYPE_MEMB_SEL:
+    case MIDPARSER_EXPRTYPE_PTR_MEMB_SEL:
+    case MIDPARSER_EXPRTYPE_ARRAY_SUBSCR:
+    case MIDPARSER_EXPRTYPE_FUNC_CALL:
+    case MIDPARSER_EXPRTYPE_POSTFIX_INC:
+    case MIDPARSER_EXPRTYPE_POSTFIX_DEC:
+    case MIDPARSER_EXPRTYPE_TYPEID:
+    case MIDPARSER_EXPRTYPE_CONSTCAST:
+    case MIDPARSER_EXPRTYPE_DYNAMICCAST:
+    case MIDPARSER_EXPRTYPE_REINTERPRETCAST:
+    case MIDPARSER_EXPRTYPE_STATICCAST:
         flipped = 2;
         break;
 
-    case PARSER_EXPRTYPE_SIZEOF:
-    case PARSER_EXPRTYPE_PREFIX_INC:
-    case PARSER_EXPRTYPE_PREFIX_DEC:
-    case PARSER_EXPRTYPE_BITWISE_NOT:
-    case PARSER_EXPRTYPE_LOGICAL_NOT:
-    case PARSER_EXPRTYPE_UNARY_MINUS:
-    case PARSER_EXPRTYPE_UNARY_PLUS:
-    case PARSER_EXPRTYPE_REF:
-    case PARSER_EXPRTYPE_DEREF:
-    case PARSER_EXPRTYPE_NEW:
-    case PARSER_EXPRTYPE_DELETE:
-    case PARSER_EXPRTYPE_CAST:
+    case MIDPARSER_EXPRTYPE_SIZEOF:
+    case MIDPARSER_EXPRTYPE_PREFIX_INC:
+    case MIDPARSER_EXPRTYPE_PREFIX_DEC:
+    case MIDPARSER_EXPRTYPE_BITWISE_NOT:
+    case MIDPARSER_EXPRTYPE_LOGICAL_NOT:
+    case MIDPARSER_EXPRTYPE_UNARY_MINUS:
+    case MIDPARSER_EXPRTYPE_UNARY_PLUS:
+    case MIDPARSER_EXPRTYPE_REF:
+    case MIDPARSER_EXPRTYPE_DEREF:
+    case MIDPARSER_EXPRTYPE_NEW:
+    case MIDPARSER_EXPRTYPE_DELETE:
+    case MIDPARSER_EXPRTYPE_CAST:
         flipped = 3;
         break;
 
-    case PARSER_EXPRTYPE_PTR_TO_MEMB_SEL:
-    case PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL:
+    case MIDPARSER_EXPRTYPE_PTR_TO_MEMB_SEL:
+    case MIDPARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL:
         flipped = 4;
         break;
 
-    case PARSER_EXPRTYPE_MUL:
-    case PARSER_EXPRTYPE_DIV:
-    case PARSER_EXPRTYPE_MOD:
+    case MIDPARSER_EXPRTYPE_MUL:
+    case MIDPARSER_EXPRTYPE_DIV:
+    case MIDPARSER_EXPRTYPE_MOD:
         flipped = 5;
         break;
 
-    case PARSER_EXPRTYPE_ADD:
-    case PARSER_EXPRTYPE_SUB:
+    case MIDPARSER_EXPRTYPE_ADD:
+    case MIDPARSER_EXPRTYPE_SUB:
         flipped = 6;
         break;
 
-    case PARSER_EXPRTYPE_LEFT_SHIFT:
-    case PARSER_EXPRTYPE_RIGHT_SHIFT:
+    case MIDPARSER_EXPRTYPE_LEFT_SHIFT:
+    case MIDPARSER_EXPRTYPE_RIGHT_SHIFT:
         flipped = 7;
         break;
 
-    case PARSER_EXPRTYPE_LT:
-    case PARSER_EXPRTYPE_GT:
-    case PARSER_EXPRTYPE_LTEQ:
-    case PARSER_EXPRTYPE_GTEQ:
+    case MIDPARSER_EXPRTYPE_LT:
+    case MIDPARSER_EXPRTYPE_GT:
+    case MIDPARSER_EXPRTYPE_LTEQ:
+    case MIDPARSER_EXPRTYPE_GTEQ:
         flipped = 8;
         break;
 
-    case PARSER_EXPRTYPE_EQ:
-    case PARSER_EXPRTYPE_NEQ:
+    case MIDPARSER_EXPRTYPE_EQ:
+    case MIDPARSER_EXPRTYPE_NEQ:
         flipped = 9;
         break;
 
-    case PARSER_EXPRTYPE_BITWISE_AND:
+    case MIDPARSER_EXPRTYPE_BITWISE_AND:
         flipped = 10;
         break;
 
-    case PARSER_EXPRTYPE_BITWISE_XOR:
+    case MIDPARSER_EXPRTYPE_BITWISE_XOR:
         flipped = 11;
         break;
 
-    case PARSER_EXPRTYPE_BITWISE_OR:
+    case MIDPARSER_EXPRTYPE_BITWISE_OR:
         flipped = 12;
         break;
 
-    case PARSER_EXPRTYPE_LOGICAL_AND:
+    case MIDPARSER_EXPRTYPE_LOGICAL_AND:
         flipped = 13;
         break;
 
-    case PARSER_EXPRTYPE_LOGICAL_OR:
+    case MIDPARSER_EXPRTYPE_LOGICAL_OR:
         flipped = 14;
         break;
 
-    case PARSER_EXPRTYPE_CONDITIONAL:
-    case PARSER_EXPRTYPE_ASSIGN:
-    case PARSER_EXPRTYPE_MUL_ASSIGN:
-    case PARSER_EXPRTYPE_DIV_ASSIGN:
-    case PARSER_EXPRTYPE_MOD_ASSIGN:
-    case PARSER_EXPRTYPE_ADD_ASSIGN:
-    case PARSER_EXPRTYPE_SUB_ASSIGN:
-    case PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN:
-    case PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN:
-    case PARSER_EXPRTYPE_AND_ASSIGN:
-    case PARSER_EXPRTYPE_XOR_ASSIGN:
-    case PARSER_EXPRTYPE_OR_ASSIGN:
-    case PARSER_EXPRTYPE_THROW:
+    case MIDPARSER_EXPRTYPE_CONDITIONAL:
+    case MIDPARSER_EXPRTYPE_ASSIGN:
+    case MIDPARSER_EXPRTYPE_MUL_ASSIGN:
+    case MIDPARSER_EXPRTYPE_DIV_ASSIGN:
+    case MIDPARSER_EXPRTYPE_MOD_ASSIGN:
+    case MIDPARSER_EXPRTYPE_ADD_ASSIGN:
+    case MIDPARSER_EXPRTYPE_SUB_ASSIGN:
+    case MIDPARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN:
+    case MIDPARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN:
+    case MIDPARSER_EXPRTYPE_AND_ASSIGN:
+    case MIDPARSER_EXPRTYPE_XOR_ASSIGN:
+    case MIDPARSER_EXPRTYPE_OR_ASSIGN:
+    case MIDPARSER_EXPRTYPE_THROW:
         flipped = 15;
         break;
 
-    case PARSER_EXPRTYPE_COMMA:
+    case MIDPARSER_EXPRTYPE_COMMA:
         flipped = 16;
         break;
 
     default:
-        CRASH("expr isn't an operator");
+        MID_CRASH("expr isn't an operator");
     }
 
     return 16 - flipped;
 }
 
-bool Parser_op_ltr_assoc(enum Parser_ExprType op)
+bool MidParser_op_ltr_assoc(enum MidParser_ExprType op)
 {
-    i32 prec = Parser_op_precedence(op);
+    i32 prec = MidParser_op_precedence(op);
     return prec != 15 && prec != 13 && prec != 1;
 }
 
-bool Parser_is_glvalue(enum Parser_ExprValueType type)
+bool MidParser_is_glvalue(enum MidParser_ExprValueType type)
 {
-    return type == PARSER_EXPRVALUE_LVALUE || type == PARSER_EXPRVALUE_XVALUE;
+    return type == MIDPARSER_EXPRVALUE_LVALUE ||
+           type == MIDPARSER_EXPRVALUE_XVALUE;
 }
 
-bool Parser_is_rvalue(enum Parser_ExprValueType type)
+bool MidParser_is_rvalue(enum MidParser_ExprValueType type)
 {
-    return type == PARSER_EXPRVALUE_PRVALUE || type == PARSER_EXPRVALUE_XVALUE;
+    return type == MIDPARSER_EXPRVALUE_PRVALUE ||
+           type == MIDPARSER_EXPRVALUE_XVALUE;
 }
 
-bool Parser_is_rvalue(enum Parser_ExprValueType type);
+bool MidParser_is_rvalue(enum MidParser_ExprValueType type);
 
-static struct Parser_Expr lit_tok_to_expr(const struct Lexer_Token *tok)
+static struct MidParser_Expr lit_tok_to_expr(const struct MidLexer_Token *tok)
 {
-    assert(Lexer_is_lit(tok->type));
+    assert(MidLexer_is_lit(tok->type));
 
-    struct Parser_Expr ret = {
-        .tok = tok, .info.val = tok->val, .valtype = PARSER_EXPRVALUE_PRVALUE};
+    struct MidParser_Expr ret = {.tok = tok,
+                                 .info.val = tok->val,
+                                 .valtype = MIDPARSER_EXPRVALUE_PRVALUE};
 
     switch (tok->type) {
-    case LEXER_TOKENTYPE_CHAR_LIT:
-        ret.type = PARSER_EXPRTYPE_CHAR_LIT;
+    case MIDLEXER_TOKENTYPE_CHAR_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_CHAR_LIT;
         break;
 
-    case LEXER_TOKENTYPE_WCHAR_LIT:
-        ret.type = PARSER_EXPRTYPE_WCHAR_LIT;
+    case MIDLEXER_TOKENTYPE_WCHAR_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_WCHAR_LIT;
         break;
 
-    case LEXER_TOKENTYPE_CHAR16_LIT:
-        ret.type = PARSER_EXPRTYPE_CHAR16_LIT;
+    case MIDLEXER_TOKENTYPE_CHAR16_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_CHAR16_LIT;
         break;
 
-    case LEXER_TOKENTYPE_CHAR32_LIT:
-        ret.type = PARSER_EXPRTYPE_CHAR32_LIT;
+    case MIDLEXER_TOKENTYPE_CHAR32_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_CHAR32_LIT;
         break;
 
-    case LEXER_TOKENTYPE_STRING_LIT:
-        ret.type = PARSER_EXPRTYPE_STRING_LIT;
+    case MIDLEXER_TOKENTYPE_STRING_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_STRING_LIT;
         break;
 
-    case LEXER_TOKENTYPE_WSTRING_LIT:
-        ret.type = PARSER_EXPRTYPE_WSTRING_LIT;
+    case MIDLEXER_TOKENTYPE_WSTRING_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_WSTRING_LIT;
         break;
 
-    case LEXER_TOKENTYPE_STRING16_LIT:
-        ret.type = PARSER_EXPRTYPE_STRING16_LIT;
+    case MIDLEXER_TOKENTYPE_STRING16_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_STRING16_LIT;
         break;
 
-    case LEXER_TOKENTYPE_STRING32_LIT:
-        ret.type = PARSER_EXPRTYPE_STRING32_LIT;
+    case MIDLEXER_TOKENTYPE_STRING32_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_STRING32_LIT;
         break;
 
-    case LEXER_TOKENTYPE_INT_LIT:
-        ret.type = PARSER_EXPRTYPE_INT_LIT;
+    case MIDLEXER_TOKENTYPE_INT_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_INT_LIT;
         break;
 
-    case LEXER_TOKENTYPE_UINT_LIT:
-        ret.type = PARSER_EXPRTYPE_UINT_LIT;
+    case MIDLEXER_TOKENTYPE_UINT_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_UINT_LIT;
         break;
 
-    case LEXER_TOKENTYPE_LONG_LIT:
-        ret.type = PARSER_EXPRTYPE_LONG_LIT;
+    case MIDLEXER_TOKENTYPE_LONG_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_LONG_LIT;
         break;
 
-    case LEXER_TOKENTYPE_ULONG_LIT:
-        ret.type = PARSER_EXPRTYPE_ULONG_LIT;
+    case MIDLEXER_TOKENTYPE_ULONG_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_ULONG_LIT;
         break;
 
-    case LEXER_TOKENTYPE_LONGLONG_LIT:
-        ret.type = PARSER_EXPRTYPE_LONGLONG_LIT;
+    case MIDLEXER_TOKENTYPE_LONGLONG_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_LONGLONG_LIT;
         break;
 
-    case LEXER_TOKENTYPE_ULONGLONG_LIT:
-        ret.type = PARSER_EXPRTYPE_ULONGLONG_LIT;
+    case MIDLEXER_TOKENTYPE_ULONGLONG_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_ULONGLONG_LIT;
         break;
 
-    case LEXER_TOKENTYPE_FLOAT_LIT:
-        ret.type = PARSER_EXPRTYPE_FLOAT_LIT;
+    case MIDLEXER_TOKENTYPE_FLOAT_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_FLOAT_LIT;
         break;
 
-    case LEXER_TOKENTYPE_DOUBLE_LIT:
-        ret.type = PARSER_EXPRTYPE_DOUBLE_LIT;
+    case MIDLEXER_TOKENTYPE_DOUBLE_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_DOUBLE_LIT;
         break;
 
-    case LEXER_TOKENTYPE_LONGDOUBLE_LIT:
-        ret.type = PARSER_EXPRTYPE_LONGDOUBLE_LIT;
+    case MIDLEXER_TOKENTYPE_LONGDOUBLE_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_LONGDOUBLE_LIT;
         break;
 
-    case LEXER_TOKENTYPE_BOOL_LIT:
-        ret.type = PARSER_EXPRTYPE_BOOL_LIT;
+    case MIDLEXER_TOKENTYPE_BOOL_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_BOOL_LIT;
         break;
 
-    case LEXER_TOKENTYPE_NULLPTR_LIT:
-        ret.type = PARSER_EXPRTYPE_NULLPTR_LIT;
+    case MIDLEXER_TOKENTYPE_NULLPTR_LIT:
+        ret.type = MIDPARSER_EXPRTYPE_NULLPTR_LIT;
         break;
 
     default:
-        CRASH("token is not literal");
+        MID_CRASH("token is not literal");
     }
 
     return ret;
 }
 
-static struct Parser_Expr ident_tok_to_expr(const struct Lexer_Token *tok)
+static struct MidParser_Expr ident_tok_to_expr(const struct MidLexer_Token *tok)
 {
-    assert(tok->type == LEXER_TOKENTYPE_IDENTIFIER);
+    assert(tok->type == MIDLEXER_TOKENTYPE_IDENTIFIER);
 
-    struct Parser_Expr ret = {.tok = tok,
-                              .info.ident = tok->ident,
-                              .type = PARSER_EXPRTYPE_IDENTIFIER};
+    struct MidParser_Expr ret = {.tok = tok,
+                                 .info.ident = tok->ident,
+                                 .type = MIDPARSER_EXPRTYPE_IDENTIFIER};
     return ret;
 }
 
-static struct Parser_Expr this_tok_to_expr(const struct Lexer_Token *tok)
+static struct MidParser_Expr this_tok_to_expr(const struct MidLexer_Token *tok)
 {
-    struct Parser_Expr ret = {
-        .tok = tok, .info.ident = tok->ident, .type = PARSER_EXPRTYPE_THIS};
+    struct MidParser_Expr ret = {
+        .tok = tok, .info.ident = tok->ident, .type = MIDPARSER_EXPRTYPE_THIS};
     return ret;
 }
 
-static struct Parser_Expr op_tok_to_expr_mode0(const struct Lexer_Token *tok,
-                                               struct DiagVec *diags)
+static struct MidParser_Expr
+op_tok_to_expr_mode0(const struct MidLexer_Token *tok,
+                     struct MidDiag_DiagVec *diags)
 {
-    struct Parser_Expr ret = {.tok = tok};
+    struct MidParser_Expr ret = {.tok = tok};
 
     switch (tok->type) {
-    case LEXER_TOKENTYPE_SCOPE_RES:
-        ret.type = PARSER_EXPRTYPE_BIN_SCOPE_RES;
+    case MIDLEXER_TOKENTYPE_SCOPE_RES:
+        ret.type = MIDPARSER_EXPRTYPE_BIN_SCOPE_RES;
         break;
 
-    case LEXER_TOKENTYPE_MEMB_SEL:
-        ret.type = PARSER_EXPRTYPE_MEMB_SEL;
+    case MIDLEXER_TOKENTYPE_MEMB_SEL:
+        ret.type = MIDPARSER_EXPRTYPE_MEMB_SEL;
         break;
 
-    case LEXER_TOKENTYPE_PTR_MEMB_SEL:
-        ret.type = PARSER_EXPRTYPE_PTR_MEMB_SEL;
+    case MIDLEXER_TOKENTYPE_PTR_MEMB_SEL:
+        ret.type = MIDPARSER_EXPRTYPE_PTR_MEMB_SEL;
         break;
 
-    case LEXER_TOKENTYPE_L_SQBRACKET:
-        ret.type = PARSER_EXPRTYPE_ARRAY_SUBSCR;
+    case MIDLEXER_TOKENTYPE_L_SQBRACKET:
+        ret.type = MIDPARSER_EXPRTYPE_ARRAY_SUBSCR;
         break;
 
-    case LEXER_TOKENTYPE_L_PAREN:
-        ret.type = PARSER_EXPRTYPE_FUNC_CALL;
+    case MIDLEXER_TOKENTYPE_L_PAREN:
+        ret.type = MIDPARSER_EXPRTYPE_FUNC_CALL;
         break;
 
-    case LEXER_TOKENTYPE_INC:
-        ret.type = PARSER_EXPRTYPE_POSTFIX_INC;
+    case MIDLEXER_TOKENTYPE_INC:
+        ret.type = MIDPARSER_EXPRTYPE_POSTFIX_INC;
         break;
 
-    case LEXER_TOKENTYPE_DEC:
-        ret.type = PARSER_EXPRTYPE_POSTFIX_DEC;
+    case MIDLEXER_TOKENTYPE_DEC:
+        ret.type = MIDPARSER_EXPRTYPE_POSTFIX_DEC;
         break;
 
-    case LEXER_TOKENTYPE_TYPEID:
-        gen_dynpush(diags, Diag_unexpected_token_err(
-                               "typeid", tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_TYPEID;
+    case MIDLEXER_TOKENTYPE_TYPEID:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "typeid", tok, MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_TYPEID;
         break;
 
-    case LEXER_TOKENTYPE_CONSTCAST:
-        gen_dynpush(diags, Diag_unexpected_token_err(
-                               "const_cast", tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_CONSTCAST;
+    case MIDLEXER_TOKENTYPE_CONSTCAST:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("const_cast", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_CONSTCAST;
         break;
 
-    case LEXER_TOKENTYPE_DYNAMICCAST:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("dynamic_cast", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_DYNAMICCAST;
+    case MIDLEXER_TOKENTYPE_DYNAMICCAST:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("dynamic_cast", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_DYNAMICCAST;
         break;
 
-    case LEXER_TOKENTYPE_REINTERPRETCAST:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("reinterpret_cast", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_REINTERPRETCAST;
+    case MIDLEXER_TOKENTYPE_REINTERPRETCAST:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("reinterpret_cast", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_REINTERPRETCAST;
         break;
 
-    case LEXER_TOKENTYPE_STATICCAST:
-        gen_dynpush(diags, Diag_unexpected_token_err(
-                               "static_cast", tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_STATICCAST;
+    case MIDLEXER_TOKENTYPE_STATICCAST:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("static_cast", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_STATICCAST;
         break;
 
-    case LEXER_TOKENTYPE_SIZEOF:
-        gen_dynpush(diags, Diag_unexpected_token_err(
-                               "sizeof", tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_SIZEOF;
+    case MIDLEXER_TOKENTYPE_SIZEOF:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "sizeof", tok, MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_SIZEOF;
         break;
 
-    case LEXER_TOKENTYPE_BITWISE_NOT:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("bitwise NOT '~'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_BITWISE_NOT;
+    case MIDLEXER_TOKENTYPE_BITWISE_NOT:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("bitwise NOT '~'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_BITWISE_NOT;
         break;
 
-    case LEXER_TOKENTYPE_LOGICAL_NOT:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("logical NOT '!'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_LOGICAL_NOT;
+    case MIDLEXER_TOKENTYPE_LOGICAL_NOT:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("logical NOT '!'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_LOGICAL_NOT;
         break;
 
-    case LEXER_TOKENTYPE_SUB:
-        ret.type = PARSER_EXPRTYPE_SUB;
+    case MIDLEXER_TOKENTYPE_SUB:
+        ret.type = MIDPARSER_EXPRTYPE_SUB;
         break;
 
-    case LEXER_TOKENTYPE_ADD:
-        ret.type = PARSER_EXPRTYPE_ADD;
+    case MIDLEXER_TOKENTYPE_ADD:
+        ret.type = MIDPARSER_EXPRTYPE_ADD;
         break;
 
-    case LEXER_TOKENTYPE_BITWISE_AND:
-        ret.type = PARSER_EXPRTYPE_BITWISE_AND;
+    case MIDLEXER_TOKENTYPE_BITWISE_AND:
+        ret.type = MIDPARSER_EXPRTYPE_BITWISE_AND;
         break;
 
-    case LEXER_TOKENTYPE_MUL:
-        ret.type = PARSER_EXPRTYPE_MUL;
+    case MIDLEXER_TOKENTYPE_MUL:
+        ret.type = MIDPARSER_EXPRTYPE_MUL;
         break;
 
-    case LEXER_TOKENTYPE_NEW:
-        gen_dynpush(diags, Diag_unexpected_token_err(
-                               "new", tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_NEW;
+    case MIDLEXER_TOKENTYPE_NEW:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "new", tok, MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_NEW;
         break;
 
-    case LEXER_TOKENTYPE_DELETE:
-        gen_dynpush(diags, Diag_unexpected_token_err(
-                               "delete", tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_DELETE;
+    case MIDLEXER_TOKENTYPE_DELETE:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "delete", tok, MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_DELETE;
         break;
 
-    case LEXER_TOKENTYPE_PTR_TO_MEMB_SEL:
-        ret.type = PARSER_EXPRTYPE_PTR_TO_MEMB_SEL;
+    case MIDLEXER_TOKENTYPE_PTR_TO_MEMB_SEL:
+        ret.type = MIDPARSER_EXPRTYPE_PTR_TO_MEMB_SEL;
         break;
 
-    case LEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL:
-        ret.type = PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
+    case MIDLEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL:
+        ret.type = MIDPARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
         break;
 
-    case LEXER_TOKENTYPE_DIV:
-        ret.type = PARSER_EXPRTYPE_DIV;
+    case MIDLEXER_TOKENTYPE_DIV:
+        ret.type = MIDPARSER_EXPRTYPE_DIV;
         break;
 
-    case LEXER_TOKENTYPE_MOD:
-        ret.type = PARSER_EXPRTYPE_MOD;
+    case MIDLEXER_TOKENTYPE_MOD:
+        ret.type = MIDPARSER_EXPRTYPE_MOD;
         break;
 
-    case LEXER_TOKENTYPE_LEFT_SHIFT:
-        ret.type = PARSER_EXPRTYPE_LEFT_SHIFT;
+    case MIDLEXER_TOKENTYPE_LEFT_SHIFT:
+        ret.type = MIDPARSER_EXPRTYPE_LEFT_SHIFT;
         break;
 
-    case LEXER_TOKENTYPE_RIGHT_SHIFT:
-        ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT;
+    case MIDLEXER_TOKENTYPE_RIGHT_SHIFT:
+        ret.type = MIDPARSER_EXPRTYPE_RIGHT_SHIFT;
         break;
 
-    case LEXER_TOKENTYPE_LT:
-        ret.type = PARSER_EXPRTYPE_LT;
+    case MIDLEXER_TOKENTYPE_LT:
+        ret.type = MIDPARSER_EXPRTYPE_LT;
         break;
 
-    case LEXER_TOKENTYPE_GT:
-        ret.type = PARSER_EXPRTYPE_GT;
+    case MIDLEXER_TOKENTYPE_GT:
+        ret.type = MIDPARSER_EXPRTYPE_GT;
         break;
 
-    case LEXER_TOKENTYPE_LTEQ:
-        ret.type = PARSER_EXPRTYPE_LTEQ;
+    case MIDLEXER_TOKENTYPE_LTEQ:
+        ret.type = MIDPARSER_EXPRTYPE_LTEQ;
         break;
 
-    case LEXER_TOKENTYPE_GTEQ:
-        ret.type = PARSER_EXPRTYPE_GTEQ;
+    case MIDLEXER_TOKENTYPE_GTEQ:
+        ret.type = MIDPARSER_EXPRTYPE_GTEQ;
         break;
 
-    case LEXER_TOKENTYPE_EQ:
-        ret.type = PARSER_EXPRTYPE_EQ;
+    case MIDLEXER_TOKENTYPE_EQ:
+        ret.type = MIDPARSER_EXPRTYPE_EQ;
         break;
 
-    case LEXER_TOKENTYPE_NEQ:
-        ret.type = PARSER_EXPRTYPE_NEQ;
+    case MIDLEXER_TOKENTYPE_NEQ:
+        ret.type = MIDPARSER_EXPRTYPE_NEQ;
         break;
 
-    case LEXER_TOKENTYPE_BITWISE_XOR:
-        ret.type = PARSER_EXPRTYPE_BITWISE_XOR;
+    case MIDLEXER_TOKENTYPE_BITWISE_XOR:
+        ret.type = MIDPARSER_EXPRTYPE_BITWISE_XOR;
         break;
 
-    case LEXER_TOKENTYPE_BITWISE_OR:
-        ret.type = PARSER_EXPRTYPE_BITWISE_OR;
+    case MIDLEXER_TOKENTYPE_BITWISE_OR:
+        ret.type = MIDPARSER_EXPRTYPE_BITWISE_OR;
         break;
 
-    case LEXER_TOKENTYPE_LOGICAL_AND:
-        ret.type = PARSER_EXPRTYPE_LOGICAL_AND;
+    case MIDLEXER_TOKENTYPE_LOGICAL_AND:
+        ret.type = MIDPARSER_EXPRTYPE_LOGICAL_AND;
         break;
 
-    case LEXER_TOKENTYPE_LOGICAL_OR:
-        ret.type = PARSER_EXPRTYPE_LOGICAL_OR;
+    case MIDLEXER_TOKENTYPE_LOGICAL_OR:
+        ret.type = MIDPARSER_EXPRTYPE_LOGICAL_OR;
         break;
 
-    case LEXER_TOKENTYPE_CONDITIONAL:
-        ret.type = PARSER_EXPRTYPE_CONDITIONAL;
+    case MIDLEXER_TOKENTYPE_CONDITIONAL:
+        ret.type = MIDPARSER_EXPRTYPE_CONDITIONAL;
         break;
 
-    case LEXER_TOKENTYPE_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_ASSIGN;
+    case MIDLEXER_TOKENTYPE_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_MUL_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_MUL_ASSIGN;
+    case MIDLEXER_TOKENTYPE_MUL_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_MUL_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_DIV_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_DIV_ASSIGN;
+    case MIDLEXER_TOKENTYPE_DIV_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_DIV_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_MOD_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_MOD_ASSIGN;
+    case MIDLEXER_TOKENTYPE_MOD_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_MOD_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_ADD_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_ADD_ASSIGN;
+    case MIDLEXER_TOKENTYPE_ADD_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_ADD_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_SUB_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_SUB_ASSIGN;
+    case MIDLEXER_TOKENTYPE_SUB_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_SUB_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN;
+    case MIDLEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN;
+    case MIDLEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_AND_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_AND_ASSIGN;
+    case MIDLEXER_TOKENTYPE_AND_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_AND_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_OR_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_OR_ASSIGN;
+    case MIDLEXER_TOKENTYPE_OR_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_OR_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_XOR_ASSIGN:
-        ret.type = PARSER_EXPRTYPE_XOR_ASSIGN;
+    case MIDLEXER_TOKENTYPE_XOR_ASSIGN:
+        ret.type = MIDPARSER_EXPRTYPE_XOR_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_THROW:
-        gen_dynpush(diags, Diag_unexpected_token_err(
-                               "throw", tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_THROW;
+    case MIDLEXER_TOKENTYPE_THROW:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "throw", tok, MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_THROW;
         break;
 
-    case LEXER_TOKENTYPE_COMMA:
-        ret.type = PARSER_EXPRTYPE_COMMA;
+    case MIDLEXER_TOKENTYPE_COMMA:
+        ret.type = MIDPARSER_EXPRTYPE_COMMA;
         break;
 
     default:
-        CRASH("can't convert token to expr");
+        MID_CRASH("can't convert token to expr");
     }
 
     return ret;
 }
 
-static struct Parser_Expr op_tok_to_expr_mode1(const struct Lexer_Token *tok,
-                                               struct DiagVec *diags)
+static struct MidParser_Expr
+op_tok_to_expr_mode1(const struct MidLexer_Token *tok,
+                     struct MidDiag_DiagVec *diags)
 {
-    struct Parser_Expr ret = {.tok = tok};
+    struct MidParser_Expr ret = {.tok = tok};
 
     switch (tok->type) {
-    case LEXER_TOKENTYPE_SCOPE_RES:
-        ret.type = PARSER_EXPRTYPE_UNARY_SCOPE_RES;
+    case MIDLEXER_TOKENTYPE_SCOPE_RES:
+        ret.type = MIDPARSER_EXPRTYPE_UNARY_SCOPE_RES;
         break;
 
-    case LEXER_TOKENTYPE_MEMB_SEL:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("member select '.'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_MEMB_SEL;
+    case MIDLEXER_TOKENTYPE_MEMB_SEL:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("member select '.'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_MEMB_SEL;
         break;
 
-    case LEXER_TOKENTYPE_PTR_MEMB_SEL:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("ptr to member select '->'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_PTR_MEMB_SEL;
+    case MIDLEXER_TOKENTYPE_PTR_MEMB_SEL:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "ptr to member select '->'", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_PTR_MEMB_SEL;
         break;
 
-    case LEXER_TOKENTYPE_L_SQBRACKET:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("array subscript '[]'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_ARRAY_SUBSCR;
+    case MIDLEXER_TOKENTYPE_L_SQBRACKET:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("array subscript '[]'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_ARRAY_SUBSCR;
         break;
 
-    case LEXER_TOKENTYPE_L_PAREN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("function call '()'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_FUNC_CALL;
+    case MIDLEXER_TOKENTYPE_L_PAREN:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("function call '()'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_FUNC_CALL;
         break;
 
-    case LEXER_TOKENTYPE_INC:
-        ret.type = PARSER_EXPRTYPE_PREFIX_INC;
+    case MIDLEXER_TOKENTYPE_INC:
+        ret.type = MIDPARSER_EXPRTYPE_PREFIX_INC;
         break;
 
-    case LEXER_TOKENTYPE_DEC:
-        ret.type = PARSER_EXPRTYPE_PREFIX_DEC;
+    case MIDLEXER_TOKENTYPE_DEC:
+        ret.type = MIDPARSER_EXPRTYPE_PREFIX_DEC;
         break;
 
-    case LEXER_TOKENTYPE_TYPEID:
-        ret.type = PARSER_EXPRTYPE_TYPEID;
+    case MIDLEXER_TOKENTYPE_TYPEID:
+        ret.type = MIDPARSER_EXPRTYPE_TYPEID;
         break;
 
-    case LEXER_TOKENTYPE_CONSTCAST:
-        ret.type = PARSER_EXPRTYPE_CONSTCAST;
+    case MIDLEXER_TOKENTYPE_CONSTCAST:
+        ret.type = MIDPARSER_EXPRTYPE_CONSTCAST;
         break;
 
-    case LEXER_TOKENTYPE_DYNAMICCAST:
-        ret.type = PARSER_EXPRTYPE_DYNAMICCAST;
+    case MIDLEXER_TOKENTYPE_DYNAMICCAST:
+        ret.type = MIDPARSER_EXPRTYPE_DYNAMICCAST;
         break;
 
-    case LEXER_TOKENTYPE_REINTERPRETCAST:
-        ret.type = PARSER_EXPRTYPE_REINTERPRETCAST;
+    case MIDLEXER_TOKENTYPE_REINTERPRETCAST:
+        ret.type = MIDPARSER_EXPRTYPE_REINTERPRETCAST;
         break;
 
-    case LEXER_TOKENTYPE_STATICCAST:
-        ret.type = PARSER_EXPRTYPE_STATICCAST;
+    case MIDLEXER_TOKENTYPE_STATICCAST:
+        ret.type = MIDPARSER_EXPRTYPE_STATICCAST;
         break;
 
-    case LEXER_TOKENTYPE_SIZEOF:
-        ret.type = PARSER_EXPRTYPE_SIZEOF;
+    case MIDLEXER_TOKENTYPE_SIZEOF:
+        ret.type = MIDPARSER_EXPRTYPE_SIZEOF;
         break;
 
-    case LEXER_TOKENTYPE_BITWISE_NOT:
-        ret.type = PARSER_EXPRTYPE_BITWISE_NOT;
+    case MIDLEXER_TOKENTYPE_BITWISE_NOT:
+        ret.type = MIDPARSER_EXPRTYPE_BITWISE_NOT;
         break;
 
-    case LEXER_TOKENTYPE_LOGICAL_NOT:
-        ret.type = PARSER_EXPRTYPE_LOGICAL_NOT;
+    case MIDLEXER_TOKENTYPE_LOGICAL_NOT:
+        ret.type = MIDPARSER_EXPRTYPE_LOGICAL_NOT;
         break;
 
-    case LEXER_TOKENTYPE_SUB:
-        ret.type = PARSER_EXPRTYPE_UNARY_MINUS;
+    case MIDLEXER_TOKENTYPE_SUB:
+        ret.type = MIDPARSER_EXPRTYPE_UNARY_MINUS;
         break;
 
-    case LEXER_TOKENTYPE_ADD:
-        ret.type = PARSER_EXPRTYPE_UNARY_PLUS;
+    case MIDLEXER_TOKENTYPE_ADD:
+        ret.type = MIDPARSER_EXPRTYPE_UNARY_PLUS;
         break;
 
-    case LEXER_TOKENTYPE_BITWISE_AND:
-        ret.type = PARSER_EXPRTYPE_REF;
+    case MIDLEXER_TOKENTYPE_BITWISE_AND:
+        ret.type = MIDPARSER_EXPRTYPE_REF;
         break;
 
-    case LEXER_TOKENTYPE_MUL:
-        ret.type = PARSER_EXPRTYPE_DEREF;
+    case MIDLEXER_TOKENTYPE_MUL:
+        ret.type = MIDPARSER_EXPRTYPE_DEREF;
         break;
 
-    case LEXER_TOKENTYPE_NEW:
-        ret.type = PARSER_EXPRTYPE_NEW;
+    case MIDLEXER_TOKENTYPE_NEW:
+        ret.type = MIDPARSER_EXPRTYPE_NEW;
         break;
 
-    case LEXER_TOKENTYPE_DELETE:
-        ret.type = PARSER_EXPRTYPE_DELETE;
+    case MIDLEXER_TOKENTYPE_DELETE:
+        ret.type = MIDPARSER_EXPRTYPE_DELETE;
         break;
 
-    case LEXER_TOKENTYPE_PTR_TO_MEMB_SEL:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("ptr to member select '.*'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_PTR_TO_MEMB_SEL;
+    case MIDLEXER_TOKENTYPE_PTR_TO_MEMB_SEL:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "ptr to member select '.*'", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_PTR_TO_MEMB_SEL;
         break;
 
-    case LEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("ptr to ptr member select '->*'",
-                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
+    case MIDLEXER_TOKENTYPE_PTR_TO_PTR_MEMB_SEL:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "ptr to ptr member select '->*'", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
         break;
 
-    case LEXER_TOKENTYPE_DIV:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("division '/'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_DIV;
+    case MIDLEXER_TOKENTYPE_DIV:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("division '/'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_DIV;
         break;
 
-    case LEXER_TOKENTYPE_MOD:
-        gen_dynpush(diags, Diag_unexpected_token_err(
-                               "modulo '%'", tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_MOD;
+    case MIDLEXER_TOKENTYPE_MOD:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("modulo '%'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_MOD;
         break;
 
-    case LEXER_TOKENTYPE_LEFT_SHIFT:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("left shift '<<'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_LEFT_SHIFT;
+    case MIDLEXER_TOKENTYPE_LEFT_SHIFT:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("left shift '<<'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_LEFT_SHIFT;
         break;
 
-    case LEXER_TOKENTYPE_RIGHT_SHIFT:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("right shift '>>'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT;
+    case MIDLEXER_TOKENTYPE_RIGHT_SHIFT:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("right shift '>>'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_RIGHT_SHIFT;
         break;
 
-    case LEXER_TOKENTYPE_LT:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("less than '<'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_LT;
+    case MIDLEXER_TOKENTYPE_LT:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("less than '<'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_LT;
         break;
 
-    case LEXER_TOKENTYPE_GT:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("greater than '>'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_GT;
+    case MIDLEXER_TOKENTYPE_GT:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("greater than '>'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_GT;
         break;
 
-    case LEXER_TOKENTYPE_LTEQ:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("less than or equal '<='", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_LTEQ;
+    case MIDLEXER_TOKENTYPE_LTEQ:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("less than or equal '<='", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_LTEQ;
         break;
 
-    case LEXER_TOKENTYPE_GTEQ:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("greater than or equal '>='", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_GTEQ;
+    case MIDLEXER_TOKENTYPE_GTEQ:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "greater than or equal '>='", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_GTEQ;
         break;
 
-    case LEXER_TOKENTYPE_EQ:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("equality '=='", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_EQ;
+    case MIDLEXER_TOKENTYPE_EQ:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("equality '=='", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_EQ;
         break;
 
-    case LEXER_TOKENTYPE_NEQ:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("inequality '!='", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_NEQ;
+    case MIDLEXER_TOKENTYPE_NEQ:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("inequality '!='", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_NEQ;
         break;
 
-    case LEXER_TOKENTYPE_BITWISE_XOR:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("bitwise XOR '^'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_BITWISE_XOR;
+    case MIDLEXER_TOKENTYPE_BITWISE_XOR:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("bitwise XOR '^'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_BITWISE_XOR;
         break;
 
-    case LEXER_TOKENTYPE_BITWISE_OR:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("bitwise OR '|'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_BITWISE_OR;
+    case MIDLEXER_TOKENTYPE_BITWISE_OR:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("bitwise OR '|'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_BITWISE_OR;
         break;
 
-    case LEXER_TOKENTYPE_LOGICAL_AND:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("logical AND '&&'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_LOGICAL_AND;
+    case MIDLEXER_TOKENTYPE_LOGICAL_AND:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("logical AND '&&'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_LOGICAL_AND;
         break;
 
-    case LEXER_TOKENTYPE_LOGICAL_OR:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("logical OR '||'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_LOGICAL_OR;
+    case MIDLEXER_TOKENTYPE_LOGICAL_OR:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("logical OR '||'", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_LOGICAL_OR;
         break;
 
-    case LEXER_TOKENTYPE_CONDITIONAL:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("conditional operator '?'", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_CONDITIONAL;
+    case MIDLEXER_TOKENTYPE_CONDITIONAL:
+        MidGen_dynpush(
+            diags, MidDiag_unexpected_token_err("conditional operator '?'", tok,
+                                                MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_CONDITIONAL;
         break;
 
-    case LEXER_TOKENTYPE_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("assignment '=='", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_ASSIGN;
+    case MIDLEXER_TOKENTYPE_ASSIGN:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("assignment '=='", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_MUL_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("multiplication assignment '*='",
-                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_MUL_ASSIGN;
+    case MIDLEXER_TOKENTYPE_MUL_ASSIGN:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "multiplication assignment '*='", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_MUL_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_DIV_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("division assignment '/='", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_DIV_ASSIGN;
+    case MIDLEXER_TOKENTYPE_DIV_ASSIGN:
+        MidGen_dynpush(
+            diags, MidDiag_unexpected_token_err("division assignment '/='", tok,
+                                                MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_DIV_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_MOD_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("modulus assignment '%='", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_MOD_ASSIGN;
+    case MIDLEXER_TOKENTYPE_MOD_ASSIGN:
+        MidGen_dynpush(diags,
+                    MidDiag_unexpected_token_err("modulus assignment '%='", tok,
+                                                 MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_MOD_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_ADD_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("addition assignment '+='", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_ADD_ASSIGN;
+    case MIDLEXER_TOKENTYPE_ADD_ASSIGN:
+        MidGen_dynpush(
+            diags, MidDiag_unexpected_token_err("addition assignment '+='", tok,
+                                                MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_ADD_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_SUB_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("subtraction assignment '-='",
-                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_SUB_ASSIGN;
+    case MIDLEXER_TOKENTYPE_SUB_ASSIGN:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "subtraction assignment '-='", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_SUB_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("left shift assignment '<<='",
-                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN;
+    case MIDLEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "left shift assignment '<<='", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("right shift assignment '>>='",
-                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN;
+    case MIDLEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "right shift assignment '>>='", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_AND_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("bitwise AND assignment '&='",
-                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_AND_ASSIGN;
+    case MIDLEXER_TOKENTYPE_AND_ASSIGN:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "bitwise AND assignment '&='", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_AND_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_OR_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("bitwise OR assignment '|='", tok,
-                                              ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_OR_ASSIGN;
+    case MIDLEXER_TOKENTYPE_OR_ASSIGN:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "bitwise OR assignment '|='", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_OR_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_XOR_ASSIGN:
-        gen_dynpush(diags,
-                    Diag_unexpected_token_err("bitwise XOR assignment '^='",
-                                              tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_XOR_ASSIGN;
+    case MIDLEXER_TOKENTYPE_XOR_ASSIGN:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "bitwise XOR assignment '^='", tok,
+                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_XOR_ASSIGN;
         break;
 
-    case LEXER_TOKENTYPE_THROW:
-        ret.type = PARSER_EXPRTYPE_THROW;
+    case MIDLEXER_TOKENTYPE_THROW:
+        ret.type = MIDPARSER_EXPRTYPE_THROW;
         break;
 
-    case LEXER_TOKENTYPE_COMMA:
-        gen_dynpush(diags, Diag_unexpected_token_err(
-                               "comma ','", tok, ERRORTYPE_UNEXPECTED_TOKEN));
-        ret.type = PARSER_EXPRTYPE_COMMA;
+    case MIDLEXER_TOKENTYPE_COMMA:
+        MidGen_dynpush(diags, MidDiag_unexpected_token_err(
+                               "comma ','", tok, MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        ret.type = MIDPARSER_EXPRTYPE_COMMA;
         break;
 
     default:
-        CRASH("can't convert token to expr");
+        MID_CRASH("can't convert token to expr");
     }
 
     return ret;
 }
 
-static void parse_func_call_args(struct Parser_Expr *f_call,
-                                 const struct Lexer_Token *toks, isize_t lparen,
-                                 isize_t *out_rparen, struct Sema_Scope *scope,
-                                 struct DiagVec *diags)
+static void parse_func_call_args(struct MidParser_Expr *f_call,
+                                 const struct MidLexer_Token *toks,
+                                 mid_isize lparen, mid_isize *out_rparen,
+                                 struct MidSema_Scope *scope,
+                                 struct MidDiag_DiagVec *diags)
 {
-    isize_t rparen = Parser_find_twin_paren(toks, lparen, ISIZE_MAX);
+    mid_isize rparen = MidParser_find_twin_paren(toks, lparen, MID_ISIZE_MAX);
     if (rparen == -1) {
-        gen_dynpush(diags, Diag_expected_token_err("')'", &toks[lparen],
-                                                   ERRORTYPE_MISSING_PAREN));
+        MidGen_dynpush(diags,
+                    MidDiag_expected_token_err("')'", &toks[lparen],
+                                               MIDDIAG_ERR_MISSING_PAREN));
         rparen = lparen;
     }
     if (out_rparen)
         *out_rparen = rparen;
 
-    for (isize_t i = lparen + 1; i < rparen; ++i) {
-        auto arg =
-            Parser_parse_expr(toks, i, PARSER_ARG_ENDTYPES, &i, scope, diags);
-        gen_dynpush(&f_call->info.args, arg);
+    for (mid_isize i = lparen + 1; i < rparen; ++i) {
+        auto arg = MidParser_parse_expr(toks, i, MIDPARSER_ARG_ENDTYPES, &i,
+                                        scope, diags);
+        MidGen_dynpush(&f_call->info.args, arg);
 
-        if (toks[i].type != LEXER_TOKENTYPE_R_PAREN &&
-            toks[i].type != LEXER_TOKENTYPE_COMMA) {
-            gen_dynpush(diags,
-                        Diag_expected_token_err("','", &toks[lparen],
-                                                ERRORTYPE_MISSING_PAREN));
+        if (toks[i].type != MIDLEXER_TOKENTYPE_R_PAREN &&
+            toks[i].type != MIDLEXER_TOKENTYPE_COMMA) {
+            MidGen_dynpush(diags,
+                        MidDiag_expected_token_err("','", &toks[lparen],
+                                                   MIDDIAG_ERR_MISSING_PAREN));
         }
     }
 }
@@ -945,15 +956,16 @@ static void parse_func_call_args(struct Parser_Expr *f_call,
 // func(a, b, c, d)
 //     ^          ^
 //    idx    out_end_idx
-static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *toks,
-                                         isize_t idx, isize_t *out_end_idx,
-                                         bool mode, struct Sema_Scope *scope,
-                                         struct DiagVec *diags)
+static struct MidParser_Expr op_tok_to_expr(const struct MidLexer_Token *toks,
+                                            mid_isize idx, mid_isize *out_end_idx,
+                                            bool mode,
+                                            struct MidSema_Scope *scope,
+                                            struct MidDiag_DiagVec *diags)
 {
-    struct Parser_Expr ret = mode ? op_tok_to_expr_mode1(&toks[idx], diags)
-                                  : op_tok_to_expr_mode0(&toks[idx], diags);
+    struct MidParser_Expr ret = mode ? op_tok_to_expr_mode1(&toks[idx], diags)
+                                     : op_tok_to_expr_mode0(&toks[idx], diags);
 
-    if (ret.type == PARSER_EXPRTYPE_FUNC_CALL)
+    if (ret.type == MIDPARSER_EXPRTYPE_FUNC_CALL)
         parse_func_call_args(&ret, toks, idx, out_end_idx, scope, diags);
     else if (out_end_idx)
         *out_end_idx = idx;
@@ -961,131 +973,134 @@ static struct Parser_Expr op_tok_to_expr(const struct Lexer_Token *toks,
     return ret;
 }
 
-static bool has_enough_operands(enum Parser_ExprType op, int n)
+static bool has_enough_operands(enum MidParser_ExprType op, int n)
 {
-    if (Parser_is_unaryop(op))
+    if (MidParser_is_unaryop(op))
         return n >= 1;
-    else if (Parser_is_binop(op))
+    else if (MidParser_is_binop(op))
         return n >= 2;
-    else if (Parser_is_ternaryop(op))
+    else if (MidParser_is_ternaryop(op))
         return n >= 3;
     else
-        CRASH("bad expression type");
+        MID_CRASH("bad expression type");
 }
 
-static void add_op_to_out(struct Parser_Expr *op, struct Parser_ExprVec *out,
-                          struct DiagVec *diags)
+static void add_op_to_out(struct MidParser_Expr *op,
+                          struct MidParser_ExprVec *out,
+                          struct MidDiag_DiagVec *diags)
 {
     if (!has_enough_operands(op->type, out->len)) {
-        struct Diag err = {
+        struct MidDiag_Diag err = {
             .pos = op->tok->pos,
             .line = op->tok->line,
-            .msg = Print_fmt_to_str(
+            .msg = MidPrint_fmt_to_str(
                 "%s operator expects %d %s, received %" PRIisz,
-                Parser_is_unaryop(op->type) ? "unary"
-                : Parser_is_binop(op->type) ? "binary"
-                                            : "ternary",
-                Parser_is_unaryop(op->type) ? 1
-                : Parser_is_binop(op->type) ? 2
-                                            : 3,
-                Parser_is_unaryop(op->type) ? "operand" : "operands", out->len),
-            .err = ERRORTYPE_INSUFFICIENT_OPERANDS,
-            .type = DIAGTYPE_ERROR};
-        gen_dynpush(diags, err);
+                MidParser_is_unaryop(op->type) ? "unary"
+                : MidParser_is_binop(op->type) ? "binary"
+                                               : "ternary",
+                MidParser_is_unaryop(op->type) ? 1
+                : MidParser_is_binop(op->type) ? 2
+                                               : 3,
+                MidParser_is_unaryop(op->type) ? "operand" : "operands",
+                out->len),
+            .err = MIDDIAG_ERR_INSUFFICIENT_OPERANDS,
+            .type = MIDDIAG_TYPE_ERROR};
+        MidGen_dynpush(diags, err);
         return;
     }
 
     // the exprs at the top act as operands for the new op
-    if (Parser_is_ternaryop(op->type))
-        gen_dynpush(&op->info.args, out->arr[out->len - 3]);
-    if (Parser_is_ternaryop(op->type) || Parser_is_binop(op->type))
-        gen_dynpush(&op->info.args, out->arr[out->len - 2]);
-    if (op->type == PARSER_EXPRTYPE_FUNC_CALL && op->info.args.len > 0)
+    if (MidParser_is_ternaryop(op->type))
+        MidGen_dynpush(&op->info.args, out->arr[out->len - 3]);
+    if (MidParser_is_ternaryop(op->type) || MidParser_is_binop(op->type))
+        MidGen_dynpush(&op->info.args, out->arr[out->len - 2]);
+    if (op->type == MIDPARSER_EXPRTYPE_FUNC_CALL && op->info.args.len > 0)
         // func calls already have the arguments pushed into args, so we gotta
         // use insert to put the identifier being called first
-        gen_dyninsert(&op->info.args, 0, out->arr[out->len - 1]);
+        MidGen_dyninsert(&op->info.args, 0, out->arr[out->len - 1]);
     else
-        gen_dynpush(&op->info.args, out->arr[out->len - 1]);
+        MidGen_dynpush(&op->info.args, out->arr[out->len - 1]);
 
     // the expressions are now encoded in op
-    if (Parser_is_ternaryop(op->type))
-        gen_dynpop(out);
-    if (Parser_is_ternaryop(op->type) || Parser_is_binop(op->type))
-        gen_dynpop(out);
-    gen_dynpop(out);
+    if (MidParser_is_ternaryop(op->type))
+        MidGen_dynpop(out);
+    if (MidParser_is_ternaryop(op->type) || MidParser_is_binop(op->type))
+        MidGen_dynpop(out);
+    MidGen_dynpop(out);
 
-    gen_dynpush(out, *op);
+    MidGen_dynpush(out, *op);
 }
 
 // handles sending an operator through the shunting yard
-static void push_operator(const struct Lexer_Token *toks, isize_t idx,
-                          isize_t *out_end_idx, struct Parser_ExprVec *out,
-                          struct Parser_ExprVec *ops, bool mode,
-                          struct Sema_Scope *scope, struct DiagVec *diags)
+static void push_operator(const struct MidLexer_Token *toks, mid_isize idx,
+                          mid_isize *out_end_idx, struct MidParser_ExprVec *out,
+                          struct MidParser_ExprVec *ops, bool mode,
+                          struct MidSema_Scope *scope,
+                          struct MidDiag_DiagVec *diags)
 {
-    struct Parser_Expr op =
+    struct MidParser_Expr op =
         op_tok_to_expr(toks, idx, out_end_idx, mode, scope, diags);
 
     // remove any greater precedence operators
-    struct Parser_Expr *top = &ops->arr[ops->len - 1];
+    struct MidParser_Expr *top = &ops->arr[ops->len - 1];
     while (ops->len > 0) {
-        i32 op_prec = Parser_op_precedence(op.type);
-        i32 top_prec = Parser_op_precedence(top->type);
+        i32 op_prec = MidParser_op_precedence(op.type);
+        i32 top_prec = MidParser_op_precedence(top->type);
 
         if (top_prec > op_prec ||
-            (top_prec == op_prec && Parser_op_ltr_assoc(op.type))) {
+            (top_prec == op_prec && MidParser_op_ltr_assoc(op.type))) {
             add_op_to_out(top, out, diags);
-            gen_dynpop(ops);
+            MidGen_dynpop(ops);
             top = &ops->arr[ops->len - 1];
         } else {
             break;
         }
     }
 
-    gen_dynpush(ops, op);
+    MidGen_dynpush(ops, op);
 }
 
 // a sub expression is a part of an expression encased in parentheses
-static struct Parser_Expr parse_subexpr(const struct Lexer_Token *toks,
-                                        isize_t l_paren, isize_t *out_end,
-                                        struct Sema_Scope *scope,
-                                        struct DiagVec *diags)
+static struct MidParser_Expr parse_subexpr(const struct MidLexer_Token *toks,
+                                           mid_isize l_paren, mid_isize *out_end,
+                                           struct MidSema_Scope *scope,
+                                           struct MidDiag_DiagVec *diags)
 {
-    if (Parser_find_twin_paren(toks, l_paren, ISIZE_MAX) == -1) {
-        struct Diag err = {.pos = toks[l_paren].pos,
-                           .line = toks[l_paren].line,
-                           .msg = Print_fmt_to_str("expected ')'"),
-                           .err = ERRORTYPE_MISSING_PAREN,
-                           .type = DIAGTYPE_ERROR};
-        gen_dynpush(diags, err);
+    if (MidParser_find_twin_paren(toks, l_paren, MID_ISIZE_MAX) == -1) {
+        struct MidDiag_Diag err = {.pos = toks[l_paren].pos,
+                                   .line = toks[l_paren].line,
+                                   .msg = MidPrint_fmt_to_str("expected ')'"),
+                                   .err = MIDDIAG_ERR_MISSING_PAREN,
+                                   .type = MIDDIAG_TYPE_ERROR};
+        MidGen_dynpush(diags, err);
     }
 
-    return Parser_parse_expr(toks, l_paren + 1,
-                             (enum Lexer_TokenType[]){LEXER_TOKENTYPE_R_PAREN},
-                             1, out_end, scope, diags);
+    return MidParser_parse_expr(
+        toks, l_paren + 1,
+        (enum MidLexer_TokenType[]){MIDLEXER_TOKENTYPE_R_PAREN}, 1, out_end,
+        scope, diags);
 }
 
-static bool is_end_type(enum Lexer_TokenType type,
-                        const enum Lexer_TokenType *end_types,
-                        isize_t n_end_types)
+static bool is_end_type(enum MidLexer_TokenType type,
+                        const enum MidLexer_TokenType *end_types,
+                        mid_isize n_end_types)
 {
-    for (isize_t i = 0; i < n_end_types; ++i)
+    for (mid_isize i = 0; i < n_end_types; ++i)
         if (type == end_types[i])
             return true;
     return false;
 }
 
-struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
-                                     isize_t start,
-                                     const enum Lexer_TokenType *end_types,
-                                     isize_t n_end_types, isize_t *out_end,
-                                     struct Sema_Scope *scope,
-                                     struct DiagVec *diags)
+struct MidParser_Expr
+MidParser_parse_expr(const struct MidLexer_Token *toks, mid_isize start,
+                     const enum MidLexer_TokenType *end_types,
+                     mid_isize n_end_types, mid_isize *out_end,
+                     struct MidSema_Scope *scope, struct MidDiag_DiagVec *diags)
 {
     // uses the shunting yard algorithm
 
-    struct Parser_ExprVec out = gen_dyninit();
-    struct Parser_ExprVec ops = gen_dyninit();
+    struct MidParser_ExprVec out = MidGen_dyninit();
+    struct MidParser_ExprVec ops = MidGen_dyninit();
 
     // when false, binary operators remain binary and unary operators are
     // treated as postifx operators
@@ -1095,42 +1110,43 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
     // operator unless it's a unary postfix operator
     bool mode = true;
 
-    isize_t i;
+    mid_isize i;
     for (i = start; !is_end_type(toks[i].type, end_types, n_end_types); ++i) {
-        if (Lexer_is_lit(toks[i].type)) {
+        if (MidLexer_is_lit(toks[i].type)) {
             if (!mode)
-                gen_dynpush(diags, Diag_unexpected_token_err(
+                MidGen_dynpush(diags, MidDiag_unexpected_token_err(
                                        "literal", &toks[i],
-                                       ERRORTYPE_UNEXPECTED_TOKEN));
+                                       MIDDIAG_ERR_UNEXPECTED_TOKEN));
             else
-                gen_dynpush(&out, lit_tok_to_expr(&toks[i]));
+                MidGen_dynpush(&out, lit_tok_to_expr(&toks[i]));
             mode = false;
-        } else if (toks[i].type == LEXER_TOKENTYPE_IDENTIFIER) {
+        } else if (toks[i].type == MIDLEXER_TOKENTYPE_IDENTIFIER) {
             if (!mode)
-                gen_dynpush(diags, Diag_unexpected_token_err(
+                MidGen_dynpush(diags, MidDiag_unexpected_token_err(
                                        "identifier", &toks[i],
-                                       ERRORTYPE_UNEXPECTED_TOKEN));
+                                       MIDDIAG_ERR_UNEXPECTED_TOKEN));
             else
-                gen_dynpush(&out, ident_tok_to_expr(&toks[i]));
+                MidGen_dynpush(&out, ident_tok_to_expr(&toks[i]));
             mode = false;
-        } else if (toks[i].type == LEXER_TOKENTYPE_THIS) {
+        } else if (toks[i].type == MIDLEXER_TOKENTYPE_THIS) {
             if (!mode)
-                gen_dynpush(diags,
-                            Diag_unexpected_token_err(
-                                "this", &toks[i], ERRORTYPE_UNEXPECTED_TOKEN));
+                MidGen_dynpush(
+                    diags, MidDiag_unexpected_token_err(
+                               "this", &toks[i], MIDDIAG_ERR_UNEXPECTED_TOKEN));
             else
-                gen_dynpush(&out, this_tok_to_expr(&toks[i]));
+                MidGen_dynpush(&out, this_tok_to_expr(&toks[i]));
             mode = false;
-        } else if (Lexer_is_op(toks[i].type)) {
+        } else if (MidLexer_is_op(toks[i].type)) {
             push_operator(toks, i, &i, &out, &ops, mode, scope, diags);
-            mode = ops.arr[ops.len - 1].type != PARSER_EXPRTYPE_POSTFIX_DEC &&
-                   ops.arr[ops.len - 1].type != PARSER_EXPRTYPE_POSTFIX_INC;
-        } else if (toks[i].type == LEXER_TOKENTYPE_L_PAREN) {
+            mode =
+                ops.arr[ops.len - 1].type != MIDPARSER_EXPRTYPE_POSTFIX_DEC &&
+                ops.arr[ops.len - 1].type != MIDPARSER_EXPRTYPE_POSTFIX_INC;
+        } else if (toks[i].type == MIDLEXER_TOKENTYPE_L_PAREN) {
             if (!mode)
                 // if mode is 0, a sub-expression is actually a function call
                 push_operator(toks, i, &i, &out, &ops, mode, scope, diags);
             else
-                gen_dynpush(&out, parse_subexpr(toks, i, &i, scope, diags));
+                MidGen_dynpush(&out, parse_subexpr(toks, i, &i, scope, diags));
             mode = false;
         }
     }
@@ -1140,9 +1156,9 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
     // excess operators just get popped in fifo order
     while (ops.len > 0) {
         add_op_to_out(&ops.arr[ops.len - 1], &out, diags);
-        gen_dynpop(&ops);
+        MidGen_dynpop(&ops);
     }
-    gen_dyndeinit(&ops);
+    MidGen_dyndeinit(&ops);
 
     if (out.len != 1) {
         // handle operator and operand mismatch here
@@ -1150,48 +1166,49 @@ struct Parser_Expr Parser_parse_expr(const struct Lexer_Token *toks,
                toks[start].pos.column);
         printf("expr end at %d:%d\n", toks[i].pos.line, toks[i].pos.column);
         printf("out len = %" PRIisz "\n", out.len);
-        CRASH("mismatched operators and operands");
+        MID_CRASH("mismatched operators and operands");
     }
 
-    struct Parser_Expr ret = out.arr[0];
-    gen_dyndeinit(&out);
-    Sema_typecheck_expr(&ret, scope, diags);
+    struct MidParser_Expr ret = out.arr[0];
+    MidGen_dyndeinit(&out);
+    MidSema_typecheck_expr(&ret, scope, diags);
     return ret;
 }
 
-isize_t Parser_skip_expr(const struct Lexer_Token *toks, isize_t start,
-                         const enum Lexer_TokenType *end_types,
-                         isize_t n_end_types, struct DiagVec *diags)
+mid_isize MidParser_skip_expr(const struct MidLexer_Token *toks, mid_isize start,
+                            const enum MidLexer_TokenType *end_types,
+                            mid_isize n_end_types, struct MidDiag_DiagVec *diags)
 {
-    isize_t i;
+    mid_isize i;
     for (i = start; !is_end_type(toks[i].type, end_types, n_end_types); ++i) {
-        if (toks[i].type == LEXER_TOKENTYPE_L_PAREN) {
-            isize_t rparen = Parser_find_twin_paren(toks, i, ISIZE_MAX);
+        if (toks[i].type == MIDLEXER_TOKENTYPE_L_PAREN) {
+            mid_isize rparen = MidParser_find_twin_paren(toks, i, MID_ISIZE_MAX);
             if (rparen == -1 && diags)
-                gen_dynpush(diags,
-                            Diag_expected_token_err("')'", &toks[i],
-                                                    ERRORTYPE_MISSING_PAREN));
+                MidGen_dynpush(diags,
+                            MidDiag_expected_token_err(
+                                "')'", &toks[i], MIDDIAG_ERR_MISSING_PAREN));
             i = rparen == -1 ? i : rparen;
-        } else if (toks[i].type == LEXER_TOKENTYPE_L_CURLY) {
-            isize_t rcurly = Parser_find_twin_curly(toks, i, ISIZE_MAX);
+        } else if (toks[i].type == MIDLEXER_TOKENTYPE_L_CURLY) {
+            mid_isize rcurly = MidParser_find_twin_curly(toks, i, MID_ISIZE_MAX);
             if (rcurly == -1 && diags)
-                gen_dynpush(diags,
-                            Diag_expected_token_err("'}'", &toks[i],
-                                                    ERRORTYPE_MISSING_CURLY));
+                MidGen_dynpush(diags,
+                            MidDiag_expected_token_err(
+                                "'}'", &toks[i], MIDDIAG_ERR_MISSING_CURLY));
             i = rcurly == -1 ? i : rcurly;
-        } else if (toks[i].type == LEXER_TOKENTYPE_L_SQBRACKET) {
-            isize_t rsqbracket = Parser_find_twin_sqbracket(toks, i, ISIZE_MAX);
+        } else if (toks[i].type == MIDLEXER_TOKENTYPE_L_SQBRACKET) {
+            mid_isize rsqbracket =
+                MidParser_find_twin_sqbracket(toks, i, MID_ISIZE_MAX);
             if (rsqbracket == -1 && diags)
-                gen_dynpush(diags,
-                            Diag_expected_token_err(
-                                "']'", &toks[i], ERRORTYPE_MISSING_SQBRACKET));
+                MidGen_dynpush(
+                    diags, MidDiag_expected_token_err(
+                               "']'", &toks[i], MIDDIAG_ERR_MISSING_SQBRACKET));
             i = rsqbracket == -1 ? i : rsqbracket;
-        } else if (toks[i].type == LEXER_TOKENTYPE_LT) {
-            isize_t rangle = Parser_find_twin_angle(toks, i, ISIZE_MAX);
+        } else if (toks[i].type == MIDLEXER_TOKENTYPE_LT) {
+            mid_isize rangle = MidParser_find_twin_angle(toks, i, MID_ISIZE_MAX);
             if (rangle == -1 && diags)
-                gen_dynpush(diags,
-                            Diag_expected_token_err("'>'", &toks[i],
-                                                    ERRORTYPE_MISSING_ANGLE));
+                MidGen_dynpush(diags,
+                            MidDiag_expected_token_err(
+                                "'>'", &toks[i], MIDDIAG_ERR_MISSING_ANGLE));
             i = rangle == -1 ? i : rangle;
         }
     }
@@ -1199,35 +1216,35 @@ isize_t Parser_skip_expr(const struct Lexer_Token *toks, isize_t start,
     return i;
 }
 
-void Parser_Expr_deinit(struct Parser_Expr *expr)
+void MidParser_Expr_deinit(struct MidParser_Expr *expr)
 {
-    if (Parser_expr_uses_args(expr->type)) {
-        for (isize_t i = 0; i < expr->info.args.len; ++i)
-            Parser_Expr_deinit(&expr->info.args.arr[i]);
-        gen_dyndeinit(&expr->info.args);
+    if (MidParser_expr_uses_args(expr->type)) {
+        for (mid_isize i = 0; i < expr->info.args.len; ++i)
+            MidParser_Expr_deinit(&expr->info.args.arr[i]);
+        MidGen_dyndeinit(&expr->info.args);
     }
 
-    Parser_Type_deinit(&expr->ret);
+    MidParser_Type_deinit(&expr->ret);
 }
 
-struct Parser_Expr Parser_copy_expr(const struct Parser_Expr *expr)
+struct MidParser_Expr MidParser_copy_expr(const struct MidParser_Expr *expr)
 {
-    struct Parser_Expr ret = *expr;
+    struct MidParser_Expr ret = *expr;
 
-    ret.ret = Parser_copy_type(&expr->ret);
+    ret.ret = MidParser_copy_type(&expr->ret);
 
-    if (Parser_expr_uses_args(expr->type)) {
-        ret.info.args = (struct Parser_ExprVec){};
-        gen_dynreserve(&ret.info.args, expr->info.args.len);
-        for (isize_t i = 0; i < expr->info.args.len; ++i)
-            gen_dynpush(&ret.info.args,
-                        Parser_copy_expr(&expr->info.args.arr[i]));
+    if (MidParser_expr_uses_args(expr->type)) {
+        ret.info.args = (struct MidParser_ExprVec){};
+        MidGen_dynreserve(&ret.info.args, expr->info.args.len);
+        for (mid_isize i = 0; i < expr->info.args.len; ++i)
+            MidGen_dynpush(&ret.info.args,
+                        MidParser_copy_expr(&expr->info.args.arr[i]));
     }
 
     return ret;
 }
 
-bool Parser_expr_uses_args(enum Parser_ExprType type)
+bool MidParser_expr_uses_args(enum MidParser_ExprType type)
 {
-    return Parser_is_op(type);
+    return MidParser_is_op(type);
 }

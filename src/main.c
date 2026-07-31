@@ -25,13 +25,13 @@ static char *read_file(const char *path)
     FILE *f = fopen(path, "r");
 
     fseek(f, 0L, SEEK_END);
-    isize_t len = ftell(f);
+    mid_isize len = ftell(f);
     rewind(f);
 
-    char *str = mid_malloc((len + 1) * sizeof(*str));
+    char *str = Mid_malloc((len + 1) * sizeof(*str));
     str[len] = '\0';
 
-    for (isize_t i = 0; i < len; ++i)
+    for (mid_isize i = 0; i < len; ++i)
         str[i] = fgetc(f);
 
     fclose(f);
@@ -40,82 +40,82 @@ static char *read_file(const char *path)
 }
 
 // removes duplicate diags
-static void clean_diags(struct DiagVec *diags)
+static void clean_diags(struct MidDiag_DiagVec *diags)
 {
-    for (isize_t i = diags->len - 1; i >= 1; --i) {
+    for (mid_isize i = diags->len - 1; i >= 1; --i) {
         auto cur = &diags->arr[i];
         auto prev = &diags->arr[i - 1];
 
-        if (!Position_equal(&cur->pos, &prev->pos))
+        if (!Mid_position_equal(&cur->pos, &prev->pos))
             continue;
 
         bool remove = false;
 
-        if (cur->type == DIAGTYPE_ERROR) {
-            if (prev->type == DIAGTYPE_NOTE && cur->err == prev->err)
+        if (cur->type == MIDDIAG_TYPE_ERROR) {
+            if (prev->type == MIDDIAG_TYPE_NOTE && cur->err == prev->err)
                 remove = true;
-        } else if (cur->type == DIAGTYPE_WARNING) {
-            if (prev->type == DIAGTYPE_WARNING && cur->warn == prev->warn)
+        } else if (cur->type == MIDDIAG_TYPE_WARNING) {
+            if (prev->type == MIDDIAG_TYPE_WARNING && cur->warn == prev->warn)
                 remove = true;
         }
 
         if (remove)
-            gen_dynremove(diags, i, Diag_deinit);
+            MidGen_dynremove(diags, i, MidDiag_deinit);
     }
 }
 
 // returns true if at least one of them was an error
-static bool print_diags(struct DiagVec *diags)
+static bool print_diags(struct MidDiag_DiagVec *diags)
 {
     clean_diags(diags);
 
     bool err = false;
-    for (isize_t i = 0; i < diags->len; ++i) {
-        if (diags->arr[i].type == DIAGTYPE_ERROR)
+    for (mid_isize i = 0; i < diags->len; ++i) {
+        if (diags->arr[i].type == MIDDIAG_TYPE_ERROR)
             err = true;
-        Diag_print(&diags->arr[i]);
+        MidDiag_print(&diags->arr[i]);
     }
 
     return err;
 }
 
-static void log_tokens(const struct Lexer_TokenVec *toks)
+static void log_tokens(const struct MidLexer_TokenVec *toks)
 {
-    for (isize_t i = 0; i < toks->len; ++i) {
+    for (mid_isize i = 0; i < toks->len; ++i) {
         printf("i = %" PRIisz ", pos = (%d, %d), type = %d", i,
                toks->arr[i].pos.line, toks->arr[i].pos.column,
                toks->arr[i].type);
-        if (toks->arr[i].type == LEXER_TOKENTYPE_INT_LIT)
+        if (toks->arr[i].type == MIDLEXER_TOKENTYPE_INT_LIT)
             printf(", value int = %" PRId64, toks->arr[i].val.sint);
-        else if (toks->arr[i].type == LEXER_TOKENTYPE_LONG_LIT)
+        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_LONG_LIT)
             printf(", value long = %" PRId64, toks->arr[i].val.sint);
-        else if (toks->arr[i].type == LEXER_TOKENTYPE_LONGLONG_LIT)
+        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_LONGLONG_LIT)
             printf(", value long long = %" PRId64, toks->arr[i].val.sint);
-        else if (toks->arr[i].type == LEXER_TOKENTYPE_UINT_LIT)
+        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_UINT_LIT)
             printf(", value u int = %" PRId64, toks->arr[i].val.uint);
-        else if (toks->arr[i].type == LEXER_TOKENTYPE_ULONG_LIT)
+        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_ULONG_LIT)
             printf(", value u long = %" PRId64, toks->arr[i].val.uint);
-        else if (toks->arr[i].type == LEXER_TOKENTYPE_ULONGLONG_LIT)
+        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_ULONGLONG_LIT)
             printf(", value u long long = %" PRId64, toks->arr[i].val.uint);
-        else if (toks->arr[i].type == LEXER_TOKENTYPE_FLOAT_LIT)
+        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_FLOAT_LIT)
             printf(", value f = %Lf", toks->arr[i].val.flt);
-        else if (toks->arr[i].type == LEXER_TOKENTYPE_DOUBLE_LIT)
+        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_DOUBLE_LIT)
             printf(", value d = %Lf", toks->arr[i].val.flt);
-        else if (toks->arr[i].type == LEXER_TOKENTYPE_LONGDOUBLE_LIT)
+        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_LONGDOUBLE_LIT)
             printf(", value ld = %Lf", toks->arr[i].val.flt);
-        else if (toks->arr[i].type == LEXER_TOKENTYPE_STRING_LIT)
+        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_STRING_LIT)
             printf(", value str = '%s'", toks->arr[i].val.str.c);
         printf("\n");
     }
 }
 
-static void log_symbols(const struct SymbolTable *symtbl)
+static void log_symbols(const struct MidSymbol_Table *symtbl)
 {
-    for (isize_t i = 0; i < symtbl->len; ++i)
+    for (mid_isize i = 0; i < symtbl->len; ++i)
         printf("symtbl[%" PRIisz "] = '%s'\n", i, symtbl->arr[i]);
 }
 
-static void log_ast(const char *path, const struct Parser_ASTNode *root)
+static void log_ast(const char *path, const struct MidParser_ASTNode *root)
 {
     FILE *f = fopen(path, "w");
     if (!f) {
@@ -123,27 +123,27 @@ static void log_ast(const char *path, const struct Parser_ASTNode *root)
         return;
     }
 
-    Parser_log_ast(root, f);
+    MidParser_log_ast(root, f);
 
     fclose(f);
 }
 
 /*
-static void test_mangling(const struct Sema_Scope *scope)
+static void test_mangling(const struct MidSema_Scope *scope)
 {
-    for (isize_t i = 0; i < scope->idents.len; ++i) {
-        struct Sema_Ident *ident = &scope->idents.arr[i];
+    for (mid_isize i = 0; i < scope->idents.len; ++i) {
+        struct MidSema_Ident *ident = &scope->idents.arr[i];
 
-        if (ident->type != SEMA_IDENTTYPE_FUNC)
+        if (ident->type != MIDSEMA_IDENTTYPE_FUNC)
             continue;
 
-        char *mangled = CGLLVM_mangle_func(&ident->decl->func_decl);
+        char *mangled = MidLLVM_mangle_func(&ident->decl->func_decl);
         printf("func at %d:%d becomes '%s'\n", ident->decl->start->pos.line,
                ident->decl->start->pos.column, mangled);
         free(mangled);
     }
 
-    for (isize_t i = 0; i < scope->childs.len; ++i)
+    for (mid_isize i = 0; i < scope->childs.len; ++i)
         test_mangling(scope->childs.arr[i]);
 }
 */
@@ -157,54 +157,54 @@ static void apint_test()
     i32 largest_fib =
         ceil(bits * (log(2.0) / log(phi)) + 0.5 * (log(5.0) / log(phi)));
 
-    struct APInt a = APInt_zero(bits);
-    struct APInt b = APInt_init(bits, 1, false);
-    struct APInt c = APInt_zero(bits);
+    struct APInt a = MidAPInt_zero(bits);
+    struct APInt b = MidAPInt_init(bits, 1, false);
+    struct APInt c = MidAPInt_zero(bits);
 
     for (int i = 0; i < largest_fib; ++i) {
         printf("nr %d: ", i);
-        APInt_log(&a, stdout, false);
+        MidAPInt_log(&a, stdout, false);
         putchar('\n');
 
-        APInt_copy_value(&c, &a);
-        APInt_add(&c, &b);
+        MidAPInt_copy_value(&c, &a);
+        MidAPInt_add(&c, &b);
 
-        APInt_copy_value(&a, &b);
-        APInt_copy_value(&b, &c);
+        MidAPInt_copy_value(&a, &b);
+        MidAPInt_copy_value(&b, &c);
     }
 
-    APInt_deinit(&c);
-    APInt_deinit(&b);
-    APInt_deinit(&a);
+    MidAPInt_deinit(&c);
+    MidAPInt_deinit(&b);
+    MidAPInt_deinit(&a);
 }
 */
 
 /*
 static void apint_test()
 {
-    struct APInt num = APInt_init_arr(
-        128, (APInt_Word[]){0x123456789aebcdef, 0x123456789aebcdef}, 2, false);
+    struct APInt num = MidAPInt_init_arr(
+        128, (MidAPInt_Word[]){0x123456789aebcdef, 0x123456789aebcdef}, 2, false);
 
-    APInt_log_hex(&num, stdout);
+    MidAPInt_log_hex(&num, stdout);
     printf("\nlhs = ");
-    APInt_log(&num, stdout, false);
+    MidAPInt_log(&num, stdout, false);
     putchar('\n');
 
-    struct APInt other = APInt_init_arr(
-        128, (APInt_Word[]){0xdeadbeefdeadbeef, 0x00000000deadbeef}, 2, false);
+    struct APInt other = MidAPInt_init_arr(
+        128, (MidAPInt_Word[]){0xdeadbeefdeadbeef, 0x00000000deadbeef}, 2, false);
 
     printf("rhs = ");
-    APInt_log(&other, stdout, false);
+    MidAPInt_log(&other, stdout, false);
     putchar('\n');
 
-    APInt_add(&num, &other);
+    MidAPInt_add(&num, &other);
 
     printf("sum = ");
-    APInt_log(&num, stdout, false);
+    MidAPInt_log(&num, stdout, false);
     putchar('\n');
 
-    APInt_deinit(&other);
-    APInt_deinit(&num);
+    MidAPInt_deinit(&other);
+    MidAPInt_deinit(&num);
 }
 */
 
@@ -215,66 +215,66 @@ int main(int argc, char **argv)
 
     /*
     apint_test();
-    CRASH("asdf");
+    MID_CRASH("asdf");
     */
 
-    CMD_init_args(argc, argv);
+    MidCMD_init_args(argc, argv);
 
     int ret = 0;
 
-    struct Parser_Allocators allocs = {};
+    struct MidParser_Allocators allocs = {};
 
-    assert(CMD_get_args()->src);
-    char *src = read_file(CMD_get_args()->src);
+    assert(MidCMD_get_args()->src);
+    char *src = read_file(MidCMD_get_args()->src);
 
-    auto lex = Lexer_tokenize(src, CMD_get_args()->src);
+    auto lex = MidLexer_tokenize(src, MidCMD_get_args()->src);
     if (print_diags(&lex.diags)) {
         ret = 1;
         goto tokenize_failed;
     }
 
-    if (CMD_get_args()->log_tokens)
+    if (MidCMD_get_args()->log_tokens)
         log_tokens(&lex.toks);
-    if (CMD_get_args()->log_symbols)
+    if (MidCMD_get_args()->log_symbols)
         log_symbols(&lex.symtbl);
 
-    struct DiagVec parser_diags = gen_dyninit();
+    struct MidDiag_DiagVec parser_diags = MidGen_dyninit();
 
-    struct Parser_ASTNode root = {.type = PARSER_ASTNODETYPE_ROOT};
-    struct Sema_Scope scope = {.type = SEMA_SCOPETYPE_ROOT, .node = &root};
+    struct MidParser_ASTNode root = {.type = MIDPARSER_ASTNODETYPE_ROOT};
+    struct MidSema_Scope scope = {.type = MIDSEMA_SCOPETYPE_ROOT, .node = &root};
 
-    for (isize_t i = 0; lex.toks.arr[i].type != LEXER_TOKENTYPE_END;) {
+    for (mid_isize i = 0; lex.toks.arr[i].type != MIDLEXER_TOKENTYPE_END;) {
         auto node =
-            Parser_parse_node(lex.toks.arr, i, &i, &root, &scope,
-                              (struct Parser_ParseNodeFlags){.skip_def = false},
+            MidParser_parse_node(lex.toks.arr, i, &i, &root, &scope,
+                              (struct MidParser_ParseNodeFlags){.skip_def = false},
                               &allocs, &parser_diags);
-        gen_dynpush(&root.root, node);
+        MidGen_dynpush(&root.root, node);
     }
     if (print_diags(&parser_diags)) {
         ret = 1;
         goto parser_failed;
     }
 
-    if (CMD_get_args()->ast_out)
-        log_ast(CMD_get_args()->ast_out, &root);
+    if (MidCMD_get_args()->ast_out)
+        log_ast(MidCMD_get_args()->ast_out, &root);
 
     /*
     test_mangling(&scope);
 
-    CGLLVM_init_codegen();
-    CGLLVM_codegen(&root);
+    MidLLVM_init_codegen();
+    MidLLVM_codegen(&root);
     */
 
 parser_failed:
     // the root scope and root node need to be deallocated manually cuz they
     // weren't dynamically allocated
-    Sema_Scope_deinit(&scope);
-    Parser_ASTNode_deinit(&root);
-    gen_dyndeinit(&parser_diags, Diag_deinit);
+    MidSema_Scope_deinit(&scope);
+    MidParser_ASTNode_deinit(&root);
+    MidGen_dyndeinit(&parser_diags, MidDiag_deinit);
 tokenize_failed:
-    Lexer_Tokenize_deinit(&lex);
+    MidLexer_Tokenize_deinit(&lex);
     free(src);
 
-    Parser_Allocators_deinit(&allocs);
+    MidParser_Allocators_deinit(&allocs);
     return ret;
 }

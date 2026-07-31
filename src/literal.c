@@ -9,244 +9,244 @@
 #include <stdio.h>
 #include <wchar.h>
 
-void Lit_String_deinit(struct Lit_String *self)
+void MidLit_String_deinit(struct MidLit_String *self)
 {
     switch (self->type) {
-    case LIT_STRINGTYPE_CHAR:
+    case MIDLIT_STRINGTYPE_CHAR:
         free(self->c);
         break;
 
-    case LIT_STRINGTYPE_WCHAR:
+    case MIDLIT_STRINGTYPE_WCHAR:
         free(self->wc);
         break;
 
-    case LIT_STRINGTYPE_CHAR16:
+    case MIDLIT_STRINGTYPE_CHAR16:
         free(self->c16);
         break;
 
-    case LIT_STRINGTYPE_CHAR32:
+    case MIDLIT_STRINGTYPE_CHAR32:
         free(self->c32);
         break;
     }
 }
 
-static isize_t c_str_len(const TypesCharType *str)
+static mid_isize c_str_len(const TypesCharType *str)
 {
-    isize_t i;
+    mid_isize i;
     for (i = 0; str[i] != '\0'; ++i)
         ;
     return i;
 }
 
-static isize_t wc_str_len(const TypesWCharType *str)
+static mid_isize wc_str_len(const TypesWCharType *str)
 {
-    isize_t i;
+    mid_isize i;
     for (i = 0; str[i] != '\0'; ++i)
         ;
     return i;
 }
 
-static isize_t c16_str_len(const u16 *str)
+static mid_isize c16_str_len(const u16 *str)
 {
-    isize_t i;
+    mid_isize i;
     for (i = 0; str[i] != '\0'; ++i)
         ;
     return i;
 }
 
-static isize_t c32_str_len(const u32 *str)
+static mid_isize c32_str_len(const u32 *str)
 {
-    isize_t i;
+    mid_isize i;
     for (i = 0; str[i] != '\0'; ++i)
         ;
     return i;
 }
 
-isize_t Lit_strlit_len(const struct Lit_String *strlit)
+mid_isize MidLit_strlit_len(const struct MidLit_String *strlit)
 {
     switch (strlit->type) {
-    case LIT_STRINGTYPE_CHAR:
+    case MIDLIT_STRINGTYPE_CHAR:
         return c_str_len(strlit->c);
 
-    case LIT_STRINGTYPE_WCHAR:
+    case MIDLIT_STRINGTYPE_WCHAR:
         return wc_str_len(strlit->wc);
 
-    case LIT_STRINGTYPE_CHAR16:
+    case MIDLIT_STRINGTYPE_CHAR16:
         return c16_str_len(strlit->c16);
 
-    case LIT_STRINGTYPE_CHAR32:
+    case MIDLIT_STRINGTYPE_CHAR32:
         return c32_str_len(strlit->c32);
     }
 }
 
-void Lit_fprint(FILE *out, union Lit_Value val, enum Parser_ExprType type)
+void MidLit_fprint(FILE *out, union MidLit_Value val, enum MidParser_ExprType type)
 {
     switch (type) {
-    case PARSER_EXPRTYPE_CHAR_LIT:
+    case MIDPARSER_EXPRTYPE_CHAR_LIT:
         fprintf(out, "'%c'", (char)val.sint);
         break;
 
-    case PARSER_EXPRTYPE_WCHAR_LIT:
+    case MIDPARSER_EXPRTYPE_WCHAR_LIT:
         fprintf(out, "'%C'", (wchar_t)val.sint);
         break;
 
-    case PARSER_EXPRTYPE_CHAR16_LIT:
-    case PARSER_EXPRTYPE_CHAR32_LIT:
+    case MIDPARSER_EXPRTYPE_CHAR16_LIT:
+    case MIDPARSER_EXPRTYPE_CHAR32_LIT:
         fputc('\'', out);
-        UTF8_fprint_char(out, val.uint);
+        MidUTF8_fprint_char(out, val.uint);
         fputc('\'', out);
         break;
 
-    case PARSER_EXPRTYPE_STRING_LIT:
+    case MIDPARSER_EXPRTYPE_STRING_LIT:
         fprintf(out, "\"%s\"", val.str.c);
         break;
 
-    case PARSER_EXPRTYPE_WSTRING_LIT:
+    case MIDPARSER_EXPRTYPE_WSTRING_LIT:
         fputc('"', out);
-        static_assert(Types_wchar_size == 2 || Types_wchar_size == 4);
-        if (Types_wchar_size == 2)
-            UTF8_fprint_str16(out, (void *)val.str.wc);
+        static_assert(MidTypes_wchar_size == 2 || MidTypes_wchar_size == 4);
+        if (MidTypes_wchar_size == 2)
+            MidUTF8_fprint_str16(out, (void *)val.str.wc);
         else
-            UTF8_fprint_str32(out, (void *)val.str.wc);
+            MidUTF8_fprint_str32(out, (void *)val.str.wc);
         fputc('"', out);
         break;
 
-    case PARSER_EXPRTYPE_STRING16_LIT:
+    case MIDPARSER_EXPRTYPE_STRING16_LIT:
         fputc('"', out);
-        UTF8_fprint_str16(out, val.str.c16);
-        fputc('"', out);
-        break;
-
-    case PARSER_EXPRTYPE_STRING32_LIT:
-        fputc('"', out);
-        UTF8_fprint_str32(out, val.str.c32);
+        MidUTF8_fprint_str16(out, val.str.c16);
         fputc('"', out);
         break;
 
-    case PARSER_EXPRTYPE_INT_LIT:
-    case PARSER_EXPRTYPE_LONG_LIT:
-    case PARSER_EXPRTYPE_LONGLONG_LIT:
+    case MIDPARSER_EXPRTYPE_STRING32_LIT:
+        fputc('"', out);
+        MidUTF8_fprint_str32(out, val.str.c32);
+        fputc('"', out);
+        break;
+
+    case MIDPARSER_EXPRTYPE_INT_LIT:
+    case MIDPARSER_EXPRTYPE_LONG_LIT:
+    case MIDPARSER_EXPRTYPE_LONGLONG_LIT:
         fprintf(out, "%" PRIi64, val.sint);
         break;
 
-    case PARSER_EXPRTYPE_UINT_LIT:
-    case PARSER_EXPRTYPE_ULONG_LIT:
-    case PARSER_EXPRTYPE_ULONGLONG_LIT:
+    case MIDPARSER_EXPRTYPE_UINT_LIT:
+    case MIDPARSER_EXPRTYPE_ULONG_LIT:
+    case MIDPARSER_EXPRTYPE_ULONGLONG_LIT:
         fprintf(out, "%" PRIu64, val.uint);
         break;
 
-    case PARSER_EXPRTYPE_FLOAT_LIT:
-    case PARSER_EXPRTYPE_DOUBLE_LIT:
-    case PARSER_EXPRTYPE_LONGDOUBLE_LIT:
+    case MIDPARSER_EXPRTYPE_FLOAT_LIT:
+    case MIDPARSER_EXPRTYPE_DOUBLE_LIT:
+    case MIDPARSER_EXPRTYPE_LONGDOUBLE_LIT:
         fprintf(out, "%Lf", val.flt);
         break;
 
-    case PARSER_EXPRTYPE_BOOL_LIT:
+    case MIDPARSER_EXPRTYPE_BOOL_LIT:
         fprintf(out, "%s", val.sint ? "true" : "false");
         break;
 
-    case PARSER_EXPRTYPE_NULLPTR_LIT:
+    case MIDPARSER_EXPRTYPE_NULLPTR_LIT:
         fprintf(out, "nullptr");
         break;
 
     default:
-        CRASH("expr is not a literal");
+        MID_CRASH("expr is not a literal");
     }
 }
 
-void Lit_fprint_toktype(FILE *out, union Lit_Value val,
-                        enum Lexer_TokenType type)
+void MidLit_fprint_toktype(FILE *out, union MidLit_Value val,
+                        enum MidLexer_TokenType type)
 {
     switch (type) {
-    case LEXER_TOKENTYPE_CHAR_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_CHAR_LIT);
+    case MIDLEXER_TOKENTYPE_CHAR_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_CHAR_LIT);
         break;
 
-    case LEXER_TOKENTYPE_WCHAR_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_WCHAR_LIT);
+    case MIDLEXER_TOKENTYPE_WCHAR_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_WCHAR_LIT);
         break;
 
-    case LEXER_TOKENTYPE_CHAR16_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_CHAR16_LIT);
+    case MIDLEXER_TOKENTYPE_CHAR16_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_CHAR16_LIT);
         break;
 
-    case LEXER_TOKENTYPE_CHAR32_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_CHAR32_LIT);
+    case MIDLEXER_TOKENTYPE_CHAR32_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_CHAR32_LIT);
         break;
 
-    case LEXER_TOKENTYPE_STRING_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_STRING_LIT);
+    case MIDLEXER_TOKENTYPE_STRING_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_STRING_LIT);
         break;
 
-    case LEXER_TOKENTYPE_WSTRING_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_WSTRING_LIT);
+    case MIDLEXER_TOKENTYPE_WSTRING_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_WSTRING_LIT);
         break;
 
-    case LEXER_TOKENTYPE_STRING16_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_STRING16_LIT);
+    case MIDLEXER_TOKENTYPE_STRING16_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_STRING16_LIT);
         break;
 
-    case LEXER_TOKENTYPE_STRING32_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_STRING32_LIT);
+    case MIDLEXER_TOKENTYPE_STRING32_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_STRING32_LIT);
         break;
 
-    case LEXER_TOKENTYPE_INT_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_INT_LIT);
+    case MIDLEXER_TOKENTYPE_INT_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_INT_LIT);
         break;
 
-    case LEXER_TOKENTYPE_UINT_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_UINT_LIT);
+    case MIDLEXER_TOKENTYPE_UINT_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_UINT_LIT);
         break;
 
-    case LEXER_TOKENTYPE_LONG_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_LONG_LIT);
+    case MIDLEXER_TOKENTYPE_LONG_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_LONG_LIT);
         break;
 
-    case LEXER_TOKENTYPE_ULONG_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_ULONG_LIT);
+    case MIDLEXER_TOKENTYPE_ULONG_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_ULONG_LIT);
         break;
 
-    case LEXER_TOKENTYPE_LONGLONG_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_LONGLONG_LIT);
+    case MIDLEXER_TOKENTYPE_LONGLONG_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_LONGLONG_LIT);
         break;
 
-    case LEXER_TOKENTYPE_ULONGLONG_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_ULONGLONG_LIT);
+    case MIDLEXER_TOKENTYPE_ULONGLONG_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_ULONGLONG_LIT);
         break;
 
-    case LEXER_TOKENTYPE_FLOAT_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_FLOAT_LIT);
+    case MIDLEXER_TOKENTYPE_FLOAT_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_FLOAT_LIT);
         break;
 
-    case LEXER_TOKENTYPE_DOUBLE_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_DOUBLE_LIT);
+    case MIDLEXER_TOKENTYPE_DOUBLE_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_DOUBLE_LIT);
         break;
 
-    case LEXER_TOKENTYPE_LONGDOUBLE_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_LONGDOUBLE_LIT);
+    case MIDLEXER_TOKENTYPE_LONGDOUBLE_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_LONGDOUBLE_LIT);
         break;
 
-    case LEXER_TOKENTYPE_BOOL_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_BOOL_LIT);
+    case MIDLEXER_TOKENTYPE_BOOL_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_BOOL_LIT);
         break;
 
-    case LEXER_TOKENTYPE_NULLPTR_LIT:
-        Lit_fprint(out, val, PARSER_EXPRTYPE_NULLPTR_LIT);
+    case MIDLEXER_TOKENTYPE_NULLPTR_LIT:
+        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_NULLPTR_LIT);
         break;
 
     default:
-        CRASH("token is not literal");
+        MID_CRASH("token is not literal");
     }
 }
 
-void Lit_print(union Lit_Value val, enum Parser_ExprType type)
+void MidLit_print(union MidLit_Value val, enum MidParser_ExprType type)
 {
-    Lit_fprint(stdout, val, type);
+    MidLit_fprint(stdout, val, type);
 }
 
-void Lit_print_toktype(union Lit_Value val, enum Lexer_TokenType type)
+void MidLit_print_toktype(union MidLit_Value val, enum MidLexer_TokenType type)
 {
-    Lit_fprint_toktype(stdout, val, type);
+    MidLit_fprint_toktype(stdout, val, type);
 }
 
 static bool is_hex_digit(char c)
@@ -288,15 +288,15 @@ static int hex_digit_to_num(char c)
         return 0xf;
 
     default:
-        CRASH("not a hex digit");
+        MID_CRASH("not a hex digit");
     }
 }
 
-static u64 read_intlit_hex(const char *str, isize_t start, isize_t *out_end)
+static u64 read_intlit_hex(const char *str, mid_isize start, mid_isize *out_end)
 {
     u64 ret = 0;
 
-    isize_t i;
+    mid_isize i;
     for (i = start; is_hex_digit(str[i]); ++i) {
         ret *= 16;
         ret += hex_digit_to_num(str[i]);
@@ -312,11 +312,11 @@ static bool is_bin_digit(char c)
     return c == '0' || c == '1';
 }
 
-static u64 read_intlit_bin(const char *str, isize_t start, isize_t *out_end)
+static u64 read_intlit_bin(const char *str, mid_isize start, mid_isize *out_end)
 {
     u64 ret = 0;
 
-    isize_t i;
+    mid_isize i;
     for (i = start; is_bin_digit(str[i]); ++i) {
         ret *= 2;
         ret += str[i] - '0';
@@ -332,11 +332,11 @@ static bool is_octal_digit(char c)
     return c >= '0' && c <= '7';
 }
 
-static u64 read_intlit_octal(const char *str, isize_t start, isize_t *out_end)
+static u64 read_intlit_octal(const char *str, mid_isize start, mid_isize *out_end)
 {
     u64 ret = 0;
 
-    isize_t i;
+    mid_isize i;
     for (i = start; is_octal_digit(str[i]); ++i) {
         ret *= 8;
         ret += str[i] - '0';
@@ -347,11 +347,11 @@ static u64 read_intlit_octal(const char *str, isize_t start, isize_t *out_end)
     return ret;
 }
 
-static u64 read_intlit_decimal(const char *str, isize_t start, isize_t *out_end)
+static u64 read_intlit_decimal(const char *str, mid_isize start, mid_isize *out_end)
 {
     u64 ret = 0;
 
-    isize_t i;
+    mid_isize i;
     for (i = start; isdigit(str[i]); ++i) {
         ret *= 10;
         ret += str[i] - '0';
@@ -362,12 +362,12 @@ static u64 read_intlit_decimal(const char *str, isize_t start, isize_t *out_end)
     return ret;
 }
 
-struct Lit_ReadIntLitInfo Lit_read_intlit(const char *str, isize_t start,
-                                          isize_t *out_end)
+struct MidLit_ReadIntLitInfo MidLit_read_intlit(const char *str, mid_isize start,
+                                          mid_isize *out_end)
 {
     assert(isdigit(str[start]));
 
-    struct Lit_ReadIntLitInfo ret = {};
+    struct MidLit_ReadIntLitInfo ret = {};
 
     if (str[start] == '0') {
         if (str[start + 1] == 'x') {

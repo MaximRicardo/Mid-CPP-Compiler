@@ -5,11 +5,11 @@
 #include "symbol.h"
 #include "token.h"
 
-struct Lexer_Tokenize {
-    struct Lexer_TokenVec toks;
-    struct SymbolTable symtbl;
-    struct Lit_StringVec str_lits;
-    struct DiagVec diags;
-} Lexer_tokenize(const char *src, const char *file);
+struct MidLexer_Tokenize {
+    struct MidLexer_TokenVec toks;
+    struct MidSymbol_Table symtbl;
+    struct MidLit_StringVec str_lits;
+    struct MidDiag_DiagVec diags;
+} MidLexer_tokenize(const char *src, const char *file);
 
-void Lexer_Tokenize_deinit(struct Lexer_Tokenize *self);
+void MidLexer_Tokenize_deinit(struct MidLexer_Tokenize *self);

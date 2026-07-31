@@ -17,103 +17,103 @@
 
 // generic access macros
 
-#define PARSER_GET_NODE_IMPL_MUT(node) ((struct Parser_ASTNode *)node)
-#define PARSER_GET_NODE_IMPL_CONST(node) ((const struct Parser_ASTNode *)node)
+#define MIDPARSER_GET_NODE_IMPL_MUT(node) ((struct MidParser_ASTNode *)node)
+#define MIDPARSER_GET_NODE_IMPL_CONST(node) ((const struct MidParser_ASTNode *)node)
 
 /*
- * generic macro to convert a piece of syntax to a generic Parser_ASTNode ptr.
+ * generic macro to convert a piece of syntax to a generic MidParser_ASTNode ptr.
  * gives a compile time error if you use an invalid type.
  * preserves const-ness.
  */
-#define PARSER_GET_NODE(node)                                                  \
+#define MIDPARSER_GET_NODE(node)                                                  \
     _Generic((node),                                                           \
-        struct Parser_VarDecl *: PARSER_GET_NODE_IMPL_MUT(node),               \
-        struct Parser_VarDeclInst *: PARSER_GET_NODE_IMPL_MUT(node),           \
-        struct Parser_FuncDecl *: PARSER_GET_NODE_IMPL_MUT(node),              \
-        struct Parser_Class *: PARSER_GET_NODE_IMPL_MUT(node),                 \
-        struct Parser_Enum *: PARSER_GET_NODE_IMPL_MUT(node),                  \
-        struct Parser_Namespace *: PARSER_GET_NODE_IMPL_MUT(node),             \
-        struct Parser_Return *: PARSER_GET_NODE_IMPL_MUT(node),                \
-        struct Parser_Tmplt *: PARSER_GET_NODE_IMPL_MUT(node),                 \
-        struct Parser_TmpltParam *: PARSER_GET_NODE_IMPL_MUT(node),            \
-        struct Parser_TmpltNonTypeParam *: PARSER_GET_NODE_IMPL_MUT(node),     \
-        struct Parser_TmpltTypeParam *: PARSER_GET_NODE_IMPL_MUT(node),        \
-        struct Parser_TmpltTmpltParam *: PARSER_GET_NODE_IMPL_MUT(node),       \
-        const struct Parser_VarDecl *: PARSER_GET_NODE_IMPL_CONST(node),       \
-        const struct Parser_VarDeclInst *: PARSER_GET_NODE_IMPL_CONST(node),   \
-        const struct Parser_FuncDecl *: PARSER_GET_NODE_IMPL_CONST(node),      \
-        const struct Parser_Class *: PARSER_GET_NODE_IMPL_CONST(node),         \
-        const struct Parser_Enum *: PARSER_GET_NODE_IMPL_CONST(node),          \
-        const struct Parser_Namespace *: PARSER_GET_NODE_IMPL_CONST(node),     \
-        const struct Parser_Return *: PARSER_GET_NODE_IMPL_CONST(node),        \
-        const struct Parser_Tmplt *: PARSER_GET_NODE_IMPL_CONST(node),         \
-        const struct Parser_TmpltParam *: PARSER_GET_NODE_IMPL_CONST(node),    \
-        const struct Parser_TmpltNonTypeParam *: PARSER_GET_NODE_IMPL_CONST(   \
+        struct MidParser_VarDecl *: MIDPARSER_GET_NODE_IMPL_MUT(node),               \
+        struct MidParser_VarDeclInst *: MIDPARSER_GET_NODE_IMPL_MUT(node),           \
+        struct MidParser_FuncDecl *: MIDPARSER_GET_NODE_IMPL_MUT(node),              \
+        struct MidParser_Class *: MIDPARSER_GET_NODE_IMPL_MUT(node),                 \
+        struct MidParser_Enum *: MIDPARSER_GET_NODE_IMPL_MUT(node),                  \
+        struct MidParser_Namespace *: MIDPARSER_GET_NODE_IMPL_MUT(node),             \
+        struct MidParser_Return *: MIDPARSER_GET_NODE_IMPL_MUT(node),                \
+        struct MidParser_Tmplt *: MIDPARSER_GET_NODE_IMPL_MUT(node),                 \
+        struct MidParser_TmpltParam *: MIDPARSER_GET_NODE_IMPL_MUT(node),            \
+        struct MidParser_TmpltNonTypeParam *: MIDPARSER_GET_NODE_IMPL_MUT(node),     \
+        struct MidParser_TmpltTypeParam *: MIDPARSER_GET_NODE_IMPL_MUT(node),        \
+        struct MidParser_TmpltTmpltParam *: MIDPARSER_GET_NODE_IMPL_MUT(node),       \
+        const struct MidParser_VarDecl *: MIDPARSER_GET_NODE_IMPL_CONST(node),       \
+        const struct MidParser_VarDeclInst *: MIDPARSER_GET_NODE_IMPL_CONST(node),   \
+        const struct MidParser_FuncDecl *: MIDPARSER_GET_NODE_IMPL_CONST(node),      \
+        const struct MidParser_Class *: MIDPARSER_GET_NODE_IMPL_CONST(node),         \
+        const struct MidParser_Enum *: MIDPARSER_GET_NODE_IMPL_CONST(node),          \
+        const struct MidParser_Namespace *: MIDPARSER_GET_NODE_IMPL_CONST(node),     \
+        const struct MidParser_Return *: MIDPARSER_GET_NODE_IMPL_CONST(node),        \
+        const struct MidParser_Tmplt *: MIDPARSER_GET_NODE_IMPL_CONST(node),         \
+        const struct MidParser_TmpltParam *: MIDPARSER_GET_NODE_IMPL_CONST(node),    \
+        const struct MidParser_TmpltNonTypeParam *: MIDPARSER_GET_NODE_IMPL_CONST(   \
                  node),                                                        \
-        const struct Parser_TmpltTypeParam *: PARSER_GET_NODE_IMPL_CONST(      \
+        const struct MidParser_TmpltTypeParam *: MIDPARSER_GET_NODE_IMPL_CONST(      \
                  node),                                                        \
-        const struct Parser_TmpltTmpltParam *: PARSER_GET_NODE_IMPL_CONST(     \
+        const struct MidParser_TmpltTmpltParam *: MIDPARSER_GET_NODE_IMPL_CONST(     \
                  node))
 
-#define PARSER_GET_PARENT(node) (PARSER_GET_NODE(node)->parent)
-#define PARSER_GET_START(node) (PARSER_GET_NODE(node)->start)
-#define PARSER_GET_TYPE(node) (PARSER_GET_NODE(node)->type)
+#define MIDPARSER_GET_PARENT(node) (MIDPARSER_GET_NODE(node)->parent)
+#define MIDPARSER_GET_START(node) (MIDPARSER_GET_NODE(node)->start)
+#define MIDPARSER_GET_TYPE(node) (MIDPARSER_GET_NODE(node)->type)
 
-enum Parser_ASTNodeType {
-    PARSER_ASTNODETYPE_ROOT,
-    PARSER_ASTNODETYPE_EXPR,
-    PARSER_ASTNODETYPE_VAR_DECL,
-    PARSER_ASTNODETYPE_VAR_DECL_INST,
-    PARSER_ASTNODETYPE_FUNC_DECL,
-    PARSER_ASTNODETYPE_CLASS,
-    PARSER_ASTNODETYPE_ENUM,
-    PARSER_ASTNODETYPE_NAMESPACE,
-    PARSER_ASTNODETYPE_RETURN,
-    PARSER_ASTNODETYPE_TMPLT,
-    PARSER_ASTNODETYPE_TMPLT_PARAM,
+enum MidParser_ASTNodeType {
+    MIDPARSER_ASTNODETYPE_ROOT,
+    MIDPARSER_ASTNODETYPE_EXPR,
+    MIDPARSER_ASTNODETYPE_VAR_DECL,
+    MIDPARSER_ASTNODETYPE_VAR_DECL_INST,
+    MIDPARSER_ASTNODETYPE_FUNC_DECL,
+    MIDPARSER_ASTNODETYPE_CLASS,
+    MIDPARSER_ASTNODETYPE_ENUM,
+    MIDPARSER_ASTNODETYPE_NAMESPACE,
+    MIDPARSER_ASTNODETYPE_RETURN,
+    MIDPARSER_ASTNODETYPE_TMPLT,
+    MIDPARSER_ASTNODETYPE_TMPLT_PARAM,
 };
 
-struct Parser_ASTNode {
+struct MidParser_ASTNode {
     // NOTE: THIS UNION MUST GO FIRST TO ALLOW CASTING BETWEEN POINTER TYPES
     union {
-        struct Parser_ASTNodePVec root;
-        struct Parser_Expr expr;
-        struct Parser_VarDecl var_decl;
-        struct Parser_VarDeclInst var_inst;
-        struct Parser_FuncDecl func_decl;
-        struct Parser_Class class_;
-        struct Parser_Enum enum_;
-        struct Parser_Namespace nmspace;
-        struct Parser_Return ret;
-        struct Parser_Tmplt tmplt;
-        struct Parser_TmpltParam tmplt_param;
+        struct MidParser_ASTNodePVec root;
+        struct MidParser_Expr expr;
+        struct MidParser_VarDecl var_decl;
+        struct MidParser_VarDeclInst var_inst;
+        struct MidParser_FuncDecl func_decl;
+        struct MidParser_Class class_;
+        struct MidParser_Enum enum_;
+        struct MidParser_Namespace nmspace;
+        struct MidParser_Return ret;
+        struct MidParser_Tmplt tmplt;
+        struct MidParser_TmpltParam tmplt_param;
     };
-    struct Parser_ASTNode *parent;
-    const struct Lexer_Token *start;
-    enum Parser_ASTNodeType type;
+    struct MidParser_ASTNode *parent;
+    const struct MidLexer_Token *start;
+    enum MidParser_ASTNodeType type;
 };
 
-void Parser_ASTNode_deinit(struct Parser_ASTNode *self);
-void Parser_copy_node(struct Parser_ASTNode *dest,
-                      const struct Parser_ASTNode *src,
-                      struct Parser_ASTNode *dest_parent,
-                      struct Sema_Scope *dest_scope,
-                      struct Parser_Allocators *allocs);
+void MidParser_ASTNode_deinit(struct MidParser_ASTNode *self);
+void MidParser_copy_node(struct MidParser_ASTNode *dest,
+                      const struct MidParser_ASTNode *src,
+                      struct MidParser_ASTNode *dest_parent,
+                      struct MidSema_Scope *dest_scope,
+                      struct MidParser_Allocators *allocs);
 
-struct Parser_ParseNodeFlags {
+struct MidParser_ParseNodeFlags {
     bool skip_def;
     bool is_field; // is the node a field of a class.
                    // parent is assumed to be the parent class.
 };
 // skip_def - if true and the node has a definition / initializer, then it
 //            won't be parsed and rather be skipped
-struct Parser_ASTNode *
-Parser_parse_node(const struct Lexer_Token *toks, isize_t start,
-                  isize_t *out_end, struct Parser_ASTNode *parent,
-                  struct Sema_Scope *scope, struct Parser_ParseNodeFlags flags,
-                  struct Parser_Allocators *allocs, struct DiagVec *diags);
+struct MidParser_ASTNode *
+MidParser_parse_node(const struct MidLexer_Token *toks, mid_isize start,
+                  mid_isize *out_end, struct MidParser_ASTNode *parent,
+                  struct MidSema_Scope *scope, struct MidParser_ParseNodeFlags flags,
+                  struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags);
 // is the node a template, example:
 //    template <typename T> void func(T arg);
 //                          ^
 //                        node
-bool Parser_node_is_templated(const struct Parser_ASTNode *node);
+bool MidParser_node_is_templated(const struct MidParser_ASTNode *node);

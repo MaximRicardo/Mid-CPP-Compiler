@@ -9,7 +9,7 @@
 // looks ahead to check whether a declaration is supposed to be a function or
 // variable declaration
 // out_mvp - was most vexing parse used to disambiguate
-bool Parser_decl_is_func(const struct Lexer_Token *toks, isize_t start,
-                         struct Sema_Scope *scope,
-                         struct Parser_Allocators *allocs,
-                         struct DiagVec *diags, bool *out_mvp);
+bool MidParser_decl_is_func(const struct MidLexer_Token *toks, mid_isize start,
+                         struct MidSema_Scope *scope,
+                         struct MidParser_Allocators *allocs,
+                         struct MidDiag_DiagVec *diags, bool *out_mvp);

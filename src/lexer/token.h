@@ -5,33 +5,33 @@
 #include "position.h"
 #include "token_type.h"
 
-bool Lexer_is_numlit(enum Lexer_TokenType type);
-bool Lexer_is_strlit(enum Lexer_TokenType type);
-bool Lexer_is_lit(enum Lexer_TokenType type);
-bool Lexer_is_ternaryop(enum Lexer_TokenType type);
-bool Lexer_is_binop(enum Lexer_TokenType type);
-bool Lexer_is_unaryop(enum Lexer_TokenType type);
-// operators that can be unary (eg. LEXER_TOKENTYPE_SUB can be in a - b and -b)
-bool Lexer_can_be_unary(enum Lexer_TokenType type);
-bool Lexer_is_op(enum Lexer_TokenType type);
-bool Lexer_is_typespec(enum Lexer_TokenType type);
+bool MidLexer_is_numlit(enum MidLexer_TokenType type);
+bool MidLexer_is_strlit(enum MidLexer_TokenType type);
+bool MidLexer_is_lit(enum MidLexer_TokenType type);
+bool MidLexer_is_ternaryop(enum MidLexer_TokenType type);
+bool MidLexer_is_binop(enum MidLexer_TokenType type);
+bool MidLexer_is_unaryop(enum MidLexer_TokenType type);
+// operators that can be unary (eg. MIDLEXER_TOKENTYPE_SUB can be in a - b and -b)
+bool MidLexer_can_be_unary(enum MidLexer_TokenType type);
+bool MidLexer_is_op(enum MidLexer_TokenType type);
+bool MidLexer_is_typespec(enum MidLexer_TokenType type);
 // class, struct, union and enum
-bool Lexer_is_named_typespec(enum Lexer_TokenType type);
-bool Lexer_is_typestorqual(enum Lexer_TokenType type);
-bool Lexer_is_typedataqual(enum Lexer_TokenType type);
-bool Lexer_is_typequal(enum Lexer_TokenType type);
+bool MidLexer_is_named_typespec(enum MidLexer_TokenType type);
+bool MidLexer_is_typestorqual(enum MidLexer_TokenType type);
+bool MidLexer_is_typedataqual(enum MidLexer_TokenType type);
+bool MidLexer_is_typequal(enum MidLexer_TokenType type);
 // signed, unsigned, short and long
-bool Lexer_is_typemod(enum Lexer_TokenType type);
-bool Lexer_is_accessspec(enum Lexer_TokenType type);
+bool MidLexer_is_typemod(enum MidLexer_TokenType type);
+bool MidLexer_is_accessspec(enum MidLexer_TokenType type);
 
-struct Lexer_Token {
+struct MidLexer_Token {
     union {
-        union Lit_Value val; // NOTE: NON-OWNING! LIFE-TIME IS MANAGED BY
+        union MidLit_Value val; // NOTE: NON-OWNING! LIFE-TIME IS MANAGED BY
                              //       THE STR_LITS TABLE
         const char *ident;
     };
-    struct Position pos;
+    struct Mid_Position pos;
     const char *line;
-    enum Lexer_TokenType type;
+    enum MidLexer_TokenType type;
 };
-gen_dynarray_struct_named(Lexer_TokenVec, struct Lexer_Token);
+MidGen_dynarray_struct_named(MidLexer_TokenVec, struct MidLexer_Token);

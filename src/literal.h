@@ -7,44 +7,44 @@
 #include "types.h"
 #include <uchar.h>
 
-struct Lit_String {
+struct MidLit_String {
     TypesCharType *c;
     TypesWCharType *wc;
     char16_t *c16;
     char32_t *c32;
 
-    enum Lit_StringType {
-        LIT_STRINGTYPE_CHAR,
-        LIT_STRINGTYPE_WCHAR,
-        LIT_STRINGTYPE_CHAR16,
-        LIT_STRINGTYPE_CHAR32,
+    enum MidLit_StringType {
+        MIDLIT_STRINGTYPE_CHAR,
+        MIDLIT_STRINGTYPE_WCHAR,
+        MIDLIT_STRINGTYPE_CHAR16,
+        MIDLIT_STRINGTYPE_CHAR32,
     } type;
 };
 
-isize_t Lit_strlit_len(const struct Lit_String *strlit);
+mid_isize MidLit_strlit_len(const struct MidLit_String *strlit);
 
-union Lit_Value {
+union MidLit_Value {
     // scalars
     i64 sint;
     u64 uint;
     long double flt;
 
     // strings
-    struct Lit_String str;
+    struct MidLit_String str;
 };
-gen_dynarray_struct_named(Lit_ValueVec, union Lit_Value);
+MidGen_dynarray_struct_named(MidLit_ValueVec, union MidLit_Value);
 
-void Lit_String_deinit(struct Lit_String *self);
+void MidLit_String_deinit(struct MidLit_String *self);
 
-gen_dynarray_struct_named(Lit_StringVec, struct Lit_String);
+MidGen_dynarray_struct_named(MidLit_StringVec, struct MidLit_String);
 
-void Lit_fprint(FILE *out, union Lit_Value val, enum Parser_ExprType type);
-void Lit_fprint_toktype(FILE *out, union Lit_Value val,
-                        enum Lexer_TokenType type);
-void Lit_print(union Lit_Value val, enum Parser_ExprType type);
-void Lit_print_toktype(union Lit_Value val, enum Lexer_TokenType type);
+void MidLit_fprint(FILE *out, union MidLit_Value val, enum MidParser_ExprType type);
+void MidLit_fprint_toktype(FILE *out, union MidLit_Value val,
+                        enum MidLexer_TokenType type);
+void MidLit_print(union MidLit_Value val, enum MidParser_ExprType type);
+void MidLit_print_toktype(union MidLit_Value val, enum MidLexer_TokenType type);
 
-struct Lit_ReadIntLitInfo {
+struct MidLit_ReadIntLitInfo {
     u64 value;
     int base;
-} Lit_read_intlit(const char *str, isize_t start, isize_t *out_end);
+} MidLit_read_intlit(const char *str, mid_isize start, mid_isize *out_end);

@@ -3,16 +3,16 @@
 #include "generics/dynarray.h"
 #include "parser/astvec.h"
 
-void Parser_Enum_deinit(struct Parser_Enum *self)
+void MidParser_Enum_deinit(struct MidParser_Enum *self)
 {
-    gen_dyndeinit(&self->nodes);
+    MidGen_dyndeinit(&self->nodes);
 }
 
-void Parser_copy_enum(struct Parser_Enum *dest, const struct Parser_Enum *src,
-                      struct Sema_Scope *dest_scope,
-                      struct Parser_Allocators *allocs)
+void MidParser_copy_enum(struct MidParser_Enum *dest, const struct MidParser_Enum *src,
+                      struct MidSema_Scope *dest_scope,
+                      struct MidParser_Allocators *allocs)
 {
     *dest = *src;
-    dest->nodes = Parser_copy_nodepvec(&src->nodes, PARSER_GET_NODE(dest),
+    dest->nodes = MidParser_copy_nodepvec(&src->nodes, MIDPARSER_GET_NODE(dest),
                                        dest_scope, allocs);
 }

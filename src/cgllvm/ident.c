@@ -1,6 +1,6 @@
 #include "ident.h"
 
-void CGLLVM_Ident_deinit(struct CGLLVM_Ident *self)
+void MidLLVM_Ident_deinit(struct MidLLVM_Ident *self)
 {
     free(self->name);
 }

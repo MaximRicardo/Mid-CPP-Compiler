@@ -7,14 +7,14 @@
 #include "sema/ident.h"
 #include <llvm-c/Types.h>
 
-LLVMTypeRef CGLLVM_convert_parser_type(const struct Parser_Type *type,
+LLVMTypeRef MidLLVM_convert_parser_type(const struct MidParser_Type *type,
                                        LLVMContextRef context, bool ref_is_ptr);
-char *CGLLVM_named_type_full_name(const struct Sema_IdentPtr *named);
+char *MidLLVM_named_type_full_name(const struct MidSema_IdentPtr *named);
 
-struct CGLLVM_TypeRefVec
-CGLLVM_class_to_struct_fields(const struct Parser_Class *src,
+struct MidLLVM_TypeRefVec
+MidLLVM_class_to_struct_fields(const struct MidParser_Class *src,
                               LLVMContextRef context);
-LLVMTypeRef CGLLVM_create_struct(const struct Parser_Class *src,
+LLVMTypeRef MidLLVM_create_struct(const struct MidParser_Class *src,
                                  LLVMContextRef context);
-isize_t CGLLVM_class_field_to_struct_field_idx(const struct Parser_Class *src,
+mid_isize MidLLVM_class_field_to_struct_field_idx(const struct MidParser_Class *src,
                                                const char *name);

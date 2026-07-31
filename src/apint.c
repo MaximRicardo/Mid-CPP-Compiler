@@ -8,7 +8,7 @@
 #include <string.h>
 #include <strings.h>
 
-static int get_active_bits(APInt_Word word)
+static int get_active_bits(MidAPInt_Word word)
 {
     // OPTIM: does the compiler optimize this to __builtin_clz?
 
@@ -21,17 +21,17 @@ static int get_active_bits(APInt_Word word)
 }
 
 // maximum nr of decimal digits to represent an unsigned int of n_bits width
-static isize_t max_dec_digits(i32 n_bits)
+static mid_isize max_dec_digits(i32 n_bits)
 {
     return ceil(n_bits * log10(2.0));
 }
 
-static APInt_Word uint_max_val(i32 n_bits)
+static MidAPInt_Word uint_max_val(i32 n_bits)
 {
-    assert(n_bits > 0 && n_bits <= APInt_Word_n_bits);
+    assert(n_bits > 0 && n_bits <= MidAPInt_Word_n_bits);
 
-    // avoids overflow if n_bits == APInt_Word_n_bits
-    APInt_Word ret = 1ULL << (n_bits - 1);
+    // avoids overflow if n_bits == MidAPInt_Word_n_bits
+    MidAPInt_Word ret = 1ULL << (n_bits - 1);
     ret += ret - 1;
 
     return ret;
@@ -55,11 +55,11 @@ static long long sint_min_val(i32 n_bits)
 
 static i32 n_bits_in_last_word(i32 n_bits)
 {
-    return ((n_bits - 1) % APInt_Word_n_bits) + 1;
+    return ((n_bits - 1) % MidAPInt_Word_n_bits) + 1;
 }
 
 /*
-static APInt_Word last_word_max_val(i32 n_bits)
+static MidAPInt_Word last_word_max_val(i32 n_bits)
 {
     return uint_max_val(n_bits_in_last_word(n_bits));
 }
@@ -67,56 +67,56 @@ static APInt_Word last_word_max_val(i32 n_bits)
 
 static i32 get_n_words(i32 n_bits)
 {
-    return (n_bits + (APInt_Word_n_bits - 1)) / APInt_Word_n_bits;
+    return (n_bits + (MidAPInt_Word_n_bits - 1)) / MidAPInt_Word_n_bits;
 }
 
 static bool is_bignum_used(i32 n_bits)
 {
-    return n_bits > APInt_Word_n_bits;
+    return n_bits > MidAPInt_Word_n_bits;
 }
 
-static APInt_Word mask_extra_bits(APInt_Word word, int n_bits)
+static MidAPInt_Word mask_extra_bits(MidAPInt_Word word, int n_bits)
 {
-    if (n_bits == APInt_Word_n_bits) {
+    if (n_bits == MidAPInt_Word_n_bits) {
         return word;
     } else {
-        APInt_Word mask = (1ULL << n_bits) - 1;
+        MidAPInt_Word mask = (1ULL << n_bits) - 1;
         return word & mask;
     }
 }
 
-static APInt_Word sign_ext_word(APInt_Word word, int old_n_bits, int new_n_bits)
+static MidAPInt_Word sign_ext_word(MidAPInt_Word word, int old_n_bits, int new_n_bits)
 {
-    APInt_Word m = 1ULL << (old_n_bits - 1);
-    APInt_Word ret = (word ^ m) - m;
+    MidAPInt_Word m = 1ULL << (old_n_bits - 1);
+    MidAPInt_Word ret = (word ^ m) - m;
     return mask_extra_bits(ret, new_n_bits);
 }
 
-void APInt_deinit(struct APInt *self)
+void MidAPInt_deinit(struct APInt *self)
 {
     if (is_bignum_used(self->n_bits))
         free(self->v.words);
 }
 
-struct APInt APInt_init_arr(i32 n_bits, const APInt_Word *words, i32 n_words,
+struct APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words, i32 n_words,
                             bool sign_ext)
 {
     assert(n_words > 0);
 
     if (!is_bignum_used(n_bits)) {
-        return APInt_init_no_limit_check(n_bits, words[0], sign_ext);
+        return MidAPInt_init_no_limit_check(n_bits, words[0], sign_ext);
     }
 
     i32 dest_n_words = get_n_words(n_bits);
 
     struct APInt ret = {.n_bits = n_bits};
-    ret.v.words = mid_malloc(dest_n_words * sizeof(*ret.v.words));
+    ret.v.words = Mid_malloc(dest_n_words * sizeof(*ret.v.words));
 
     for (i32 i = 0; i < dest_n_words; ++i) {
         if (i < n_words)
             ret.v.words[i] = words[i];
         else
-            ret.v.words[i] = sign_ext ? APInt_Word_max : 0;
+            ret.v.words[i] = sign_ext ? MidAPInt_Word_max : 0;
     }
 
     auto last = &ret.v.words[dest_n_words - 1];
@@ -125,23 +125,23 @@ struct APInt APInt_init_arr(i32 n_bits, const APInt_Word *words, i32 n_words,
     return ret;
 }
 
-static struct APInt apint_init_impl(i32 n_bits, APInt_Word val, bool is_signed,
+static struct APInt apint_init_impl(i32 n_bits, MidAPInt_Word val, bool is_signed,
                                     bool limit_check)
 {
     assert(n_bits > 0);
 
     if (is_bignum_used(n_bits)) {
-        return APInt_init_arr(n_bits, &val, 1, is_signed);
+        return MidAPInt_init_arr(n_bits, &val, 1, is_signed);
     }
 
     if (limit_check) {
         if (is_signed) {
             long long s_val = val;
             if (s_val > sint_max_val(n_bits) || s_val < sint_min_val(n_bits))
-                CRASH("signed val doesn't fit in n_bits");
+                MID_CRASH("signed val doesn't fit in n_bits");
         } else {
             if (val > uint_max_val(n_bits))
-                CRASH("unsigned val doesn't fit in n_bits");
+                MID_CRASH("unsigned val doesn't fit in n_bits");
         }
     }
 
@@ -149,36 +149,36 @@ static struct APInt apint_init_impl(i32 n_bits, APInt_Word val, bool is_signed,
                           .v.val = mask_extra_bits(val, n_bits)};
 }
 
-struct APInt APInt_init(i32 n_bits, APInt_Word val, bool is_signed)
+struct APInt MidAPInt_init(i32 n_bits, MidAPInt_Word val, bool is_signed)
 {
     return apint_init_impl(n_bits, val, is_signed, true);
 }
 
-struct APInt APInt_init_no_limit_check(i32 n_bits, APInt_Word val,
+struct APInt MidAPInt_init_no_limit_check(i32 n_bits, MidAPInt_Word val,
                                        bool is_signed)
 {
     return apint_init_impl(n_bits, val, is_signed, false);
 }
 
-struct APInt APInt_zero(i32 n_bits)
+struct APInt MidAPInt_zero(i32 n_bits)
 {
     struct APInt ret = {.n_bits = n_bits};
 
     if (!is_bignum_used(n_bits))
         ret.v.val = 0;
     else
-        ret.v.words = mid_calloc(get_n_words(n_bits), sizeof(*ret.v.words));
+        ret.v.words = Mid_calloc(get_n_words(n_bits), sizeof(*ret.v.words));
 
     return ret;
 }
 
-struct APInt APInt_copy(const struct APInt *src)
+struct APInt MidAPInt_copy(const struct APInt *src)
 {
     struct APInt dest = {.n_bits = src->n_bits};
 
     if (is_bignum_used(src->n_bits)) {
         size_t size = get_n_words(src->n_bits) * sizeof(*src->v.words);
-        dest.v.words = mid_malloc(size);
+        dest.v.words = Mid_malloc(size);
         memcpy(dest.v.words, src->v.words, size);
     } else {
         dest.v.val = src->v.val;
@@ -187,7 +187,7 @@ struct APInt APInt_copy(const struct APInt *src)
     return dest;
 }
 
-void APInt_copy_value(struct APInt *restrict dest,
+void MidAPInt_copy_value(struct APInt *restrict dest,
                       const struct APInt *restrict src)
 {
     assert(dest->n_bits == src->n_bits);
@@ -200,7 +200,7 @@ void APInt_copy_value(struct APInt *restrict dest,
     }
 }
 
-bool APInt_is_zero(const struct APInt *self)
+bool MidAPInt_is_zero(const struct APInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         for (i32 i = 0; i < get_n_words(self->n_bits); ++i) {
@@ -214,7 +214,7 @@ bool APInt_is_zero(const struct APInt *self)
     }
 }
 
-void APInt_ext(struct APInt *self, i32 new_n_bits, bool sign_ext)
+void MidAPInt_ext(struct APInt *self, i32 new_n_bits, bool sign_ext)
 {
     bool old_uses_bignum = is_bignum_used(self->n_bits);
     bool new_uses_bignum = is_bignum_used(new_n_bits);
@@ -223,14 +223,14 @@ void APInt_ext(struct APInt *self, i32 new_n_bits, bool sign_ext)
         i32 n_words = get_n_words(self->n_bits);
         i32 n_new_words = get_n_words(new_n_bits);
         self->v.words =
-            mid_realloc(self->v.words, n_new_words * sizeof(*self->v.words));
+            Mid_realloc(self->v.words, n_new_words * sizeof(*self->v.words));
 
         if (new_n_bits < self->n_bits) {
             auto last = &self->v.words[n_new_words - 1];
             *last = mask_extra_bits(*last, new_n_bits);
         } else if (n_new_words > n_words) {
             for (auto i = n_words; i < n_new_words; ++i) {
-                self->v.words[i] = sign_ext ? APInt_Word_max : 0;
+                self->v.words[i] = sign_ext ? MidAPInt_Word_max : 0;
             }
         }
     } else if (old_uses_bignum) {
@@ -240,8 +240,8 @@ void APInt_ext(struct APInt *self, i32 new_n_bits, bool sign_ext)
     } else if (new_uses_bignum) {
         auto lsw = self->v.val;
         if (sign_ext)
-            lsw = sign_ext_word(lsw, self->n_bits, APInt_Word_n_bits);
-        *self = APInt_init(new_n_bits, lsw, sign_ext);
+            lsw = sign_ext_word(lsw, self->n_bits, MidAPInt_Word_n_bits);
+        *self = MidAPInt_init(new_n_bits, lsw, sign_ext);
     } else {
         if (new_n_bits > self->n_bits && sign_ext)
             self->v.val = sign_ext_word(self->v.val, self->n_bits, new_n_bits);
@@ -252,13 +252,13 @@ void APInt_ext(struct APInt *self, i32 new_n_bits, bool sign_ext)
     self->n_bits = new_n_bits;
 }
 
-bool APInt_get_bit(const struct APInt *self, i32 n)
+bool MidAPInt_get_bit(const struct APInt *self, i32 n)
 {
     assert(n > 0 && n < self->n_bits);
 
     if (is_bignum_used(self->n_bits)) {
         i32 word_idx = get_n_words(n + 1) - 1;
-        const APInt_Word *word = &self->v.words[word_idx];
+        const MidAPInt_Word *word = &self->v.words[word_idx];
 
         i32 n_in_word = n_bits_in_last_word(n + 1);
         return (*word >> n_in_word) & 1;
@@ -267,32 +267,32 @@ bool APInt_get_bit(const struct APInt *self, i32 n)
     }
 }
 
-bool APInt_get_sign_bit(const struct APInt *self)
+bool MidAPInt_get_sign_bit(const struct APInt *self)
 {
-    return APInt_get_bit(self, self->n_bits - 1);
+    return MidAPInt_get_bit(self, self->n_bits - 1);
 }
 
 static void log_uint_bignum(const struct APInt *self, FILE *out)
 {
-    auto tmp = APInt_copy(self);
-    auto ten = APInt_init(tmp.n_bits, 10, false);
+    auto tmp = MidAPInt_copy(self);
+    auto ten = MidAPInt_init(tmp.n_bits, 10, false);
 
-    char *digits = mid_malloc(max_dec_digits(self->n_bits) * sizeof(*digits));
+    char *digits = Mid_malloc(max_dec_digits(self->n_bits) * sizeof(*digits));
 
-    isize_t i = 0;
-    while (APInt_is_gteq(&tmp, &ten)) {
+    mid_isize i = 0;
+    while (MidAPInt_is_gteq(&tmp, &ten)) {
         struct APInt d;
-        APInt_udivrem(&tmp, &ten, &tmp, &d);
+        MidAPInt_udivrem(&tmp, &ten, &tmp, &d);
 
         // d is guaranteed to be less than 10 so we can just take it from
         // the first word
         digits[i] = d.v.words[0] + '0';
 
-        APInt_deinit(&d);
+        MidAPInt_deinit(&d);
         ++i;
     }
 
-    auto d = APInt_nip_urem(&tmp, &ten);
+    auto d = MidAPInt_nip_urem(&tmp, &ten);
     digits[i] = d.v.words[0] + '0';
 
     for (; i >= 0; --i) {
@@ -300,9 +300,9 @@ static void log_uint_bignum(const struct APInt *self, FILE *out)
     }
 
     free(digits);
-    APInt_deinit(&d);
-    APInt_deinit(&ten);
-    APInt_deinit(&tmp);
+    MidAPInt_deinit(&d);
+    MidAPInt_deinit(&ten);
+    MidAPInt_deinit(&tmp);
 }
 
 static void log_uint(const struct APInt *self, FILE *out)
@@ -310,11 +310,11 @@ static void log_uint(const struct APInt *self, FILE *out)
     if (is_bignum_used(self->n_bits)) {
         log_uint_bignum(self, out);
     } else {
-        fprintf(out, "%" APINT_WORD_UNSIGNED_FORMAT, self->v.val);
+        fprintf(out, "%" MIDAPINT_WORD_UNSIGNED_FORMAT, self->v.val);
     }
 }
 
-void APInt_log(const struct APInt *self, FILE *out, bool is_signed)
+void MidAPInt_log(const struct APInt *self, FILE *out, bool is_signed)
 {
     if (is_signed)
         ;
@@ -322,7 +322,7 @@ void APInt_log(const struct APInt *self, FILE *out, bool is_signed)
         log_uint(self, out);
 }
 
-void APInt_log_hex(const struct APInt *self, FILE *out)
+void MidAPInt_log_hex(const struct APInt *self, FILE *out)
 {
     if (is_bignum_used(self->n_bits)) {
         bool printed = false;
@@ -330,25 +330,25 @@ void APInt_log_hex(const struct APInt *self, FILE *out)
             if (self->v.words[i] == 0)
                 continue;
             printed = true;
-            fprintf(out, "%" APINT_WORD_HEX_FORMAT, self->v.words[i]);
+            fprintf(out, "%" MIDAPINT_WORD_HEX_FORMAT, self->v.words[i]);
         }
 
         if (printed)
-            fprintf(out, "%" APINT_WORD_FULL_HEX_FORMAT, self->v.words[0]);
+            fprintf(out, "%" MIDAPINT_WORD_FULL_HEX_FORMAT, self->v.words[0]);
         else
-            fprintf(out, "%" APINT_WORD_HEX_FORMAT, self->v.words[0]);
+            fprintf(out, "%" MIDAPINT_WORD_HEX_FORMAT, self->v.words[0]);
     } else {
-        fprintf(out, "%" APINT_WORD_HEX_FORMAT, self->v.val);
+        fprintf(out, "%" MIDAPINT_WORD_HEX_FORMAT, self->v.val);
     }
 }
 
-i32 APInt_n_active_bits(const struct APInt *self)
+i32 MidAPInt_n_active_bits(const struct APInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         for (i32 i = get_n_words(self->n_bits) - 1; i >= 0; --i) {
             auto word = self->v.words[i];
             if (word != 0)
-                return get_active_bits(word) + i * APInt_Word_n_bits;
+                return get_active_bits(word) + i * MidAPInt_Word_n_bits;
         }
 
         return 0;
@@ -357,7 +357,7 @@ i32 APInt_n_active_bits(const struct APInt *self)
     }
 }
 
-void APInt_add(struct APInt *a, const struct APInt *b)
+void MidAPInt_add(struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -371,7 +371,7 @@ void APInt_add(struct APInt *a, const struct APInt *b)
             // the word might have wrapped around or might be about to wrap
             // around due to the previous carry
             bool new_carry = a->v.words[i] < old ||
-                             (carry && a->v.words[i] == APInt_Word_max);
+                             (carry && a->v.words[i] == MidAPInt_Word_max);
 
             a->v.words[i] += carry;
 
@@ -385,8 +385,8 @@ void APInt_add(struct APInt *a, const struct APInt *b)
 
 static void shl_bignum_case(struct APInt *a, i32 count)
 {
-    i32 word_shift = count / APInt_Word_n_bits;
-    i32 bit_shift = count % APInt_Word_n_bits;
+    i32 word_shift = count / MidAPInt_Word_n_bits;
+    i32 bit_shift = count % MidAPInt_Word_n_bits;
 
     i32 n_words = get_n_words(a->n_bits);
 
@@ -402,7 +402,7 @@ static void shl_bignum_case(struct APInt *a, i32 count)
             // account for the preceding word's bits
             if (i > word_shift)
                 a->v.words[i] |= a->v.words[i - word_shift - 1] >>
-                                 (APInt_Word_n_bits - bit_shift);
+                                 (MidAPInt_Word_n_bits - bit_shift);
         }
     }
 
@@ -412,8 +412,8 @@ static void shl_bignum_case(struct APInt *a, i32 count)
 
 static void lshr_bignum_case(struct APInt *a, i32 count)
 {
-    i32 word_shift = count / APInt_Word_n_bits;
-    i32 bit_shift = count % APInt_Word_n_bits;
+    i32 word_shift = count / MidAPInt_Word_n_bits;
+    i32 bit_shift = count % MidAPInt_Word_n_bits;
 
     i32 n_words = get_n_words(a->n_bits);
 
@@ -430,7 +430,7 @@ static void lshr_bignum_case(struct APInt *a, i32 count)
             // account for the preceding word's bits
             if (i < cap)
                 a->v.words[i] |= a->v.words[i + word_shift + 1]
-                                 << (APInt_Word_n_bits - bit_shift);
+                                 << (MidAPInt_Word_n_bits - bit_shift);
         }
     }
 
@@ -439,7 +439,7 @@ static void lshr_bignum_case(struct APInt *a, i32 count)
            word_shift * sizeof(*a->v.words));
 }
 
-void APInt_shl(struct APInt *a, i32 count)
+void MidAPInt_shl(struct APInt *a, i32 count)
 {
     assert(count >= 0 && count < a->n_bits);
 
@@ -454,7 +454,7 @@ void APInt_shl(struct APInt *a, i32 count)
     }
 }
 
-void APInt_lshr(struct APInt *a, i32 count)
+void MidAPInt_lshr(struct APInt *a, i32 count)
 {
     assert(count >= 0 && count < a->n_bits);
 
@@ -545,7 +545,7 @@ static void knuth_bignum_div(u32 *u, u32 *v, u32 *q, u32 *r, u32 m, u32 n)
 
             bool carry = false;
             for (u32 i = 0; i < n; ++i) {
-                u32 limit = MIN(u[j + i], v[i]);
+                u32 limit = MID_MIN(u[j + i], v[i]);
                 u[j + i] += v[i] + carry;
                 carry = u[j + i] < limit || (carry && u[j + i] == limit);
             }
@@ -568,7 +568,7 @@ static void knuth_bignum_div(u32 *u, u32 *v, u32 *q, u32 *r, u32 m, u32 n)
     }
 }
 
-static void convert_to_u32_digits(const APInt_Word *words, i32 n_words,
+static void convert_to_u32_digits(const MidAPInt_Word *words, i32 n_words,
                                   u32 *digits)
 {
     for (i32 i = 0; i < n_words; ++i) {
@@ -578,21 +578,21 @@ static void convert_to_u32_digits(const APInt_Word *words, i32 n_words,
 }
 
 // i would like to say i understand any of this but i really dont
-static void bignum_div(const APInt_Word *a, i32 a_n_words, const APInt_Word *b,
-                       i32 b_n_words, APInt_Word *out_quot, APInt_Word *out_rem)
+static void bignum_div(const MidAPInt_Word *a, i32 a_n_words, const MidAPInt_Word *b,
+                       i32 b_n_words, MidAPInt_Word *out_quot, MidAPInt_Word *out_rem)
 {
     assert(a_n_words >= b_n_words);
 
-    // assumes APInt_Word is 64 bits
-    static_assert(sizeof(APInt_Word) == sizeof(u64));
+    // assumes MidAPInt_Word is 64 bits
+    static_assert(sizeof(MidAPInt_Word) == sizeof(u64));
 
     i32 n = b_n_words * 2;
     i32 m = a_n_words * 2 - n;
 
-    u32 *u = mid_malloc((m + n + 1) * sizeof(*u));
-    u32 *v = mid_malloc(n * sizeof(*v));
-    u32 *q = mid_malloc((m + n) * sizeof(*q));
-    u32 *r = out_rem ? mid_malloc(n * sizeof(*r)) : NULL;
+    u32 *u = Mid_malloc((m + n + 1) * sizeof(*u));
+    u32 *v = Mid_malloc(n * sizeof(*v));
+    u32 *q = Mid_malloc((m + n) * sizeof(*q));
+    u32 *r = out_rem ? Mid_malloc(n * sizeof(*r)) : NULL;
 
     convert_to_u32_digits(a, a_n_words, u);
     u[m + n] = 0; // account for spill in the knuth algorithm
@@ -614,7 +614,7 @@ static void bignum_div(const APInt_Word *a, i32 a_n_words, const APInt_Word *b,
         --m;
 
     if (n == 0)
-        CRASH("division by 0");
+        MID_CRASH("division by 0");
 
     // knuth division requires the divisor be at least 2 digits long, so in
     // the case the divisor is a single word we do the short division
@@ -666,107 +666,107 @@ static void bignum_div(const APInt_Word *a, i32 a_n_words, const APInt_Word *b,
     free(r);
 }
 
-struct APInt APInt_nip_udiv(const struct APInt *a, const struct APInt *b)
+struct APInt MidAPInt_nip_udiv(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     if (!is_bignum_used(a->n_bits)) {
         if (b->v.val == 0)
-            CRASH("division by zero");
-        return APInt_init(a->n_bits, a->v.val / b->v.val, false);
+            MID_CRASH("division by zero");
+        return MidAPInt_init(a->n_bits, a->v.val / b->v.val, false);
     } else {
-        i32 a_words = get_n_words(APInt_n_active_bits(a));
-        i32 b_bits = APInt_n_active_bits(b);
+        i32 a_words = get_n_words(MidAPInt_n_active_bits(a));
+        i32 b_bits = MidAPInt_n_active_bits(b);
         i32 b_words = get_n_words(b_bits);
 
         // degenerate cases
         if (b_bits == 0)
-            CRASH("division by zero");
+            MID_CRASH("division by zero");
         if (a_words == 0)
             // 0 / x = 0
-            return APInt_zero(a->n_bits);
+            return MidAPInt_zero(a->n_bits);
         if (b_bits == 1)
             // x / 1 = x
-            return APInt_copy(a);
-        if (a_words < b_words || APInt_is_lt(a, b))
+            return MidAPInt_copy(a);
+        if (a_words < b_words || MidAPInt_is_lt(a, b))
             // x / y = 0 if x < y
-            return APInt_zero(a->n_bits);
-        if (APInt_is_eq(a, b))
+            return MidAPInt_zero(a->n_bits);
+        if (MidAPInt_is_eq(a, b))
             // x / x = 1
-            return APInt_init(a->n_bits, 1, false);
+            return MidAPInt_init(a->n_bits, 1, false);
         if (a_words == 1) // b_words must also be 1 in this case cuz it can't
                           // be less
-            return APInt_init(a->n_bits, a->v.words[0] / b->v.words[0], false);
+            return MidAPInt_init(a->n_bits, a->v.words[0] / b->v.words[0], false);
 
-        struct APInt quot = APInt_zero(a->n_bits);
+        struct APInt quot = MidAPInt_zero(a->n_bits);
         bignum_div(a->v.words, a_words, b->v.words, b_words, quot.v.words,
                    NULL);
         return quot;
     }
 }
 
-void APInt_udiv(struct APInt *a, const struct APInt *b)
+void MidAPInt_udiv(struct APInt *a, const struct APInt *b)
 {
-    auto tmp = APInt_nip_udiv(a, b);
-    APInt_deinit(a);
+    auto tmp = MidAPInt_nip_udiv(a, b);
+    MidAPInt_deinit(a);
     *a = tmp;
 }
 
-void APInt_urem(struct APInt *a, const struct APInt *b)
+void MidAPInt_urem(struct APInt *a, const struct APInt *b)
 {
-    auto tmp = APInt_nip_urem(a, b);
-    APInt_deinit(a);
+    auto tmp = MidAPInt_nip_urem(a, b);
+    MidAPInt_deinit(a);
     *a = tmp;
 }
 
-struct APInt APInt_nip_urem(const struct APInt *a, const struct APInt *b)
+struct APInt MidAPInt_nip_urem(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     if (!is_bignum_used(a->n_bits)) {
         if (b->v.val == 0)
-            CRASH("remainder by zero");
-        return APInt_init(a->n_bits, a->v.val % b->v.val, false);
+            MID_CRASH("remainder by zero");
+        return MidAPInt_init(a->n_bits, a->v.val % b->v.val, false);
     } else {
-        i32 a_words = get_n_words(APInt_n_active_bits(a));
-        i32 b_bits = APInt_n_active_bits(b);
+        i32 a_words = get_n_words(MidAPInt_n_active_bits(a));
+        i32 b_bits = MidAPInt_n_active_bits(b);
         i32 b_words = get_n_words(b_bits);
 
         // degenerate cases
         if (b_bits == 0)
-            CRASH("remainder by zero");
+            MID_CRASH("remainder by zero");
         if (a_words == 0)
             // 0 % x = 0
-            return APInt_zero(a->n_bits);
+            return MidAPInt_zero(a->n_bits);
         if (b_bits == 1)
             // x % 1 = 0
-            return APInt_zero(a->n_bits);
-        if (a_words < b_words || APInt_is_lt(a, b))
+            return MidAPInt_zero(a->n_bits);
+        if (a_words < b_words || MidAPInt_is_lt(a, b))
             // x % y = x if x < y
-            return APInt_copy(a);
-        if (APInt_is_eq(a, b))
+            return MidAPInt_copy(a);
+        if (MidAPInt_is_eq(a, b))
             // x % x = 0
-            return APInt_zero(a->n_bits);
+            return MidAPInt_zero(a->n_bits);
         if (a_words == 1) // b_words must also be 1 in this case cuz it can't
                           // be greater than a_words
-            return APInt_init(a->n_bits, a->v.words[0] % b->v.words[0], false);
-        if (APInt_is_pow2(b)) {
+            return MidAPInt_init(a->n_bits, a->v.words[0] % b->v.words[0], false);
+        if (MidAPInt_is_pow2(b)) {
             // x % 2^w == x & (2^w - 1)
             // TODO: implement this optimization
 
             /*
-            struct APInt rem = APInt_copy(a);
-            APInt_clear_bits(&rem, );
+            struct APInt rem = MidAPInt_copy(a);
+            MidAPInt_clear_bits(&rem, );
             */
         }
 
-        struct APInt rem = APInt_zero(a->n_bits);
+        struct APInt rem = MidAPInt_zero(a->n_bits);
         bignum_div(a->v.words, a_words, b->v.words, b_words, NULL, rem.v.words);
         return rem;
     }
 }
 
-void APInt_udivrem(const struct APInt *a, const struct APInt *b,
+void MidAPInt_udivrem(const struct APInt *a, const struct APInt *b,
                    struct APInt *out_quot, struct APInt *out_rem)
 {
     assert(a->n_bits == b->n_bits);
@@ -777,39 +777,39 @@ void APInt_udivrem(const struct APInt *a, const struct APInt *b,
 
     if (!is_bignum_used(a->n_bits)) {
         if (a->v.val == 0)
-            CRASH("division by 0");
+            MID_CRASH("division by 0");
 
-        quot = APInt_init(a->n_bits, a->v.val / b->v.val, false);
-        rem = APInt_init(a->n_bits, a->v.val % b->v.val, false);
+        quot = MidAPInt_init(a->n_bits, a->v.val / b->v.val, false);
+        rem = MidAPInt_init(a->n_bits, a->v.val % b->v.val, false);
         goto finish_normal;
     }
 
-    i32 a_words = get_n_words(APInt_n_active_bits(a));
-    i32 b_bits = APInt_n_active_bits(b);
+    i32 a_words = get_n_words(MidAPInt_n_active_bits(a));
+    i32 b_bits = MidAPInt_n_active_bits(b);
     i32 b_words = get_n_words(b_bits);
 
     // degenerate cases
     if (a_words == 0) {
-        quot = APInt_zero(a->n_bits); // 0 / x = 0
-        rem = APInt_zero(a->n_bits);  // 0 % x = 0
+        quot = MidAPInt_zero(a->n_bits); // 0 / x = 0
+        rem = MidAPInt_zero(a->n_bits);  // 0 % x = 0
         goto finish_normal;
     }
     if (b_bits == 1) {
-        rem = APInt_zero(a->n_bits); // x % 1 = 0
+        rem = MidAPInt_zero(a->n_bits); // x % 1 = 0
         goto finish_cpy_a_to_quot;   // x / 1 = x
     }
-    if (a_words < b_words || APInt_is_lt(a, b)) {
-        quot = APInt_zero(a->n_bits); // x / y = 0 if x < y
+    if (a_words < b_words || MidAPInt_is_lt(a, b)) {
+        quot = MidAPInt_zero(a->n_bits); // x / y = 0 if x < y
         goto finish_cpy_a_to_rem;     // x % y = x if x < y
     }
-    if (APInt_is_eq(a, b)) {
-        quot = APInt_init(a->n_bits, 1, false); // x / x = 1
-        rem = APInt_zero(a->n_bits);            // x % x = 0
+    if (MidAPInt_is_eq(a, b)) {
+        quot = MidAPInt_init(a->n_bits, 1, false); // x / x = 1
+        rem = MidAPInt_zero(a->n_bits);            // x % x = 0
         goto finish_normal;
     }
 
-    quot = APInt_zero(a->n_bits);
-    rem = APInt_zero(a->n_bits);
+    quot = MidAPInt_zero(a->n_bits);
+    rem = MidAPInt_zero(a->n_bits);
     bignum_div(a->v.words, a_words, b->v.words, b_words, quot.v.words,
                rem.v.words);
 
@@ -817,10 +817,10 @@ void APInt_udivrem(const struct APInt *a, const struct APInt *b,
 finish_normal:
     // if a or b is going to be overwritten then we need to deinit them first
     if (a == out_quot || a == out_rem)
-        APInt_deinit((struct APInt *)a);
+        MidAPInt_deinit((struct APInt *)a);
 
     if (b == out_quot || b == out_rem)
-        APInt_deinit((struct APInt *)b);
+        MidAPInt_deinit((struct APInt *)b);
 
     *out_quot = quot;
     *out_rem = rem;
@@ -829,33 +829,33 @@ finish_normal:
 
 finish_cpy_a_to_quot:
     if (b == out_quot || b == out_rem)
-        APInt_deinit((struct APInt *)b);
+        MidAPInt_deinit((struct APInt *)b);
 
     if (out_quot != a)
-        *out_quot = APInt_copy(a);
+        *out_quot = MidAPInt_copy(a);
     *out_rem = rem;
 
     return;
 
 finish_cpy_a_to_rem:
     if (b == out_quot || b == out_rem)
-        APInt_deinit((struct APInt *)b);
+        MidAPInt_deinit((struct APInt *)b);
 
     if (out_rem != a)
-        *out_rem = APInt_copy(a);
+        *out_rem = MidAPInt_copy(a);
     *out_quot = quot;
 
     return;
 }
 
-static bool is_word_pow2(APInt_Word word)
+static bool is_word_pow2(MidAPInt_Word word)
 {
     if (word == 0)
         return false;
     return (word & (word - 1)) == 0;
 }
 
-bool APInt_is_pow2(const struct APInt *self)
+bool MidAPInt_is_pow2(const struct APInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         bool found_active = false;
@@ -880,7 +880,7 @@ bool APInt_is_pow2(const struct APInt *self)
     }
 }
 
-bool APInt_is_eq(const struct APInt *a, const struct APInt *b)
+bool MidAPInt_is_eq(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -896,7 +896,7 @@ bool APInt_is_eq(const struct APInt *a, const struct APInt *b)
     }
 }
 
-bool APInt_is_gt(const struct APInt *a, const struct APInt *b)
+bool MidAPInt_is_gt(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -919,7 +919,7 @@ bool APInt_is_gt(const struct APInt *a, const struct APInt *b)
     }
 }
 
-bool APInt_is_gteq(const struct APInt *a, const struct APInt *b)
+bool MidAPInt_is_gteq(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -942,7 +942,7 @@ bool APInt_is_gteq(const struct APInt *a, const struct APInt *b)
     }
 }
 
-bool APInt_is_lt(const struct APInt *a, const struct APInt *b)
+bool MidAPInt_is_lt(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -965,7 +965,7 @@ bool APInt_is_lt(const struct APInt *a, const struct APInt *b)
     }
 }
 
-bool APInt_is_lteq(const struct APInt *a, const struct APInt *b)
+bool MidAPInt_is_lteq(const struct APInt *a, const struct APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -988,21 +988,21 @@ bool APInt_is_lteq(const struct APInt *a, const struct APInt *b)
     }
 }
 
-static APInt_Word clear_word_bits(APInt_Word word, int lo, int hi)
+static MidAPInt_Word clear_word_bits(MidAPInt_Word word, int lo, int hi)
 {
-    assert(lo >= 0 && lo < APInt_Word_n_bits);
-    assert(hi > 0 && hi <= APInt_Word_n_bits);
+    assert(lo >= 0 && lo < MidAPInt_Word_n_bits);
+    assert(hi > 0 && hi <= MidAPInt_Word_n_bits);
     assert(hi > lo);
 
     int n = hi - lo;
-    if (n == APInt_Word_n_bits)
+    if (n == MidAPInt_Word_n_bits)
         return 0;
 
-    APInt_Word mask = ((1 << n) - 1) << lo;
+    MidAPInt_Word mask = ((1 << n) - 1) << lo;
     return word & mask;
 }
 
-void APInt_clear_bits(struct APInt *self, i32 lo, i32 hi)
+void MidAPInt_clear_bits(struct APInt *self, i32 lo, i32 hi)
 {
     assert(lo >= 0 && lo < self->n_bits);
     assert(hi > 0 && hi <= self->n_bits);
@@ -1019,13 +1019,13 @@ void APInt_clear_bits(struct APInt *self, i32 lo, i32 hi)
         for (i32 i = start_word + 1; i < end_word - 1; ++i)
             self->v.words[i] = 0;
 
-        i32 start_base = start_word * APInt_Word_n_bits;
-        i32 end_base = end_word * APInt_Word_n_bits;
+        i32 start_base = start_word * MidAPInt_Word_n_bits;
+        i32 end_base = end_word * MidAPInt_Word_n_bits;
         // base of the word after start_base
-        i32 start_next = start_base + APInt_Word_n_bits;
+        i32 start_next = start_base + MidAPInt_Word_n_bits;
 
         i32 start_lo = lo - start_base;
-        i32 start_hi = hi >= start_next ? APInt_Word_n_bits : hi - start_base;
+        i32 start_hi = hi >= start_next ? MidAPInt_Word_n_bits : hi - start_base;
 
         i32 end_lo = lo < end_base ? 0 : lo - end_base;
         i32 end_hi = hi - end_base;

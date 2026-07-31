@@ -6,37 +6,37 @@
 #include "parser/expr.h"
 #include "sema/type.h"
 
-void Parser_copy_return(struct Parser_Return *dest,
-                        const struct Parser_Return *src,
-                        struct Parser_Allocators *allocs)
+void MidParser_copy_return(struct MidParser_Return *dest,
+                        const struct MidParser_Return *src,
+                        struct MidParser_Allocators *allocs)
 {
     if (src->expr) {
-        gen_bumpmalloc(&allocs->expr, &dest->expr);
-        *dest->expr = Parser_copy_expr(src->expr);
+        MidGen_bumpmalloc(&allocs->expr, &dest->expr);
+        *dest->expr = MidParser_copy_expr(src->expr);
     }
 }
 
-isize_t Parser_parse_return(struct Parser_Return *self,
-                            const struct Lexer_Token *toks, isize_t start,
-                            struct Sema_Scope *scope,
-                            struct Parser_Allocators *allocs,
-                            struct DiagVec *diags)
+mid_isize MidParser_parse_return(struct MidParser_Return *self,
+                            const struct MidLexer_Token *toks, mid_isize start,
+                            struct MidSema_Scope *scope,
+                            struct MidParser_Allocators *allocs,
+                            struct MidDiag_DiagVec *diags)
 {
-    assert(toks[start].type == LEXER_TOKENTYPE_RETURN);
+    assert(toks[start].type == MIDLEXER_TOKENTYPE_RETURN);
 
-    *self = (struct Parser_Return){};
+    *self = (struct MidParser_Return){};
 
-    isize_t end;
+    mid_isize end;
 
-    if (toks[start + 1].type == LEXER_TOKENTYPE_SEMICOLON) {
+    if (toks[start + 1].type == MIDLEXER_TOKENTYPE_SEMICOLON) {
         end = start + 1;
     } else {
-        gen_bumpmalloc(&allocs->expr, &self->expr);
-        *self->expr = Parser_parse_expr(
-            toks, start + 1, PARSER_DEFAULT_ENDTYPES, &end, scope, diags);
+        MidGen_bumpmalloc(&allocs->expr, &self->expr);
+        *self->expr = MidParser_parse_expr(
+            toks, start + 1, MIDPARSER_DEFAULT_ENDTYPES, &end, scope, diags);
     }
 
-    Sema_typecheck_return(self, scope, diags);
+    MidSema_typecheck_return(self, scope, diags);
 
     return end;
 }

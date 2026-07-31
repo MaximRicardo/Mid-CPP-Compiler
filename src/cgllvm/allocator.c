@@ -2,7 +2,7 @@
 #include "generics/bumpalloc.h"
 #include "scope.h"
 
-void CGLLVM_Allocators_deinit(struct CGLLVM_Allocators *allocs)
+void MidLLVM_Allocators_deinit(struct MidLLVM_Allocators *allocs)
 {
-    gen_bumpdeinit(&allocs->scope, CGLLVM_Scope_deinit);
+    MidGen_bumpdeinit(&allocs->scope, MidLLVM_Scope_deinit);
 }

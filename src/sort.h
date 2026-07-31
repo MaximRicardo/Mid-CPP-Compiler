@@ -2,6 +2,6 @@
 
 #include "ints.h"
 
-void better_qsort(void *v, isize_t nmemb, isize_t size,
+void Mid_qsort(void *v, mid_isize nmemb, mid_isize size,
                   int comp(const void *, const void *, const void *),
                   const void *info);

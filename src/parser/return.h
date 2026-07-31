@@ -7,15 +7,15 @@
 #include "parser/expr.h"
 #include "sema/scope.h"
 
-struct Parser_Return {
-    struct Parser_Expr *expr;
+struct MidParser_Return {
+    struct MidParser_Expr *expr;
 };
 
-void Parser_copy_return(struct Parser_Return *dest,
-                        const struct Parser_Return *src,
-                        struct Parser_Allocators *allocs);
-isize_t Parser_parse_return(struct Parser_Return *self,
-                            const struct Lexer_Token *toks, isize_t start,
-                            struct Sema_Scope *scope,
-                            struct Parser_Allocators *allocs,
-                            struct DiagVec *diags);
+void MidParser_copy_return(struct MidParser_Return *dest,
+                        const struct MidParser_Return *src,
+                        struct MidParser_Allocators *allocs);
+mid_isize MidParser_parse_return(struct MidParser_Return *self,
+                            const struct MidLexer_Token *toks, mid_isize start,
+                            struct MidSema_Scope *scope,
+                            struct MidParser_Allocators *allocs,
+                            struct MidDiag_DiagVec *diags);

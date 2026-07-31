@@ -16,7 +16,7 @@ struct UnicodeChar {
     unsigned u : 4;
 };
 
-static struct UnicodeChar read_char_2_byte(const char *src, isize_t start)
+static struct UnicodeChar read_char_2_byte(const char *src, mid_isize start)
 {
     // src[start + 0] = 0b110xxxyy
     // src[start + 1] = 0b10yyzzzz
@@ -33,7 +33,7 @@ static struct UnicodeChar read_char_2_byte(const char *src, isize_t start)
     return ret;
 }
 
-static struct UnicodeChar read_char_3_byte(const char *src, isize_t start)
+static struct UnicodeChar read_char_3_byte(const char *src, mid_isize start)
 {
     // src[start + 0] = 0b1110wwww
     // src[start + 1] = 0b10xxxxyy
@@ -53,7 +53,7 @@ static struct UnicodeChar read_char_3_byte(const char *src, isize_t start)
     return ret;
 }
 
-static struct UnicodeChar read_char_4_byte(const char *src, isize_t start)
+static struct UnicodeChar read_char_4_byte(const char *src, mid_isize start)
 {
     // src[start + 0] = 0b11110uvv
     // src[start + 1] = 0b10vvwwww
@@ -91,7 +91,7 @@ static u32 uni_to_c32(struct UnicodeChar uni)
     return ret;
 }
 
-u32 UTF8_read_char(const char *src, isize_t start, isize_t *out_end)
+u32 MidUTF8_read_char(const char *src, mid_isize start, mid_isize *out_end)
 {
     unsigned char b0 = src[start];
 
@@ -114,13 +114,13 @@ u32 UTF8_read_char(const char *src, isize_t start, isize_t *out_end)
             *out_end = start + 4;
         ret = read_char_4_byte(src, start);
     } else {
-        CRASH("bad UTF-8 character encoding");
+        MID_CRASH("bad UTF-8 character encoding");
     }
 
     return uni_to_c32(ret);
 }
 
-void UTF8_fprint_char(FILE *out, u32 c)
+void MidUTF8_fprint_char(FILE *out, u32 c)
 {
     char buf[MB_LEN_MAX + 1] = {0};
     mbstate_t ps;
@@ -130,12 +130,12 @@ void UTF8_fprint_char(FILE *out, u32 c)
     fprintf(out, "%s", buf);
 }
 
-void UTF8_print_char(u32 c)
+void MidUTF8_print_char(u32 c)
 {
-    UTF8_fprint_char(stdout, c);
+    MidUTF8_fprint_char(stdout, c);
 }
 
-char *UTF8_char_to_str(u32 c)
+char *MidUTF8_char_to_str(u32 c)
 {
     char *ret = calloc(MB_LEN_MAX + 1, 1);
     mbstate_t ps;
@@ -146,48 +146,48 @@ char *UTF8_char_to_str(u32 c)
     return ret;
 }
 
-void UTF8_fprint_str32(FILE *out, u32 *str)
+void MidUTF8_fprint_str32(FILE *out, u32 *str)
 {
-    for (isize_t i = 0; str[i] != '\0'; ++i)
-        UTF8_fprint_char(out, str[i]);
+    for (mid_isize i = 0; str[i] != '\0'; ++i)
+        MidUTF8_fprint_char(out, str[i]);
 }
 
-void UTF8_print_str32(u32 *str)
+void MidUTF8_print_str32(u32 *str)
 {
-    UTF8_fprint_str32(stdout, str);
+    MidUTF8_fprint_str32(stdout, str);
 }
 
-void UTF8_fprint_str16(FILE *out, u16 *str)
+void MidUTF8_fprint_str16(FILE *out, u16 *str)
 {
-    for (isize_t i = 0; str[i] != '\0'; ++i)
-        UTF8_fprint_char(out, str[i]);
+    for (mid_isize i = 0; str[i] != '\0'; ++i)
+        MidUTF8_fprint_char(out, str[i]);
 }
 
-void UTF8_print_str16(u16 *str)
+void MidUTF8_print_str16(u16 *str)
 {
-    UTF8_fprint_str16(stdout, str);
+    MidUTF8_fprint_str16(stdout, str);
 }
 
-char *UTF8_str32_to_str(u32 *str)
+char *MidUTF8_str32_to_str(u32 *str)
 {
-    struct Dynstr ret = {};
+    struct Mid_Dynstr ret = {};
 
-    for (isize_t i = 0; str[i] != '\0'; ++i) {
-        char *c = UTF8_char_to_str(str[i]);
-        Dynstr_append(&ret, c);
+    for (mid_isize i = 0; str[i] != '\0'; ++i) {
+        char *c = MidUTF8_char_to_str(str[i]);
+        MidDynstr_append(&ret, c);
         free(c);
     }
 
     return ret.str;
 }
 
-char *UTF8_str16_to_str(u16 *str)
+char *MidUTF8_str16_to_str(u16 *str)
 {
-    struct Dynstr ret = {};
+    struct Mid_Dynstr ret = {};
 
-    for (isize_t i = 0; str[i] != '\0'; ++i) {
-        char *c = UTF8_char_to_str(str[i]);
-        Dynstr_append(&ret, c);
+    for (mid_isize i = 0; str[i] != '\0'; ++i) {
+        char *c = MidUTF8_char_to_str(str[i]);
+        MidDynstr_append(&ret, c);
         free(c);
     }
 

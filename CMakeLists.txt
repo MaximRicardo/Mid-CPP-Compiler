@@ -31,4 +31,4 @@ llvm_map_components_to_libnames(llvm_libs core analysis target x86info x86target
 target_link_libraries(mcppc PRIVATE ${llvm_libs})
 target_include_directories(mcppc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 # target_include_directories(mcppc SYSTEM PRIVATE "/usr/include/llvm-c-20" "/usr/include/llvm-20")
-target_compile_definitions(mcppc PRIVATE GEN_DYNARRAY_DEFAULT_SIZE_TYPE=isize_t GEN_BUMPALLOC_DEFAULT_SIZE_TYPE=isize_t)
+target_compile_definitions(mcppc PRIVATE MIDGEN_DYNARRAY_DEFAULT_SIZE_TYPE=mid_isize MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE=mid_isize)

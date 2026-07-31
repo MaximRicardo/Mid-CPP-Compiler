@@ -6,7 +6,7 @@
 #include <string.h>
 
 // swap two elements of given size
-static void swap(void *v1, void *v2, isize_t size, char *buffer)
+static void swap(void *v1, void *v2, mid_isize size, char *buffer)
 {
     // copy bytes using memcpy
     memcpy(buffer, v1, size);
@@ -19,13 +19,13 @@ static void swap(void *v1, void *v2, isize_t size, char *buffer)
 // v: array, size: element size
 // left/right: range
 // comp: comparison function
-static void
-better_qsort_impl(void *v, isize_t size, isize_t left, isize_t right,
-                  int (*comp)(const void *, const void *, const void *),
-                  const void *info, char *buffer)
+static void mid_qsort_impl(void *v, mid_isize size, mid_isize left, mid_isize right,
+                           int (*comp)(const void *, const void *,
+                                       const void *),
+                           const void *info, char *buffer)
 {
     void *vt, *v3;
-    isize_t i, last, mid = (left + right) / 2;
+    mid_isize i, last, mid = (left + right) / 2;
 
     if (left >= right)
         return;
@@ -52,15 +52,15 @@ better_qsort_impl(void *v, isize_t size, isize_t left, isize_t right,
     v3 = ((char *)v + (last * size));
     swap(vl, v3, size, buffer);
 
-    better_qsort_impl(v, size, left, last - 1, comp, info, buffer);
-    better_qsort_impl(v, size, last + 1, right, comp, info, buffer);
+    mid_qsort_impl(v, size, left, last - 1, comp, info, buffer);
+    mid_qsort_impl(v, size, last + 1, right, comp, info, buffer);
 }
 
-void better_qsort(void *v, isize_t nmemb, isize_t size,
-                  int comp(const void *, const void *, const void *),
-                  const void *info)
+void Mid_qsort(void *v, mid_isize nmemb, mid_isize size,
+               int comp(const void *, const void *, const void *),
+               const void *info)
 {
-    char *buffer = mid_malloc(size);
-    better_qsort_impl(v, size, 0, nmemb - 1, comp, info, buffer);
+    char *buffer = Mid_malloc(size);
+    mid_qsort_impl(v, size, 0, nmemb - 1, comp, info, buffer);
     free(buffer);
 }

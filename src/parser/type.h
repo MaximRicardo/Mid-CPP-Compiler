@@ -6,76 +6,76 @@
 #include "lexer/token.h"
 #include "sema/ident.h"
 
-struct Sema_Scope;
+struct MidSema_Scope;
 
-enum Parser_TypeSpec {
-    PARSER_TYPESPEC_INVALID,
+enum MidParser_TypeSpec {
+    MIDPARSER_TYPESPEC_INVALID,
 
     // primitive types
-    PARSER_TYPESPEC_VOID,
-    PARSER_TYPESPEC_CHAR,
-    PARSER_TYPESPEC_SCHAR,
-    PARSER_TYPESPEC_UCHAR,
-    PARSER_TYPESPEC_WCHAR,
-    PARSER_TYPESPEC_CHAR16,
-    PARSER_TYPESPEC_CHAR32,
-    PARSER_TYPESPEC_SHORT,
-    PARSER_TYPESPEC_USHORT,
-    PARSER_TYPESPEC_INT,
-    PARSER_TYPESPEC_UINT,
-    PARSER_TYPESPEC_LONG,
-    PARSER_TYPESPEC_ULONG,
-    PARSER_TYPESPEC_LONGLONG,
-    PARSER_TYPESPEC_ULONGLONG,
-    PARSER_TYPESPEC_FLOAT,
-    PARSER_TYPESPEC_DOUBLE,
-    PARSER_TYPESPEC_LONGDOUBLE,
-    PARSER_TYPESPEC_BOOL,
+    MIDPARSER_TYPESPEC_VOID,
+    MIDPARSER_TYPESPEC_CHAR,
+    MIDPARSER_TYPESPEC_SCHAR,
+    MIDPARSER_TYPESPEC_UCHAR,
+    MIDPARSER_TYPESPEC_WCHAR,
+    MIDPARSER_TYPESPEC_CHAR16,
+    MIDPARSER_TYPESPEC_CHAR32,
+    MIDPARSER_TYPESPEC_SHORT,
+    MIDPARSER_TYPESPEC_USHORT,
+    MIDPARSER_TYPESPEC_INT,
+    MIDPARSER_TYPESPEC_UINT,
+    MIDPARSER_TYPESPEC_LONG,
+    MIDPARSER_TYPESPEC_ULONG,
+    MIDPARSER_TYPESPEC_LONGLONG,
+    MIDPARSER_TYPESPEC_ULONGLONG,
+    MIDPARSER_TYPESPEC_FLOAT,
+    MIDPARSER_TYPESPEC_DOUBLE,
+    MIDPARSER_TYPESPEC_LONGDOUBLE,
+    MIDPARSER_TYPESPEC_BOOL,
 
     // the weird kids
-    PARSER_TYPESPEC_FUNC,
-    PARSER_TYPESPEC_FPTR,
-    PARSER_TYPESPEC_ARRAY,
-    PARSER_TYPESPEC_AUTO,
-    PARSER_TYPESPEC_NULLPTR,
-    PARSER_TYPESPEC_TEMPLATED, // considered a named type, can't be typechecked
-    PARSER_TYPESPEC_UNKNOWN,   // can't be type checked
+    MIDPARSER_TYPESPEC_FUNC,
+    MIDPARSER_TYPESPEC_FPTR,
+    MIDPARSER_TYPESPEC_ARRAY,
+    MIDPARSER_TYPESPEC_AUTO,
+    MIDPARSER_TYPESPEC_NULLPTR,
+    MIDPARSER_TYPESPEC_TEMPLATED, // considered a named type, can't be typechecked
+    MIDPARSER_TYPESPEC_UNKNOWN,   // can't be type checked
 
     // prefixed types
-    PARSER_TYPESPEC_CLASS,
-    PARSER_TYPESPEC_UNION,
-    PARSER_TYPESPEC_ENUM,
+    MIDPARSER_TYPESPEC_CLASS,
+    MIDPARSER_TYPESPEC_UNION,
+    MIDPARSER_TYPESPEC_ENUM,
 };
 
-bool Parser_is_typespec_typecheckable(enum Parser_TypeSpec spec);
-bool Parser_is_typespec_named(enum Parser_TypeSpec spec);
-enum Parser_TypeSpec Parser_toktype_to_typespec(enum Lexer_TokenType type);
-const char *Parser_typespec_to_str(enum Parser_TypeSpec spec);
-bool Parser_is_integral_typespec(enum Parser_TypeSpec spec);
-bool Parser_is_signed_integral_typespec(enum Parser_TypeSpec spec);
-bool Parser_is_unsigned_integral_typespec(enum Parser_TypeSpec spec);
-bool Parser_is_floating_typespec(enum Parser_TypeSpec spec);
+bool MidParser_is_typespec_typecheckable(enum MidParser_TypeSpec spec);
+bool MidParser_is_typespec_named(enum MidParser_TypeSpec spec);
+enum MidParser_TypeSpec MidParser_toktype_to_typespec(enum MidLexer_TokenType type);
+const char *MidParser_typespec_to_str(enum MidParser_TypeSpec spec);
+bool MidParser_is_integral_typespec(enum MidParser_TypeSpec spec);
+bool MidParser_is_signed_integral_typespec(enum MidParser_TypeSpec spec);
+bool MidParser_is_unsigned_integral_typespec(enum MidParser_TypeSpec spec);
+bool MidParser_is_floating_typespec(enum MidParser_TypeSpec spec);
 
-struct Parser_TypeStorQual {
+struct MidParser_TypeStorQual {
     bool is_static;
     bool is_constexpr;
     bool is_typedef;
 };
 
 // also called a CV-qualifier
-struct Parser_TypeDataQual {
+struct MidParser_TypeDataQual {
     bool is_const;
     bool is_volatile;
 };
-gen_dynarray_struct_named(Parser_TypeDataQualVec, struct Parser_TypeDataQual);
+MidGen_dynarray_struct_named(MidParser_TypeDataQualVec, struct MidParser_TypeDataQual);
 
-void Parser_set_squal_flag(struct Parser_TypeStorQual *qual,
-                           enum Lexer_TokenType type);
-void Parser_set_dqual_flag(struct Parser_TypeDataQual *qual,
-                           enum Lexer_TokenType type);
-isize_t Parser_parse_quals(const struct Lexer_Token *toks, isize_t start,
-                           struct Parser_TypeStorQual *squals,
-                           struct Parser_TypeDataQual *dquals);
+void MidParser_set_squal_flag(struct MidParser_TypeStorQual *qual,
+                           enum MidLexer_TokenType type);
+void MidParser_set_dqual_flag(struct MidParser_TypeDataQual *qual,
+                           enum MidLexer_TokenType type);
+mid_isize MidParser_parse_quals(const struct MidLexer_Token *toks, mid_isize start,
+                           struct MidParser_TypeStorQual *squals,
+                           struct MidParser_TypeDataQual *dquals);
 
 // not to be confused with an fptr. a func type can refer to multiple overloads
 // of the same name, while a fptr refers to a specific overload without any
@@ -88,99 +88,99 @@ isize_t Parser_parse_quals(const struct Lexer_Token *toks, isize_t start,
 // // f is a func type, which gets cast to an fptr of signature
 // // int (*)(int, float) as that is one of f's overloads
 // int (*p)(int, float) = f;
-struct Parser_TypeFunc {
-    struct Sema_Scope *scope; // valid overloads are searched for from here
+struct MidParser_TypeFunc {
+    struct MidSema_Scope *scope; // valid overloads are searched for from here
     const char *name;
     bool is_tor; // is a ctor or dtor
 };
 
-struct Parser_Type {
+struct MidParser_Type {
     union {
-        struct Sema_IdentPtr named; // used by classes, structs, enums, etc.
-        struct Parser_TypeFunc func;
-        struct Parser_TypeFPtr *fptr;
-        struct Parser_TypeArray *array;
+        struct MidSema_IdentPtr named; // used by classes, structs, enums, etc.
+        struct MidParser_TypeFunc func;
+        struct MidParser_TypeFPtr *fptr;
+        struct MidParser_TypeArray *array;
     };
-    struct Parser_TypeDataQualVec dquals; // one element for each level of
+    struct MidParser_TypeDataQualVec dquals; // one element for each level of
                                           // indirection, including 0.
                                           // starts at the top most ptr
-    enum Parser_TypeSpec spec;
-    struct Parser_TypeStorQual squals;
+    enum MidParser_TypeSpec spec;
+    struct MidParser_TypeStorQual squals;
     bool lv_ref;
     bool rv_ref;
 };
-gen_dynarray_struct_named(Parser_TypeVec, struct Parser_Type);
+MidGen_dynarray_struct_named(MidParser_TypeVec, struct MidParser_Type);
 
-struct Parser_TypeFPtr {
-    struct Parser_TypeVec params;
-    struct Parser_Type ret;
+struct MidParser_TypeFPtr {
+    struct MidParser_TypeVec params;
+    struct MidParser_Type ret;
     bool has_ellipsis;
 };
 
-struct Parser_TypeArray {
-    struct Parser_Type elem;
+struct MidParser_TypeArray {
+    struct MidParser_Type elem;
     u64 len;
 };
 
-struct Parser_ASTNode;
-struct Parser_Allocators;
+struct MidParser_ASTNode;
+struct MidParser_Allocators;
 
-void Parser_Type_deinit(struct Parser_Type *self);
-struct Parser_Type Parser_toktype_to_type(enum Lexer_TokenType type);
-struct Parser_Type Parser_parse_type(const struct Lexer_Token *toks,
-                                     isize_t start, isize_t *out_end,
-                                     struct Sema_Scope *scope,
-                                     isize_t *out_declname, bool is_type_id,
-                                     struct Parser_Allocators *allocs,
-                                     struct DiagVec *diags);
-struct Parser_Type Parser_parse_base(const struct Lexer_Token *toks,
-                                     isize_t start, isize_t *out_end,
-                                     struct Sema_Scope *scope,
-                                     struct Parser_Allocators *allocs,
-                                     struct DiagVec *diags);
-struct Parser_Type
-Parser_parse_type_no_base(const struct Lexer_Token *toks, isize_t start,
-                          isize_t *out_end, const struct Parser_Type *base,
-                          struct Sema_Scope *scope, isize_t *out_declname,
-                          bool is_type_id, struct Parser_Allocators *allocs,
-                          struct DiagVec *diags);
-isize_t Parser_n_indir(const struct Parser_Type *type);
-struct Parser_Type Parser_copy_type(const struct Parser_Type *type);
-struct Parser_TypeFPtr
-Parser_copy_fptr_type(const struct Parser_TypeFPtr *fptr);
-struct Parser_TypeArray
-Parser_copy_array_type(const struct Parser_TypeArray *array);
-struct Parser_Type Parser_ref_type(const struct Parser_Type *type,
+void MidParser_Type_deinit(struct MidParser_Type *self);
+struct MidParser_Type MidParser_toktype_to_type(enum MidLexer_TokenType type);
+struct MidParser_Type MidParser_parse_type(const struct MidLexer_Token *toks,
+                                     mid_isize start, mid_isize *out_end,
+                                     struct MidSema_Scope *scope,
+                                     mid_isize *out_declname, bool is_type_id,
+                                     struct MidParser_Allocators *allocs,
+                                     struct MidDiag_DiagVec *diags);
+struct MidParser_Type MidParser_parse_base(const struct MidLexer_Token *toks,
+                                     mid_isize start, mid_isize *out_end,
+                                     struct MidSema_Scope *scope,
+                                     struct MidParser_Allocators *allocs,
+                                     struct MidDiag_DiagVec *diags);
+struct MidParser_Type
+MidParser_parse_type_no_base(const struct MidLexer_Token *toks, mid_isize start,
+                          mid_isize *out_end, const struct MidParser_Type *base,
+                          struct MidSema_Scope *scope, mid_isize *out_declname,
+                          bool is_type_id, struct MidParser_Allocators *allocs,
+                          struct MidDiag_DiagVec *diags);
+mid_isize MidParser_n_indir(const struct MidParser_Type *type);
+struct MidParser_Type MidParser_copy_type(const struct MidParser_Type *type);
+struct MidParser_TypeFPtr
+MidParser_copy_fptr_type(const struct MidParser_TypeFPtr *fptr);
+struct MidParser_TypeArray
+MidParser_copy_array_type(const struct MidParser_TypeArray *array);
+struct MidParser_Type MidParser_ref_type(const struct MidParser_Type *type,
                                    bool *out_failed);
-struct Parser_Type Parser_deref_type(const struct Parser_Type *type,
+struct MidParser_Type MidParser_deref_type(const struct MidParser_Type *type,
                                      bool *out_failed);
-char *Parser_type_to_str(const struct Parser_Type *type);
+char *MidParser_type_to_str(const struct MidParser_Type *type);
 // can the token be the start of a type?
-bool Parser_valid_type_start(const struct Lexer_Token *toks, isize_t idx,
-                             const struct Sema_Scope *scope);
+bool MidParser_valid_type_start(const struct MidLexer_Token *toks, mid_isize idx,
+                             const struct MidSema_Scope *scope);
 // the integral type specifier able to hold exactly the given number of bytes
-enum Parser_TypeSpec Parser_uint_type_of_width(i32 bytes);
-enum Parser_TypeSpec Parser_sint_type_of_width(i32 bytes);
-i32 Parser_typespec_conv_rank(enum Parser_TypeSpec spec);
-u64 Parser_integral_max(enum Parser_TypeSpec spec);
-i64 Parser_integral_min(enum Parser_TypeSpec spec);
-enum Parser_TypeSpec Parser_integral_prom(enum Parser_TypeSpec spec);
-bool Parser_is_fundamental_type(const struct Parser_Type *type);
-bool Parser_dquals_same(const struct Parser_TypeDataQual *a, isize_t n_a,
-                        const struct Parser_TypeDataQual *b, isize_t n_b);
-bool Parser_squals_same(const struct Parser_TypeStorQual *a,
-                        const struct Parser_TypeStorQual *b);
-bool Parser_are_types_same(const struct Parser_Type *a,
-                           const struct Parser_Type *b);
-struct Parser_Type Parser_create_func_type(struct Sema_Scope *scope,
+enum MidParser_TypeSpec MidParser_uint_type_of_width(i32 bytes);
+enum MidParser_TypeSpec MidParser_sint_type_of_width(i32 bytes);
+i32 MidParser_typespec_conv_rank(enum MidParser_TypeSpec spec);
+u64 MidParser_integral_max(enum MidParser_TypeSpec spec);
+i64 MidParser_integral_min(enum MidParser_TypeSpec spec);
+enum MidParser_TypeSpec MidParser_integral_prom(enum MidParser_TypeSpec spec);
+bool MidParser_is_fundamental_type(const struct MidParser_Type *type);
+bool MidParser_dquals_same(const struct MidParser_TypeDataQual *a, mid_isize n_a,
+                        const struct MidParser_TypeDataQual *b, mid_isize n_b);
+bool MidParser_squals_same(const struct MidParser_TypeStorQual *a,
+                        const struct MidParser_TypeStorQual *b);
+bool MidParser_are_types_same(const struct MidParser_Type *a,
+                           const struct MidParser_Type *b);
+struct MidParser_Type MidParser_create_func_type(struct MidSema_Scope *scope,
                                            const char *name);
-struct Parser_Type Parser_create_named_type(struct Sema_IdentPtr ident,
-                                            enum Parser_TypeSpec spec);
-struct Parser_Type Parser_create_templated_type(struct Sema_IdentPtr ident);
-struct Parser_Type Parser_create_unknown_type();
-bool Parser_type_is_void(const struct Parser_Type *type);
-bool Parser_type_is_void_ptr(const struct Parser_Type *type);
-bool Parser_type_is_nullptr_t(const struct Parser_Type *type);
-bool Parser_type_is_ref(const struct Parser_Type *type);
+struct MidParser_Type MidParser_create_named_type(struct MidSema_IdentPtr ident,
+                                            enum MidParser_TypeSpec spec);
+struct MidParser_Type MidParser_create_templated_type(struct MidSema_IdentPtr ident);
+struct MidParser_Type MidParser_create_unknown_type();
+bool MidParser_type_is_void(const struct MidParser_Type *type);
+bool MidParser_type_is_void_ptr(const struct MidParser_Type *type);
+bool MidParser_type_is_nullptr_t(const struct MidParser_Type *type);
+bool MidParser_type_is_ref(const struct MidParser_Type *type);
 // lvls of indir doesn't matter here
-bool Parser_type_is_typecheckable(const struct Parser_Type *type);
+bool MidParser_type_is_typecheckable(const struct MidParser_Type *type);

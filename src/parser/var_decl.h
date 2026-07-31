@@ -10,51 +10,51 @@
 #include "sema/scope.h"
 #include "type.h"
 
-struct Parser_VarDecl;
+struct MidParser_VarDecl;
 
-struct Parser_VarDeclInst {
-    struct Parser_Type type;
+struct MidParser_VarDeclInst {
+    struct MidParser_Type type;
     const char *name;
 
     // a var decl can have: an initializer, a ctor, or neither
     union {
         struct {
-            struct Parser_Expr *expr;
-            const struct Lexer_Token
+            struct MidParser_Expr *expr;
+            const struct MidLexer_Token
                 *start; // points to the first token of the
                         // initialization expr if there is one
         } init;
 
         struct {
-            struct Parser_ExprVec args;
-            struct Parser_FuncDecl *ctor;
+            struct MidParser_ExprVec args;
+            struct MidParser_FuncDecl *ctor;
         } ctor;
     };
     bool has_ctor;
 
     bool typechecked;
 };
-gen_dynarray_struct_named(Parser_VarDeclInstPVec, struct Parser_VarDeclInst *);
+MidGen_dynarray_struct_named(MidParser_VarDeclInstPVec, struct MidParser_VarDeclInst *);
 
-void Parser_VarDeclInst_deinit(struct Parser_VarDeclInst *self);
-void Parser_copy_var_decl_inst(struct Parser_VarDeclInst *dest,
-                               const struct Parser_VarDeclInst *src,
-                               struct Sema_Scope *dest_scope,
-                               struct Parser_Allocators *allocs);
+void MidParser_VarDeclInst_deinit(struct MidParser_VarDeclInst *self);
+void MidParser_copy_var_decl_inst(struct MidParser_VarDeclInst *dest,
+                               const struct MidParser_VarDeclInst *src,
+                               struct MidSema_Scope *dest_scope,
+                               struct MidParser_Allocators *allocs);
 
-struct Parser_VarDecl {
-    struct Parser_VarDeclInstPVec insts;
+struct MidParser_VarDecl {
+    struct MidParser_VarDeclInstPVec insts;
 };
-gen_dynarray_struct_named(Parser_VarDeclVec, struct Parser_VarDecl);
-gen_dynarray_struct_named(Parser_VarDeclPVec, struct Parser_VarDecl *);
+MidGen_dynarray_struct_named(MidParser_VarDeclVec, struct MidParser_VarDecl);
+MidGen_dynarray_struct_named(MidParser_VarDeclPVec, struct MidParser_VarDecl *);
 
-void Parser_VarDecl_deinit(struct Parser_VarDecl *self);
-void Parser_copy_var_decl(struct Parser_VarDecl *dest,
-                          const struct Parser_VarDecl *src,
-                          struct Sema_Scope *dest_scope,
-                          struct Parser_Allocators *allocs);
+void MidParser_VarDecl_deinit(struct MidParser_VarDecl *self);
+void MidParser_copy_var_decl(struct MidParser_VarDecl *dest,
+                          const struct MidParser_VarDecl *src,
+                          struct MidSema_Scope *dest_scope,
+                          struct MidParser_Allocators *allocs);
 
-struct Parser_ParseVarDeclFlags {
+struct MidParser_ParseVarDeclFlags {
     bool add_to_scope; // if true, the variable is added as an identifier in
                        // the passed scope.
     bool single_inst;  // if true, the declaration is parsed under the
@@ -65,39 +65,39 @@ struct Parser_ParseVarDeclFlags {
                        // the initializer if there is one.
 };
 
-isize_t Parser_parse_var_decl(
-    struct Parser_VarDecl *self, const struct Lexer_Token *toks, isize_t start,
-    const enum Lexer_TokenType *end_types, isize_t n_end_types,
-    struct Parser_ParseVarDeclFlags flags, struct Sema_Scope *scope,
-    struct Parser_Allocators *allocs, struct DiagVec *diags);
+mid_isize MidParser_parse_var_decl(
+    struct MidParser_VarDecl *self, const struct MidLexer_Token *toks, mid_isize start,
+    const enum MidLexer_TokenType *end_types, mid_isize n_end_types,
+    struct MidParser_ParseVarDeclFlags flags, struct MidSema_Scope *scope,
+    struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags);
 // node     - ignored if add_to_scope is false.
-isize_t Parser_parse_var_decl_inst(
-    struct Parser_VarDeclInst *self, const struct Lexer_Token *toks,
-    isize_t start, const enum Lexer_TokenType *end_types, isize_t n_end_types,
-    const struct Parser_Type *base, struct Sema_Scope *scope,
-    struct Parser_ParseVarDeclFlags flags, struct Parser_Allocators *allocs,
-    struct DiagVec *diags);
-isize_t Parser_parse_var_decl_inst_list(
-    const struct Lexer_Token *toks, isize_t start,
-    const enum Lexer_TokenType *end_types, isize_t n_end_types,
-    const struct Parser_Type *base, struct Parser_VarDeclInstPVec *insts,
-    struct Parser_VarDecl *decl, struct Sema_Scope *scope,
-    struct Parser_ParseVarDeclFlags flags, struct Parser_Allocators *allocs,
-    struct DiagVec *diags);
+mid_isize MidParser_parse_var_decl_inst(
+    struct MidParser_VarDeclInst *self, const struct MidLexer_Token *toks,
+    mid_isize start, const enum MidLexer_TokenType *end_types, mid_isize n_end_types,
+    const struct MidParser_Type *base, struct MidSema_Scope *scope,
+    struct MidParser_ParseVarDeclFlags flags, struct MidParser_Allocators *allocs,
+    struct MidDiag_DiagVec *diags);
+mid_isize MidParser_parse_var_decl_inst_list(
+    const struct MidLexer_Token *toks, mid_isize start,
+    const enum MidLexer_TokenType *end_types, mid_isize n_end_types,
+    const struct MidParser_Type *base, struct MidParser_VarDeclInstPVec *insts,
+    struct MidParser_VarDecl *decl, struct MidSema_Scope *scope,
+    struct MidParser_ParseVarDeclFlags flags, struct MidParser_Allocators *allocs,
+    struct MidDiag_DiagVec *diags);
 
 // expr_prealloced        - if true, inst->init.expr is assumed to be
 //                          preallocated to a valid ptr.
-isize_t Parser_parse_var_decl_inst_def(
-    const struct Lexer_Token *toks, const enum Lexer_TokenType *end_types,
-    isize_t n_end_types, struct Parser_VarDeclInst *inst, bool expr_prealloced,
-    struct Sema_Scope *scope, struct Parser_Allocators *allocs,
-    struct DiagVec *diags);
-void Parser_parse_var_decl_def(const struct Lexer_Token *toks,
-                               const enum Lexer_TokenType *end_types,
-                               isize_t n_end_types, struct Parser_VarDecl *decl,
-                               bool exprs_prealloced, struct Sema_Scope *scope,
-                               struct Parser_Allocators *allocs,
-                               struct DiagVec *diags);
+mid_isize MidParser_parse_var_decl_inst_def(
+    const struct MidLexer_Token *toks, const enum MidLexer_TokenType *end_types,
+    mid_isize n_end_types, struct MidParser_VarDeclInst *inst, bool expr_prealloced,
+    struct MidSema_Scope *scope, struct MidParser_Allocators *allocs,
+    struct MidDiag_DiagVec *diags);
+void MidParser_parse_var_decl_def(const struct MidLexer_Token *toks,
+                               const enum MidLexer_TokenType *end_types,
+                               mid_isize n_end_types, struct MidParser_VarDecl *decl,
+                               bool exprs_prealloced, struct MidSema_Scope *scope,
+                               struct MidParser_Allocators *allocs,
+                               struct MidDiag_DiagVec *diags);
 
-struct Parser_VarDeclInst *
-Parser_decl_inst_of_name(const struct Parser_VarDecl *decl, const char *name);
+struct MidParser_VarDeclInst *
+MidParser_decl_inst_of_name(const struct MidParser_VarDecl *decl, const char *name);
