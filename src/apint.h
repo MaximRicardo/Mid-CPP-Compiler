@@ -136,15 +136,25 @@ bool MidAPInt_is_pow2(const struct Mid_APInt *self);
 bool MidAPInt_is_eq(const struct Mid_APInt *a, const struct Mid_APInt *b);
 // unsigned comparisons
 bool MidAPInt_is_ugt(const struct Mid_APInt *a, const struct Mid_APInt *b);
+bool MidAPInt_is_ugt_imm(const struct Mid_APInt *a, u64 b);
 bool MidAPInt_is_ugteq(const struct Mid_APInt *a, const struct Mid_APInt *b);
+bool MidAPInt_is_ugteq_imm(const struct Mid_APInt *a, u64 b);
 bool MidAPInt_is_ult(const struct Mid_APInt *a, const struct Mid_APInt *b);
+bool MidAPInt_is_ult_imm(const struct Mid_APInt *a, u64 b);
 bool MidAPInt_is_ulteq(const struct Mid_APInt *a, const struct Mid_APInt *b);
+bool MidAPInt_is_ulteq_imm(const struct Mid_APInt *a, u64 b);
 // returns -1 if a < b, 1 if a > b, and 0 if a == b
 int MidAPInt_unsigned_cmp(const struct Mid_APInt *a, const struct Mid_APInt *b);
+int MidAPInt_unsigned_cmp_imm(const struct Mid_APInt *a, u64 b);
 // signed comparisons
 bool MidAPInt_is_sgt(const struct Mid_APInt *a, const struct Mid_APInt *b);
+bool MidAPInt_is_sgt_imm(const struct Mid_APInt *a, i64 b);
 bool MidAPInt_is_sgteq(const struct Mid_APInt *a, const struct Mid_APInt *b);
+bool MidAPInt_is_sgteq_imm(const struct Mid_APInt *a, i64 b);
 bool MidAPInt_is_slt(const struct Mid_APInt *a, const struct Mid_APInt *b);
+bool MidAPInt_is_slt_imm(const struct Mid_APInt *a, i64 b);
 bool MidAPInt_is_slteq(const struct Mid_APInt *a, const struct Mid_APInt *b);
+bool MidAPInt_is_slteq_imm(const struct Mid_APInt *a, i64 b);
 // returns -1 if a < b, 1 if a > b, and 0 if a == b
 int MidAPInt_signed_cmp(const struct Mid_APInt *a, const struct Mid_APInt *b);
+int MidAPInt_signed_cmp_imm(const struct Mid_APInt *a, i64 b);
