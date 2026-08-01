@@ -32,6 +32,7 @@ struct mid_APInt midint_init_no_limit_check(i32 n_bits, midint_Word val,
 // the sign is evaluated based on the last bit in the last word of words
 struct mid_APInt midint_init_arr(i32 n_bits, const midint_Word *words,
                                  i32 n_words, bool sign_ext);
+struct mid_APInt midint_alloc(i32 n_bits);
 struct mid_APInt midint_zero(i32 n_bits);
 struct mid_APInt midint_copy(const struct mid_APInt *src);
 // changes the width of the APInt. the new width can also be smaller than the
@@ -53,12 +54,14 @@ i64 midint_to_sint(const struct mid_APInt *self);
 
 // in place operations
 void midint_assign(struct mid_APInt *dest, const struct mid_APInt *src);
+void midint_assign_uimm(struct mid_APInt *dest, u64 src);
+void midint_assign_simm(struct mid_APInt *dest, i64 src);
 void midint_add(struct mid_APInt *a, const struct mid_APInt *b);
-void midint_add_imm(struct mid_APInt *a, u64 b);
+void midint_add_uimm(struct mid_APInt *a, u64 b);
 void midint_sub(struct mid_APInt *a, const struct mid_APInt *b);
-void midint_sub_imm(struct mid_APInt *a, u64 b);
+void midint_sub_uimm(struct mid_APInt *a, u64 b);
 void midint_mul(struct mid_APInt *a, const struct mid_APInt *b);
-void midint_mul_imm(struct mid_APInt *a, u64 b);
+void midint_mul_uimm(struct mid_APInt *a, u64 b);
 void midint_udiv(struct mid_APInt *a, const struct mid_APInt *b);
 void midint_sdiv(struct mid_APInt *a, const struct mid_APInt *b);
 void midint_urem(struct mid_APInt *a, const struct mid_APInt *b);
@@ -84,13 +87,13 @@ void midint_xor(struct mid_APInt *a, const struct mid_APInt *b);
 // not in place operations
 struct mid_APInt midint_nip_add(const struct mid_APInt *a,
                                 const struct mid_APInt *b);
-struct mid_APInt midint_nip_add_imm(const struct mid_APInt *a, u64 b);
+struct mid_APInt midint_nip_add_uimm(const struct mid_APInt *a, u64 b);
 struct mid_APInt midint_nip_sub(const struct mid_APInt *a,
                                 const struct mid_APInt *b);
-struct mid_APInt midint_nip_sub_imm(const struct mid_APInt *a, u64 b);
+struct mid_APInt midint_nip_sub_uimm(const struct mid_APInt *a, u64 b);
 struct mid_APInt midint_nip_mul(const struct mid_APInt *a,
                                 const struct mid_APInt *b);
-struct mid_APInt midint_nip_mul_imm(const struct mid_APInt *a, u64 b);
+struct mid_APInt midint_nip_mul_uimm(const struct mid_APInt *a, u64 b);
 struct mid_APInt midint_nip_udiv(const struct mid_APInt *a,
                                  const struct mid_APInt *b);
 struct mid_APInt midint_nip_sdiv(const struct mid_APInt *a,
@@ -120,12 +123,20 @@ struct mid_APInt midint_nip_xor(const struct mid_APInt *a,
 /*
  * computes the div and rem at the same time for the cost of only one
  * a and b can also be passed as the outputs of the function
- * BOTH OUTPUTS ARE REQUIRED AND CAN NOT BE NULL!
+ * NOTE: both outputs are required and can not be NULL
+ * NOTE: assumes out_quot and out_rem are already allocated
  */
 void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
                     struct mid_APInt *out_quot, struct mid_APInt *out_rem);
 void midint_sdivrem(const struct mid_APInt *a, const struct mid_APInt *b,
                     struct mid_APInt *out_quot, struct mid_APInt *out_rem);
+/*
+ * out_res should be twice as wide as the inputs
+ * NOTE: out_res can not be NULL
+ * NOTE: assumes out_res is already allocated
+ */
+void midint_ufullmul(const struct mid_APInt *a, const struct mid_APInt *b,
+                     struct mid_APInt *out_res);
 
 // comparisons
 bool midint_is_zero(const struct mid_APInt *self);

@@ -202,6 +202,16 @@ struct mid_APInt midint_init_no_limit_check(i32 n_bits, midint_Word val,
     return apint_init_impl(n_bits, val, is_signed, false);
 }
 
+struct mid_APInt midint_alloc(i32 n_bits)
+{
+    struct mid_APInt ret = {.n_bits = n_bits};
+
+    if (is_bignum_used(n_bits))
+        ret.v.words = mid_malloc(get_n_words(n_bits) * sizeof(*ret.v.words));
+
+    return ret;
+}
+
 struct mid_APInt midint_zero(i32 n_bits)
 {
     struct mid_APInt ret = {.n_bits = n_bits};
@@ -241,6 +251,30 @@ void midint_assign(struct mid_APInt *dest, const struct mid_APInt *src)
                get_n_words(dest->n_bits) * sizeof(*dest->v.words));
     } else {
         dest->v.val = src->v.val;
+    }
+}
+
+void midint_assign_uimm(struct mid_APInt *dest, u64 src)
+{
+    if (is_bignum_used(dest->n_bits)) {
+        dest->v.words[0] = src;
+        for (i32 i = 1; i < get_n_words(dest->n_bits); ++i)
+            dest->v.words[i] = 0;
+    } else {
+        dest->v.val = src;
+        midint_mask_extra_bits(dest);
+    }
+}
+
+void midint_assign_simm(struct mid_APInt *dest, i64 src)
+{
+    if (is_bignum_used(dest->n_bits)) {
+        dest->v.words[0] = src;
+        for (i32 i = 1; i < get_n_words(dest->n_bits); ++i)
+            dest->v.words[i] = src < 0 ? midint_word_n_bits : 0;
+    } else {
+        dest->v.val = src;
+        midint_mask_extra_bits(dest);
     }
 }
 
@@ -379,12 +413,12 @@ static void log_uint_bignum(const struct mid_APInt *self, FILE *out)
 {
     auto tmp = midint_copy(self);
     auto ten = midint_init(tmp.n_bits, 10, false);
+    auto d = midint_alloc(tmp.n_bits);
 
     char *digits = mid_malloc(max_dec_digits(self->n_bits) * sizeof(*digits));
 
     mid_isize i = 0;
     while (midint_is_ugteq(&tmp, &ten)) {
-        struct mid_APInt d;
         midint_udivrem(&tmp, &ten, &tmp, &d);
 
         // d is guaranteed to be less than 10 so we can just take it from
@@ -395,7 +429,8 @@ static void log_uint_bignum(const struct mid_APInt *self, FILE *out)
         ++i;
     }
 
-    auto d = midint_nip_urem(&tmp, &ten);
+    midint_deinit(&d);
+    d = midint_nip_urem(&tmp, &ten);
     digits[i] = d.v.words[0] + '0';
 
     for (; i >= 0; --i) {
@@ -584,7 +619,7 @@ void midint_add(struct mid_APInt *a, const struct mid_APInt *b)
     midint_mask_extra_bits(a);
 }
 
-void midint_add_imm(struct mid_APInt *a, u64 b)
+void midint_add_uimm(struct mid_APInt *a, u64 b)
 {
     if (is_bignum_used(a->n_bits)) {
         a->v.words[0] += b;
@@ -629,7 +664,7 @@ void midint_sub(struct mid_APInt *a, const struct mid_APInt *b)
     midint_mask_extra_bits(a);
 }
 
-void midint_sub_imm(struct mid_APInt *a, u64 b)
+void midint_sub_uimm(struct mid_APInt *a, u64 b)
 {
     if (is_bignum_used(a->n_bits)) {
         auto old = a->v.words[0];
@@ -661,9 +696,9 @@ static midint_Word get_high_half(midint_Word word)
 
 // lowkirkenuinelly no idea how this works, look at LLVM's APInt source code
 // for documentation
-static int tc_multiply_part(midint_Word *dst, midint_Word *src, midint_Word mul,
-                            midint_Word carry, i32 src_parts, i32 dst_parts,
-                            bool add)
+static int tc_multiply_part(midint_Word *dst, const midint_Word *src,
+                            midint_Word mul, midint_Word carry, i32 src_parts,
+                            i32 dst_parts, bool add)
 {
     assert(dst <= src || dst >= src + src_parts);
     assert(0 <= dst_parts);
@@ -740,8 +775,8 @@ static int tc_multiply_part(midint_Word *dst, midint_Word *src, midint_Word mul,
 // dst = lhs * rhs, where dst has the same width as the operands.
 // returns one if overflow occurred, otherwise zero.
 // dst can not alias with lhs or rhs
-static int tc_multiply(midint_Word *restrict dst, midint_Word *lhs,
-                       midint_Word *rhs, i32 parts)
+static int tc_multiply(midint_Word *restrict dst, const midint_Word *lhs,
+                       const midint_Word *rhs, i32 parts)
 {
     int overflow = 0;
 
@@ -753,6 +788,41 @@ static int tc_multiply(midint_Word *restrict dst, midint_Word *lhs,
     return overflow;
 }
 
+// dst = lhs * rhs, where dst has the width of the sum of the widths of the
+// operands.
+// dst can not alias with lhs or rhs
+static void tc_full_multiply(midint_Word *restrict dst, const midint_Word *lhs,
+                             const midint_Word *rhs, i32 lhs_parts,
+                             i32 rhs_parts)
+{
+    // the narrower number should be on the LHS for performance
+    if (lhs_parts > rhs_parts) {
+        tc_full_multiply(dst, rhs, lhs, rhs_parts, lhs_parts);
+        return;
+    }
+
+    for (i32 i = 0; i < lhs_parts; ++i) {
+        tc_multiply_part(&dst[i], rhs, lhs[i], 0, rhs_parts, rhs_parts + 1,
+                         i != 0);
+    }
+}
+
+void midint_ufullmul(const struct mid_APInt *a, const struct mid_APInt *b,
+                     struct mid_APInt *out_res)
+{
+    assert(a->n_bits == b->n_bits);
+    assert(out_res->n_bits == a->n_bits * 2);
+
+    if (!is_bignum_used(out_res->n_bits)) {
+        out_res->v.val = a->v.val * b->v.val;
+    } else if (!is_bignum_used(a->n_bits)) {
+        tc_full_multiply(out_res->v.words, &a->v.val, &b->v.val, 1, 1);
+    } else {
+        tc_full_multiply(out_res->v.words, a->v.words, b->v.words,
+                         get_n_words(a->n_bits), get_n_words(b->n_bits));
+    }
+}
+
 struct mid_APInt midint_nip_mul(const struct mid_APInt *a,
                                 const struct mid_APInt *b)
 {
@@ -762,26 +832,26 @@ struct mid_APInt midint_nip_mul(const struct mid_APInt *a,
         return midint_init_no_limit_check(a->n_bits, a->v.val * b->v.val,
                                           false);
 
-    auto res = midint_zero(a->n_bits);
+    auto res = midint_alloc(a->n_bits);
     tc_multiply(res.v.words, a->v.words, b->v.words, get_n_words(a->n_bits));
     midint_mask_extra_bits(&res);
     return res;
 }
 
-struct mid_APInt midint_nip_mul_imm(const struct mid_APInt *a, u64 b)
+struct mid_APInt midint_nip_mul_uimm(const struct mid_APInt *a, u64 b)
 {
     if (!is_bignum_used(a->n_bits)) {
         return midint_init_no_limit_check(a->n_bits, a->v.val * b, false);
     } else {
         auto n_words = get_n_words(a->n_bits);
-        auto res = midint_zero(a->n_bits);
+        auto res = midint_alloc(a->n_bits);
         tc_multiply_part(res.v.words, a->v.words, b, 0, n_words, n_words,
                          false);
         return res;
     }
 }
 
-void midint_mul_imm(struct mid_APInt *a, u64 b)
+void midint_mul_uimm(struct mid_APInt *a, u64 b)
 {
     if (!is_bignum_used(a->n_bits)) {
         a->v.val *= b;
@@ -1006,10 +1076,10 @@ struct mid_APInt midint_nip_add(const struct mid_APInt *a,
     return res;
 }
 
-struct mid_APInt midint_nip_add_imm(const struct mid_APInt *a, u64 b)
+struct mid_APInt midint_nip_add_uimm(const struct mid_APInt *a, u64 b)
 {
     struct mid_APInt res = midint_copy(a);
-    midint_add_imm(&res, b);
+    midint_add_uimm(&res, b);
     return res;
 }
 
@@ -1021,10 +1091,10 @@ struct mid_APInt midint_nip_sub(const struct mid_APInt *a,
     return res;
 }
 
-struct mid_APInt midint_nip_sub_imm(const struct mid_APInt *a, u64 b)
+struct mid_APInt midint_nip_sub_uimm(const struct mid_APInt *a, u64 b)
 {
     struct mid_APInt res = midint_copy(a);
-    midint_sub_imm(&res, b);
+    midint_sub_uimm(&res, b);
     return res;
 }
 
@@ -1445,6 +1515,7 @@ struct mid_APInt midint_nip_srem(const struct mid_APInt *a,
     }
 }
 
+/*
 void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
                     struct mid_APInt *out_quot, struct mid_APInt *out_rem)
 {
@@ -1526,6 +1597,56 @@ finish_cpy_a_to_rem:
 
     return;
 }
+ */
+
+void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
+                    struct mid_APInt *out_quot, struct mid_APInt *out_rem)
+{
+    assert(out_quot && out_rem);
+    assert(a->n_bits == b->n_bits);
+    assert(out_quot->n_bits == a->n_bits);
+    assert(out_rem->n_bits == a->n_bits);
+
+    if (!is_bignum_used(a->n_bits)) {
+        if (a->v.val == 0)
+            MID_CRASH("division by 0");
+
+        auto q_val = a->v.val / b->v.val;
+        auto r_val = a->v.val % b->v.val;
+        out_quot->v.val = q_val;
+        out_rem->v.val = r_val;
+        return;
+    }
+
+    i32 a_words = get_n_words(midint_unsigned_sig_bits(a));
+    i32 b_bits = midint_unsigned_sig_bits(b);
+    i32 b_words = get_n_words(b_bits);
+
+    // degenerate cases
+    if (a_words == 0) {
+        midint_assign_uimm(out_quot, 0); // 0 / x = 0
+        midint_assign_uimm(out_rem, 0);  // 0 % x = 0
+        return;
+    }
+    if (b_bits == 1) {
+        midint_assign(out_quot, a);     // x / 1 = x
+        midint_assign_uimm(out_rem, 0); // x % 1 = 0
+        return;
+    }
+    if (a_words < b_words || midint_is_ult(a, b)) {
+        midint_assign_uimm(out_quot, 0); // x / y = 0 if x < y
+        midint_assign(out_rem, a);       // x % y = x if x < y
+        return;
+    }
+    if (midint_is_eq(a, b)) {
+        midint_assign_uimm(out_quot, 1); // x / x = 1
+        midint_assign_uimm(out_rem, 0);  // x % x = 0
+        return;
+    }
+
+    bignum_div(a->v.words, a_words, b->v.words, b_words, out_quot->v.words,
+               out_rem->v.words);
+}
 
 void midint_sdivrem(const struct mid_APInt *a, const struct mid_APInt *b,
                     struct mid_APInt *out_quot, struct mid_APInt *out_rem)
@@ -1589,7 +1710,7 @@ struct mid_APInt midint_nip_not(const struct mid_APInt *self)
 void midint_negate(struct mid_APInt *self)
 {
     midint_not(self);
-    midint_add_imm(self, 1);
+    midint_add_uimm(self, 1);
 }
 
 struct mid_APInt midint_nip_negate(const struct mid_APInt *self)
