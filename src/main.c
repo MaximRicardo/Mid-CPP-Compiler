@@ -212,6 +212,7 @@ false);
 }
 */
 
+/*
 static void apint_test()
 {
     auto a = MidAPInt_init(128, -1128, true);
@@ -237,6 +238,28 @@ static void apint_test()
     MidAPInt_deinit(&a);
     MidAPInt_deinit(&b);
     MidAPInt_deinit(&c);
+}
+*/
+
+static void apint_test()
+{
+    auto a = MidAPInt_init(128, 1128, true);
+    auto b = MidAPInt_init(128, 10, true);
+
+    printf("a = ");
+    MidAPInt_log(&a, stdout, true);
+    putchar('\n');
+
+    printf("b = ");
+    MidAPInt_log(&b, stdout, true);
+    putchar('\n');
+
+    int c = MidAPInt_signed_cmp(&a, &b);
+    int d = MidAPInt_unsigned_cmp(&a, &b);
+    printf("signed = %d, unsigned = %d\n", c, d);
+
+    MidAPInt_deinit(&a);
+    MidAPInt_deinit(&b);
 }
 
 int main(int argc, char **argv)

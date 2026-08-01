@@ -1654,92 +1654,99 @@ bool MidAPInt_is_ugt(const struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
-    if (is_bignum_used(a->n_bits)) {
-        for (i32 i = get_n_words(a->n_bits) - 1; i >= 0; --i) {
-            auto a_w = a->v.words[i];
-            auto b_w = b->v.words[i];
-
-            if (a_w == 0 && b_w == 0)
-                continue;
-            else if (a_w > b_w)
-                return true;
-            else
-                return false;
-        }
-
-        return false;
-    } else {
-        return a->v.val > b->v.val;
-    }
+    return MidAPInt_unsigned_cmp(a, b) > 0;
 }
 
 bool MidAPInt_is_ugteq(const struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
-    if (is_bignum_used(a->n_bits)) {
-        for (i32 i = get_n_words(a->n_bits) - 1; i >= 0; --i) {
-            auto a_w = a->v.words[i];
-            auto b_w = b->v.words[i];
-
-            if (a_w == 0 && b_w == 0)
-                continue;
-            else if (a_w >= b_w)
-                return true;
-            else
-                return false;
-        }
-
-        return false;
-    } else {
-        return a->v.val > b->v.val;
-    }
+    return MidAPInt_unsigned_cmp(a, b) >= 0;
 }
 
 bool MidAPInt_is_ult(const struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
-    if (is_bignum_used(a->n_bits)) {
-        for (i32 i = get_n_words(a->n_bits) - 1; i >= 0; --i) {
-            auto a_w = a->v.words[i];
-            auto b_w = b->v.words[i];
-
-            if (a_w == 0 && b_w == 0)
-                continue;
-            else if (a_w < b_w)
-                return true;
-            else
-                return false;
-        }
-
-        return false;
-    } else {
-        return a->v.val > b->v.val;
-    }
+    return MidAPInt_unsigned_cmp(a, b) < 0;
 }
 
 bool MidAPInt_is_ulteq(const struct Mid_APInt *a, const struct Mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
-    if (is_bignum_used(a->n_bits)) {
-        for (i32 i = get_n_words(a->n_bits) - 1; i >= 0; --i) {
-            auto a_w = a->v.words[i];
-            auto b_w = b->v.words[i];
+    return MidAPInt_unsigned_cmp(a, b) <= 0;
+}
 
-            if (a_w == 0 && b_w == 0)
-                continue;
-            else if (a_w <= b_w)
-                return true;
-            else
-                return false;
-        }
-
-        return false;
-    } else {
-        return a->v.val > b->v.val;
+// compare two unsigned bignums
+static int cmp_bignums(const MidAPInt_Word *a, const MidAPInt_Word *b,
+                       i32 n_words)
+{
+    while (n_words--) {
+        if (a[n_words] != b[n_words])
+            return (a[n_words] > b[n_words]) ? 1 : -1;
     }
+
+    return 0;
+}
+
+int MidAPInt_unsigned_cmp(const struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    if (is_bignum_used(a->n_bits))
+        return cmp_bignums(a->v.words, b->v.words, get_n_words(a->n_bits));
+    else
+        return a->v.val < b->v.val ? -1 : a->v.val > b->v.val;
+}
+
+int MidAPInt_signed_cmp(const struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    if (is_bignum_used(a->n_bits)) {
+        bool a_neg = MidAPInt_is_negative(a);
+        bool b_neg = MidAPInt_is_negative(b);
+
+        if (a_neg != b_neg)
+            return a_neg ? -1 : 1;
+
+        // even negative numbers compare correctly if they both have the same
+        // signedness
+        return cmp_bignums(a->v.words, b->v.words, get_n_words(a->n_bits));
+    } else {
+        auto a_ext = sign_ext_word(a->v.val, a->n_bits, MidAPInt_word_n_bits);
+        auto b_ext = sign_ext_word(b->v.val, b->n_bits, MidAPInt_word_n_bits);
+        return a_ext < b_ext ? -1 : a_ext > b_ext;
+    }
+}
+
+bool MidAPInt_is_sgt(const struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    return MidAPInt_signed_cmp(a, b) > 0;
+}
+
+bool MidAPInt_is_sgteq(const struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    return MidAPInt_signed_cmp(a, b) >= 0;
+}
+
+bool MidAPInt_is_slt(const struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    return MidAPInt_signed_cmp(a, b) < 0;
+}
+
+bool MidAPInt_is_slteq(const struct Mid_APInt *a, const struct Mid_APInt *b)
+{
+    assert(a->n_bits == b->n_bits);
+
+    return MidAPInt_signed_cmp(a, b) <= 0;
 }
 
 static MidAPInt_Word clear_word_bits(MidAPInt_Word word, int lo, int hi)
