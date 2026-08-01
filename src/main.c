@@ -1,5 +1,6 @@
 // #include "cgllvm/codegen.h"
 // #include "cgllvm/name_mangle.h"
+#include "apfloat.h"
 #include "apint.h"
 #include "cmd.h"
 #include "diag.h"
@@ -215,25 +216,23 @@ false);
 /*
 static void apint_test()
 {
-    auto a = midint_init(128, -1128, true);
-    auto b = midint_init(128, -10, true);
+    auto a = midint_init(128, -1, true);
+    auto b = midint_init(128, -1, true);
 
     printf("a = ");
-    midint_log(&a, stdout, true);
+    midint_log(&a, stdout, false);
     putchar('\n');
 
     printf("b = ");
-    midint_log(&b, stdout, true);
+    midint_log(&b, stdout, false);
     putchar('\n');
 
-    auto c = midint_nip_mul(&a, &b);
+    auto c = midint_alloc(a.n_bits * 2);
+    midint_ufullmul(&a, &b, &c);
 
     printf("c = ");
-    midint_log(&c, stdout, true);
+    midint_log(&c, stdout, false);
     putchar('\n');
-
-    printf("a = %" PRIi64 ", b = %" PRIi64 ", c = %" PRIi64 "\n",
-           midint_to_sint(&a), midint_to_sint(&b), midint_to_sint(&c));
 
     midint_deinit(&a);
     midint_deinit(&b);
@@ -241,6 +240,7 @@ static void apint_test()
 }
 */
 
+/*
 static void apint_test()
 {
     auto a = midint_init(128, 1128, true);
@@ -261,13 +261,48 @@ static void apint_test()
     midint_deinit(&a);
     midint_deinit(&b);
 }
+*/
+
+static void apfloat_test()
+{
+    auto mant = midint_init(24, 0xb00000, false);
+    // a = 5.5f
+    auto a = midflt_ieee_init_manual(&mant, 2, false, MIDFLT_IEEE_SINGLE,
+                                     MIDFLT_IEEE_ROUND_NEAREST);
+
+    midint_assign_uimm(&mant, 0xc80000);
+    // b = 6.25f
+    auto b = midflt_ieee_init_manual(&mant, 2, true, MIDFLT_IEEE_SINGLE,
+                                     MIDFLT_IEEE_ROUND_NEAREST);
+
+    midflt_ieee_log(&a, stdout);
+    putchar('\n');
+
+    midflt_ieee_log(&b, stdout);
+    putchar('\n');
+
+    midflt_ieee_mul(&a, &b);
+
+    midflt_ieee_log(&a, stdout);
+    putchar('\n');
+    printf("mantissa = ");
+    midint_log_hex(&a.mant, stdout);
+    putchar('\n');
+
+    float a_flt = midflt_ieee_to_flt(&a);
+    printf("float bits = 0x%08" PRIx32 "\n", *(u32 *)&a_flt);
+
+    midflt_IEEE_deinit(&a);
+    midflt_IEEE_deinit(&b);
+    midint_deinit(&mant);
+}
 
 int main(int argc, char **argv)
 {
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
 
-    apint_test();
+    apfloat_test();
     MID_CRASH("asdf");
 
     midcmd_init_args(argc, argv);

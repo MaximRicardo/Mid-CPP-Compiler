@@ -51,6 +51,7 @@ i32 midint_signed_sig_bits(const struct mid_APInt *self);
 void midint_mask_extra_bits(struct mid_APInt *self);
 u64 midint_to_uint(const struct mid_APInt *self);
 i64 midint_to_sint(const struct mid_APInt *self);
+i32 midint_count_trailing_zeroes(const struct mid_APInt *self);
 
 // in place operations
 void midint_assign(struct mid_APInt *dest, const struct mid_APInt *src);

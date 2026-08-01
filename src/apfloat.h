@@ -2,6 +2,7 @@
 
 #include "apint.h"
 #include "ints.h"
+#include <stdio.h>
 
 enum midflt_IEEEKind {
     MIDFLT_IEEE_HALF,
@@ -9,17 +10,54 @@ enum midflt_IEEEKind {
     MIDFLT_IEEE_DOUBLE,
 };
 
+enum midflt_IEEERounding {
+    MIDFLT_IEEE_ROUND_NEAREST,
+    MIDFLT_IEEE_ROUND_UP,
+    MIDFLT_IEEE_ROUND_DOWN,
+    MIDFLT_IEEE_ROUND_TOWARDS_ZERO,
+};
+
+// value category
+enum midflt_IEEEValCat {
+    MIDFLT_IEEE_VAL_ZERO,
+    MIDFLT_IEEE_VAL_INF,
+    MIDFLT_IEEE_VAL_NAN,
+    MIDFLT_IEEE_VAL_NORMAL,
+};
+
 struct midflt_IEEE {
-    struct mid_APInt mant; // mantissa
+    struct mid_APInt mant; // mantissa (includes the implicit 1 in front of the
+                           // decimal point)
     i64 exp;               // exponent
+
     enum midflt_IEEEKind kind;
+    enum midflt_IEEERounding rounding; // current rounding mode
+    enum midflt_IEEEValCat val_cat;    // value category
+
     bool is_neg; // sign bit
 };
 
 void midflt_IEEE_deinit(struct midflt_IEEE *self);
-bool midflt_IEEE_is_zero(const struct midflt_IEEE *self);
-bool midflt_IEEE_is_inf(const struct midflt_IEEE *self);
-bool midflt_IEEE_is_nan(const struct midflt_IEEE *self);
+struct midflt_IEEE midflt_ieee_alloc(enum midflt_IEEEKind kind,
+                                     enum midflt_IEEERounding rounding);
+struct midflt_IEEE midflt_ieee_zero(bool is_neg, enum midflt_IEEEKind kind,
+                                    enum midflt_IEEERounding rounding);
+struct midflt_IEEE midflt_ieee_one(bool is_neg, enum midflt_IEEEKind kind,
+                                   enum midflt_IEEERounding rounding);
+struct midflt_IEEE midflt_ieee_inf(bool is_neg, enum midflt_IEEEKind kind,
+                                   enum midflt_IEEERounding rounding);
+struct midflt_IEEE midflt_ieee_nan(bool is_neg, enum midflt_IEEEKind kind,
+                                   enum midflt_IEEERounding rounding);
+// assumes the value category is MIDFLT_IEEE_VAL_NORMAL
+struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
+                                           i64 exp, bool is_neg,
+                                           enum midflt_IEEEKind kind,
+                                           enum midflt_IEEERounding rounding);
+void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out);
+
+void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b);
+
+long double midflt_ieee_to_flt(const struct midflt_IEEE *self);
 
 enum midflt_Kind {
     MIDFLT_IEEE,

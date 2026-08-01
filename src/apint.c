@@ -2076,3 +2076,39 @@ bool midint_is_negative(const struct mid_APInt *self)
 {
     return midint_get_sign_bit(self);
 }
+
+static int count_trailing_zeroes(midint_Word word, int n_bits)
+{
+    if (word == 0)
+        return n_bits;
+
+    int n = -1;
+    while (word >>= 1)
+        ++n;
+
+    return n;
+}
+
+i32 midint_count_trailing_zeroes(const struct mid_APInt *self)
+{
+    if (is_bignum_used(self->n_bits)) {
+        i32 n_words = get_n_words(self->n_bits);
+
+        i32 n = 0;
+        for (i32 i = 0; i < n_words; ++i) {
+            i32 bits = i == n_words - 1 ? n_bits_in_last_word(self->n_bits)
+                                        : midint_word_n_bits;
+
+            if (self->v.words[i] != 0) {
+                n += count_trailing_zeroes(self->v.words[i], bits);
+                break;
+            }
+
+            n += bits;
+        }
+
+        return n;
+    } else {
+        return count_trailing_zeroes(self->v.val, self->n_bits);
+    }
+}
