@@ -132,14 +132,14 @@ static MidAPInt_Word sign_ext_word(MidAPInt_Word word, int old_n_bits,
     return mask_extra_bits(ret, new_n_bits);
 }
 
-void MidAPInt_deinit(struct Mid_APInt *self)
+void MidAPInt_deinit(struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits))
         free(self->v.words);
 }
 
-struct Mid_APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words,
-                                   i32 n_words, bool sign_ext)
+struct MidAPInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words,
+                                  i32 n_words, bool sign_ext)
 {
     assert(n_words > 0);
 
@@ -151,7 +151,7 @@ struct Mid_APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words,
 
     i32 dest_n_words = get_n_words(n_bits);
 
-    struct Mid_APInt ret = {.n_bits = n_bits};
+    struct MidAPInt ret = {.n_bits = n_bits};
     ret.v.words = Mid_malloc(dest_n_words * sizeof(*ret.v.words));
 
     for (i32 i = 0; i < dest_n_words; ++i) {
@@ -167,8 +167,8 @@ struct Mid_APInt MidAPInt_init_arr(i32 n_bits, const MidAPInt_Word *words,
     return ret;
 }
 
-static struct Mid_APInt apint_init_impl(i32 n_bits, MidAPInt_Word val,
-                                        bool is_signed, bool limit_check)
+static struct MidAPInt apint_init_impl(i32 n_bits, MidAPInt_Word val,
+                                       bool is_signed, bool limit_check)
 {
     assert(n_bits > 0);
 
@@ -187,24 +187,24 @@ static struct Mid_APInt apint_init_impl(i32 n_bits, MidAPInt_Word val,
         }
     }
 
-    return (struct Mid_APInt){.n_bits = n_bits,
-                              .v.val = mask_extra_bits(val, n_bits)};
+    return (struct MidAPInt){.n_bits = n_bits,
+                             .v.val = mask_extra_bits(val, n_bits)};
 }
 
-struct Mid_APInt MidAPInt_init(i32 n_bits, MidAPInt_Word val, bool is_signed)
+struct MidAPInt MidAPInt_init(i32 n_bits, MidAPInt_Word val, bool is_signed)
 {
     return apint_init_impl(n_bits, val, is_signed, true);
 }
 
-struct Mid_APInt MidAPInt_init_no_limit_check(i32 n_bits, MidAPInt_Word val,
-                                              bool is_signed)
+struct MidAPInt MidAPInt_init_no_limit_check(i32 n_bits, MidAPInt_Word val,
+                                             bool is_signed)
 {
     return apint_init_impl(n_bits, val, is_signed, false);
 }
 
-struct Mid_APInt MidAPInt_zero(i32 n_bits)
+struct MidAPInt MidAPInt_zero(i32 n_bits)
 {
-    struct Mid_APInt ret = {.n_bits = n_bits};
+    struct MidAPInt ret = {.n_bits = n_bits};
 
     if (!is_bignum_used(n_bits))
         ret.v.val = 0;
@@ -214,9 +214,9 @@ struct Mid_APInt MidAPInt_zero(i32 n_bits)
     return ret;
 }
 
-struct Mid_APInt MidAPInt_copy(const struct Mid_APInt *src)
+struct MidAPInt MidAPInt_copy(const struct MidAPInt *src)
 {
-    struct Mid_APInt dest = {.n_bits = src->n_bits};
+    struct MidAPInt dest = {.n_bits = src->n_bits};
 
     if (is_bignum_used(src->n_bits)) {
         size_t size = get_n_words(src->n_bits) * sizeof(*src->v.words);
@@ -229,7 +229,7 @@ struct Mid_APInt MidAPInt_copy(const struct Mid_APInt *src)
     return dest;
 }
 
-void MidAPInt_assign(struct Mid_APInt *dest, const struct Mid_APInt *src)
+void MidAPInt_assign(struct MidAPInt *dest, const struct MidAPInt *src)
 {
     assert(dest->n_bits == src->n_bits);
 
@@ -244,7 +244,7 @@ void MidAPInt_assign(struct Mid_APInt *dest, const struct Mid_APInt *src)
     }
 }
 
-bool MidAPInt_is_zero(const struct Mid_APInt *self)
+bool MidAPInt_is_zero(const struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         for (i32 i = 0; i < get_n_words(self->n_bits); ++i) {
@@ -269,7 +269,7 @@ static bool is_word_signed_min(MidAPInt_Word word, int n_bits)
     return (word & ~(1ULL << (n_bits - 1))) == 0;
 }
 
-bool MidAPInt_is_signed_min(const struct Mid_APInt *self)
+bool MidAPInt_is_signed_min(const struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         i32 n_words = get_n_words(self->n_bits);
@@ -298,7 +298,7 @@ static bool word_is_all_ones(MidAPInt_Word word, int n_bits)
     }
 }
 
-bool MidAPInt_is_all_ones(const struct Mid_APInt *self)
+bool MidAPInt_is_all_ones(const struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         i32 n_words = get_n_words(self->n_bits);
@@ -317,7 +317,7 @@ bool MidAPInt_is_all_ones(const struct Mid_APInt *self)
     }
 }
 
-void MidAPInt_ext(struct Mid_APInt *self, i32 new_n_bits, bool sign_ext)
+void MidAPInt_ext(struct MidAPInt *self, i32 new_n_bits, bool sign_ext)
 {
     bool old_uses_bignum = is_bignum_used(self->n_bits);
     bool new_uses_bignum = is_bignum_used(new_n_bits);
@@ -355,7 +355,7 @@ void MidAPInt_ext(struct Mid_APInt *self, i32 new_n_bits, bool sign_ext)
     self->n_bits = new_n_bits;
 }
 
-bool MidAPInt_get_bit(const struct Mid_APInt *self, i32 n)
+bool MidAPInt_get_bit(const struct MidAPInt *self, i32 n)
 {
     assert(n > 0 && n < self->n_bits);
 
@@ -370,12 +370,12 @@ bool MidAPInt_get_bit(const struct Mid_APInt *self, i32 n)
     }
 }
 
-bool MidAPInt_get_sign_bit(const struct Mid_APInt *self)
+bool MidAPInt_get_sign_bit(const struct MidAPInt *self)
 {
     return MidAPInt_get_bit(self, self->n_bits - 1);
 }
 
-static void log_uint_bignum(const struct Mid_APInt *self, FILE *out)
+static void log_uint_bignum(const struct MidAPInt *self, FILE *out)
 {
     auto tmp = MidAPInt_copy(self);
     auto ten = MidAPInt_init(tmp.n_bits, 10, false);
@@ -384,7 +384,7 @@ static void log_uint_bignum(const struct Mid_APInt *self, FILE *out)
 
     mid_isize i = 0;
     while (MidAPInt_is_ugteq(&tmp, &ten)) {
-        struct Mid_APInt d;
+        struct MidAPInt d;
         MidAPInt_udivrem(&tmp, &ten, &tmp, &d);
 
         // d is guaranteed to be less than 10 so we can just take it from
@@ -408,7 +408,7 @@ static void log_uint_bignum(const struct Mid_APInt *self, FILE *out)
     MidAPInt_deinit(&tmp);
 }
 
-static void log_uint(const struct Mid_APInt *self, FILE *out)
+static void log_uint(const struct MidAPInt *self, FILE *out)
 {
     if (is_bignum_used(self->n_bits)) {
         log_uint_bignum(self, out);
@@ -417,7 +417,7 @@ static void log_uint(const struct Mid_APInt *self, FILE *out)
     }
 }
 
-static void log_sint(const struct Mid_APInt *self, FILE *out)
+static void log_sint(const struct MidAPInt *self, FILE *out)
 {
     if (is_bignum_used(self->n_bits)) {
         bool is_negative = MidAPInt_get_sign_bit(self);
@@ -452,7 +452,7 @@ static void log_sint(const struct Mid_APInt *self, FILE *out)
     }
 }
 
-void MidAPInt_log(const struct Mid_APInt *self, FILE *out, bool is_signed)
+void MidAPInt_log(const struct MidAPInt *self, FILE *out, bool is_signed)
 {
     if (is_signed)
         log_sint(self, out);
@@ -460,7 +460,7 @@ void MidAPInt_log(const struct Mid_APInt *self, FILE *out, bool is_signed)
         log_uint(self, out);
 }
 
-void MidAPInt_log_hex(const struct Mid_APInt *self, FILE *out)
+void MidAPInt_log_hex(const struct MidAPInt *self, FILE *out)
 {
     if (is_bignum_used(self->n_bits)) {
         bool printed = false;
@@ -480,7 +480,7 @@ void MidAPInt_log_hex(const struct Mid_APInt *self, FILE *out)
     }
 }
 
-i32 MidAPInt_unsigned_sig_bits(const struct Mid_APInt *self)
+i32 MidAPInt_unsigned_sig_bits(const struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         for (i32 i = get_n_words(self->n_bits) - 1; i >= 0; --i) {
@@ -495,7 +495,7 @@ i32 MidAPInt_unsigned_sig_bits(const struct Mid_APInt *self)
     }
 }
 
-static i32 countl_zero(const struct Mid_APInt *self)
+static i32 countl_zero(const struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         auto n_words = get_n_words(self->n_bits);
@@ -516,7 +516,7 @@ static i32 countl_zero(const struct Mid_APInt *self)
     }
 }
 
-static i32 countl_one(const struct Mid_APInt *self)
+static i32 countl_one(const struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         auto n_words = get_n_words(self->n_bits);
@@ -537,7 +537,7 @@ static i32 countl_one(const struct Mid_APInt *self)
     }
 }
 
-i32 MidAPInt_signed_sig_bits(const struct Mid_APInt *self)
+i32 MidAPInt_signed_sig_bits(const struct MidAPInt *self)
 {
     i32 n_sign_bits =
         MidAPInt_is_negative(self) ? countl_one(self) : countl_zero(self);
@@ -545,7 +545,7 @@ i32 MidAPInt_signed_sig_bits(const struct Mid_APInt *self)
     return self->n_bits - n_sign_bits + 1;
 }
 
-void MidAPInt_mask_extra_bits(struct Mid_APInt *self)
+void MidAPInt_mask_extra_bits(struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         i32 last = get_n_words(self->n_bits) - 1;
@@ -556,7 +556,7 @@ void MidAPInt_mask_extra_bits(struct Mid_APInt *self)
     }
 }
 
-void MidAPInt_add(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_add(struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -584,7 +584,7 @@ void MidAPInt_add(struct Mid_APInt *a, const struct Mid_APInt *b)
     MidAPInt_mask_extra_bits(a);
 }
 
-void MidAPInt_add_imm(struct Mid_APInt *a, u64 b)
+void MidAPInt_add_imm(struct MidAPInt *a, u64 b)
 {
     if (is_bignum_used(a->n_bits)) {
         a->v.words[0] += b;
@@ -602,7 +602,7 @@ void MidAPInt_add_imm(struct Mid_APInt *a, u64 b)
     MidAPInt_mask_extra_bits(a);
 }
 
-void MidAPInt_sub(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_sub(struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -629,7 +629,7 @@ void MidAPInt_sub(struct Mid_APInt *a, const struct Mid_APInt *b)
     MidAPInt_mask_extra_bits(a);
 }
 
-void MidAPInt_sub_imm(struct Mid_APInt *a, u64 b)
+void MidAPInt_sub_imm(struct MidAPInt *a, u64 b)
 {
     if (is_bignum_used(a->n_bits)) {
         auto old = a->v.words[0];
@@ -753,8 +753,8 @@ static int tc_multiply(MidAPInt_Word *restrict dst, MidAPInt_Word *lhs,
     return overflow;
 }
 
-struct Mid_APInt MidAPInt_nip_mul(const struct Mid_APInt *a,
-                                  const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_mul(const struct MidAPInt *a,
+                                 const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -768,7 +768,7 @@ struct Mid_APInt MidAPInt_nip_mul(const struct Mid_APInt *a,
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_mul_imm(const struct Mid_APInt *a, u64 b)
+struct MidAPInt MidAPInt_nip_mul_imm(const struct MidAPInt *a, u64 b)
 {
     if (!is_bignum_used(a->n_bits)) {
         return MidAPInt_init_no_limit_check(a->n_bits, a->v.val * b, false);
@@ -781,7 +781,7 @@ struct Mid_APInt MidAPInt_nip_mul_imm(const struct Mid_APInt *a, u64 b)
     }
 }
 
-void MidAPInt_mul_imm(struct Mid_APInt *a, u64 b)
+void MidAPInt_mul_imm(struct MidAPInt *a, u64 b)
 {
     if (!is_bignum_used(a->n_bits)) {
         a->v.val *= b;
@@ -793,14 +793,14 @@ void MidAPInt_mul_imm(struct Mid_APInt *a, u64 b)
     MidAPInt_mask_extra_bits(a);
 }
 
-void MidAPInt_mul(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_mul(struct MidAPInt *a, const struct MidAPInt *b)
 {
     auto tmp = MidAPInt_nip_mul(a, b);
     MidAPInt_deinit(a);
     *a = tmp;
 }
 
-static void shl_bignum_case(struct Mid_APInt *a, i32 count)
+static void shl_bignum_case(struct MidAPInt *a, i32 count)
 {
     i32 word_shift = count / MidAPInt_word_n_bits;
     i32 bit_shift = count % MidAPInt_word_n_bits;
@@ -829,7 +829,7 @@ static void shl_bignum_case(struct Mid_APInt *a, i32 count)
     MidAPInt_mask_extra_bits(a);
 }
 
-static void lshr_bignum_case(struct Mid_APInt *a, i32 count)
+static void lshr_bignum_case(struct MidAPInt *a, i32 count)
 {
     i32 word_shift = count / MidAPInt_word_n_bits;
     i32 bit_shift = count % MidAPInt_word_n_bits;
@@ -869,7 +869,7 @@ static u64 shift_arith_right(u64 val, unsigned sh)
     return result;
 }
 
-static void ashr_bignum_case(struct Mid_APInt *a, i32 count)
+static void ashr_bignum_case(struct MidAPInt *a, i32 count)
 {
     i32 word_shift = count / MidAPInt_word_n_bits;
     i32 bit_shift = count % MidAPInt_word_n_bits;
@@ -910,7 +910,7 @@ static void ashr_bignum_case(struct Mid_APInt *a, i32 count)
     MidAPInt_mask_extra_bits(a);
 }
 
-void MidAPInt_shl(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_shl(struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -924,7 +924,7 @@ void MidAPInt_shl(struct Mid_APInt *a, const struct Mid_APInt *b)
     MidAPInt_shl_imm(a, b->v.words[0]);
 }
 
-void MidAPInt_shl_imm(struct Mid_APInt *a, u64 count)
+void MidAPInt_shl_imm(struct MidAPInt *a, u64 count)
 {
     assert(count < (u64)a->n_bits);
 
@@ -939,7 +939,7 @@ void MidAPInt_shl_imm(struct Mid_APInt *a, u64 count)
     }
 }
 
-void MidAPInt_lshr(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_lshr(struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -953,7 +953,7 @@ void MidAPInt_lshr(struct Mid_APInt *a, const struct Mid_APInt *b)
     MidAPInt_lshr_imm(a, b->v.words[0]);
 }
 
-void MidAPInt_lshr_imm(struct Mid_APInt *a, u64 count)
+void MidAPInt_lshr_imm(struct MidAPInt *a, u64 count)
 {
     assert(count < (u64)a->n_bits);
 
@@ -968,7 +968,7 @@ void MidAPInt_lshr_imm(struct Mid_APInt *a, u64 count)
     }
 }
 
-void MidAPInt_ashr(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_ashr(struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -982,7 +982,7 @@ void MidAPInt_ashr(struct Mid_APInt *a, const struct Mid_APInt *b)
     MidAPInt_ashr_imm(a, b->v.words[0]);
 }
 
-void MidAPInt_ashr_imm(struct Mid_APInt *a, u64 count)
+void MidAPInt_ashr_imm(struct MidAPInt *a, u64 count)
 {
     assert(count < (u64)a->n_bits);
 
@@ -999,77 +999,77 @@ void MidAPInt_ashr_imm(struct Mid_APInt *a, u64 count)
     }
 }
 
-struct Mid_APInt MidAPInt_nip_add(const struct Mid_APInt *a,
-                                  const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_add(const struct MidAPInt *a,
+                                 const struct MidAPInt *b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_add(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_add_imm(const struct Mid_APInt *a, u64 b)
+struct MidAPInt MidAPInt_nip_add_imm(const struct MidAPInt *a, u64 b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_add_imm(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_sub(const struct Mid_APInt *a,
-                                  const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_sub(const struct MidAPInt *a,
+                                 const struct MidAPInt *b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_sub(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_sub_imm(const struct Mid_APInt *a, u64 b)
+struct MidAPInt MidAPInt_nip_sub_imm(const struct MidAPInt *a, u64 b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_sub_imm(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_shl(const struct Mid_APInt *a,
-                                  const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_shl(const struct MidAPInt *a,
+                                 const struct MidAPInt *b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_shl(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_shl_imm(const struct Mid_APInt *a, u64 b)
+struct MidAPInt MidAPInt_nip_shl_imm(const struct MidAPInt *a, u64 b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_shl_imm(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_lshr(const struct Mid_APInt *a,
-                                   const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_lshr(const struct MidAPInt *a,
+                                  const struct MidAPInt *b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_lshr(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_lshr_imm(const struct Mid_APInt *a, u64 b)
+struct MidAPInt MidAPInt_nip_lshr_imm(const struct MidAPInt *a, u64 b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_lshr_imm(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_ashr(const struct Mid_APInt *a,
-                                   const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_ashr(const struct MidAPInt *a,
+                                  const struct MidAPInt *b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_ashr(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_ashr_imm(const struct Mid_APInt *a, u64 b)
+struct MidAPInt MidAPInt_nip_ashr_imm(const struct MidAPInt *a, u64 b)
 {
-    struct Mid_APInt res = MidAPInt_copy(a);
+    struct MidAPInt res = MidAPInt_copy(a);
     MidAPInt_ashr_imm(&res, b);
     return res;
 }
@@ -1256,8 +1256,8 @@ static void bignum_div(const MidAPInt_Word *a, i32 a_n_words,
     free(r);
 }
 
-struct Mid_APInt MidAPInt_nip_udiv(const struct Mid_APInt *a,
-                                   const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_udiv(const struct MidAPInt *a,
+                                  const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -1290,15 +1290,15 @@ struct Mid_APInt MidAPInt_nip_udiv(const struct Mid_APInt *a,
             return MidAPInt_init(a->n_bits, a->v.words[0] / b->v.words[0],
                                  false);
 
-        struct Mid_APInt quot = MidAPInt_zero(a->n_bits);
+        struct MidAPInt quot = MidAPInt_zero(a->n_bits);
         bignum_div(a->v.words, a_words, b->v.words, b_words, quot.v.words,
                    NULL);
         return quot;
     }
 }
 
-struct Mid_APInt MidAPInt_nip_sdiv(const struct Mid_APInt *a,
-                                   const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_sdiv(const struct MidAPInt *a,
+                                  const struct MidAPInt *b)
 {
     bool a_neg = MidAPInt_get_sign_bit(a);
     bool b_neg = MidAPInt_get_sign_bit(b);
@@ -1334,36 +1334,36 @@ struct Mid_APInt MidAPInt_nip_sdiv(const struct Mid_APInt *a,
     }
 }
 
-void MidAPInt_udiv(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_udiv(struct MidAPInt *a, const struct MidAPInt *b)
 {
     auto tmp = MidAPInt_nip_udiv(a, b);
     MidAPInt_deinit(a);
     *a = tmp;
 }
 
-void MidAPInt_sdiv(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_sdiv(struct MidAPInt *a, const struct MidAPInt *b)
 {
     auto tmp = MidAPInt_nip_sdiv(a, b);
     MidAPInt_deinit(a);
     *a = tmp;
 }
 
-void MidAPInt_urem(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_urem(struct MidAPInt *a, const struct MidAPInt *b)
 {
     auto tmp = MidAPInt_nip_urem(a, b);
     MidAPInt_deinit(a);
     *a = tmp;
 }
 
-void MidAPInt_srem(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_srem(struct MidAPInt *a, const struct MidAPInt *b)
 {
     auto tmp = MidAPInt_nip_srem(a, b);
     MidAPInt_deinit(a);
     *a = tmp;
 }
 
-struct Mid_APInt MidAPInt_nip_urem(const struct Mid_APInt *a,
-                                   const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_urem(const struct MidAPInt *a,
+                                  const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -1400,19 +1400,19 @@ struct Mid_APInt MidAPInt_nip_urem(const struct Mid_APInt *a,
             // TODO: implement this optimization
 
             /*
-            struct Mid_APInt rem = MidAPInt_copy(a);
+            struct MidAPInt rem = MidAPInt_copy(a);
             MidAPInt_clear_bits(&rem, );
             */
         }
 
-        struct Mid_APInt rem = MidAPInt_zero(a->n_bits);
+        struct MidAPInt rem = MidAPInt_zero(a->n_bits);
         bignum_div(a->v.words, a_words, b->v.words, b_words, NULL, rem.v.words);
         return rem;
     }
 }
 
-struct Mid_APInt MidAPInt_nip_srem(const struct Mid_APInt *a,
-                                   const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_srem(const struct MidAPInt *a,
+                                  const struct MidAPInt *b)
 {
     bool a_neg = MidAPInt_get_sign_bit(a);
     bool b_neg = MidAPInt_get_sign_bit(b);
@@ -1448,14 +1448,14 @@ struct Mid_APInt MidAPInt_nip_srem(const struct Mid_APInt *a,
     }
 }
 
-void MidAPInt_udivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
-                      struct Mid_APInt *out_quot, struct Mid_APInt *out_rem)
+void MidAPInt_udivrem(const struct MidAPInt *a, const struct MidAPInt *b,
+                      struct MidAPInt *out_quot, struct MidAPInt *out_rem)
 {
     assert(out_quot && out_rem);
     assert(a->n_bits == b->n_bits);
 
-    struct Mid_APInt quot;
-    struct Mid_APInt rem;
+    struct MidAPInt quot;
+    struct MidAPInt rem;
 
     if (!is_bignum_used(a->n_bits)) {
         if (a->v.val == 0)
@@ -1499,10 +1499,10 @@ void MidAPInt_udivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
 finish_normal:
     // if a or b is going to be overwritten then we need to deinit them first
     if (a == out_quot || a == out_rem)
-        MidAPInt_deinit((struct Mid_APInt *)a);
+        MidAPInt_deinit((struct MidAPInt *)a);
 
     if (b == out_quot || b == out_rem)
-        MidAPInt_deinit((struct Mid_APInt *)b);
+        MidAPInt_deinit((struct MidAPInt *)b);
 
     *out_quot = quot;
     *out_rem = rem;
@@ -1511,7 +1511,7 @@ finish_normal:
 
 finish_cpy_a_to_quot:
     if (b == out_quot || b == out_rem)
-        MidAPInt_deinit((struct Mid_APInt *)b);
+        MidAPInt_deinit((struct MidAPInt *)b);
 
     if (out_quot != a)
         *out_quot = MidAPInt_copy(a);
@@ -1521,7 +1521,7 @@ finish_cpy_a_to_quot:
 
 finish_cpy_a_to_rem:
     if (b == out_quot || b == out_rem)
-        MidAPInt_deinit((struct Mid_APInt *)b);
+        MidAPInt_deinit((struct MidAPInt *)b);
 
     if (out_rem != a)
         *out_rem = MidAPInt_copy(a);
@@ -1530,8 +1530,8 @@ finish_cpy_a_to_rem:
     return;
 }
 
-void MidAPInt_sdivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
-                      struct Mid_APInt *out_quot, struct Mid_APInt *out_rem)
+void MidAPInt_sdivrem(const struct MidAPInt *a, const struct MidAPInt *b,
+                      struct MidAPInt *out_quot, struct MidAPInt *out_rem)
 {
     bool a_neg = MidAPInt_get_sign_bit(a);
     bool b_neg = MidAPInt_get_sign_bit(b);
@@ -1570,7 +1570,7 @@ void MidAPInt_sdivrem(const struct Mid_APInt *a, const struct Mid_APInt *b,
     }
 }
 
-void MidAPInt_not(struct Mid_APInt *self)
+void MidAPInt_not(struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         for (i32 i = 0; i < get_n_words(self->n_bits); ++i)
@@ -1582,20 +1582,20 @@ void MidAPInt_not(struct Mid_APInt *self)
     MidAPInt_mask_extra_bits(self);
 }
 
-struct Mid_APInt MidAPInt_nip_not(const struct Mid_APInt *self)
+struct MidAPInt MidAPInt_nip_not(const struct MidAPInt *self)
 {
     auto res = MidAPInt_copy(self);
     MidAPInt_not(&res);
     return res;
 }
 
-void MidAPInt_negate(struct Mid_APInt *self)
+void MidAPInt_negate(struct MidAPInt *self)
 {
     MidAPInt_not(self);
     MidAPInt_add_imm(self, 1);
 }
 
-struct Mid_APInt MidAPInt_nip_negate(const struct Mid_APInt *self)
+struct MidAPInt MidAPInt_nip_negate(const struct MidAPInt *self)
 {
     auto res = MidAPInt_copy(self);
     MidAPInt_negate(&res);
@@ -1609,7 +1609,7 @@ static bool is_word_pow2(MidAPInt_Word word)
     return (word & (word - 1)) == 0;
 }
 
-bool MidAPInt_is_pow2(const struct Mid_APInt *self)
+bool MidAPInt_is_pow2(const struct MidAPInt *self)
 {
     if (is_bignum_used(self->n_bits)) {
         bool found_active = false;
@@ -1634,7 +1634,7 @@ bool MidAPInt_is_pow2(const struct Mid_APInt *self)
     }
 }
 
-bool MidAPInt_is_eq(const struct Mid_APInt *a, const struct Mid_APInt *b)
+bool MidAPInt_is_eq(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -1650,50 +1650,50 @@ bool MidAPInt_is_eq(const struct Mid_APInt *a, const struct Mid_APInt *b)
     }
 }
 
-bool MidAPInt_is_ugt(const struct Mid_APInt *a, const struct Mid_APInt *b)
+bool MidAPInt_is_ugt(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     return MidAPInt_unsigned_cmp(a, b) > 0;
 }
 
-bool MidAPInt_is_ugt_imm(const struct Mid_APInt *a, u64 b)
+bool MidAPInt_is_ugt_imm(const struct MidAPInt *a, u64 b)
 {
     return MidAPInt_unsigned_cmp_imm(a, b) > 0;
 }
 
-bool MidAPInt_is_ugteq(const struct Mid_APInt *a, const struct Mid_APInt *b)
+bool MidAPInt_is_ugteq(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     return MidAPInt_unsigned_cmp(a, b) >= 0;
 }
 
-bool MidAPInt_is_ugteq_imm(const struct Mid_APInt *a, u64 b)
+bool MidAPInt_is_ugteq_imm(const struct MidAPInt *a, u64 b)
 {
     return MidAPInt_unsigned_cmp_imm(a, b) >= 0;
 }
 
-bool MidAPInt_is_ult(const struct Mid_APInt *a, const struct Mid_APInt *b)
+bool MidAPInt_is_ult(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     return MidAPInt_unsigned_cmp(a, b) < 0;
 }
 
-bool MidAPInt_is_ult_imm(const struct Mid_APInt *a, u64 b)
+bool MidAPInt_is_ult_imm(const struct MidAPInt *a, u64 b)
 {
     return MidAPInt_unsigned_cmp_imm(a, b) < 0;
 }
 
-bool MidAPInt_is_ulteq(const struct Mid_APInt *a, const struct Mid_APInt *b)
+bool MidAPInt_is_ulteq(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     return MidAPInt_unsigned_cmp(a, b) <= 0;
 }
 
-bool MidAPInt_is_ulteq_imm(const struct Mid_APInt *a, u64 b)
+bool MidAPInt_is_ulteq_imm(const struct MidAPInt *a, u64 b)
 {
     return MidAPInt_unsigned_cmp_imm(a, b) <= 0;
 }
@@ -1710,7 +1710,7 @@ static int cmp_bignums(const MidAPInt_Word *a, const MidAPInt_Word *b,
     return 0;
 }
 
-int MidAPInt_unsigned_cmp(const struct Mid_APInt *a, const struct Mid_APInt *b)
+int MidAPInt_unsigned_cmp(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -1720,7 +1720,7 @@ int MidAPInt_unsigned_cmp(const struct Mid_APInt *a, const struct Mid_APInt *b)
         return a->v.val < b->v.val ? -1 : a->v.val > b->v.val;
 }
 
-int MidAPInt_unsigned_cmp_imm(const struct Mid_APInt *a, u64 b)
+int MidAPInt_unsigned_cmp_imm(const struct MidAPInt *a, u64 b)
 {
     // doesn't work otherwise
     static_assert(sizeof(MidAPInt_Word) == sizeof(u64));
@@ -1736,7 +1736,7 @@ int MidAPInt_unsigned_cmp_imm(const struct Mid_APInt *a, u64 b)
     }
 }
 
-int MidAPInt_signed_cmp(const struct Mid_APInt *a, const struct Mid_APInt *b)
+int MidAPInt_signed_cmp(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -1757,7 +1757,7 @@ int MidAPInt_signed_cmp(const struct Mid_APInt *a, const struct Mid_APInt *b)
     }
 }
 
-int MidAPInt_signed_cmp_imm(const struct Mid_APInt *a, i64 b)
+int MidAPInt_signed_cmp_imm(const struct MidAPInt *a, i64 b)
 {
     // doesn't work otherwise
     static_assert(sizeof(MidAPInt_Word) == sizeof(u64));
@@ -1774,50 +1774,50 @@ int MidAPInt_signed_cmp_imm(const struct Mid_APInt *a, i64 b)
     }
 }
 
-bool MidAPInt_is_sgt(const struct Mid_APInt *a, const struct Mid_APInt *b)
+bool MidAPInt_is_sgt(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     return MidAPInt_signed_cmp(a, b) > 0;
 }
 
-bool MidAPInt_is_sgt_imm(const struct Mid_APInt *a, i64 b)
+bool MidAPInt_is_sgt_imm(const struct MidAPInt *a, i64 b)
 {
     return MidAPInt_signed_cmp_imm(a, b) > 0;
 }
 
-bool MidAPInt_is_sgteq(const struct Mid_APInt *a, const struct Mid_APInt *b)
+bool MidAPInt_is_sgteq(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     return MidAPInt_signed_cmp(a, b) >= 0;
 }
 
-bool MidAPInt_is_sgteq_imm(const struct Mid_APInt *a, i64 b)
+bool MidAPInt_is_sgteq_imm(const struct MidAPInt *a, i64 b)
 {
     return MidAPInt_signed_cmp_imm(a, b) >= 0;
 }
 
-bool MidAPInt_is_slt(const struct Mid_APInt *a, const struct Mid_APInt *b)
+bool MidAPInt_is_slt(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     return MidAPInt_signed_cmp(a, b) < 0;
 }
 
-bool MidAPInt_is_slt_imm(const struct Mid_APInt *a, i64 b)
+bool MidAPInt_is_slt_imm(const struct MidAPInt *a, i64 b)
 {
     return MidAPInt_signed_cmp_imm(a, b) < 0;
 }
 
-bool MidAPInt_is_slteq(const struct Mid_APInt *a, const struct Mid_APInt *b)
+bool MidAPInt_is_slteq(const struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
     return MidAPInt_signed_cmp(a, b) <= 0;
 }
 
-bool MidAPInt_is_slteq_imm(const struct Mid_APInt *a, i64 b)
+bool MidAPInt_is_slteq_imm(const struct MidAPInt *a, i64 b)
 {
     return MidAPInt_signed_cmp_imm(a, b) <= 0;
 }
@@ -1836,7 +1836,7 @@ static MidAPInt_Word clear_word_bits(MidAPInt_Word word, int lo, int hi)
     return word & mask;
 }
 
-void MidAPInt_clear_bits(struct Mid_APInt *self, i32 lo, i32 hi)
+void MidAPInt_clear_bits(struct MidAPInt *self, i32 lo, i32 hi)
 {
     assert(lo >= 0 && lo < self->n_bits);
     assert(hi > 0 && hi <= self->n_bits);
@@ -1875,7 +1875,7 @@ void MidAPInt_clear_bits(struct Mid_APInt *self, i32 lo, i32 hi)
     }
 }
 
-void MidAPInt_and(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_and(struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -1887,7 +1887,7 @@ void MidAPInt_and(struct Mid_APInt *a, const struct Mid_APInt *b)
     }
 }
 
-void MidAPInt_or(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_or(struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -1899,7 +1899,7 @@ void MidAPInt_or(struct Mid_APInt *a, const struct Mid_APInt *b)
     }
 }
 
-void MidAPInt_xor(struct Mid_APInt *a, const struct Mid_APInt *b)
+void MidAPInt_xor(struct MidAPInt *a, const struct MidAPInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
@@ -1911,31 +1911,31 @@ void MidAPInt_xor(struct Mid_APInt *a, const struct Mid_APInt *b)
     }
 }
 
-struct Mid_APInt MidAPInt_nip_and(const struct Mid_APInt *a,
-                                  const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_and(const struct MidAPInt *a,
+                                 const struct MidAPInt *b)
 {
     auto res = MidAPInt_copy(a);
     MidAPInt_and(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_or(const struct Mid_APInt *a,
-                                 const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_or(const struct MidAPInt *a,
+                                const struct MidAPInt *b)
 {
     auto res = MidAPInt_copy(a);
     MidAPInt_or(&res, b);
     return res;
 }
 
-struct Mid_APInt MidAPInt_nip_xor(const struct Mid_APInt *a,
-                                  const struct Mid_APInt *b)
+struct MidAPInt MidAPInt_nip_xor(const struct MidAPInt *a,
+                                 const struct MidAPInt *b)
 {
     auto res = MidAPInt_copy(a);
     MidAPInt_xor(&res, b);
     return res;
 }
 
-u64 MidAPInt_to_uint(const struct Mid_APInt *self)
+u64 MidAPInt_to_uint(const struct MidAPInt *self)
 {
     // make sure the number actually fits
     assert(MidAPInt_unsigned_sig_bits(self) <= MidAPInt_word_n_bits);
@@ -1945,7 +1945,7 @@ u64 MidAPInt_to_uint(const struct Mid_APInt *self)
         return self->v.val;
 }
 
-i64 MidAPInt_to_sint(const struct Mid_APInt *self)
+i64 MidAPInt_to_sint(const struct MidAPInt *self)
 {
     // make sure the number actually fits
     assert(MidAPInt_signed_sig_bits(self) <= MidAPInt_word_n_bits);
@@ -1957,7 +1957,7 @@ i64 MidAPInt_to_sint(const struct Mid_APInt *self)
         return sign_ext_word(self->v.val, self->n_bits, MidAPInt_word_n_bits);
 }
 
-bool MidAPInt_is_negative(const struct Mid_APInt *self)
+bool MidAPInt_is_negative(const struct MidAPInt *self)
 {
     return MidAPInt_get_sign_bit(self);
 }
