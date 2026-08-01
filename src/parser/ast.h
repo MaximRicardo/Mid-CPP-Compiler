@@ -18,14 +18,15 @@
 // generic access macros
 
 #define MIDPARSER_GET_NODE_IMPL_MUT(node) ((struct MidParser_ASTNode *)node)
-#define MIDPARSER_GET_NODE_IMPL_CONST(node) ((const struct MidParser_ASTNode *)node)
+#define MIDPARSER_GET_NODE_IMPL_CONST(node)                                    \
+    ((const struct MidParser_ASTNode *)node)
 
 /*
- * generic macro to convert a piece of syntax to a generic MidParser_ASTNode ptr.
- * gives a compile time error if you use an invalid type.
- * preserves const-ness.
+ * generic macro to convert a piece of syntax to a generic MidParser_ASTNode
+ * ptr. gives a compile time error if you use an invalid type. preserves
+ * const-ness.
  */
-#define MIDPARSER_GET_NODE(node)                                                  \
+#define MIDPARSER_GET_NODE(node)                                               \
     _Generic((node),                                                           \
         struct MidParser_VarDecl *: MIDPARSER_GET_NODE_IMPL_MUT(node),               \
         struct MidParser_VarDeclInst *: MIDPARSER_GET_NODE_IMPL_MUT(node),           \
@@ -95,10 +96,10 @@ struct MidParser_ASTNode {
 
 void MidParser_ASTNode_deinit(struct MidParser_ASTNode *self);
 void MidParser_copy_node(struct MidParser_ASTNode *dest,
-                      const struct MidParser_ASTNode *src,
-                      struct MidParser_ASTNode *dest_parent,
-                      struct MidSema_Scope *dest_scope,
-                      struct MidParser_Allocators *allocs);
+                         const struct MidParser_ASTNode *src,
+                         struct MidParser_ASTNode *dest_parent,
+                         struct MidSema_Scope *dest_scope,
+                         struct MidParser_Allocators *allocs);
 
 struct MidParser_ParseNodeFlags {
     bool skip_def;
@@ -107,11 +108,11 @@ struct MidParser_ParseNodeFlags {
 };
 // skip_def - if true and the node has a definition / initializer, then it
 //            won't be parsed and rather be skipped
-struct MidParser_ASTNode *
-MidParser_parse_node(const struct MidLexer_Token *toks, mid_isize start,
-                  mid_isize *out_end, struct MidParser_ASTNode *parent,
-                  struct MidSema_Scope *scope, struct MidParser_ParseNodeFlags flags,
-                  struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags);
+struct MidParser_ASTNode *MidParser_parse_node(
+    const struct MidLexer_Token *toks, mid_isize start, mid_isize *out_end,
+    struct MidParser_ASTNode *parent, struct MidSema_Scope *scope,
+    struct MidParser_ParseNodeFlags flags, struct MidParser_Allocators *allocs,
+    struct MidDiag_DiagVec *diags);
 // is the node a template, example:
 //    template <typename T> void func(T arg);
 //                          ^

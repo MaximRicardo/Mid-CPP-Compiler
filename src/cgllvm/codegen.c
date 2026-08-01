@@ -471,7 +471,8 @@ static LLVMValueRef codegen_arith_expr(const struct MidParser_Expr *expr,
 static LLVMValueRef *get_call_args(const struct MidParser_Expr *expr,
                                    const struct MidLLVM_Scope *scope,
                                    LLVMContextRef context, LLVMModuleRef mod,
-                                   LLVMBuilderRef builder, mid_isize *out_n_args)
+                                   LLVMBuilderRef builder,
+                                   mid_isize *out_n_args)
 {
     bool implicit_this =
         MidParser_func_takes_implicit_this(&expr->node->func_decl, true);

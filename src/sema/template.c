@@ -131,8 +131,8 @@ static void transf_node(struct MidParser_ASTNode *node,
 
 struct MidParser_Type
 MidSema_instantiate_class_tmplt(struct MidParser_ASTNode *tmplt_node,
-                             const struct MidParser_TmpltArgVec *args,
-                             struct MidParser_Allocators *allocs)
+                                const struct MidParser_TmpltArgVec *args,
+                                struct MidParser_Allocators *allocs)
 {
     auto tmplt = &tmplt_node->tmplt;
     assert(tmplt->child->type == MIDPARSER_ASTNODETYPE_CLASS);
@@ -142,12 +142,14 @@ MidSema_instantiate_class_tmplt(struct MidParser_ASTNode *tmplt_node,
     MidGen_bumpmalloc(&allocs->scope, &inst.scope);
     MidGen_bumpmalloc(&allocs->ast, &inst.inst);
 
-    *inst.scope = (struct MidSema_Scope){.parent = tmplt->scope,
-                                      .node = inst.inst,
-                                      .type = MIDSEMA_SCOPETYPE_TEMPLATE_INST};
+    *inst.scope =
+        (struct MidSema_Scope){.parent = tmplt->scope,
+                               .node = inst.inst,
+                               .type = MIDSEMA_SCOPETYPE_TEMPLATE_INST};
 
     printf("copying class node\n");
-    MidParser_copy_node(inst.inst, tmplt->child, tmplt_node, inst.scope, allocs);
+    MidParser_copy_node(inst.inst, tmplt->child, tmplt_node, inst.scope,
+                        allocs);
     printf("copy done\n");
 
     // the ident needs to be a class instead of a class template
@@ -162,7 +164,8 @@ MidSema_instantiate_class_tmplt(struct MidParser_ASTNode *tmplt_node,
 
     bool is_union = class->type == MIDPARSER_CLASSTYPE_UNION;
     struct MidParser_Type type = MidParser_create_named_type(
-        class->ident, is_union ? MIDPARSER_TYPESPEC_UNION : MIDPARSER_TYPESPEC_CLASS);
+        class->ident,
+        is_union ? MIDPARSER_TYPESPEC_UNION : MIDPARSER_TYPESPEC_CLASS);
 
     return type;
 }

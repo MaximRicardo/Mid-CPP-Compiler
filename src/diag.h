@@ -75,36 +75,39 @@ void MidDiag_print(const struct MidDiag_Diag *diag);
 struct MidLexer_Token;
 
 struct MidDiag_Diag MidDiag_expected_token_err(const char *name,
-                                    const struct MidLexer_Token *tok,
-                                    enum MidDiag_ErrT type);
-struct MidDiag_Diag MidDiag_expected_token_warn(const char *name,
-                                     const struct MidLexer_Token *tok,
-                                     enum MidDiag_WarnT type);
-struct MidDiag_Diag MidDiag_unexpected_token_err(const char *name,
-                                      const struct MidLexer_Token *tok,
-                                      enum MidDiag_ErrT type);
-struct MidDiag_Diag MidDiag_unexpected_token_warn(const char *name,
-                                       const struct MidLexer_Token *tok,
-                                       enum MidDiag_WarnT type);
-struct MidDiag_Diag MidDiag_ident_redefined_err(const char *name,
-                                     const struct MidLexer_Token *tok,
-                                     enum MidDiag_ErrT type);
-struct MidDiag_Diag MidDiag_ident_redefined_warn(const char *name,
-                                      const struct MidLexer_Token *tok,
-                                      enum MidDiag_WarnT type);
-struct MidDiag_Diag MidDiag_ident_undeclared_err(const char *name,
-                                      const struct MidLexer_Token *tok,
-                                      enum MidDiag_ErrT type);
-struct MidDiag_Diag MidDiag_ident_undeclared_warn(const char *name,
-                                       const struct MidLexer_Token *tok,
-                                       enum MidDiag_WarnT type);
-struct MidDiag_Diag MidDiag_func_undeclared_err(const char *name,
-                                     const struct MidLexer_Token *tok,
-                                     enum MidDiag_ErrT type);
-struct MidDiag_Diag MidDiag_func_undeclared_warn(const char *name,
-                                      const struct MidLexer_Token *tok,
-                                      enum MidDiag_WarnT type);
+                                               const struct MidLexer_Token *tok,
+                                               enum MidDiag_ErrT type);
+struct MidDiag_Diag
+MidDiag_expected_token_warn(const char *name, const struct MidLexer_Token *tok,
+                            enum MidDiag_WarnT type);
+struct MidDiag_Diag
+MidDiag_unexpected_token_err(const char *name, const struct MidLexer_Token *tok,
+                             enum MidDiag_ErrT type);
+struct MidDiag_Diag
+MidDiag_unexpected_token_warn(const char *name,
+                              const struct MidLexer_Token *tok,
+                              enum MidDiag_WarnT type);
+struct MidDiag_Diag
+MidDiag_ident_redefined_err(const char *name, const struct MidLexer_Token *tok,
+                            enum MidDiag_ErrT type);
+struct MidDiag_Diag
+MidDiag_ident_redefined_warn(const char *name, const struct MidLexer_Token *tok,
+                             enum MidDiag_WarnT type);
+struct MidDiag_Diag
+MidDiag_ident_undeclared_err(const char *name, const struct MidLexer_Token *tok,
+                             enum MidDiag_ErrT type);
+struct MidDiag_Diag
+MidDiag_ident_undeclared_warn(const char *name,
+                              const struct MidLexer_Token *tok,
+                              enum MidDiag_WarnT type);
+struct MidDiag_Diag
+MidDiag_func_undeclared_err(const char *name, const struct MidLexer_Token *tok,
+                            enum MidDiag_ErrT type);
+struct MidDiag_Diag
+MidDiag_func_undeclared_warn(const char *name, const struct MidLexer_Token *tok,
+                             enum MidDiag_WarnT type);
 struct MidDiag_Diag MidDiag_type_id_w_name_err(const struct MidLexer_Token *tok,
-                                    enum MidDiag_ErrT type);
-struct MidDiag_Diag MidDiag_type_id_w_name_warn(const struct MidLexer_Token *tok,
-                                     enum MidDiag_WarnT type);
+                                               enum MidDiag_ErrT type);
+struct MidDiag_Diag
+MidDiag_type_id_w_name_warn(const struct MidLexer_Token *tok,
+                            enum MidDiag_WarnT type);

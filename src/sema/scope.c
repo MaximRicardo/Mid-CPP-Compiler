@@ -19,9 +19,10 @@ void MidSema_Scope_deinit(struct MidSema_Scope *self)
     MidGen_dyndeinit(&self->idents, MidSema_Ident_deinit);
 }
 
-void MidSema_copy_scope(struct MidSema_Scope *dest, const struct MidSema_Scope *src,
-                     struct MidSema_Scope *dest_parent,
-                     struct MidParser_Allocators *allocs)
+void MidSema_copy_scope(struct MidSema_Scope *dest,
+                        const struct MidSema_Scope *src,
+                        struct MidSema_Scope *dest_parent,
+                        struct MidParser_Allocators *allocs)
 {
     *dest = *src;
 
@@ -32,8 +33,8 @@ void MidSema_copy_scope(struct MidSema_Scope *dest, const struct MidSema_Scope *
     MidGen_dynreserve(&dest->childs, src->childs.len);
 
     for (mid_isize i = 0; i < src->idents.len; ++i) {
-        MidGen_dynpush(&dest->idents,
-                    MidSema_copy_ident(&src->idents.arr[i], dest, true, allocs));
+        MidGen_dynpush(&dest->idents, MidSema_copy_ident(&src->idents.arr[i],
+                                                         dest, true, allocs));
     }
 
     for (mid_isize i = 0; i < src->childs.len; ++i) {
@@ -47,8 +48,8 @@ void MidSema_copy_scope(struct MidSema_Scope *dest, const struct MidSema_Scope *
 }
 
 struct MidSema_Scope MidSema_create_empty_scope(enum MidSema_ScopeType type,
-                                          struct MidSema_Scope *parent,
-                                          struct MidParser_ASTNode *node)
+                                                struct MidSema_Scope *parent,
+                                                struct MidParser_ASTNode *node)
 {
     return (struct MidSema_Scope){
         .type = type,
@@ -59,7 +60,8 @@ struct MidSema_Scope MidSema_create_empty_scope(enum MidSema_ScopeType type,
 
 bool MidSema_is_rnce_scope(enum MidSema_ScopeType type)
 {
-    return type == MIDSEMA_SCOPETYPE_ROOT || type == MIDSEMA_SCOPETYPE_NAMESPACE ||
+    return type == MIDSEMA_SCOPETYPE_ROOT ||
+           type == MIDSEMA_SCOPETYPE_NAMESPACE ||
            type == MIDSEMA_SCOPETYPE_CLASS || type == MIDSEMA_SCOPETYPE_ENUM;
 }
 
@@ -81,7 +83,7 @@ struct MidSema_Scope *MidSema_closest_rnce_scope(struct MidSema_Scope *self)
 
 const struct MidSema_Scope *
 MidSema_closest_scope_of_type_const(const struct MidSema_Scope *self,
-                                 enum MidSema_ScopeType type)
+                                    enum MidSema_ScopeType type)
 {
     if (self->type == type)
         return self;
@@ -92,13 +94,15 @@ MidSema_closest_scope_of_type_const(const struct MidSema_Scope *self,
 }
 
 struct MidSema_Scope *MidSema_closest_scope_of_type(struct MidSema_Scope *self,
-                                              enum MidSema_ScopeType type)
+                                                    enum MidSema_ScopeType type)
 {
-    return (struct MidSema_Scope *)MidSema_closest_scope_of_type_const(self, type);
+    return (struct MidSema_Scope *)MidSema_closest_scope_of_type_const(self,
+                                                                       type);
 }
 
 static const struct MidSema_Ident *
-find_ident_in_arr(const char *name, const struct MidSema_Ident *idents, mid_isize n)
+find_ident_in_arr(const char *name, const struct MidSema_Ident *idents,
+                  mid_isize n)
 {
     for (mid_isize i = 0; i < n; ++i) {
         auto ident = &idents[i];
@@ -127,8 +131,8 @@ search_child_tmplt_scopes(const char *name, const struct MidSema_Scope *scope)
     return NULL;
 }
 
-const struct MidSema_Ident *MidSema_find_ident_const(const struct MidSema_Scope *scope,
-                                               const char *name)
+const struct MidSema_Ident *
+MidSema_find_ident_const(const struct MidSema_Scope *scope, const char *name)
 {
     const struct MidSema_Ident *ident = NULL;
     if (!ident)
@@ -144,7 +148,8 @@ const struct MidSema_Ident *MidSema_find_ident_const(const struct MidSema_Scope 
     return NULL;
 }
 
-struct MidSema_Ident *MidSema_find_ident(struct MidSema_Scope *scope, const char *name)
+struct MidSema_Ident *MidSema_find_ident(struct MidSema_Scope *scope,
+                                         const char *name)
 {
     return (struct MidSema_Ident *)MidSema_find_ident_const(scope, name);
 }
@@ -160,7 +165,8 @@ bool MidSema_is_type_name(const struct MidSema_Scope *scope, const char *name)
     return false;
 }
 
-bool MidSema_is_namespace_name(const struct MidSema_Scope *scope, const char *name)
+bool MidSema_is_namespace_name(const struct MidSema_Scope *scope,
+                               const char *name)
 {
     auto ident = MidSema_find_ident_const(scope, name);
     if (!ident)
@@ -169,8 +175,9 @@ bool MidSema_is_namespace_name(const struct MidSema_Scope *scope, const char *na
     return ident->type == MIDSEMA_IDENTTYPE_NAMESPACE;
 }
 
-bool MidSema_ident_type(struct MidSema_Scope *scope, const struct MidSema_Ident *ident,
-                     struct MidParser_Type *out_type)
+bool MidSema_ident_type(struct MidSema_Scope *scope,
+                        const struct MidSema_Ident *ident,
+                        struct MidParser_Type *out_type)
 {
     if (ident->type == MIDSEMA_IDENTTYPE_NAMESPACE || !ident->decl) {
         return false;
@@ -182,7 +189,7 @@ bool MidSema_ident_type(struct MidSema_Scope *scope, const struct MidSema_Ident 
 }
 
 bool MidSema_name_type(struct MidSema_Scope *scope, const char *name,
-                    struct MidParser_Type *out_type)
+                       struct MidParser_Type *out_type)
 {
     auto ident = MidSema_find_ident_const(scope, name);
     if (!ident)
@@ -192,7 +199,7 @@ bool MidSema_name_type(struct MidSema_Scope *scope, const char *name,
 }
 
 struct MidParser_Type MidSema_type_name_type(struct MidSema_Scope *scope,
-                                       const char *name)
+                                             const char *name)
 {
     auto ident = MidSema_find_ident(scope, name);
     if (!ident->decl)
@@ -201,9 +208,9 @@ struct MidParser_Type MidSema_type_name_type(struct MidSema_Scope *scope,
     switch (ident->type) {
     case MIDSEMA_IDENTTYPE_CLASS: {
         auto type = MidParser_toktype_to_type(ident->decl->class_.type ==
-                                                   MIDPARSER_CLASSTYPE_UNION
-                                               ? MIDLEXER_TOKENTYPE_UNION
-                                               : MIDLEXER_TOKENTYPE_CLASS);
+                                                      MIDPARSER_CLASSTYPE_UNION
+                                                  ? MIDLEXER_TOKENTYPE_UNION
+                                                  : MIDLEXER_TOKENTYPE_CLASS);
         type.named = MidSema_create_identptr(ident);
         return type;
     }
@@ -236,7 +243,7 @@ struct MidParser_Type MidSema_type_name_type(struct MidSema_Scope *scope,
 }
 
 struct MidParser_Type MidSema_tok_type(struct MidSema_Scope *scope,
-                                 const struct MidLexer_Token *tok)
+                                       const struct MidLexer_Token *tok)
 {
     if (tok->type == MIDLEXER_TOKENTYPE_IDENTIFIER)
         return MidSema_type_name_type(scope, tok->ident);
@@ -252,7 +259,7 @@ static bool are_params_same(const struct MidParser_FuncDecl *a,
 
     for (mid_isize i = 0; i < a->params.len; ++i) {
         if (!MidParser_are_types_same(&a->params.arr[i]->insts.arr[0]->type,
-                                   &b->params.arr[i]->insts.arr[0]->type))
+                                      &b->params.arr[i]->insts.arr[0]->type))
             return false;
     }
 
@@ -280,7 +287,8 @@ static bool are_idents_equiv(const struct MidSema_Ident *a,
     if (strcmp(a->name, b->name))
         return false;
 
-    if (a->type == MIDSEMA_IDENTTYPE_FUNC && b->type == MIDSEMA_IDENTTYPE_FUNC &&
+    if (a->type == MIDSEMA_IDENTTYPE_FUNC &&
+        b->type == MIDSEMA_IDENTTYPE_FUNC &&
         !are_func_decls_same(&a->decl->func_decl, &b->decl->func_decl))
         return false;
 
@@ -306,8 +314,9 @@ find_ident_in_child_tmplt_scopes(const struct MidSema_Scope *scope,
 
 // finds an equivalent identifier that could cause a name collision
 // only checks the scope itself and not its parents
-static struct MidSema_Ident *find_ident_shallow(const struct MidSema_Scope *scope,
-                                             const struct MidSema_Ident *search)
+static struct MidSema_Ident *
+find_ident_shallow(const struct MidSema_Scope *scope,
+                   const struct MidSema_Ident *search)
 {
     for (mid_isize i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
@@ -323,7 +332,7 @@ static struct MidSema_Ident *find_ident_shallow(const struct MidSema_Scope *scop
 }
 
 struct MidSema_Ident *MidSema_add_ident(struct MidSema_Scope *scope,
-                                  struct MidSema_Ident *ident)
+                                        struct MidSema_Ident *ident)
 {
     auto old_ident = find_ident_shallow(scope, ident);
     if (old_ident)
@@ -334,10 +343,9 @@ struct MidSema_Ident *MidSema_add_ident(struct MidSema_Scope *scope,
     return NULL;
 }
 
-struct MidSema_Ident *MidSema_add_ident_copy(struct MidSema_Scope *scope,
-                                       const struct MidSema_Ident *ident,
-                                       bool copy_ident_scopes,
-                                       struct MidParser_Allocators *allocs)
+struct MidSema_Ident *MidSema_add_ident_copy(
+    struct MidSema_Scope *scope, const struct MidSema_Ident *ident,
+    bool copy_ident_scopes, struct MidParser_Allocators *allocs)
 {
     auto old_ident = find_ident_shallow(scope, ident);
     if (old_ident)
@@ -350,7 +358,7 @@ struct MidSema_Ident *MidSema_add_ident_copy(struct MidSema_Scope *scope,
 }
 
 i32 MidSema_add_ident_def(struct MidSema_Scope *scope, const char *name,
-                       struct MidParser_ASTNode *def)
+                          struct MidParser_ASTNode *def)
 {
     auto ident = MidSema_find_ident(scope, name);
     assert(ident);
@@ -384,7 +392,7 @@ MidSema_resolve_scope_const(const char *name, const struct MidSema_Scope *scope)
 }
 
 struct MidSema_Scope *MidSema_resolve_scope(const char *name,
-                                      struct MidSema_Scope *scope)
+                                            struct MidSema_Scope *scope)
 {
     return (struct MidSema_Scope *)MidSema_resolve_scope_const(name, scope);
 }
@@ -395,13 +403,13 @@ const char *MidSema_scope_name(const struct MidSema_Scope *scope)
         scope->type == MIDSEMA_SCOPETYPE_CLASS       ? scope->node->class_.name
         : scope->type == MIDSEMA_SCOPETYPE_ENUM      ? scope->node->enum_.name
         : scope->type == MIDSEMA_SCOPETYPE_NAMESPACE ? scope->node->nmspace.name
-                                                  : NULL;
+                                                     : NULL;
 
     return name;
 }
 
 void MidSema_add_tmplt_params_to_scope(struct MidSema_Scope *scope,
-                                    const struct MidSema_Scope *tmplt)
+                                       const struct MidSema_Scope *tmplt)
 {
     for (mid_isize i = 0; i < tmplt->idents.len; ++i) {
         // NOTE: doing a basic data copy should be safe (i hope)

@@ -74,17 +74,18 @@ void MidParser_ASTNode_deinit(struct MidParser_ASTNode *self)
 }
 
 void MidParser_copy_node(struct MidParser_ASTNode *dest,
-                      const struct MidParser_ASTNode *src,
-                      struct MidParser_ASTNode *dest_parent,
-                      struct MidSema_Scope *dest_scope,
-                      struct MidParser_Allocators *allocs)
+                         const struct MidParser_ASTNode *src,
+                         struct MidParser_ASTNode *dest_parent,
+                         struct MidSema_Scope *dest_scope,
+                         struct MidParser_Allocators *allocs)
 {
     *dest = (struct MidParser_ASTNode){
         .parent = dest_parent, .start = src->start, .type = src->type};
 
     switch (src->type) {
     case MIDPARSER_ASTNODETYPE_ROOT:
-        dest->root = MidParser_copy_nodepvec(&src->root, dest, dest_scope, allocs);
+        dest->root =
+            MidParser_copy_nodepvec(&src->root, dest, dest_scope, allocs);
         break;
 
     case MIDPARSER_ASTNODETYPE_EXPR:
@@ -93,17 +94,17 @@ void MidParser_copy_node(struct MidParser_ASTNode *dest,
 
     case MIDPARSER_ASTNODETYPE_VAR_DECL:
         MidParser_copy_var_decl(&dest->var_decl, &src->var_decl, dest_scope,
-                             allocs);
+                                allocs);
         break;
 
     case MIDPARSER_ASTNODETYPE_VAR_DECL_INST:
-        MidParser_copy_var_decl_inst(&dest->var_inst, &src->var_inst, dest_scope,
-                                  allocs);
+        MidParser_copy_var_decl_inst(&dest->var_inst, &src->var_inst,
+                                     dest_scope, allocs);
         break;
 
     case MIDPARSER_ASTNODETYPE_FUNC_DECL:
         MidParser_copy_func_decl(&dest->func_decl, &src->func_decl, dest_scope,
-                              allocs);
+                                 allocs);
         break;
 
     case MIDPARSER_ASTNODETYPE_CLASS:
@@ -116,7 +117,7 @@ void MidParser_copy_node(struct MidParser_ASTNode *dest,
 
     case MIDPARSER_ASTNODETYPE_NAMESPACE:
         MidParser_copy_namespace(&dest->nmspace, &src->nmspace, dest_scope,
-                              allocs);
+                                 allocs);
         break;
 
     case MIDPARSER_ASTNODETYPE_RETURN:
@@ -128,7 +129,8 @@ void MidParser_copy_node(struct MidParser_ASTNode *dest,
         break;
 
     case MIDPARSER_ASTNODETYPE_TMPLT_PARAM:
-        MidParser_copy_tmplt_param(&dest->tmplt_param, &src->tmplt_param, allocs);
+        MidParser_copy_tmplt_param(&dest->tmplt_param, &src->tmplt_param,
+                                   allocs);
         break;
 
     default:
@@ -138,11 +140,13 @@ void MidParser_copy_node(struct MidParser_ASTNode *dest,
 
 static bool is_class_start(enum MidLexer_TokenType type)
 {
-    return type == MIDLEXER_TOKENTYPE_CLASS || type == MIDLEXER_TOKENTYPE_STRUCT ||
+    return type == MIDLEXER_TOKENTYPE_CLASS ||
+           type == MIDLEXER_TOKENTYPE_STRUCT ||
            type == MIDLEXER_TOKENTYPE_UNION;
 }
 
-static mid_isize skip_typequals(const struct MidLexer_Token *toks, mid_isize start)
+static mid_isize skip_typequals(const struct MidLexer_Token *toks,
+                                mid_isize start)
 {
     mid_isize i = start;
     while (MidLexer_is_typequal(toks[i++].type))
@@ -168,11 +172,11 @@ static bool is_dtor_start(const struct MidLexer_Token *tok)
     return tok->type == MIDLEXER_TOKENTYPE_BITWISE_NOT; // '~'
 }
 
-struct MidParser_ASTNode *
-MidParser_parse_node(const struct MidLexer_Token *toks, mid_isize start,
-                  mid_isize *out_end, struct MidParser_ASTNode *parent,
-                  struct MidSema_Scope *scope, struct MidParser_ParseNodeFlags flags,
-                  struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags)
+struct MidParser_ASTNode *MidParser_parse_node(
+    const struct MidLexer_Token *toks, mid_isize start, mid_isize *out_end,
+    struct MidParser_ASTNode *parent, struct MidSema_Scope *scope,
+    struct MidParser_ParseNodeFlags flags, struct MidParser_Allocators *allocs,
+    struct MidDiag_DiagVec *diags)
 {
     struct MidParser_ASTNode *ret;
     MidGen_bumpmalloc(&allocs->ast, &ret);
@@ -188,35 +192,36 @@ MidParser_parse_node(const struct MidLexer_Token *toks, mid_isize start,
         printf("CLASS NODE\n");
         ret->type = MIDPARSER_ASTNODETYPE_CLASS;
         end = MidParser_parse_class(&ret->class_, scope, toks, start,
-                                 flags.skip_def, allocs, diags);
+                                    flags.skip_def, allocs, diags);
     } else if (flags.is_field && is_ctor_start(toks, check_type, parent)) {
         printf("CTOR NODE\n");
         ret->type = MIDPARSER_ASTNODETYPE_FUNC_DECL;
         end = MidParser_parse_tor(&ret->func_decl, toks, start, scope,
-                               flags.skip_def, allocs, diags);
+                                  flags.skip_def, allocs, diags);
         check_semi = !ret->func_decl.has_def;
     } else if (flags.is_field && is_dtor_start(&toks[check_type])) {
         printf("DTOR NODE\n");
         ret->type = MIDPARSER_ASTNODETYPE_FUNC_DECL;
         end = MidParser_parse_tor(&ret->func_decl, toks, start, scope,
-                               flags.skip_def, allocs, diags);
+                                  flags.skip_def, allocs, diags);
         check_semi = !ret->func_decl.has_def;
     } else if (toks[check_type].type == MIDLEXER_TOKENTYPE_NAMESPACE) {
         printf("NAMESPACE NODE\n");
         check_semi = false;
         ret->type = MIDPARSER_ASTNODETYPE_NAMESPACE;
-        end = MidParser_parse_namespace(&ret->nmspace, scope, toks, start, allocs,
-                                     diags);
+        end = MidParser_parse_namespace(&ret->nmspace, scope, toks, start,
+                                        allocs, diags);
     } else if (toks[start].type == MIDLEXER_TOKENTYPE_RETURN) {
         printf("RETURN NODE\n");
         ret->type = MIDPARSER_ASTNODETYPE_RETURN;
-        end = MidParser_parse_return(&ret->ret, toks, start, scope, allocs, diags);
+        end = MidParser_parse_return(&ret->ret, toks, start, scope, allocs,
+                                     diags);
     } else if (toks[start].type == MIDLEXER_TOKENTYPE_TEMPLATE) {
         printf("TEMPLATE NODE\n");
         check_semi = false;
         ret->type = MIDPARSER_ASTNODETYPE_TMPLT;
-        end =
-            MidParser_parse_tmplt(&ret->tmplt, scope, toks, start, allocs, diags);
+        end = MidParser_parse_tmplt(&ret->tmplt, scope, toks, start, allocs,
+                                    diags);
     } else if (MidParser_valid_type_start(toks, start, scope)) {
         printf("DECL NODE\n");
         bool mvp;
@@ -226,27 +231,27 @@ MidParser_parse_node(const struct MidLexer_Token *toks, mid_isize start,
             printf("mvp = %d\n", mvp);
             ret->type = MIDPARSER_ASTNODETYPE_FUNC_DECL;
             end = MidParser_parse_func_decl(&ret->func_decl, toks, start, scope,
-                                         flags.skip_def, allocs, diags);
+                                            flags.skip_def, allocs, diags);
             check_semi = !ret->func_decl.has_def;
         } else {
             ret->type = MIDPARSER_ASTNODETYPE_VAR_DECL;
             end = MidParser_parse_var_decl(
                 &ret->var_decl, toks, start, MIDPARSER_VARDECL_ENDTYPES,
-                (struct MidParser_ParseVarDeclFlags){.add_to_scope = true,
-                                                  .skip_init = flags.skip_def},
+                (struct MidParser_ParseVarDeclFlags){
+                    .add_to_scope = true, .skip_init = flags.skip_def},
                 scope, allocs, diags);
         }
     } else {
         printf("EXPR NODE\n");
         ret->type = MIDPARSER_ASTNODETYPE_EXPR;
-        ret->expr = MidParser_parse_expr(toks, start, MIDPARSER_DEFAULT_ENDTYPES,
-                                      &end, scope, diags);
+        ret->expr = MidParser_parse_expr(
+            toks, start, MIDPARSER_DEFAULT_ENDTYPES, &end, scope, diags);
     }
 
     if (check_semi && toks[end].type != MIDLEXER_TOKENTYPE_SEMICOLON)
-        MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("';'", &toks[start],
-                                            MIDDIAG_ERR_MISSING_SEMICOLON));
+        MidGen_dynpush(
+            diags, MidDiag_expected_token_err("';'", &toks[start],
+                                              MIDDIAG_ERR_MISSING_SEMICOLON));
     else if (check_semi)
         ++end;
 

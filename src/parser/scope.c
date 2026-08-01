@@ -8,7 +8,7 @@
 #include "sema/scope.h"
 
 static struct MidDiag_Diag not_a_nmpace_err(const char *tok_name,
-                                    const struct MidLexer_Token *tok)
+                                            const struct MidLexer_Token *tok)
 {
     return (struct MidDiag_Diag){
         .pos = tok->pos,
@@ -19,8 +19,9 @@ static struct MidDiag_Diag not_a_nmpace_err(const char *tok_name,
     };
 }
 
-static const struct MidSema_Scope *unary_scope_res(mid_isize start, mid_isize *out_end,
-                                                const struct MidSema_Scope *scope)
+static const struct MidSema_Scope *
+unary_scope_res(mid_isize start, mid_isize *out_end,
+                const struct MidSema_Scope *scope)
 {
     if (out_end)
         *out_end = start + 1;
@@ -31,10 +32,10 @@ static const struct MidSema_Scope *unary_scope_res(mid_isize start, mid_isize *o
     return ret;
 }
 
-static const struct MidSema_Scope *bin_scope_res(const struct MidLexer_Token *toks,
-                                              mid_isize start, mid_isize *out_end,
-                                              const struct MidSema_Scope *scope,
-                                              struct MidDiag_DiagVec *diags)
+static const struct MidSema_Scope *
+bin_scope_res(const struct MidLexer_Token *toks, mid_isize start,
+              mid_isize *out_end, const struct MidSema_Scope *scope,
+              struct MidDiag_DiagVec *diags)
 {
     const struct MidSema_Scope *ret = MidSema_closest_rnce_scope_const(scope);
     mid_isize i;
@@ -43,9 +44,9 @@ static const struct MidSema_Scope *bin_scope_res(const struct MidLexer_Token *to
         mid_isize ident = i - 1;
 
         if (toks[ident].type != MIDLEXER_TOKENTYPE_IDENTIFIER)
-            MidGen_dynpush(diags,
-                        MidDiag_expected_token_err("identifier", &toks[ident],
-                                                MIDDIAG_ERR_MISSING_TOKEN));
+            MidGen_dynpush(
+                diags, MidDiag_expected_token_err("identifier", &toks[ident],
+                                                  MIDDIAG_ERR_MISSING_TOKEN));
         const char *name = toks[ident].ident;
 
         auto res = MidSema_resolve_scope_const(name, ret);
@@ -64,10 +65,9 @@ static const struct MidSema_Scope *bin_scope_res(const struct MidLexer_Token *to
     return ret;
 }
 
-const struct MidSema_Scope *
-MidParser_parse_scope_res_const(const struct MidLexer_Token *toks, mid_isize start,
-                             mid_isize *out_end, const struct MidSema_Scope *scope,
-                             struct MidDiag_DiagVec *diags)
+const struct MidSema_Scope *MidParser_parse_scope_res_const(
+    const struct MidLexer_Token *toks, mid_isize start, mid_isize *out_end,
+    const struct MidSema_Scope *scope, struct MidDiag_DiagVec *diags)
 {
     if (toks[start].type == MIDLEXER_TOKENTYPE_SCOPE_RES) {
         return unary_scope_res(start, out_end, scope);
@@ -79,16 +79,17 @@ MidParser_parse_scope_res_const(const struct MidLexer_Token *toks, mid_isize sta
     }
 }
 
-struct MidSema_Scope *MidParser_parse_scope_res(const struct MidLexer_Token *toks,
-                                          mid_isize start, mid_isize *out_end,
-                                          struct MidSema_Scope *scope,
-                                          struct MidDiag_DiagVec *diags)
+struct MidSema_Scope *
+MidParser_parse_scope_res(const struct MidLexer_Token *toks, mid_isize start,
+                          mid_isize *out_end, struct MidSema_Scope *scope,
+                          struct MidDiag_DiagVec *diags)
 {
     return (struct MidSema_Scope *)MidParser_parse_scope_res_const(
         toks, start, out_end, scope, diags);
 }
 
-mid_isize MidParser_skip_scope_res(const struct MidLexer_Token *toks, mid_isize start)
+mid_isize MidParser_skip_scope_res(const struct MidLexer_Token *toks,
+                                   mid_isize start)
 {
     mid_isize i =
         toks[start].type == MIDLEXER_TOKENTYPE_SCOPE_RES ? start : start + 1;

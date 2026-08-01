@@ -9,6 +9,7 @@ struct MidParser_Enum {
 };
 
 void MidParser_Enum_deinit(struct MidParser_Enum *self);
-void MidParser_copy_enum(struct MidParser_Enum *dest, const struct MidParser_Enum *src,
-                      struct MidSema_Scope *dest_scope,
-                      struct MidParser_Allocators *allocs);
+void MidParser_copy_enum(struct MidParser_Enum *dest,
+                         const struct MidParser_Enum *src,
+                         struct MidSema_Scope *dest_scope,
+                         struct MidParser_Allocators *allocs);

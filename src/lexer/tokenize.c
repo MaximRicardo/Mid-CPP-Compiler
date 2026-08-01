@@ -199,9 +199,10 @@ static struct MidDiag_Diag intlit_too_big_err(struct Mid_Position pos,
     };
 }
 
-static enum NumLitType
-sel_numlit_type_int(u64 val, int base, struct Mid_Position pos,
-                    const char *line, struct MidDiag_DiagVec *diags)
+static enum NumLitType sel_numlit_type_int(u64 val, int base,
+                                           struct Mid_Position pos,
+                                           const char *line,
+                                           struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
         if (val <= MidTypes_int_smax) {
@@ -234,9 +235,10 @@ sel_numlit_type_int(u64 val, int base, struct Mid_Position pos,
     }
 }
 
-static enum NumLitType
-sel_numlit_type_uint(u64 val, int base, struct Mid_Position pos,
-                     const char *line, struct MidDiag_DiagVec *diags)
+static enum NumLitType sel_numlit_type_uint(u64 val, int base,
+                                            struct Mid_Position pos,
+                                            const char *line,
+                                            struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
         if (val <= MidTypes_int_umax) {
@@ -263,9 +265,10 @@ sel_numlit_type_uint(u64 val, int base, struct Mid_Position pos,
     }
 }
 
-static enum NumLitType
-sel_numlit_type_long(u64 val, int base, struct Mid_Position pos,
-                     const char *line, struct MidDiag_DiagVec *diags)
+static enum NumLitType sel_numlit_type_long(u64 val, int base,
+                                            struct Mid_Position pos,
+                                            const char *line,
+                                            struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
         if (val <= MidTypes_long_smax) {
@@ -294,9 +297,10 @@ sel_numlit_type_long(u64 val, int base, struct Mid_Position pos,
     }
 }
 
-static enum NumLitType
-sel_numlit_type_ulong(u64 val, int base, struct Mid_Position pos,
-                      const char *line, struct MidDiag_DiagVec *diags)
+static enum NumLitType sel_numlit_type_ulong(u64 val, int base,
+                                             struct Mid_Position pos,
+                                             const char *line,
+                                             struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
         if (val <= MidTypes_long_umax) {
@@ -319,10 +323,10 @@ sel_numlit_type_ulong(u64 val, int base, struct Mid_Position pos,
     }
 }
 
-static enum NumLitType
-sel_numlit_type_longlong(u64 val, int base, struct Mid_Position pos,
-                         const char *line,
-                         struct MidDiag_DiagVec *diags)
+static enum NumLitType sel_numlit_type_longlong(u64 val, int base,
+                                                struct Mid_Position pos,
+                                                const char *line,
+                                                struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
         if (val <= MidTypes_longlong_smax) {
@@ -343,10 +347,10 @@ sel_numlit_type_longlong(u64 val, int base, struct Mid_Position pos,
     }
 }
 
-static enum NumLitType
-sel_numlit_type_ulonglong(u64 val, int base, struct Mid_Position pos,
-                          const char *line,
-                          struct MidDiag_DiagVec *diags)
+static enum NumLitType sel_numlit_type_ulonglong(u64 val, int base,
+                                                 struct Mid_Position pos,
+                                                 const char *line,
+                                                 struct MidDiag_DiagVec *diags)
 {
     if (base == 10) {
         if (val <= MidTypes_longlong_umax) {
@@ -473,10 +477,11 @@ static enum MidLexer_TokenType numlit_type_to_tok_type(enum NumLitType type)
 }
 
 // end - out variable and can be NULL
-static struct MidLexer_Token
-create_numlit_tok(const char *src, mid_isize start, mid_isize *out_end,
-                  struct Mid_Position pos, const char *line,
-                  struct MidDiag_DiagVec *diags)
+static struct MidLexer_Token create_numlit_tok(const char *src, mid_isize start,
+                                               mid_isize *out_end,
+                                               struct Mid_Position pos,
+                                               const char *line,
+                                               struct MidDiag_DiagVec *diags)
 {
     auto info = read_numlit(src, start, out_end, pos, line, diags);
 
@@ -520,14 +525,14 @@ enum MidLit_StringType charlit_type(const char *src, mid_isize start,
 
     default:
         MidGen_dynpush(diags,
-                    ((struct MidDiag_Diag){
-                        .pos = pos,
-                        .line = line,
-                        .msg = MidPrint_fmt_to_str(
-                            "unknown char literal prefix '%c'", src[start]),
-                        .err = MIDDIAG_ERR_BAD_LITERAL,
-                        .type = MIDDIAG_TYPE_ERROR,
-                    }));
+                       ((struct MidDiag_Diag){
+                           .pos = pos,
+                           .line = line,
+                           .msg = MidPrint_fmt_to_str(
+                               "unknown char literal prefix '%c'", src[start]),
+                           .err = MIDDIAG_ERR_BAD_LITERAL,
+                           .type = MIDDIAG_TYPE_ERROR,
+                       }));
         return MIDLIT_STRINGTYPE_CHAR;
     }
 }
@@ -608,14 +613,14 @@ bool verify_charlit_value(u32 val, enum MidLit_StringType type,
 
     if (too_big)
         MidGen_dynpush(diags,
-                    ((struct MidDiag_Diag){
-                        .pos = pos,
-                        .line = line,
-                        .msg = MidPrint_fmt_to_str(
-                            "character to big to fit in character literal"),
-                        .err = MIDDIAG_ERR_BAD_LITERAL,
-                        .type = MIDDIAG_TYPE_ERROR,
-                    }));
+                       ((struct MidDiag_Diag){
+                           .pos = pos,
+                           .line = line,
+                           .msg = MidPrint_fmt_to_str(
+                               "character to big to fit in character literal"),
+                           .err = MIDDIAG_ERR_BAD_LITERAL,
+                           .type = MIDDIAG_TYPE_ERROR,
+                       }));
 
     return !too_big;
 }
@@ -695,7 +700,8 @@ static void strlit_add(struct MidLit_String *str, mid_isize idx, u32 c)
 }
 
 struct MidLit_String read_strlit(const char *src, mid_isize lquote,
-                                 mid_isize *out_end, enum MidLit_StringType type,
+                                 mid_isize *out_end,
+                                 enum MidLit_StringType type,
                                  struct Mid_Position pos, const char *line,
                                  struct MidDiag_DiagVec *diags)
 {
@@ -717,8 +723,8 @@ struct MidLit_String read_strlit(const char *src, mid_isize lquote,
     strlit_add(&str, len, '\0');
 
     if (src[i] != '"')
-        MidGen_dynpush(diags,
-                    expected_tok_err("\"", pos, line, MIDDIAG_ERR_BAD_LITERAL));
+        MidGen_dynpush(
+            diags, expected_tok_err("\"", pos, line, MIDDIAG_ERR_BAD_LITERAL));
 
     if (out_end)
         *out_end = i + (src[i] == '"');
@@ -948,7 +954,7 @@ create_identifier_tok(char *id, struct Mid_Position pos, const char *line)
 }
 
 static mid_isize skip_to_line_end(const char *src, mid_isize start,
-                                struct Mid_Position *pos)
+                                  struct Mid_Position *pos)
 {
     mid_isize i = start;
     while (src[++i] != '\n')
@@ -962,7 +968,7 @@ static mid_isize skip_to_line_end(const char *src, mid_isize start,
 //                          ^
 //                        return
 static mid_isize skip_c_comment(const char *src, mid_isize start,
-                              struct Mid_Position *pos)
+                                struct Mid_Position *pos)
 {
     mid_isize i = start + 2;
 
@@ -1026,13 +1032,13 @@ static struct MidLexer_Tokenize read_tokens(const char *src, const char *file)
         case ':':
             if (src[i + 1] == ':') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_SCOPE_RES, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_SCOPE_RES,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
                 MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_COLON,
-                                                    pos, line_start));
+                                                       pos, line_start));
             }
             break;
 
@@ -1040,80 +1046,82 @@ static struct MidLexer_Tokenize read_tokens(const char *src, const char *file)
             if (isdigit(src[i + 1])) { // literals like .5
                 auto old_i = i;
                 MidGen_dynpush(&toks, create_numlit_tok(src, i, &i, pos,
-                                                     line_start, &diags));
+                                                        line_start, &diags));
                 --i;
                 pos.column += i - old_i;
             } else if (src[i + 1] == '*') {
-                MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_PTR_TO_MEMB_SEL,
-                                             pos, line_start));
+                MidGen_dynpush(
+                    &toks, create_basic_tok(MIDLEXER_TOKENTYPE_PTR_TO_MEMB_SEL,
+                                            pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '.' && src[i + 2] == '.') {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_ELLIPSIS,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                               create_basic_tok(MIDLEXER_TOKENTYPE_ELLIPSIS,
+                                                pos, line_start));
                 i += 2;
                 pos.column += 2;
             } else {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_MEMB_SEL,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                               create_basic_tok(MIDLEXER_TOKENTYPE_MEMB_SEL,
+                                                pos, line_start));
             }
             break;
 
         case '*':
             if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_MUL_ASSIGN, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_MUL_ASSIGN,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_MUL, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_MUL,
+                                                       pos, line_start));
             }
             break;
 
         case '/':
             if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_DIV_ASSIGN, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_DIV_ASSIGN,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_DIV, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_DIV,
+                                                       pos, line_start));
             }
             break;
 
         case '%':
             if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_MOD_ASSIGN, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_MOD_ASSIGN,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_MOD, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_MOD,
+                                                       pos, line_start));
             }
             break;
 
         case '+':
             if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_ADD_ASSIGN, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_ADD_ASSIGN,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '+') {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_INC, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_INC,
+                                                       pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_ADD, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_ADD,
+                                                       pos, line_start));
             }
             break;
 
@@ -1132,41 +1140,42 @@ static struct MidLexer_Tokenize read_tokens(const char *src, const char *file)
                 ++pos.column;
             } else if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_SUB_ASSIGN, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_SUB_ASSIGN,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '-') {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_DEC, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_DEC,
+                                                       pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_SUB, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_SUB,
+                                                       pos, line_start));
             }
             break;
 
         case '<':
             if (src[i + 1] == '<') {
                 if (src[i + 1] == '=')
-                    MidGen_dynpush(&toks, create_basic_tok(
-                                           MIDLEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN,
-                                           pos, line_start));
+                    MidGen_dynpush(
+                        &toks,
+                        create_basic_tok(MIDLEXER_TOKENTYPE_LEFT_SHIFT_ASSIGN,
+                                         pos, line_start));
                 else
-                    MidGen_dynpush(&toks,
-                                create_basic_tok(MIDLEXER_TOKENTYPE_LEFT_SHIFT,
-                                                 pos, line_start));
+                    MidGen_dynpush(
+                        &toks, create_basic_tok(MIDLEXER_TOKENTYPE_LEFT_SHIFT,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_LTEQ,
-                                                    pos, line_start));
+                                                       pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_LT, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_LT,
+                                                       pos, line_start));
             }
             break;
 
@@ -1178,109 +1187,111 @@ static struct MidLexer_Tokenize read_tokens(const char *src, const char *file)
                         create_basic_tok(MIDLEXER_TOKENTYPE_RIGHT_SHIFT_ASSIGN,
                                          pos, line_start));
                 else
-                    MidGen_dynpush(&toks,
-                                create_basic_tok(MIDLEXER_TOKENTYPE_RIGHT_SHIFT,
-                                                 pos, line_start));
+                    MidGen_dynpush(
+                        &toks, create_basic_tok(MIDLEXER_TOKENTYPE_RIGHT_SHIFT,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_GTEQ,
-                                                    pos, line_start));
+                                                       pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_GT, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_GT,
+                                                       pos, line_start));
             }
             break;
 
         case '=':
             if (src[i + 1] == '=') {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_EQ, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_EQ,
+                                                       pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_ASSIGN,
-                                                    pos, line_start));
+                MidGen_dynpush(&toks,
+                               create_basic_tok(MIDLEXER_TOKENTYPE_ASSIGN, pos,
+                                                line_start));
             }
             break;
 
         case '!':
             if (src[i + 1] == '=') {
-                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_NEQ, pos,
-                                                    line_start));
+                MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_NEQ,
+                                                       pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_LOGICAL_NOT,
-                                             pos, line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_LOGICAL_NOT,
+                                                pos, line_start));
             }
             break;
 
         case '&':
             if (src[i + 1] == '&') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_LOGICAL_AND,
-                                             pos, line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_LOGICAL_AND,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_AND_ASSIGN, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_AND_ASSIGN,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_AND,
-                                             pos, line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_AND,
+                                                pos, line_start));
             }
             break;
 
         case '^':
             if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_XOR_ASSIGN, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_XOR_ASSIGN,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_XOR,
-                                             pos, line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_XOR,
+                                                pos, line_start));
             }
             break;
 
         case '|':
             if (src[i + 1] == '|') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_LOGICAL_OR, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_LOGICAL_OR,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else if (src[i + 1] == '=') {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_OR_ASSIGN, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_OR_ASSIGN,
+                                                pos, line_start));
                 ++i;
                 ++pos.column;
             } else {
                 MidGen_dynpush(&toks,
-                            create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_OR, pos,
-                                             line_start));
+                               create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_OR,
+                                                pos, line_start));
             }
             break;
 
         case ',':
-            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_COMMA, pos,
-                                                line_start));
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_COMMA,
+                                                   pos, line_start));
             break;
 
         case '~':
-            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_NOT,
-                                                pos, line_start));
+            MidGen_dynpush(&toks,
+                           create_basic_tok(MIDLEXER_TOKENTYPE_BITWISE_NOT, pos,
+                                            line_start));
             break;
 
         case '0':
@@ -1294,41 +1305,43 @@ static struct MidLexer_Tokenize read_tokens(const char *src, const char *file)
         case '8':
         case '9': {
             auto old_i = i;
-            MidGen_dynpush(&toks,
-                        create_numlit_tok(src, i, &i, pos, line_start, &diags));
+            MidGen_dynpush(
+                &toks, create_numlit_tok(src, i, &i, pos, line_start, &diags));
             --i;
             pos.column += i - old_i;
             break;
         }
 
         case '(':
-            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_L_PAREN, pos,
-                                                line_start));
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_L_PAREN,
+                                                   pos, line_start));
             break;
         case ')':
-            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_R_PAREN, pos,
-                                                line_start));
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_R_PAREN,
+                                                   pos, line_start));
             break;
         case '[':
-            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_L_SQBRACKET,
-                                                pos, line_start));
+            MidGen_dynpush(&toks,
+                           create_basic_tok(MIDLEXER_TOKENTYPE_L_SQBRACKET, pos,
+                                            line_start));
             break;
         case ']':
-            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_R_SQBRACKET,
-                                                pos, line_start));
+            MidGen_dynpush(&toks,
+                           create_basic_tok(MIDLEXER_TOKENTYPE_R_SQBRACKET, pos,
+                                            line_start));
             break;
         case '{':
-            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_L_CURLY, pos,
-                                                line_start));
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_L_CURLY,
+                                                   pos, line_start));
             break;
         case '}':
-            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_R_CURLY, pos,
-                                                line_start));
+            MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_R_CURLY,
+                                                   pos, line_start));
             break;
 
         case ';':
             MidGen_dynpush(&toks, create_basic_tok(MIDLEXER_TOKENTYPE_SEMICOLON,
-                                                pos, line_start));
+                                                   pos, line_start));
             break;
 
         // ew
@@ -1375,7 +1388,7 @@ static struct MidLexer_Tokenize read_tokens(const char *src, const char *file)
         parse_str_lit:
             auto old_i = i;
             MidGen_dynpush(&toks, create_strlit_tok(src, &str_lits, i, &i, pos,
-                                                 line_start, &diags));
+                                                    line_start, &diags));
             --i;
             pos.column += i - old_i;
             break;
@@ -1398,7 +1411,7 @@ static struct MidLexer_Tokenize read_tokens(const char *src, const char *file)
         }
     }
     MidGen_dynpush(&toks,
-                create_basic_tok(MIDLEXER_TOKENTYPE_END, pos, line_start));
+                   create_basic_tok(MIDLEXER_TOKENTYPE_END, pos, line_start));
 
     struct MidLexer_Tokenize ret;
     ret.toks = toks;

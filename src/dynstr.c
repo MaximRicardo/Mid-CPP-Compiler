@@ -48,7 +48,8 @@ void MidDynstr_append(struct Mid_Dynstr *self, const char *src)
     self->len += strlen(src);
 }
 
-void MidDynstr_append_dyn(struct Mid_Dynstr *self, const struct Mid_Dynstr *other)
+void MidDynstr_append_dyn(struct Mid_Dynstr *self,
+                          const struct Mid_Dynstr *other)
 {
     grow_to_fit_new_str(self, other->str);
     strcat(self->str, other->str);

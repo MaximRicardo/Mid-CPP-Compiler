@@ -13,7 +13,7 @@ void MidLLVM_Scope_deinit(struct MidLLVM_Scope *self)
 
 const struct MidLLVM_Ident *
 MidLLVM_find_ident_const(const struct MidLLVM_Scope *scope, const char *name,
-                        const struct MidLLVM_Scope **out_ident_scope)
+                         const struct MidLLVM_Scope **out_ident_scope)
 {
     for (mid_isize i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
@@ -30,8 +30,8 @@ MidLLVM_find_ident_const(const struct MidLLVM_Scope *scope, const char *name,
 }
 
 struct MidLLVM_Ident *MidLLVM_find_ident(struct MidLLVM_Scope *scope,
-                                       const char *name,
-                                       struct MidLLVM_Scope **out_ident_scope)
+                                         const char *name,
+                                         struct MidLLVM_Scope **out_ident_scope)
 {
     return (struct MidLLVM_Ident *)MidLLVM_find_ident_const(
         scope, name, (const struct MidLLVM_Scope **)out_ident_scope);

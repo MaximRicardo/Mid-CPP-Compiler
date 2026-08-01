@@ -115,12 +115,14 @@ static void log_scope_res_expr(const struct MidParser_Expr *expr, FILE *out)
     if (expr->type == MIDPARSER_EXPRTYPE_IDENTIFIER) {
         fprintf(out, "%s", expr->info.ident);
     } else {
-        struct MidParser_Expr *scope = expr->type == MIDPARSER_EXPRTYPE_BIN_SCOPE_RES
-                                        ? &expr->info.args.arr[0]
-                                        : NULL;
-        struct MidParser_Expr *child = expr->type == MIDPARSER_EXPRTYPE_BIN_SCOPE_RES
-                                        ? &expr->info.args.arr[1]
-                                        : &expr->info.args.arr[0];
+        struct MidParser_Expr *scope =
+            expr->type == MIDPARSER_EXPRTYPE_BIN_SCOPE_RES
+                ? &expr->info.args.arr[0]
+                : NULL;
+        struct MidParser_Expr *child =
+            expr->type == MIDPARSER_EXPRTYPE_BIN_SCOPE_RES
+                ? &expr->info.args.arr[1]
+                : &expr->info.args.arr[0];
 
         if (scope && scope->type == MIDPARSER_EXPRTYPE_IDENTIFIER)
             fprintf(out, "%s", scope->info.ident);
@@ -230,8 +232,8 @@ static void log_tor_entry(const struct MidParser_ASTNode *node, FILE *out,
     fprintf(out, ")");
 }
 
-static void log_generic_func_entry(const struct MidParser_ASTNode *node, FILE *out,
-                                   int indent)
+static void log_generic_func_entry(const struct MidParser_ASTNode *node,
+                                   FILE *out, int indent)
 {
     char *type = MidParser_type_to_str(&node->func_decl.ret);
     log_w_indent(out, indent, "%s %s", type, node->func_decl.name);
@@ -239,7 +241,8 @@ static void log_generic_func_entry(const struct MidParser_ASTNode *node, FILE *o
     type = NULL;
 
     if (node->func_decl.is_op_overload)
-        fprintf(out, "#%s", MidParser_exprtype_name(node->func_decl.op_overload));
+        fprintf(out, "#%s",
+                MidParser_exprtype_name(node->func_decl.op_overload));
 
     fprintf(out, "(");
     log_func_params(node, out);
@@ -426,7 +429,8 @@ static void log_expr_node(const struct MidParser_ASTNode *node, FILE *out,
     fprintf(out, "\n\n");
 }
 
-void MidParser_log_node(const struct MidParser_ASTNode *node, FILE *out, int indent)
+void MidParser_log_node(const struct MidParser_ASTNode *node, FILE *out,
+                        int indent)
 {
     if (node->type == MIDPARSER_ASTNODETYPE_FUNC_DECL)
         log_func_node(node, out, indent);

@@ -51,8 +51,8 @@ static void add_nmspace_to_scope(struct MidSema_Scope *scope,
 
     if (old)
         MidGen_dynpush(diags, MidDiag_ident_redefined_err(
-                               self->name, MIDPARSER_GET_START(self),
-                               MIDDIAG_ERR_BAD_IDENTIFIER));
+                                  self->name, MIDPARSER_GET_START(self),
+                                  MIDDIAG_ERR_BAD_IDENTIFIER));
     else
         self->ident = MidSema_identptr_to_last(scope);
 }
@@ -61,15 +61,15 @@ static void add_nmspace_to_scope(struct MidSema_Scope *scope,
 //   ^              ^
 // start           ret
 static mid_isize parse_entry(struct MidParser_Namespace *self,
-                           struct MidSema_Scope *scope,
-                           const struct MidLexer_Token *toks, mid_isize start,
-                           struct MidDiag_DiagVec *diags)
+                             struct MidSema_Scope *scope,
+                             const struct MidLexer_Token *toks, mid_isize start,
+                             struct MidDiag_DiagVec *diags)
 {
     mid_isize name_idx = start + 1;
     if (toks[name_idx].type != MIDLEXER_TOKENTYPE_IDENTIFIER) {
-        MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("identifier", &toks[start],
-                                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        MidGen_dynpush(
+            diags, MidDiag_expected_token_err("identifier", &toks[start],
+                                              MIDDIAG_ERR_UNEXPECTED_TOKEN));
         return name_idx;
     }
 
@@ -79,14 +79,15 @@ static mid_isize parse_entry(struct MidParser_Namespace *self,
     return name_idx + 1;
 }
 
-static mid_isize find_rcurly(mid_isize lcurly, const struct MidLexer_Token *toks,
-                           struct MidDiag_DiagVec *diags)
+static mid_isize find_rcurly(mid_isize lcurly,
+                             const struct MidLexer_Token *toks,
+                             struct MidDiag_DiagVec *diags)
 {
     mid_isize rcurly = MidParser_find_twin_curly(toks, lcurly, MID_ISIZE_MAX);
     if (rcurly == -1)
         MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("'}'", &toks[lcurly],
-                                               MIDDIAG_ERR_MISSING_CURLY));
+                       MidDiag_expected_token_err("'}'", &toks[lcurly],
+                                                  MIDDIAG_ERR_MISSING_CURLY));
 
     return rcurly == -1 ? lcurly : rcurly;
 }
@@ -103,19 +104,20 @@ static void setup_scope(struct MidSema_Scope *parent,
 }
 
 mid_isize MidParser_parse_namespace(struct MidParser_Namespace *self,
-                                  struct MidSema_Scope *parent,
-                                  const struct MidLexer_Token *toks,
-                                  mid_isize start,
-                                  struct MidParser_Allocators *allocs,
-                                  struct MidDiag_DiagVec *diags)
+                                    struct MidSema_Scope *parent,
+                                    const struct MidLexer_Token *toks,
+                                    mid_isize start,
+                                    struct MidParser_Allocators *allocs,
+                                    struct MidDiag_DiagVec *diags)
 {
     *self = (struct MidParser_Namespace){};
     setup_scope(parent, self, allocs);
 
     mid_isize lcurly = parse_entry(self, parent, toks, start, diags);
     if (toks[lcurly].type != MIDLEXER_TOKENTYPE_L_CURLY) {
-        MidGen_dynpush(diags, MidDiag_expected_token_err(
-                               "'{'", &toks[start], MIDDIAG_ERR_MISSING_CURLY));
+        MidGen_dynpush(diags,
+                       MidDiag_expected_token_err("'{'", &toks[start],
+                                                  MIDDIAG_ERR_MISSING_CURLY));
         return lcurly;
     }
 

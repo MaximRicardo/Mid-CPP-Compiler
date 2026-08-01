@@ -4,9 +4,11 @@
 #include "ints.h"
 #include "parser/ast.h"
 
-struct MidParser_ASTNodePVec MidParser_copy_nodepvec(
-    const struct MidParser_ASTNodePVec *src, struct MidParser_ASTNode *dest_parent,
-    struct MidSema_Scope *dest_scope, struct MidParser_Allocators *allocs)
+struct MidParser_ASTNodePVec
+MidParser_copy_nodepvec(const struct MidParser_ASTNodePVec *src,
+                        struct MidParser_ASTNode *dest_parent,
+                        struct MidSema_Scope *dest_scope,
+                        struct MidParser_Allocators *allocs)
 {
     struct MidParser_ASTNodePVec ret = {};
     MidGen_dynreserve(&ret, src->len);

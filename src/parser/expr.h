@@ -44,20 +44,20 @@ struct MidParser_Expr {
     union {
         struct MidParser_ExprVec args;
         union MidLit_Value val; // NOTE: NON-OWNING! LIFETIME IS MANAGED BY
-                             //       STR_LITS TABLE
+                                //       STR_LITS TABLE
         const char *ident;
     } info;
 
     struct MidSema_Scope *res_scope; // used by scope resolutions
 
     struct MidParser_ASTNode *node; // some expressions may have nodes
-                                 // associated with them:
-                                 //
-                                 // function calls reference the func
-                                 // being called.
-                                 //
-                                 // overloaded operators reference the
-                                 // function holding the overload.
+                                    // associated with them:
+                                    //
+                                    // function calls reference the func
+                                    // being called.
+                                    //
+                                    // overloaded operators reference the
+                                    // function holding the overload.
     const struct MidLexer_Token *tok;
     struct MidParser_Type ret;
     enum MidParser_ExprType type;
@@ -70,13 +70,15 @@ struct MidParser_Expr {
 void MidParser_Expr_deinit(struct MidParser_Expr *expr);
 struct MidParser_Expr MidParser_copy_expr(const struct MidParser_Expr *expr);
 // stops when reaching end_type
-struct MidParser_Expr MidParser_parse_expr(const struct MidLexer_Token *toks,
-                                     mid_isize start,
-                                     const enum MidLexer_TokenType *end_types,
-                                     mid_isize n_end_types, mid_isize *out_end,
-                                     struct MidSema_Scope *scope,
-                                     struct MidDiag_DiagVec *diags);
+struct MidParser_Expr
+MidParser_parse_expr(const struct MidLexer_Token *toks, mid_isize start,
+                     const enum MidLexer_TokenType *end_types,
+                     mid_isize n_end_types, mid_isize *out_end,
+                     struct MidSema_Scope *scope,
+                     struct MidDiag_DiagVec *diags);
 // diags - can be NULL if you don't wanna log any errors
-mid_isize MidParser_skip_expr(const struct MidLexer_Token *toks, mid_isize start,
-                         const enum MidLexer_TokenType *end_types,
-                         mid_isize n_end_types, struct MidDiag_DiagVec *diags);
+mid_isize MidParser_skip_expr(const struct MidLexer_Token *toks,
+                              mid_isize start,
+                              const enum MidLexer_TokenType *end_types,
+                              mid_isize n_end_types,
+                              struct MidDiag_DiagVec *diags);

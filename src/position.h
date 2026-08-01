@@ -7,4 +7,5 @@ struct Mid_Position {
     i32 line, column;
 };
 
-bool Mid_position_equal(const struct Mid_Position *a, const struct Mid_Position *b);
+bool Mid_position_equal(const struct Mid_Position *a,
+                        const struct Mid_Position *b);

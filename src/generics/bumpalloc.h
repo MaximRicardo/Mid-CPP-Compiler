@@ -15,26 +15,26 @@
 #define MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE 128
 #endif
 
-#define MidGen_bumpalloc_struct_named(name, elem_type)                            \
+#define MidGen_bumpalloc_struct_named(name, elem_type)                         \
     struct name {                                                              \
         elem_type **chunks;                                                    \
-        MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE n_chunks;                              \
-        MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE n_elems;                               \
+        MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE n_chunks;                           \
+        MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE n_elems;                            \
     }
 
-#define MIDGEN_BUMPALLOC_CREATE_NEW_CHUNK(self)                                   \
+#define MIDGEN_BUMPALLOC_CREATE_NEW_CHUNK(self)                                \
     do {                                                                       \
         ++(self)->n_chunks;                                                    \
-        (self)->chunks = MIDGEN_REALLOC(                                          \
+        (self)->chunks = MIDGEN_REALLOC(                                       \
             (self)->chunks, (self)->n_chunks * sizeof(*(self)->chunks));       \
         (self)->chunks[(self)->n_chunks - 1] =                                 \
-            MIDGEN_MALLOC(MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE *                      \
-                       sizeof(*(self)->chunks[(self)->n_chunks - 1]));         \
+            MIDGEN_MALLOC(MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE *                \
+                          sizeof(*(self)->chunks[(self)->n_chunks - 1]));      \
     } while (0)
 
 #define MidGen_bumpinit() {};
 
-#define MIDGEN_BUMPDEINIT_NO_FREE(self_arg)                                       \
+#define MIDGEN_BUMPDEINIT_NO_FREE(self_arg)                                    \
     do {                                                                       \
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         for (typeof(self_super_specific_name______->n_chunks) i = 0;           \
@@ -45,7 +45,7 @@
         self_super_specific_name______->chunks = NULL;                         \
     } while (0)
 
-#define MIDGEN_BUMPDEINIT_W_FREE(self_arg, free_func)                             \
+#define MIDGEN_BUMPDEINIT_W_FREE(self_arg, free_func)                          \
     do {                                                                       \
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         for (typeof(self_super_specific_name______->n_chunks) i = 0;           \
@@ -58,7 +58,7 @@
                 for (long long j = 0;                                          \
                      j < self_super_specific_name______->n_elems -             \
                              (self_super_specific_name______->n_chunks - 1) *  \
-                                 MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;             \
+                                 MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;          \
                      ++j) {                                                    \
                     free_func(&self_super_specific_name______->chunks[i][j]);  \
                 }                                                              \
@@ -66,7 +66,7 @@
                 /* any blocks that are fully used can be fully iterated        \
                  * through                                                     \
                  */                                                            \
-                for (long long j = 0; j < MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;    \
+                for (long long j = 0; j < MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE; \
                      ++j) {                                                    \
                     free_func(&self_super_specific_name______->chunks[i][j]);  \
                 }                                                              \
@@ -79,25 +79,27 @@
 
 // void MidGen_bumpdeinit(MidGen_bumpalloc<elem_type> *self,
 //                    /* optional */ void free_func(elem_type *))
-#define MidGen_bumpdeinit(...)                                                    \
-    MIDGEN_EXPAND(MIDGEN_GET_MACRO_2(__VA_ARGS__, MIDGEN_BUMPDEINIT_W_FREE,             \
-                               MIDGEN_BUMPDEINIT_NO_FREE)(__VA_ARGS__))
+#define MidGen_bumpdeinit(...)                                                 \
+    MIDGEN_EXPAND(MIDGEN_GET_MACRO_2(__VA_ARGS__, MIDGEN_BUMPDEINIT_W_FREE,    \
+                                     MIDGEN_BUMPDEINIT_NO_FREE)(__VA_ARGS__))
 
-// void MidGen_bumpmalloc(MidGen_bumpalloc<elem_type> *self, elem_type **out_ptr)
-#define MidGen_bumpmalloc(self_arg, out_ptr)                                      \
+// void MidGen_bumpmalloc(MidGen_bumpalloc<elem_type> *self, elem_type
+// **out_ptr)
+#define MidGen_bumpmalloc(self_arg, out_ptr)                                   \
     do {                                                                       \
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         typeof(out_ptr) out_ptr_super_specific_name______ = out_ptr;           \
-        MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE chunk_off_super_specific_name______ =  \
-            self_super_specific_name______->n_elems %                          \
-            MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;                                  \
+        MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE                                     \
+            chunk_off_super_specific_name______ =                              \
+                self_super_specific_name______->n_elems %                      \
+                MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;                           \
         if (chunk_off_super_specific_name______ != 0) {                        \
             *out_ptr_super_specific_name______ =                               \
                 &self_super_specific_name______                                \
                      ->chunks[self_super_specific_name______->n_chunks - 1]    \
                              [chunk_off_super_specific_name______];            \
         } else {                                                               \
-            MIDGEN_BUMPALLOC_CREATE_NEW_CHUNK(self_super_specific_name______);    \
+            MIDGEN_BUMPALLOC_CREATE_NEW_CHUNK(self_super_specific_name______); \
             *out_ptr_super_specific_name______ =                               \
                 &self_super_specific_name______                                \
                      ->chunks[self_super_specific_name______->n_chunks - 1]    \
@@ -107,21 +109,23 @@
     } while (0)
 
 // initializes the allocated element to 0
-// void MidGen_bumpcalloc(MidGen_bumpalloc<elem_type> *self, elem_type **out_ptr)
-#define MidGen_bumpcalloc(self_arg, out_ptr)                                      \
+// void MidGen_bumpcalloc(MidGen_bumpalloc<elem_type> *self, elem_type
+// **out_ptr)
+#define MidGen_bumpcalloc(self_arg, out_ptr)                                   \
     do {                                                                       \
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         typeof(out_ptr) out_ptr_super_specific_name______ = out_ptr;           \
-        MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE chunk_off_super_specific_name______ =  \
-            self_super_specific_name______->n_elems %                          \
-            MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;                                  \
+        MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE                                     \
+            chunk_off_super_specific_name______ =                              \
+                self_super_specific_name______->n_elems %                      \
+                MIDGEN_BUMPALLOC_DEFAULT_CHUNK_SIZE;                           \
         if (chunk_off_super_specific_name______ != 0) {                        \
             *out_ptr_super_specific_name______ =                               \
                 &self_super_specific_name______                                \
                      ->chunks[self_super_specific_name______->n_chunks - 1]    \
                              [chunk_off_super_specific_name______];            \
         } else {                                                               \
-            MIDGEN_BUMPALLOC_CREATE_NEW_CHUNK(self_super_specific_name______);    \
+            MIDGEN_BUMPALLOC_CREATE_NEW_CHUNK(self_super_specific_name______); \
             *out_ptr_super_specific_name______ =                               \
                 &self_super_specific_name______                                \
                      ->chunks[self_super_specific_name______->n_chunks - 1]    \

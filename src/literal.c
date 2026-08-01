@@ -79,7 +79,8 @@ mid_isize MidLit_strlit_len(const struct MidLit_String *strlit)
     }
 }
 
-void MidLit_fprint(FILE *out, union MidLit_Value val, enum MidParser_ExprType type)
+void MidLit_fprint(FILE *out, union MidLit_Value val,
+                   enum MidParser_ExprType type)
 {
     switch (type) {
     case MIDPARSER_EXPRTYPE_CHAR_LIT:
@@ -155,7 +156,7 @@ void MidLit_fprint(FILE *out, union MidLit_Value val, enum MidParser_ExprType ty
 }
 
 void MidLit_fprint_toktype(FILE *out, union MidLit_Value val,
-                        enum MidLexer_TokenType type)
+                           enum MidLexer_TokenType type)
 {
     switch (type) {
     case MIDLEXER_TOKENTYPE_CHAR_LIT:
@@ -332,7 +333,8 @@ static bool is_octal_digit(char c)
     return c >= '0' && c <= '7';
 }
 
-static u64 read_intlit_octal(const char *str, mid_isize start, mid_isize *out_end)
+static u64 read_intlit_octal(const char *str, mid_isize start,
+                             mid_isize *out_end)
 {
     u64 ret = 0;
 
@@ -347,7 +349,8 @@ static u64 read_intlit_octal(const char *str, mid_isize start, mid_isize *out_en
     return ret;
 }
 
-static u64 read_intlit_decimal(const char *str, mid_isize start, mid_isize *out_end)
+static u64 read_intlit_decimal(const char *str, mid_isize start,
+                               mid_isize *out_end)
 {
     u64 ret = 0;
 
@@ -362,8 +365,8 @@ static u64 read_intlit_decimal(const char *str, mid_isize start, mid_isize *out_
     return ret;
 }
 
-struct MidLit_ReadIntLitInfo MidLit_read_intlit(const char *str, mid_isize start,
-                                          mid_isize *out_end)
+struct MidLit_ReadIntLitInfo
+MidLit_read_intlit(const char *str, mid_isize start, mid_isize *out_end)
 {
     assert(isdigit(str[start]));
 

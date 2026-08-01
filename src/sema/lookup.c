@@ -16,7 +16,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void add_scope(struct MidSema_ScopePVec *scopes, struct MidSema_Scope *scope)
+static void add_scope(struct MidSema_ScopePVec *scopes,
+                      struct MidSema_Scope *scope)
 {
     for (mid_isize i = 0; i < scopes->len; ++i) {
         if (scopes->arr[i] == scope)
@@ -51,7 +52,8 @@ static void add_super_classes(const struct MidParser_Class *self,
         auto super = self->supers.arr[i];
         assert(super);
 
-        auto scope = MidSema_deref_identptr(&super->ident)->class_info.def_scope;
+        auto scope =
+            MidSema_deref_identptr(&super->ident)->class_info.def_scope;
         if (scope) {
             add_scope(scopes, scope);
             add_nmspace_scope(scope, scopes);
@@ -79,8 +81,8 @@ static void get_assoc_scopes_class(const struct MidParser_Expr *arg,
     add_super_classes(class_, scopes);
 }
 
-static void get_assoc_scopes(const struct MidParser_Expr *args, mid_isize n_args,
-                             struct MidSema_ScopePVec *scopes)
+static void get_assoc_scopes(const struct MidParser_Expr *args,
+                             mid_isize n_args, struct MidSema_ScopePVec *scopes)
 {
     for (mid_isize i = 0; i < n_args; ++i) {
         if (args[i].ret.spec == MIDPARSER_TYPESPEC_CLASS ||
@@ -141,10 +143,9 @@ static void find_op_overloads_in_scope(enum MidParser_ExprType op,
     }
 }
 
-struct MidParser_FuncDeclPVec
-MidSema_find_candidate_funcs(const char *name, const struct MidParser_Expr *args,
-                          mid_isize n_args, struct MidSema_Scope *scope,
-                          bool is_qualified)
+struct MidParser_FuncDeclPVec MidSema_find_candidate_funcs(
+    const char *name, const struct MidParser_Expr *args, mid_isize n_args,
+    struct MidSema_Scope *scope, bool is_qualified)
 {
     struct MidSema_ScopePVec scopes = {};
     if (is_qualified) {
@@ -163,9 +164,10 @@ MidSema_find_candidate_funcs(const char *name, const struct MidParser_Expr *args
 }
 
 struct MidParser_FuncDecl *MidSema_find_func(const char *name,
-                                       const struct MidParser_Expr *args,
-                                       mid_isize n_args, struct MidSema_Scope *scope,
-                                       bool is_qualified)
+                                             const struct MidParser_Expr *args,
+                                             mid_isize n_args,
+                                             struct MidSema_Scope *scope,
+                                             bool is_qualified)
 {
     auto funcs =
         MidSema_find_candidate_funcs(name, args, n_args, scope, is_qualified);
@@ -178,8 +180,8 @@ struct MidParser_FuncDecl *MidSema_find_func(const char *name,
     return ret;
 }
 
-struct MidParser_FuncDeclPVec MidSema_find_candidate_methods(const char *name,
-                                                       struct MidSema_Scope *scope)
+struct MidParser_FuncDeclPVec
+MidSema_find_candidate_methods(const char *name, struct MidSema_Scope *scope)
 {
     assert(scope->type == MIDSEMA_SCOPETYPE_CLASS);
 
@@ -191,8 +193,8 @@ struct MidParser_FuncDeclPVec MidSema_find_candidate_methods(const char *name,
 
 struct MidParser_FuncDecl *
 MidSema_find_method(const char *name, const struct MidParser_Expr *args,
-                 mid_isize n_args, struct MidSema_Scope *scope,
-                 const struct MidParser_TypeDataQual *this_quals)
+                    mid_isize n_args, struct MidSema_Scope *scope,
+                    const struct MidParser_TypeDataQual *this_quals)
 {
     assert(this_quals);
     assert(scope->type == MIDSEMA_SCOPETYPE_CLASS);
@@ -207,10 +209,10 @@ MidSema_find_method(const char *name, const struct MidParser_Expr *args,
     return ret;
 }
 
-struct MidParser_FuncDecl *MidSema_find_op_overload(enum MidParser_ExprType op,
-                                              const struct MidParser_Expr *args,
-                                              mid_isize n_args,
-                                              struct MidSema_Scope *scope)
+struct MidParser_FuncDecl *
+MidSema_find_op_overload(enum MidParser_ExprType op,
+                         const struct MidParser_Expr *args, mid_isize n_args,
+                         struct MidSema_Scope *scope)
 {
     struct MidSema_ScopePVec scopes = {};
     add_nmspace_scope(scope, &scopes);
@@ -230,7 +232,8 @@ struct MidParser_FuncDecl *MidSema_find_op_overload(enum MidParser_ExprType op,
     return ret;
 }
 
-static bool param_has_default(const struct MidParser_FuncDecl *func, mid_isize param)
+static bool param_has_default(const struct MidParser_FuncDecl *func,
+                              mid_isize param)
 {
     return MidParser_func_ident(func)->func_info.default_args[param] != NULL;
 }
@@ -276,8 +279,8 @@ static bool func_params_viable(mid_isize n_args, bool implicit_this,
 }
 
 bool MidSema_is_func_viable(const struct MidParser_Expr *args, mid_isize n_args,
-                         const struct MidParser_FuncDecl *func,
-                         const struct MidParser_TypeDataQual *this_quals)
+                            const struct MidParser_FuncDecl *func,
+                            const struct MidParser_TypeDataQual *this_quals)
 {
     bool implicit_this = this_quals;
 
@@ -304,7 +307,7 @@ bool MidSema_is_func_viable(const struct MidParser_Expr *args, mid_isize n_args,
                 ? i + 1
                 : i;
         if (!MidSema_can_convert(&args[j].ret, args[j].valtype,
-                              &func->params.arr[i]->insts.arr[0]->type))
+                                 &func->params.arr[i]->insts.arr[0]->type))
             return false;
     }
 
@@ -313,8 +316,8 @@ bool MidSema_is_func_viable(const struct MidParser_Expr *args, mid_isize n_args,
 
 struct MidParser_FuncDeclPVec
 MidSema_viable_funcs(const struct MidParser_Expr *args, mid_isize n_args,
-                  const struct MidParser_FuncDeclPVec *funcs,
-                  const struct MidParser_TypeDataQual *this_quals)
+                     const struct MidParser_FuncDeclPVec *funcs,
+                     const struct MidParser_TypeDataQual *this_quals)
 {
     struct MidParser_FuncDeclPVec ret = {};
 
@@ -372,16 +375,15 @@ static int compare_viable_funcs(const void *a_raw, const void *b_raw,
 
 struct MidParser_FuncDecl *
 MidSema_best_viable_func(const struct MidParser_Expr *args, mid_isize n_args,
-                      const struct MidParser_FuncDeclPVec *funcs,
-                      const struct MidParser_TypeDataQual *this_quals)
+                         const struct MidParser_FuncDeclPVec *funcs,
+                         const struct MidParser_TypeDataQual *this_quals)
 {
     auto viable = MidSema_viable_funcs(args, n_args, funcs, this_quals);
     if (viable.len == 0)
         return NULL;
 
-    Mid_qsort(viable.arr, viable.len, sizeof(*viable.arr),
-                 compare_viable_funcs,
-                 &(struct CmpViableFuncsInfo){.args = args, .n_args = n_args});
+    Mid_qsort(viable.arr, viable.len, sizeof(*viable.arr), compare_viable_funcs,
+              &(struct CmpViableFuncsInfo){.args = args, .n_args = n_args});
 
     auto ret = viable.arr[0];
     MidGen_dyndeinit(&viable);

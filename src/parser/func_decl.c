@@ -123,8 +123,8 @@ struct MidParser_VarDeclPVec MidParser_parse_func_params(
 
     if (rparen == -1) {
         MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("')'", &toks[lparen],
-                                               MIDDIAG_ERR_MISSING_PAREN));
+                       MidDiag_expected_token_err("')'", &toks[lparen],
+                                                  MIDDIAG_ERR_MISSING_PAREN));
         return params;
     }
 
@@ -137,8 +137,8 @@ struct MidParser_VarDeclPVec MidParser_parse_func_params(
                 *out_variadic = true;
             if (i + 1 < rparen)
                 MidGen_dynpush(diags, MidDiag_expected_token_err(
-                                       "')'", &toks[lparen],
-                                       MIDDIAG_ERR_MISSING_PAREN));
+                                          "')'", &toks[lparen],
+                                          MIDDIAG_ERR_MISSING_PAREN));
             break;
         } else {
             struct MidParser_ASTNode *child;
@@ -198,16 +198,17 @@ static void set_quals_flag(const struct MidLexer_Token *tok,
         break;
 
     default:
-        MidGen_dynpush(diags, MidDiag_expected_token_err(
-                               "qualifier", tok, MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        MidGen_dynpush(
+            diags, MidDiag_expected_token_err("qualifier", tok,
+                                              MIDDIAG_ERR_UNEXPECTED_TOKEN));
         break;
     }
 }
 
 mid_isize MidParser_parse_func_quals(const struct MidLexer_Token *toks,
-                                   mid_isize start,
-                                   struct MidParser_FuncQuals *quals,
-                                   struct MidDiag_DiagVec *diags)
+                                     mid_isize start,
+                                     struct MidParser_FuncQuals *quals,
+                                     struct MidDiag_DiagVec *diags)
 {
     *quals = (struct MidParser_FuncQuals){};
 
@@ -225,9 +226,9 @@ mid_isize MidParser_parse_func_quals(const struct MidLexer_Token *toks,
     else if (toks[i].type == MIDLEXER_TOKENTYPE_DEFAULT)
         quals->is_default = true;
     else
-        MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("qualifier", &toks[i],
-                                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
+        MidGen_dynpush(
+            diags, MidDiag_expected_token_err("qualifier", &toks[i],
+                                              MIDDIAG_ERR_UNEXPECTED_TOKEN));
     return i + 1;
 }
 
@@ -254,8 +255,8 @@ static void add_func_def(struct MidParser_FuncDecl *func,
     auto ident = MidParser_func_ident(func);
     if (ident->def)
         MidGen_dynpush(diags,
-                    MidDiag_ident_redefined_err(func->name, func->def_start,
-                                                MIDDIAG_ERR_BAD_IDENTIFIER));
+                       MidDiag_ident_redefined_err(func->name, func->def_start,
+                                                   MIDDIAG_ERR_BAD_IDENTIFIER));
     ident->def = MIDPARSER_GET_NODE(func);
 }
 
@@ -278,8 +279,8 @@ setup_def_scope(struct MidParser_FuncDecl *self,
     auto def = &MidParser_func_ident(self)->func_info.def_scope;
     if (*def) {
         MidGen_dynpush(diags, MidDiag_ident_redefined_err(
-                               self->name, MIDPARSER_GET_START(self),
-                               MIDDIAG_ERR_BAD_IDENTIFIER));
+                                  self->name, MIDPARSER_GET_START(self),
+                                  MIDDIAG_ERR_BAD_IDENTIFIER));
     }
 
     *def = create_scope(MidParser_func_parent(self), MIDPARSER_GET_NODE(self),
@@ -291,18 +292,18 @@ setup_def_scope(struct MidParser_FuncDecl *self,
 }
 
 mid_isize MidParser_parse_func_body(struct MidParser_FuncDecl *self,
-                                  const struct MidLexer_Token *toks,
-                                  mid_isize lcurly,
-                                  struct MidParser_Allocators *allocs,
-                                  struct MidDiag_DiagVec *diags)
+                                    const struct MidLexer_Token *toks,
+                                    mid_isize lcurly,
+                                    struct MidParser_Allocators *allocs,
+                                    struct MidDiag_DiagVec *diags)
 {
     add_func_def(self, diags);
 
     mid_isize rcurly = MidParser_find_twin_curly(toks, lcurly, MID_ISIZE_MAX);
     if (rcurly == -1) {
         MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("'}'", &toks[lcurly],
-                                               MIDDIAG_ERR_MISSING_CURLY));
+                       MidDiag_expected_token_err("'}'", &toks[lcurly],
+                                                  MIDDIAG_ERR_MISSING_CURLY));
         return lcurly + 1;
     }
 
@@ -468,8 +469,8 @@ parse_operator_overload(const struct MidLexer_Token *toks, mid_isize op,
 
             if (toks[op + 2].type != MIDLEXER_TOKENTYPE_R_SQBRACKET)
                 MidGen_dynpush(diags, MidDiag_expected_token_err(
-                                       "]", &toks[op + 1],
-                                       MIDDIAG_ERR_BAD_OP_OVERLOAD));
+                                          "]", &toks[op + 1],
+                                          MIDDIAG_ERR_BAD_OP_OVERLOAD));
             else if (out_end)
                 ++*out_end;
             return MIDPARSER_EXPRTYPE_NEW_ARR;
@@ -484,8 +485,8 @@ parse_operator_overload(const struct MidLexer_Token *toks, mid_isize op,
 
             if (toks[op + 2].type != MIDLEXER_TOKENTYPE_R_SQBRACKET)
                 MidGen_dynpush(diags, MidDiag_expected_token_err(
-                                       "]", &toks[op + 1],
-                                       MIDDIAG_ERR_BAD_OP_OVERLOAD));
+                                          "]", &toks[op + 1],
+                                          MIDDIAG_ERR_BAD_OP_OVERLOAD));
             else if (out_end)
                 ++*out_end;
             return MIDPARSER_EXPRTYPE_DELETE_ARR;
@@ -495,12 +496,12 @@ parse_operator_overload(const struct MidLexer_Token *toks, mid_isize op,
 
     default:
         MidGen_dynpush(diags, ((struct MidDiag_Diag){
-                               .pos = toks[op].pos,
-                               .line = toks[op].line,
-                               .msg = strdup("can't overload operator"),
-                               .err = MIDDIAG_ERR_BAD_OP_OVERLOAD,
-                               .type = MIDDIAG_TYPE_ERROR,
-                           }));
+                                  .pos = toks[op].pos,
+                                  .line = toks[op].line,
+                                  .msg = strdup("can't overload operator"),
+                                  .err = MIDDIAG_ERR_BAD_OP_OVERLOAD,
+                                  .type = MIDDIAG_TYPE_ERROR,
+                              }));
         if (out_end)
             --*out_end;
         // just default to add for now
@@ -509,11 +510,12 @@ parse_operator_overload(const struct MidLexer_Token *toks, mid_isize op,
 }
 
 static mid_isize parse_func_type(struct MidParser_FuncDecl *self,
-                               const struct MidLexer_Token *toks, mid_isize start,
-                               struct MidSema_Scope *parent_scope,
-                               struct MidSema_Scope **out_res,
-                               struct MidParser_Allocators *allocs,
-                               struct MidDiag_DiagVec *diags)
+                                 const struct MidLexer_Token *toks,
+                                 mid_isize start,
+                                 struct MidSema_Scope *parent_scope,
+                                 struct MidSema_Scope **out_res,
+                                 struct MidParser_Allocators *allocs,
+                                 struct MidDiag_DiagVec *diags)
 {
     mid_isize type_end;
     mid_isize name;
@@ -532,8 +534,8 @@ static mid_isize parse_func_type(struct MidParser_FuncDecl *self,
 
     if (!self->name) {
         MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("identifier", &toks[start],
-                                               MIDDIAG_ERR_MISSING_TOKEN));
+                       MidDiag_expected_token_err("identifier", &toks[start],
+                                                  MIDDIAG_ERR_MISSING_TOKEN));
         self->name = "INVALID-FUNC-NAME";
     } else if (!strcmp(self->name, "operator")) {
         self->is_op_overload = true;
@@ -566,10 +568,11 @@ static struct MidParser_Class *find_tor_class(struct MidSema_Scope *scope,
 }
 
 static mid_isize parse_tor_type(struct MidParser_FuncDecl *self,
-                              const struct MidLexer_Token *toks, mid_isize start,
-                              struct MidParser_Class **out_class,
-                              struct MidSema_Scope *parent_scope,
-                              struct MidDiag_DiagVec *diags)
+                                const struct MidLexer_Token *toks,
+                                mid_isize start,
+                                struct MidParser_Class **out_class,
+                                struct MidSema_Scope *parent_scope,
+                                struct MidDiag_DiagVec *diags)
 {
     mid_isize name_idx;
     auto res =
@@ -683,8 +686,8 @@ static void register_default_args(struct MidParser_FuncDecl *decl,
 
         if (default_arg) {
             MidGen_dynpush(diags, MidDiag_ident_redefined_err(
-                                   param->name, node->start,
-                                   MIDDIAG_ERR_BAD_DEFAULT_ARGUMENT));
+                                      param->name, node->start,
+                                      MIDDIAG_ERR_BAD_DEFAULT_ARGUMENT));
             continue;
         }
 
@@ -693,10 +696,10 @@ static void register_default_args(struct MidParser_FuncDecl *decl,
 
     mid_isize bad;
     if (missing_default_args(*default_args, decl->params.len, &bad))
-        MidGen_dynpush(diags,
-                    missing_default_arg_err(
-                        decl->name, MIDPARSER_GET_START(decl->params.arr[bad]),
-                        MIDDIAG_ERR_BAD_DEFAULT_ARGUMENT));
+        MidGen_dynpush(diags, missing_default_arg_err(
+                                  decl->name,
+                                  MIDPARSER_GET_START(decl->params.arr[bad]),
+                                  MIDDIAG_ERR_BAD_DEFAULT_ARGUMENT));
 }
 
 mid_isize MidParser_parse_func_decl(
@@ -734,7 +737,8 @@ mid_isize MidParser_parse_func_decl(
     self->has_def = true;
 
     if (skip_def) {
-        mid_isize rcurly = MidParser_find_twin_curly(toks, lcurly, MID_ISIZE_MAX);
+        mid_isize rcurly =
+            MidParser_find_twin_curly(toks, lcurly, MID_ISIZE_MAX);
         return rcurly == -1 ? lcurly + 1 : rcurly + 1;
     } else {
         mid_isize rcurly =
@@ -744,10 +748,11 @@ mid_isize MidParser_parse_func_decl(
 }
 
 mid_isize MidParser_parse_tor(struct MidParser_FuncDecl *self,
-                            const struct MidLexer_Token *toks, mid_isize start,
-                            struct MidSema_Scope *parent_scope, bool skip_def,
-                            struct MidParser_Allocators *allocs,
-                            struct MidDiag_DiagVec *diags)
+                              const struct MidLexer_Token *toks,
+                              mid_isize start,
+                              struct MidSema_Scope *parent_scope, bool skip_def,
+                              struct MidParser_Allocators *allocs,
+                              struct MidDiag_DiagVec *diags)
 {
     *self = (struct MidParser_FuncDecl){.ident_idx = -1, .is_tor = true};
 
@@ -776,7 +781,8 @@ mid_isize MidParser_parse_tor(struct MidParser_FuncDecl *self,
     self->has_def = true;
 
     if (skip_def) {
-        mid_isize rcurly = MidParser_find_twin_curly(toks, lcurly, MID_ISIZE_MAX);
+        mid_isize rcurly =
+            MidParser_find_twin_curly(toks, lcurly, MID_ISIZE_MAX);
         return rcurly == -1 ? lcurly + 1 : rcurly + 1;
     } else {
         mid_isize rcurly =

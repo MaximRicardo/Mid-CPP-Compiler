@@ -53,12 +53,13 @@ static bool is_ambig_param(const struct MidLexer_Token *toks, mid_isize start,
     return ret;
 }
 
-static bool are_params_ambig(const struct MidLexer_Token *toks, mid_isize lparen,
-                             struct MidSema_Scope *scope,
+static bool are_params_ambig(const struct MidLexer_Token *toks,
+                             mid_isize lparen, struct MidSema_Scope *scope,
                              struct MidParser_Allocators *allocs,
                              struct MidDiag_DiagVec *diags)
 {
-    for (mid_isize i = lparen + 1; toks[i].type != MIDLEXER_TOKENTYPE_END; ++i) {
+    for (mid_isize i = lparen + 1; toks[i].type != MIDLEXER_TOKENTYPE_END;
+         ++i) {
         if (toks[i].type == MIDLEXER_TOKENTYPE_ELLIPSIS)
             return false;
         else if (!is_ambig_param(toks, i, &i, scope, allocs, diags))
@@ -77,7 +78,7 @@ static bool are_params_ambig(const struct MidLexer_Token *toks, mid_isize lparen
 //              ^
 //            start
 static mid_isize skip_operator_overload(const struct MidLexer_Token *toks,
-                                      mid_isize start)
+                                        mid_isize start)
 {
     if (toks[start].type == MIDLEXER_TOKENTYPE_L_SQBRACKET)
         return MidParser_find_twin_sqbracket(toks, start, MID_ISIZE_MAX) + 1;

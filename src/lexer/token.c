@@ -39,7 +39,8 @@ bool MidLexer_is_unaryop(enum MidLexer_TokenType type)
 bool MidLexer_can_be_unary(enum MidLexer_TokenType type)
 {
     return type == MIDLEXER_TOKENTYPE_ADD || type == MIDLEXER_TOKENTYPE_SUB ||
-           type == MIDLEXER_TOKENTYPE_MUL || type == MIDLEXER_TOKENTYPE_BITWISE_AND;
+           type == MIDLEXER_TOKENTYPE_MUL ||
+           type == MIDLEXER_TOKENTYPE_BITWISE_AND;
 }
 
 bool MidLexer_is_op(enum MidLexer_TokenType type)
@@ -55,7 +56,8 @@ bool MidLexer_is_typespec(enum MidLexer_TokenType type)
 
 bool MidLexer_is_named_typespec(enum MidLexer_TokenType type)
 {
-    return type == MIDLEXER_TOKENTYPE_STRUCT || type == MIDLEXER_TOKENTYPE_CLASS ||
+    return type == MIDLEXER_TOKENTYPE_STRUCT ||
+           type == MIDLEXER_TOKENTYPE_CLASS ||
            type == MIDLEXER_TOKENTYPE_UNION || type == MIDLEXER_TOKENTYPE_ENUM;
 }
 

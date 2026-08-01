@@ -20,11 +20,11 @@
 #include <string.h>
 
 static mid_isize parse_tmplt_impl(struct MidParser_Tmplt *self,
-                                struct MidSema_Scope *parent_scope,
-                                const struct MidLexer_Token *toks,
-                                mid_isize start,
-                                struct MidParser_Allocators *allocs,
-                                bool is_param, struct MidDiag_DiagVec *diags);
+                                  struct MidSema_Scope *parent_scope,
+                                  const struct MidLexer_Token *toks,
+                                  mid_isize start,
+                                  struct MidParser_Allocators *allocs,
+                                  bool is_param, struct MidDiag_DiagVec *diags);
 
 struct MidParser_TmpltArg
 MidParser_copy_tmplt_arg(struct MidParser_TmpltArg *src)
@@ -194,7 +194,8 @@ tmplt_param_ident(const struct MidParser_TmpltParam *param)
     return &scope->idents.arr[idx];
 }
 
-static void set_ident_idx(struct MidParser_TmpltParam *param, mid_isize ident_idx)
+static void set_ident_idx(struct MidParser_TmpltParam *param,
+                          mid_isize ident_idx)
 {
     switch (param->kind) {
     case MIDPARSER_TMPLTPARAM_NONTYPE:
@@ -434,8 +435,9 @@ void parse_tmplt_param(struct MidParser_TmpltParam *self,
 
 static struct MidParser_TmpltParamPVec parse_tmplt_param_list(
     struct MidParser_ASTNode *parent, struct MidSema_Scope *scope,
-    const struct MidLexer_Token *toks, mid_isize l_angle, mid_isize *out_r_angle,
-    struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags)
+    const struct MidLexer_Token *toks, mid_isize l_angle,
+    mid_isize *out_r_angle, struct MidParser_Allocators *allocs,
+    struct MidDiag_DiagVec *diags)
 {
     struct MidParser_TmpltParamPVec params = {};
 
@@ -444,8 +446,9 @@ static struct MidParser_TmpltParamPVec parse_tmplt_param_list(
         *out_r_angle = r_angle == -1 ? l_angle : r_angle;
 
     if (r_angle == -1) {
-        MidGen_dynpush(diags, MidDiag_expected_token_err(
-                               ">", &toks[l_angle], MIDDIAG_ERR_MISSING_ANGLE));
+        MidGen_dynpush(diags,
+                       MidDiag_expected_token_err(">", &toks[l_angle],
+                                                  MIDDIAG_ERR_MISSING_ANGLE));
         return params;
     }
 
@@ -479,11 +482,11 @@ static struct MidSema_Scope *create_scope(struct MidSema_Scope *parent,
 // is_param     - is the template a template template parameter? if so the
 //                function stops after the type parameter key
 static mid_isize parse_tmplt_impl(struct MidParser_Tmplt *self,
-                                struct MidSema_Scope *parent_scope,
-                                const struct MidLexer_Token *toks,
-                                mid_isize start,
-                                struct MidParser_Allocators *allocs,
-                                bool is_param, struct MidDiag_DiagVec *diags)
+                                  struct MidSema_Scope *parent_scope,
+                                  const struct MidLexer_Token *toks,
+                                  mid_isize start,
+                                  struct MidParser_Allocators *allocs,
+                                  bool is_param, struct MidDiag_DiagVec *diags)
 {
     assert(toks[start].type == MIDLEXER_TOKENTYPE_TEMPLATE);
 
@@ -491,8 +494,9 @@ static mid_isize parse_tmplt_impl(struct MidParser_Tmplt *self,
 
     mid_isize l_angle = start + 1;
     if (toks[l_angle].type != MIDLEXER_TTALIAS_L_ANGLE) {
-        MidGen_dynpush(diags, MidDiag_expected_token_err(
-                               "<", &toks[start], MIDDIAG_ERR_MISSING_ANGLE));
+        MidGen_dynpush(diags,
+                       MidDiag_expected_token_err("<", &toks[start],
+                                                  MIDDIAG_ERR_MISSING_ANGLE));
         return start;
     }
 
@@ -505,9 +509,9 @@ static mid_isize parse_tmplt_impl(struct MidParser_Tmplt *self,
 
     if (is_param) {
         if (toks[r_angle + 1].type != MIDLEXER_TOKENTYPE_CLASS) {
-            MidGen_dynpush(diags,
-                        MidDiag_expected_token_err("class", &toks[r_angle + 1],
-                                                   MIDDIAG_ERR_MISSING_TOKEN));
+            MidGen_dynpush(
+                diags, MidDiag_expected_token_err("class", &toks[r_angle + 1],
+                                                  MIDDIAG_ERR_MISSING_TOKEN));
             return r_angle + 1;
         } else {
             return r_angle + 2;
@@ -534,10 +538,11 @@ static void check_child_valid(const struct MidParser_Tmplt *tmplt,
 }
 
 mid_isize MidParser_parse_tmplt(struct MidParser_Tmplt *self,
-                              struct MidSema_Scope *parent_scope,
-                              const struct MidLexer_Token *toks, mid_isize start,
-                              struct MidParser_Allocators *allocs,
-                              struct MidDiag_DiagVec *diags)
+                                struct MidSema_Scope *parent_scope,
+                                const struct MidLexer_Token *toks,
+                                mid_isize start,
+                                struct MidParser_Allocators *allocs,
+                                struct MidDiag_DiagVec *diags)
 {
     mid_isize child_start =
         parse_tmplt_impl(self, parent_scope, toks, start, allocs, false, diags);
@@ -619,8 +624,8 @@ MidParser_parse_tmplt_args(const struct MidLexer_Token *toks, mid_isize l_angle,
 
     if (toks[l_angle].type != MIDLEXER_TTALIAS_L_ANGLE) {
         MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("'<'", &toks[l_angle],
-                                               MIDDIAG_ERR_MISSING_ANGLE));
+                       MidDiag_expected_token_err("'<'", &toks[l_angle],
+                                                  MIDDIAG_ERR_MISSING_ANGLE));
         if (out_r_angle)
             *out_r_angle = l_angle;
         return args;
@@ -629,8 +634,8 @@ MidParser_parse_tmplt_args(const struct MidLexer_Token *toks, mid_isize l_angle,
     mid_isize r_angle = MidParser_find_twin_angle(toks, l_angle, MID_ISIZE_MAX);
     if (r_angle == -1) {
         MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("'<'", &toks[l_angle],
-                                               MIDDIAG_ERR_MISSING_ANGLE));
+                       MidDiag_expected_token_err("'<'", &toks[l_angle],
+                                                  MIDDIAG_ERR_MISSING_ANGLE));
         if (out_r_angle)
             *out_r_angle = l_angle;
         return args;
@@ -642,8 +647,9 @@ MidParser_parse_tmplt_args(const struct MidLexer_Token *toks, mid_isize l_angle,
     for (mid_isize i = l_angle + 1; i < r_angle; ++i) {
         auto arg = parse_tmplt_arg(toks, i, &i, scope, allocs, diags);
         if (i < r_angle && toks[i].type != MIDLEXER_TOKENTYPE_COMMA)
-            MidGen_dynpush(diags, MidDiag_expected_token_err(
-                                   "','", &toks[i], MIDDIAG_ERR_MISSING_COMMA));
+            MidGen_dynpush(
+                diags, MidDiag_expected_token_err("','", &toks[i],
+                                                  MIDDIAG_ERR_MISSING_COMMA));
 
         MidGen_dynpush(&args, arg);
     }
@@ -652,7 +658,7 @@ MidParser_parse_tmplt_args(const struct MidLexer_Token *toks, mid_isize l_angle,
 }
 
 mid_isize MidParser_tmplt_param_idx(const struct MidParser_Tmplt *tmplt,
-                                  const char *name)
+                                    const char *name)
 {
     for (mid_isize i = 0; i < tmplt->params.len; ++i) {
         const char *p_name = tmplt_param_name(tmplt->params.arr[i]);

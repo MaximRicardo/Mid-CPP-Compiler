@@ -44,13 +44,15 @@ bool MidSema_node_creates_type_name(const struct MidParser_ASTNode *node)
     }
 }
 
-static struct MidParser_Type class_node_type(const struct MidParser_ASTNode *node)
+static struct MidParser_Type
+class_node_type(const struct MidParser_ASTNode *node)
 {
     auto class_ = &node->class_;
 
     struct MidParser_Type ret = {};
-    ret.spec = class_->type == MIDPARSER_CLASSTYPE_UNION ? MIDPARSER_TYPESPEC_UNION
-                                                      : MIDPARSER_TYPESPEC_CLASS;
+    ret.spec = class_->type == MIDPARSER_CLASSTYPE_UNION
+                   ? MIDPARSER_TYPESPEC_UNION
+                   : MIDPARSER_TYPESPEC_CLASS;
     ret.named = class_->ident;
     MidGen_dynpush(&ret.dquals, (struct MidParser_TypeDataQual){});
 
@@ -58,7 +60,7 @@ static struct MidParser_Type class_node_type(const struct MidParser_ASTNode *nod
 }
 
 struct MidParser_Type MidSema_node_type(const struct MidParser_ASTNode *node,
-                                  struct MidSema_Scope *scope)
+                                        struct MidSema_Scope *scope)
 {
     if (node->type == MIDPARSER_ASTNODETYPE_VAR_DECL_INST) {
         return MidParser_copy_type(&node->var_inst.type);
@@ -112,7 +114,7 @@ static void typecheck_strlit_expr(struct MidParser_Expr *expr)
     expr->ret.array->len = MidLit_strlit_len(&expr->info.val.str) + 1;
     expr->ret.array->elem = (struct MidParser_Type){.spec = elem_spec};
     MidGen_dynpush(&expr->ret.array->elem.dquals,
-                (struct MidParser_TypeDataQual){.is_const = true});
+                   (struct MidParser_TypeDataQual){.is_const = true});
 }
 
 static void typecheck_lit_expr(struct MidParser_Expr *expr)
@@ -198,14 +200,15 @@ static void typecheck_lit_expr(struct MidParser_Expr *expr)
 }
 
 static struct MidDiag_Diag bad_ctor_call_type(const struct MidParser_Type *type,
-                                      const struct MidLexer_Token *tok)
+                                              const struct MidLexer_Token *tok)
 {
     char *str = MidParser_type_to_str(type);
 
     struct MidDiag_Diag ret = {
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("can not call constructor on type '%s'", str),
+        .msg =
+            MidPrint_fmt_to_str("can not call constructor on type '%s'", str),
         .err = MIDDIAG_ERR_BAD_IDENTIFIER,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -222,9 +225,9 @@ static void typecheck_ident_expr(struct MidParser_Expr *expr,
 
     auto ident = MidSema_find_ident_const(scope, expr->tok->ident);
     if (!ident) {
-        MidGen_dynpush(diags,
-                    MidDiag_ident_undeclared_err(expr->tok->ident, expr->tok,
-                                              MIDDIAG_ERR_UNDECLARED_IDENTIFIER));
+        MidGen_dynpush(diags, MidDiag_ident_undeclared_err(
+                                  expr->tok->ident, expr->tok,
+                                  MIDDIAG_ERR_UNDECLARED_IDENTIFIER));
         expr->ret = MidParser_toktype_to_type(MIDLEXER_TOKENTYPE_INT);
         return;
     }
@@ -294,17 +297,18 @@ static void typecheck_this_expr(struct MidParser_Expr *expr,
     }
 
     assert(MidParser_func_parent(func)->type == MIDSEMA_SCOPETYPE_CLASS);
-    const struct MidParser_Class *class_ = &MidParser_func_parent(func)->node->class_;
+    const struct MidParser_Class *class_ =
+        &MidParser_func_parent(func)->node->class_;
 
     expr->ret.spec = class_->type == MIDPARSER_CLASSTYPE_UNION
                          ? MIDPARSER_TYPESPEC_UNION
                          : MIDPARSER_TYPESPEC_CLASS;
     expr->ret.named = class_->ident;
 
-    MidGen_dynpush(
-        &expr->ret.dquals,
-        ((struct MidParser_TypeDataQual){.is_const = func->quals.is_const,
-                                      .is_volatile = func->quals.is_volatile}));
+    MidGen_dynpush(&expr->ret.dquals,
+                   ((struct MidParser_TypeDataQual){
+                       .is_const = func->quals.is_const,
+                       .is_volatile = func->quals.is_volatile}));
     MidGen_dynpush(&expr->ret.dquals, ((struct MidParser_TypeDataQual){}));
 
     return;
@@ -369,13 +373,14 @@ static const char *scope_res_ident(const struct MidParser_Expr *expr)
 }
 */
 
-static struct MidDiag_Diag bad_overload_call_err(const char *name,
-                                         const struct MidLexer_Token *tok)
+static struct MidDiag_Diag
+bad_overload_call_err(const char *name, const struct MidLexer_Token *tok)
 {
     return (struct MidDiag_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("call to nonexistent overload of '%s'", name),
+        .msg =
+            MidPrint_fmt_to_str("call to nonexistent overload of '%s'", name),
         .err = MIDDIAG_ERR_BAD_IDENTIFIER,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -391,7 +396,8 @@ method_call_this_quals(struct MidParser_Expr *call)
     return &quals->arr[quals->len - 1];
 }
 
-static struct MidDiag_Diag note_func_candidate(const struct MidParser_FuncDecl *func)
+static struct MidDiag_Diag
+note_func_candidate(const struct MidParser_FuncDecl *func)
 {
     return (struct MidDiag_Diag){
         .pos = MIDPARSER_GET_START(func)->pos,
@@ -402,8 +408,9 @@ static struct MidDiag_Diag note_func_candidate(const struct MidParser_FuncDecl *
 }
 
 static void note_func_candidates(const char *name,
-                                 const struct MidParser_Expr *args, mid_isize n_args,
-                                 struct MidSema_Scope *scope, bool is_qualified,
+                                 const struct MidParser_Expr *args,
+                                 mid_isize n_args, struct MidSema_Scope *scope,
+                                 bool is_qualified,
                                  struct MidDiag_DiagVec *diags)
 {
     auto cands =
@@ -431,7 +438,8 @@ static void note_method_candidates(const char *name,
 }
 
 static void set_func_call_node(struct MidParser_Expr *expr,
-                               struct MidSema_Scope *scope, struct MidDiag_DiagVec *diags)
+                               struct MidSema_Scope *scope,
+                               struct MidDiag_DiagVec *diags)
 {
     const struct MidParser_Expr *lhs = &expr->info.args.arr[0];
 
@@ -453,7 +461,7 @@ static void set_func_call_node(struct MidParser_Expr *expr,
         else
             expr->node = MIDPARSER_GET_NODE(
                 MidSema_find_func(lhs->ret.func.name, &expr->info.args.arr[1],
-                               expr->info.args.len - 1, res, qualified));
+                                  expr->info.args.len - 1, res, qualified));
 
         if (!expr->node) {
             MidGen_dynpush(diags, bad_overload_call_err(qual_name, lhs->tok));
@@ -470,16 +478,17 @@ static void set_func_call_node(struct MidParser_Expr *expr,
     } else if (lhs->ret.spec == MIDPARSER_TYPESPEC_FPTR) {
         MID_CRASH("calling function ptrs not implemented");
     } else {
-        MidGen_dynpush(diags,
-                    MidDiag_func_undeclared_err(lhs->info.ident, lhs->tok,
-                                             MIDDIAG_ERR_UNDECLARED_FUNCTION));
+        MidGen_dynpush(diags, MidDiag_func_undeclared_err(
+                                  lhs->info.ident, lhs->tok,
+                                  MIDDIAG_ERR_UNDECLARED_FUNCTION));
     }
 
     free(qual_name);
 }
 
 static void typecheck_call_expr(struct MidParser_Expr *expr,
-                                struct MidSema_Scope *scope, struct MidDiag_DiagVec *diags)
+                                struct MidSema_Scope *scope,
+                                struct MidDiag_DiagVec *diags)
 {
     set_func_call_node(expr, scope, diags);
     if (!expr->node)
@@ -501,18 +510,17 @@ static void typecheck_assignment_expr(struct MidParser_Expr *expr,
     auto lhs = &expr->info.args.arr[0];
 
     if (lhs->valtype != MIDPARSER_EXPRVALUE_LVALUE)
-        MidGen_dynpush(
-            diags,
-            ((struct MidDiag_Diag){
-                .pos = expr->tok->pos,
-                .line = expr->tok->line,
-                .msg = MidPrint_fmt_to_str("can't assign to %s",
-                                        lhs->valtype == MIDPARSER_EXPRVALUE_XVALUE
-                                            ? "an xvalue"
-                                            : "a prvalue"),
-                .err = MIDDIAG_ERR_BAD_ASSIGNMENT,
-                .type = MIDDIAG_TYPE_ERROR,
-            }));
+        MidGen_dynpush(diags, ((struct MidDiag_Diag){
+                                  .pos = expr->tok->pos,
+                                  .line = expr->tok->line,
+                                  .msg = MidPrint_fmt_to_str(
+                                      "can't assign to %s",
+                                      lhs->valtype == MIDPARSER_EXPRVALUE_XVALUE
+                                          ? "an xvalue"
+                                          : "a prvalue"),
+                                  .err = MIDDIAG_ERR_BAD_ASSIGNMENT,
+                                  .type = MIDDIAG_TYPE_ERROR,
+                              }));
 
     expr->ret = MidParser_copy_type(&lhs->ret);
 }
@@ -535,8 +543,8 @@ static void typecheck_inc_dec_expr(struct MidParser_Expr *expr,
                 .pos = expr->tok->pos,
                 .line = expr->tok->line,
                 .msg = MidPrint_fmt_to_str("%s %s requires an lvalue",
-                                        is_prefix ? "prefix" : "postfix",
-                                        is_inc ? "increment" : "decrement"),
+                                           is_prefix ? "prefix" : "postfix",
+                                           is_inc ? "increment" : "decrement"),
                 .err = MIDDIAG_ERR_BAD_ASSIGNMENT,
                 .type = MIDDIAG_TYPE_ERROR,
             }));
@@ -553,15 +561,14 @@ static void typecheck_deref_expr(struct MidParser_Expr *expr,
 
     if (MidParser_n_indir(&arg->ret) == 0) {
         char *tname = MidParser_type_to_str(&arg->ret);
-        MidGen_dynpush(
-            diags,
-            ((struct MidDiag_Diag){
-                .pos = expr->tok->pos,
-                .line = expr->tok->line,
-                .msg = MidPrint_fmt_to_str("cannot dereference type '%s'", tname),
-                .err = MIDDIAG_ERR_BAD_DEREF,
-                .type = MIDDIAG_TYPE_ERROR,
-            }));
+        MidGen_dynpush(diags, ((struct MidDiag_Diag){
+                                  .pos = expr->tok->pos,
+                                  .line = expr->tok->line,
+                                  .msg = MidPrint_fmt_to_str(
+                                      "cannot dereference type '%s'", tname),
+                                  .err = MIDDIAG_ERR_BAD_DEREF,
+                                  .type = MIDDIAG_TYPE_ERROR,
+                              }));
         free(tname);
         expr->ret = MidParser_copy_type(&arg->ret);
     } else {
@@ -571,19 +578,20 @@ static void typecheck_deref_expr(struct MidParser_Expr *expr,
     }
 }
 
-static void typecheck_ref_expr(struct MidParser_Expr *expr, struct MidDiag_DiagVec *diags)
+static void typecheck_ref_expr(struct MidParser_Expr *expr,
+                               struct MidDiag_DiagVec *diags)
 {
     expr->valtype = MIDPARSER_EXPRVALUE_PRVALUE;
 
     if (expr->info.args.arr[0].valtype != MIDPARSER_EXPRVALUE_LVALUE)
-        MidGen_dynpush(diags,
-                    ((struct MidDiag_Diag){
-                        .pos = expr->tok->pos,
-                        .line = expr->tok->line,
-                        .msg = MidPrint_fmt_to_str("cannot reference rvalue"),
-                        .err = MIDDIAG_ERR_BAD_REF,
-                        .type = MIDDIAG_TYPE_ERROR,
-                    }));
+        MidGen_dynpush(
+            diags, ((struct MidDiag_Diag){
+                       .pos = expr->tok->pos,
+                       .line = expr->tok->line,
+                       .msg = MidPrint_fmt_to_str("cannot reference rvalue"),
+                       .err = MIDDIAG_ERR_BAD_REF,
+                       .type = MIDDIAG_TYPE_ERROR,
+                   }));
 
     bool failed;
     expr->ret = MidParser_ref_type(&expr->info.args.arr[0].ret, &failed);
@@ -596,10 +604,10 @@ static void typecheck_arr_subscr_expr(struct MidParser_Expr *expr,
     auto lhs = &expr->info.args.arr[0];
     auto rhs = &expr->info.args.arr[1];
 
-    bool lhs_valid =
-        lhs->ret.spec == MIDPARSER_TYPESPEC_ARRAY || MidParser_n_indir(&lhs->ret) > 0;
-    bool rhs_valid =
-        rhs->ret.spec == MIDPARSER_TYPESPEC_ARRAY || MidParser_n_indir(&rhs->ret) > 0;
+    bool lhs_valid = lhs->ret.spec == MIDPARSER_TYPESPEC_ARRAY ||
+                     MidParser_n_indir(&lhs->ret) > 0;
+    bool rhs_valid = rhs->ret.spec == MIDPARSER_TYPESPEC_ARRAY ||
+                     MidParser_n_indir(&rhs->ret) > 0;
 
     bool lhs_int = MidParser_is_integral_typespec(lhs->ret.spec) &&
                    MidParser_n_indir(&lhs->ret) == 0;
@@ -609,21 +617,21 @@ static void typecheck_arr_subscr_expr(struct MidParser_Expr *expr,
     if (!(lhs_valid && lhs_int) && !(rhs_valid && rhs_int)) {
         char *lhs_tname = MidParser_type_to_str(&lhs->ret);
         char *rhs_tname = MidParser_type_to_str(&lhs->ret);
-        MidGen_dynpush(
-            diags,
-            ((struct MidDiag_Diag){
-                .pos = expr->tok->pos,
-                .line = expr->tok->line,
-                .msg = MidPrint_fmt_to_str("cannot subscript types '%s' and '%s'",
-                                        lhs_tname, rhs_tname),
-                .err = MIDDIAG_ERR_BAD_ARRAY_SUBSCRIPT,
-                .type = MIDDIAG_TYPE_ERROR,
-            }));
+        MidGen_dynpush(diags, ((struct MidDiag_Diag){
+                                  .pos = expr->tok->pos,
+                                  .line = expr->tok->line,
+                                  .msg = MidPrint_fmt_to_str(
+                                      "cannot subscript types '%s' and '%s'",
+                                      lhs_tname, rhs_tname),
+                                  .err = MIDDIAG_ERR_BAD_ARRAY_SUBSCRIPT,
+                                  .type = MIDDIAG_TYPE_ERROR,
+                              }));
         free(lhs_tname);
         free(rhs_tname);
     } else if ((lhs_valid && lhs->valtype == MIDPARSER_EXPRVALUE_LVALUE) ||
                (rhs_valid && rhs->valtype == MIDPARSER_EXPRVALUE_LVALUE) ||
-               MidParser_n_indir(&lhs->ret) > 0 || MidParser_n_indir(&rhs->ret) > 0) {
+               MidParser_n_indir(&lhs->ret) > 0 ||
+               MidParser_n_indir(&rhs->ret) > 0) {
         expr->valtype = MIDPARSER_EXPRVALUE_LVALUE;
     } else {
         expr->valtype = MIDPARSER_EXPRVALUE_XVALUE;
@@ -638,7 +646,8 @@ static void typecheck_comma_expr(struct MidParser_Expr *expr)
     expr->ret = MidParser_copy_type(&rhs->ret);
 }
 
-static struct MidDiag_Diag cond_one_result_void_err(const struct MidLexer_Token *tok)
+static struct MidDiag_Diag
+cond_one_result_void_err(const struct MidLexer_Token *tok)
 {
     return (struct MidDiag_Diag){
         .pos = tok->pos,
@@ -686,7 +695,8 @@ static void typecheck_conditional_expr(struct MidParser_Expr *expr,
 }
 
 static struct MidDiag_Diag bad_operands(const struct MidParser_Expr *expr,
-                                const char *type, enum MidDiag_ErrT err_type)
+                                        const char *type,
+                                        enum MidDiag_ErrT err_type)
 {
     bool unary = expr->info.args.len == 1;
 
@@ -700,8 +710,8 @@ static struct MidDiag_Diag bad_operands(const struct MidParser_Expr *expr,
         ret = (struct MidDiag_Diag){
             .pos = expr->tok->pos,
             .line = expr->tok->line,
-            .msg = MidPrint_fmt_to_str("%s operator can not operate on '%s'", type,
-                                    lhs_tname),
+            .msg = MidPrint_fmt_to_str("%s operator can not operate on '%s'",
+                                       type, lhs_tname),
             .err = err_type,
             .type = MIDDIAG_TYPE_ERROR,
         };
@@ -709,9 +719,9 @@ static struct MidDiag_Diag bad_operands(const struct MidParser_Expr *expr,
         ret = (struct MidDiag_Diag){
             .pos = expr->tok->pos,
             .line = expr->tok->line,
-            .msg =
-                MidPrint_fmt_to_str("%s operator can not operate on '%s' and '%s'",
-                                 type, lhs_tname, rhs_tname),
+            .msg = MidPrint_fmt_to_str(
+                "%s operator can not operate on '%s' and '%s'", type, lhs_tname,
+                rhs_tname),
             .err = err_type,
             .type = MIDDIAG_TYPE_ERROR,
         };
@@ -774,7 +784,7 @@ static void typecheck_arith_bin_op_expr(struct MidParser_Expr *expr,
 
     if (bad_op_types) {
         MidGen_dynpush(diags, bad_operands(expr, "arithmetic",
-                                        MIDDIAG_ERR_BAD_ARITHMETIC_OP));
+                                           MIDDIAG_ERR_BAD_ARITHMETIC_OP));
         expr->ret = MidParser_copy_type(&lhs->ret);
     } else if (lhs_ptr) {
         expr->ret = MidParser_copy_type(&lhs->ret);
@@ -802,7 +812,7 @@ static void typecheck_arith_unary_op_expr(struct MidParser_Expr *expr,
 
     if (bad_op_types) {
         MidGen_dynpush(diags, bad_operands(expr, "arithmetic",
-                                        MIDDIAG_ERR_BAD_ARITHMETIC_OP));
+                                           MIDDIAG_ERR_BAD_ARITHMETIC_OP));
     }
 }
 
@@ -856,11 +866,11 @@ static void typecheck_comp_op_expr(struct MidParser_Expr *expr,
     auto rhs = &expr->info.args.arr[1];
 
     bool lhs_ptr = MidParser_n_indir(&lhs->ret) > 0;
-    bool lhs_void_ptr =
-        lhs->ret.spec == MIDPARSER_TYPESPEC_VOID && MidParser_n_indir(&lhs->ret);
+    bool lhs_void_ptr = lhs->ret.spec == MIDPARSER_TYPESPEC_VOID &&
+                        MidParser_n_indir(&lhs->ret);
     bool rhs_ptr = MidParser_n_indir(&rhs->ret) > 0;
-    bool rhs_void_ptr =
-        rhs->ret.spec == MIDPARSER_TYPESPEC_VOID && MidParser_n_indir(&rhs->ret);
+    bool rhs_void_ptr = rhs->ret.spec == MIDPARSER_TYPESPEC_VOID &&
+                        MidParser_n_indir(&rhs->ret);
 
     bool eq = lhs->ret.spec == rhs->ret.spec && MidParser_n_indir(&lhs->ret) &&
               MidParser_n_indir(&rhs->ret);
@@ -871,13 +881,13 @@ static void typecheck_comp_op_expr(struct MidParser_Expr *expr,
         (lhs_ptr || rhs_ptr) && (!eq && (!lhs_void_ptr && !rhs_void_ptr));
 
     if (bad_op_types) {
-        MidGen_dynpush(diags,
-                    bad_operands(expr, "comp", MIDDIAG_ERR_BAD_COMPARISON_OP));
+        MidGen_dynpush(
+            diags, bad_operands(expr, "comp", MIDDIAG_ERR_BAD_COMPARISON_OP));
     }
 }
 
 static struct MidSema_Scope *bin_scope_res_scope(struct MidParser_Expr *expr,
-                                              struct MidSema_Scope *scope)
+                                                 struct MidSema_Scope *scope)
 {
     auto lhs = &expr->info.args.arr[0];
     assert(lhs->type == MIDPARSER_EXPRTYPE_IDENTIFIER);
@@ -937,16 +947,18 @@ memb_sel_lhs_not_class_err(const struct MidParser_Expr *memb_sel)
     return ret;
 }
 
-static struct MidDiag_Diag memb_sel_expects_ptr_err(const struct MidParser_Expr *memb_sel)
+static struct MidDiag_Diag
+memb_sel_expects_ptr_err(const struct MidParser_Expr *memb_sel)
 {
     char *lhs_type = MidParser_type_to_str(&memb_sel->info.args.arr[0].ret);
 
-    struct MidDiag_Diag ret = {.pos = memb_sel->tok->pos,
-                       .line = memb_sel->tok->line,
-                       .msg = MidPrint_fmt_to_str(
-                           "member select lhs '%s' is not a pointer", lhs_type),
-                       .err = MIDDIAG_ERR_BAD_MEMB_SEL,
-                       .type = MIDDIAG_TYPE_ERROR};
+    struct MidDiag_Diag ret = {
+        .pos = memb_sel->tok->pos,
+        .line = memb_sel->tok->line,
+        .msg = MidPrint_fmt_to_str("member select lhs '%s' is not a pointer",
+                                   lhs_type),
+        .err = MIDDIAG_ERR_BAD_MEMB_SEL,
+        .type = MIDDIAG_TYPE_ERROR};
 
     free(lhs_type);
     return ret;
@@ -957,12 +969,13 @@ memb_sel_expects_non_ptr_err(const struct MidParser_Expr *memb_sel)
 {
     char *lhs_type = MidParser_type_to_str(&memb_sel->info.args.arr[0].ret);
 
-    struct MidDiag_Diag ret = {.pos = memb_sel->tok->pos,
-                       .line = memb_sel->tok->line,
-                       .msg = MidPrint_fmt_to_str(
-                           "member select lhs '%s' is a pointer", lhs_type),
-                       .err = MIDDIAG_ERR_BAD_MEMB_SEL,
-                       .type = MIDDIAG_TYPE_ERROR};
+    struct MidDiag_Diag ret = {
+        .pos = memb_sel->tok->pos,
+        .line = memb_sel->tok->line,
+        .msg = MidPrint_fmt_to_str("member select lhs '%s' is a pointer",
+                                   lhs_type),
+        .err = MIDDIAG_ERR_BAD_MEMB_SEL,
+        .type = MIDDIAG_TYPE_ERROR};
 
     free(lhs_type);
     return ret;
@@ -974,22 +987,23 @@ static bool memb_sel_expects_ptr(enum MidParser_ExprType type)
            type == MIDPARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
 }
 
-static struct MidDiag_Diag unknown_field_err(const char *field, const char *class_,
-                                     bool is_union,
-                                     const struct MidLexer_Token *tok)
+static struct MidDiag_Diag unknown_field_err(const char *field,
+                                             const char *class_, bool is_union,
+                                             const struct MidLexer_Token *tok)
 {
     return (struct MidDiag_Diag){
         .pos = tok->pos,
         .line = tok->line,
         .msg = MidPrint_fmt_to_str("unknown field '%s' in %s '%s'", field,
-                                is_union ? "union" : "class", class_),
+                                   is_union ? "union" : "class", class_),
         .err = MIDDIAG_ERR_BAD_IDENTIFIER,
         .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
 static void typecheck_memb_sel(struct MidParser_Expr *expr,
-                               struct MidSema_Scope *scope, struct MidDiag_DiagVec *diags)
+                               struct MidSema_Scope *scope,
+                               struct MidDiag_DiagVec *diags)
 {
     auto lhs = &expr->info.args.arr[0];
     auto rhs = &expr->info.args.arr[1];
@@ -1011,9 +1025,9 @@ static void typecheck_memb_sel(struct MidParser_Expr *expr,
                MidParser_n_indir(&lhs->ret) != 0) {
         MidGen_dynpush(diags, memb_sel_expects_non_ptr_err(expr));
     } else if (rhs->type != MIDPARSER_EXPRTYPE_IDENTIFIER) {
-        MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("identifier", expr->tok,
-                                            MIDDIAG_ERR_MISSING_IDENTIFIER));
+        MidGen_dynpush(
+            diags, MidDiag_expected_token_err("identifier", expr->tok,
+                                              MIDDIAG_ERR_MISSING_IDENTIFIER));
         return;
     }
 
@@ -1022,10 +1036,10 @@ static void typecheck_memb_sel(struct MidParser_Expr *expr,
     const char *field_name = rhs->info.ident;
     mid_isize field_idx = MidParser_find_field(class_, field_name);
     if (field_idx == -1) {
-        MidGen_dynpush(diags,
-                    unknown_field_err(field_name, class_->name,
-                                      class_->type == MIDPARSER_CLASSTYPE_UNION,
-                                      rhs->tok));
+        MidGen_dynpush(
+            diags, unknown_field_err(field_name, class_->name,
+                                     class_->type == MIDPARSER_CLASSTYPE_UNION,
+                                     rhs->tok));
         return;
     }
 
@@ -1044,7 +1058,8 @@ static void typecheck_memb_sel(struct MidParser_Expr *expr,
 }
 
 static void typecheck_op_expr(struct MidParser_Expr *expr,
-                              struct MidSema_Scope *scope, struct MidDiag_DiagVec *diags)
+                              struct MidSema_Scope *scope,
+                              struct MidDiag_DiagVec *diags)
 {
     if (expr->type == MIDPARSER_EXPRTYPE_FUNC_CALL)
         typecheck_call_expr(expr, scope, diags);
@@ -1087,7 +1102,8 @@ static void typecheck_overloaded_op(struct MidParser_Expr *expr,
 {
     printf("found op overload at %d:%d\n", expr->tok->pos.line,
            expr->tok->pos.column);
-    printf("op overload decl at %d:%d\n", MIDPARSER_GET_START(overload)->pos.line,
+    printf("op overload decl at %d:%d\n",
+           MIDPARSER_GET_START(overload)->pos.line,
            MIDPARSER_GET_START(overload)->pos.column);
 
     expr->overloaded = true;
@@ -1112,8 +1128,9 @@ static bool has_no_untypecheckable_args(struct MidParser_Expr *expr)
     return true;
 }
 
-void MidSema_typecheck_expr(struct MidParser_Expr *expr, struct MidSema_Scope *scope,
-                         struct MidDiag_DiagVec *diags)
+void MidSema_typecheck_expr(struct MidParser_Expr *expr,
+                            struct MidSema_Scope *scope,
+                            struct MidDiag_DiagVec *diags)
 {
     if (expr->typechecked)
         return;
@@ -1127,8 +1144,8 @@ void MidSema_typecheck_expr(struct MidParser_Expr *expr, struct MidSema_Scope *s
         typecheck_this_expr(expr, scope, diags);
     } else {
         // some operators are weird
-        bool typecheck_args =
-            !MidParser_is_scope_res(expr->type) && !MidParser_is_memb_sel(expr->type);
+        bool typecheck_args = !MidParser_is_scope_res(expr->type) &&
+                              !MidParser_is_memb_sel(expr->type);
         if (typecheck_args) {
             for (mid_isize i = 0; i < expr->info.args.len; ++i)
                 MidSema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
@@ -1148,8 +1165,9 @@ void MidSema_typecheck_expr(struct MidParser_Expr *expr, struct MidSema_Scope *s
     }
 }
 
-static struct MidDiag_Diag no_matching_ctor_err(const struct MidParser_Type *type,
-                                        const struct MidLexer_Token *tok)
+static struct MidDiag_Diag
+no_matching_ctor_err(const struct MidParser_Type *type,
+                     const struct MidLexer_Token *tok)
 {
     char *str = MidParser_type_to_str(type);
 
@@ -1173,13 +1191,14 @@ static bool typecheck_vdecl_class_type_ctor(struct MidParser_VarDeclInst *inst)
     auto ident = MidSema_deref_identptr(&inst->type.named);
     inst->ctor.ctor =
         MidSema_find_func(ident->name, inst->ctor.args.arr, inst->ctor.args.len,
-                       ident->class_info.def_scope, true);
+                          ident->class_info.def_scope, true);
 
     return inst->ctor.ctor != NULL;
 }
 
 // returns whether or not the ctor is correct
-static bool typecheck_vdecl_generic_type_ctor(struct MidParser_VarDeclInst *inst)
+static bool
+typecheck_vdecl_generic_type_ctor(struct MidParser_VarDeclInst *inst)
 {
     assert(inst->has_ctor);
 
@@ -1191,7 +1210,7 @@ static bool typecheck_vdecl_generic_type_ctor(struct MidParser_VarDeclInst *inst
 }
 
 void MidSema_typecheck_var_decl_inst(struct MidParser_VarDeclInst *inst,
-                                  struct MidDiag_DiagVec *diags)
+                                     struct MidDiag_DiagVec *diags)
 {
     inst->typechecked = true;
     if (!inst->has_ctor)
@@ -1208,8 +1227,8 @@ void MidSema_typecheck_var_decl_inst(struct MidParser_VarDeclInst *inst,
     }
 
     if (bad)
-        MidGen_dynpush(diags,
-                    no_matching_ctor_err(&inst->type, MIDPARSER_GET_START(inst)));
+        MidGen_dynpush(diags, no_matching_ctor_err(&inst->type,
+                                                   MIDPARSER_GET_START(inst)));
 }
 
 static struct MidDiag_Diag
@@ -1227,7 +1246,8 @@ invalid_return_stmt_type_err(const struct MidParser_Type *func_type,
         ret = (struct MidDiag_Diag){
             .pos = tok->pos,
             .line = tok->line,
-            .msg = MidPrint_fmt_to_str("returning '%s' in function of type '%s'",
+            .msg =
+                MidPrint_fmt_to_str("returning '%s' in function of type '%s'",
                                     ret_type_str, func_type_str),
             .err = MIDDIAG_ERR_BAD_RETURN_STMT_TYPE,
             .type = MIDDIAG_TYPE_ERROR,
@@ -1251,7 +1271,8 @@ invalid_return_stmt_type_err(const struct MidParser_Type *func_type,
     return ret;
 }
 
-static struct MidDiag_Diag return_outside_func_err(const struct MidLexer_Token *tok)
+static struct MidDiag_Diag
+return_outside_func_err(const struct MidLexer_Token *tok)
 {
     return (struct MidDiag_Diag){
         .pos = tok->pos,
@@ -1263,13 +1284,14 @@ static struct MidDiag_Diag return_outside_func_err(const struct MidLexer_Token *
 }
 
 void MidSema_typecheck_return(struct MidParser_Return *self,
-                           const struct MidSema_Scope *scope,
-                           struct MidDiag_DiagVec *diags)
+                              const struct MidSema_Scope *scope,
+                              struct MidDiag_DiagVec *diags)
 {
     auto func_scope =
         MidSema_closest_scope_of_type_const(scope, MIDSEMA_SCOPETYPE_FUNC);
     if (!func_scope) {
-        MidGen_dynpush(diags, return_outside_func_err(MIDPARSER_GET_START(self)));
+        MidGen_dynpush(diags,
+                       return_outside_func_err(MIDPARSER_GET_START(self)));
         return;
     }
 
@@ -1283,13 +1305,14 @@ void MidSema_typecheck_return(struct MidParser_Return *self,
     if (self->expr) {
         if (!MidParser_type_is_typecheckable(&self->expr->ret))
             return;
-        if (!MidSema_can_convert(&self->expr->ret, self->expr->valtype, func_type))
+        if (!MidSema_can_convert(&self->expr->ret, self->expr->valtype,
+                                 func_type))
             MidGen_dynpush(
                 diags, invalid_return_stmt_type_err(func_type, &self->expr->ret,
                                                     MIDPARSER_GET_START(self)));
     } else if (!is_void) {
         MidGen_dynpush(diags, invalid_return_stmt_type_err(
-                               func_type, NULL, MIDPARSER_GET_START(self)));
+                                  func_type, NULL, MIDPARSER_GET_START(self)));
     }
 }
 
@@ -1313,16 +1336,16 @@ static bool is_valid_array_to_ptr(const struct MidParser_Type *src,
     else if (src->array->elem.spec != dest->spec)
         return false;
     else if (!MidParser_dquals_same(src->array->elem.dquals.arr,
-                                 src->array->elem.dquals.len,
-                                 &dest->dquals.arr[1], dest->dquals.len - 1))
+                                    src->array->elem.dquals.len,
+                                    &dest->dquals.arr[1], dest->dquals.len - 1))
         return false;
 
     return true;
 }
 
 bool MidSema_can_convert(const struct MidParser_Type *src,
-                      enum MidParser_ExprValueType src_valtype,
-                      const struct MidParser_Type *dest)
+                         enum MidParser_ExprValueType src_valtype,
+                         const struct MidParser_Type *dest)
 {
     // rv references cannot take lvalues and non-const lv rereferences
     // cannot take rvalues
@@ -1331,7 +1354,8 @@ bool MidSema_can_convert(const struct MidParser_Type *src,
          MidParser_is_rvalue(src_valtype)))
         return false;
 
-    if (MidParser_is_fundamental_type(src) && MidParser_is_fundamental_type(dest))
+    if (MidParser_is_fundamental_type(src) &&
+        MidParser_is_fundamental_type(dest))
         return true;
     else if (MidParser_n_indir(src) == MidParser_n_indir(dest) &&
              src->spec == dest->spec)
@@ -1347,7 +1371,7 @@ bool MidSema_can_convert(const struct MidParser_Type *src,
 }
 
 int MidSema_conversion_rank(const struct MidParser_Type *src,
-                         const struct MidParser_Type *dest)
+                            const struct MidParser_Type *dest)
 {
     bool same_indir = MidParser_n_indir(src) == MidParser_n_indir(dest);
     bool no_indir = MidParser_n_indir(src) == 0 && MidParser_n_indir(dest) == 0;

@@ -19,10 +19,10 @@ static void swap(void *v1, void *v2, mid_isize size, char *buffer)
 // v: array, size: element size
 // left/right: range
 // comp: comparison function
-static void mid_qsort_impl(void *v, mid_isize size, mid_isize left, mid_isize right,
-                           int (*comp)(const void *, const void *,
-                                       const void *),
-                           const void *info, char *buffer)
+static void
+mid_qsort_impl(void *v, mid_isize size, mid_isize left, mid_isize right,
+               int (*comp)(const void *, const void *, const void *),
+               const void *info, char *buffer)
 {
     void *vt, *v3;
     mid_isize i, last, mid = (left + right) / 2;

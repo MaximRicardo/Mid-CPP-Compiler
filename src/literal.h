@@ -38,9 +38,10 @@ void MidLit_String_deinit(struct MidLit_String *self);
 
 MidGen_dynarray_struct_named(MidLit_StringVec, struct MidLit_String);
 
-void MidLit_fprint(FILE *out, union MidLit_Value val, enum MidParser_ExprType type);
+void MidLit_fprint(FILE *out, union MidLit_Value val,
+                   enum MidParser_ExprType type);
 void MidLit_fprint_toktype(FILE *out, union MidLit_Value val,
-                        enum MidLexer_TokenType type);
+                           enum MidLexer_TokenType type);
 void MidLit_print(union MidLit_Value val, enum MidParser_ExprType type);
 void MidLit_print_toktype(union MidLit_Value val, enum MidLexer_TokenType type);
 

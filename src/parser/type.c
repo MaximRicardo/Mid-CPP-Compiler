@@ -340,8 +340,8 @@ make_spec_signed(enum MidParser_TypeSpec spec, const struct MidLexer_Token *tok,
         return MIDPARSER_TYPESPEC_LONGLONG;
 
     default:
-        MidGen_dynpush(diags,
-                    spec_unsignable_err(MidParser_typespec_to_str(spec), tok));
+        MidGen_dynpush(
+            diags, spec_unsignable_err(MidParser_typespec_to_str(spec), tok));
         return spec;
     }
 }
@@ -374,15 +374,15 @@ make_spec_unsigned(enum MidParser_TypeSpec spec,
         return MIDPARSER_TYPESPEC_ULONGLONG;
 
     default:
-        MidGen_dynpush(diags,
-                    spec_unsignable_err(MidParser_typespec_to_str(spec), tok));
+        MidGen_dynpush(
+            diags, spec_unsignable_err(MidParser_typespec_to_str(spec), tok));
         return spec;
     }
 }
 
-static enum MidParser_TypeSpec
-make_spec_short(enum MidParser_TypeSpec spec, const struct MidLexer_Token *tok,
-                struct MidDiag_DiagVec *diags)
+static enum MidParser_TypeSpec make_spec_short(enum MidParser_TypeSpec spec,
+                                               const struct MidLexer_Token *tok,
+                                               struct MidDiag_DiagVec *diags)
 {
     switch (spec) {
     case MIDPARSER_TYPESPEC_INT:
@@ -396,9 +396,9 @@ make_spec_short(enum MidParser_TypeSpec spec, const struct MidLexer_Token *tok,
     }
 }
 
-static enum MidParser_TypeSpec
-make_spec_long(enum MidParser_TypeSpec spec, const struct MidLexer_Token *tok,
-               struct MidDiag_DiagVec *diags)
+static enum MidParser_TypeSpec make_spec_long(enum MidParser_TypeSpec spec,
+                                              const struct MidLexer_Token *tok,
+                                              struct MidDiag_DiagVec *diags)
 {
     switch (spec) {
     case MIDPARSER_TYPESPEC_INT:
@@ -469,9 +469,10 @@ void MidParser_set_dqual_flag(struct MidParser_TypeDataQual *qual,
     }
 }
 
-mid_isize MidParser_parse_quals(const struct MidLexer_Token *toks, mid_isize start,
-                              struct MidParser_TypeStorQual *squals,
-                              struct MidParser_TypeDataQual *dquals)
+mid_isize MidParser_parse_quals(const struct MidLexer_Token *toks,
+                                mid_isize start,
+                                struct MidParser_TypeStorQual *squals,
+                                struct MidParser_TypeDataQual *dquals)
 {
     mid_isize i;
     for (i = start; MidLexer_is_typequal(toks[i].type); ++i) {
@@ -484,11 +485,11 @@ mid_isize MidParser_parse_quals(const struct MidLexer_Token *toks, mid_isize sta
     return i;
 }
 
-static struct MidParser_Type
-type_name_type(const struct MidLexer_Token *toks, mid_isize start,
-               mid_isize *out_end, struct MidSema_Scope *scope,
-               struct MidParser_Allocators *allocs,
-               struct MidDiag_DiagVec *diags)
+static struct MidParser_Type type_name_type(const struct MidLexer_Token *toks,
+                                            mid_isize start, mid_isize *out_end,
+                                            struct MidSema_Scope *scope,
+                                            struct MidParser_Allocators *allocs,
+                                            struct MidDiag_DiagVec *diags)
 {
     assert(toks[start].type == MIDLEXER_TOKENTYPE_IDENTIFIER);
 
@@ -523,11 +524,11 @@ type_name_type(const struct MidLexer_Token *toks, mid_isize start,
 // parses the type specifier and its preceding qualifiers
 // static const int *const &x
 // ^^^^^^^^^^^^^^^^
-struct MidParser_Type
-MidParser_parse_base(const struct MidLexer_Token *toks, mid_isize start,
-                     mid_isize *out_end, struct MidSema_Scope *scope,
-                     struct MidParser_Allocators *allocs,
-                     struct MidDiag_DiagVec *diags)
+struct MidParser_Type MidParser_parse_base(const struct MidLexer_Token *toks,
+                                           mid_isize start, mid_isize *out_end,
+                                           struct MidSema_Scope *scope,
+                                           struct MidParser_Allocators *allocs,
+                                           struct MidDiag_DiagVec *diags)
 {
     struct MidParser_Type ret = {};
 
@@ -558,13 +559,15 @@ MidParser_parse_base(const struct MidLexer_Token *toks, mid_isize start,
             MidParser_set_dqual_flag(&dquals, toks[i].type);
         } else if (toks[i].type == MIDLEXER_TOKENTYPE_SIGNED) {
             if (is_signed)
-                MidGen_dynpush(diags, unnecessary_qual_warn("signed", &toks[i]));
+                MidGen_dynpush(diags,
+                               unnecessary_qual_warn("signed", &toks[i]));
             if (is_unsigned)
                 MidGen_dynpush(diags, bad_qual_err("signed", &toks[i]));
             is_signed = &toks[i];
         } else if (toks[i].type == MIDLEXER_TOKENTYPE_UNSIGNED) {
             if (is_unsigned)
-                MidGen_dynpush(diags, unnecessary_qual_warn("unsigned", &toks[i]));
+                MidGen_dynpush(diags,
+                               unnecessary_qual_warn("unsigned", &toks[i]));
             if (is_signed)
                 MidGen_dynpush(diags, bad_qual_err("unsigned", &toks[i]));
             is_unsigned = &toks[i];
@@ -636,26 +639,26 @@ MidParser_parse_base(const struct MidLexer_Token *toks, mid_isize start,
     return ret;
 }
 
-static struct MidParser_Type
-parse_recursive_part(const struct MidLexer_Token *toks, mid_isize start,
-                     mid_isize min, mid_isize *out_end, struct MidSema_Scope *scope,
-                     const struct MidParser_TypeStorQual *squals,
-                     struct MidParser_Allocators *allocs,
-                     struct MidDiag_DiagVec *diags);
+static struct MidParser_Type parse_recursive_part(
+    const struct MidLexer_Token *toks, mid_isize start, mid_isize min,
+    mid_isize *out_end, struct MidSema_Scope *scope,
+    const struct MidParser_TypeStorQual *squals,
+    struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags);
 
 // returns the end of the function ptr
 // void (*func_ptr)(int, float)
 //      ^         ^           ^
 //    lparen    rparen      return
 static mid_isize parse_fptr(struct MidParser_Type *type,
-                          const struct MidLexer_Token *toks, mid_isize lparen,
-                          mid_isize rparen, mid_isize min,
-                          struct MidSema_Scope *scope,
-                          struct MidParser_Allocators *allocs,
-                          struct MidDiag_DiagVec *diags)
+                            const struct MidLexer_Token *toks, mid_isize lparen,
+                            mid_isize rparen, mid_isize min,
+                            struct MidSema_Scope *scope,
+                            struct MidParser_Allocators *allocs,
+                            struct MidDiag_DiagVec *diags)
 {
     mid_isize p_lparen = rparen + 1;
-    mid_isize p_rparen = MidParser_find_twin_paren(toks, p_lparen, MID_ISIZE_MAX);
+    mid_isize p_rparen =
+        MidParser_find_twin_paren(toks, p_lparen, MID_ISIZE_MAX);
 
     type->spec = MIDPARSER_TYPESPEC_FPTR;
     type->fptr = Mid_malloc(sizeof(*type->fptr));
@@ -667,8 +670,8 @@ static mid_isize parse_fptr(struct MidParser_Type *type,
     mid_isize i = p_lparen + 1;
     while (i < p_rparen) {
         MidGen_dynpush(&type->fptr->params,
-                    MidParser_parse_type(toks, i, &i, scope, NULL, false,
-                                         allocs, diags));
+                       MidParser_parse_type(toks, i, &i, scope, NULL, false,
+                                            allocs, diags));
 
         if (toks[i].type != MIDLEXER_TOKENTYPE_COMMA &&
             toks[i].type != MIDLEXER_TOKENTYPE_R_PAREN) {
@@ -687,11 +690,11 @@ static mid_isize parse_fptr(struct MidParser_Type *type,
 //        ^             ^
 //      start          end
 static mid_isize parse_array(struct MidParser_Type *type,
-                           const struct MidLexer_Token *toks, mid_isize lparen,
-                           mid_isize rparen, mid_isize min,
-                           struct MidSema_Scope *scope,
-                           struct MidParser_Allocators *allocs,
-                           struct MidDiag_DiagVec *diags)
+                             const struct MidLexer_Token *toks,
+                             mid_isize lparen, mid_isize rparen, mid_isize min,
+                             struct MidSema_Scope *scope,
+                             struct MidParser_Allocators *allocs,
+                             struct MidDiag_DiagVec *diags)
 {
     // TODO: implement this
     MID_CRASH("parse_array not implemented yet");
@@ -705,12 +708,11 @@ static mid_isize parse_array(struct MidParser_Type *type,
     (void)diags;
 }
 
-static struct MidParser_Type
-parse_recursive_part(const struct MidLexer_Token *toks, mid_isize start,
-                     mid_isize min, mid_isize *out_end, struct MidSema_Scope *scope,
-                     const struct MidParser_TypeStorQual *squals,
-                     struct MidParser_Allocators *allocs,
-                     struct MidDiag_DiagVec *diags)
+static struct MidParser_Type parse_recursive_part(
+    const struct MidLexer_Token *toks, mid_isize start, mid_isize min,
+    mid_isize *out_end, struct MidSema_Scope *scope,
+    const struct MidParser_TypeStorQual *squals,
+    struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags)
 {
     struct MidParser_Type ret = {.squals = *squals};
 
@@ -865,16 +867,16 @@ struct MidParser_Type MidParser_parse_type(
 struct MidParser_Type MidParser_parse_type_no_base(
     const struct MidLexer_Token *toks, mid_isize start, mid_isize *out_end,
     const struct MidParser_Type *base, struct MidSema_Scope *scope,
-    mid_isize *out_declname, bool is_type_id, struct MidParser_Allocators *allocs,
-    struct MidDiag_DiagVec *diags)
+    mid_isize *out_declname, bool is_type_id,
+    struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags)
 {
     mid_isize c = find_type_center(toks, start);
 
     bool has_declname = toks[c].type == MIDLEXER_TOKENTYPE_IDENTIFIER &&
                         !MidSema_is_type_name(scope, toks[c].ident);
     if (has_declname && is_type_id)
-        MidGen_dynpush(diags,
-                    MidDiag_type_id_w_name_err(&toks[c], MIDDIAG_ERR_BAD_TYPE));
+        MidGen_dynpush(
+            diags, MidDiag_type_id_w_name_err(&toks[c], MIDDIAG_ERR_BAD_TYPE));
 
     auto ret = parse_recursive_part(toks, c - has_declname, start, out_end,
                                     scope, &base->squals, allocs, diags);
@@ -1019,7 +1021,8 @@ struct MidParser_Type MidParser_toktype_to_type(enum MidLexer_TokenType type)
 static void type_to_str_impl(const struct MidParser_Type *type,
                              struct Mid_Dynstr *str);
 
-static void fptr_to_str(const struct MidParser_Type *type, struct Mid_Dynstr *str)
+static void fptr_to_str(const struct MidParser_Type *type,
+                        struct Mid_Dynstr *str)
 {
     type_to_str_impl(&type->fptr->ret, str);
     MidDynstr_append_char(str, ' ');
@@ -1042,7 +1045,8 @@ static void fptr_to_str(const struct MidParser_Type *type, struct Mid_Dynstr *st
     MidDynstr_append_char(str, ')');
 }
 
-static void array_to_str(const struct MidParser_Type *type, struct Mid_Dynstr *str)
+static void array_to_str(const struct MidParser_Type *type,
+                         struct Mid_Dynstr *str)
 {
     type_to_str_impl(&type->array->elem, str);
     MidDynstr_append_printf(str, "[%" PRIu64 "]", type->array->len);
@@ -1101,7 +1105,8 @@ char *MidParser_type_to_str(const struct MidParser_Type *type)
     return str.str;
 }
 
-bool MidParser_valid_type_start(const struct MidLexer_Token *toks, mid_isize idx,
+bool MidParser_valid_type_start(const struct MidLexer_Token *toks,
+                                mid_isize idx,
                                 const struct MidSema_Scope *scope)
 {
     if (MidLexer_is_typemod(toks[idx].type) ||
@@ -1396,8 +1401,10 @@ static bool are_arrays_same(const struct MidParser_TypeArray *a,
     return MidParser_are_types_same(&a->elem, &b->elem);
 }
 
-bool MidParser_dquals_same(const struct MidParser_TypeDataQual *a, mid_isize n_a,
-                           const struct MidParser_TypeDataQual *b, mid_isize n_b)
+bool MidParser_dquals_same(const struct MidParser_TypeDataQual *a,
+                           mid_isize n_a,
+                           const struct MidParser_TypeDataQual *b,
+                           mid_isize n_b)
 {
     if (n_a != n_b)
         return false;

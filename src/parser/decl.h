@@ -10,6 +10,6 @@
 // variable declaration
 // out_mvp - was most vexing parse used to disambiguate
 bool MidParser_decl_is_func(const struct MidLexer_Token *toks, mid_isize start,
-                         struct MidSema_Scope *scope,
-                         struct MidParser_Allocators *allocs,
-                         struct MidDiag_DiagVec *diags, bool *out_mvp);
+                            struct MidSema_Scope *scope,
+                            struct MidParser_Allocators *allocs,
+                            struct MidDiag_DiagVec *diags, bool *out_mvp);

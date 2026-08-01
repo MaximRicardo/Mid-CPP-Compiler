@@ -29,12 +29,13 @@ struct MidSema_Scope {
 };
 
 void MidSema_Scope_deinit(struct MidSema_Scope *self);
-void MidSema_copy_scope(struct MidSema_Scope *dest, const struct MidSema_Scope *src,
-                     struct MidSema_Scope *dest_parent,
-                     struct MidParser_Allocators *allocs);
+void MidSema_copy_scope(struct MidSema_Scope *dest,
+                        const struct MidSema_Scope *src,
+                        struct MidSema_Scope *dest_parent,
+                        struct MidParser_Allocators *allocs);
 struct MidSema_Scope MidSema_create_empty_scope(enum MidSema_ScopeType type,
-                                          struct MidSema_Scope *parent,
-                                          struct MidParser_ASTNode *node);
+                                                struct MidSema_Scope *parent,
+                                                struct MidParser_ASTNode *node);
 
 // RNCE - Root, Namespace, Class, or Enum
 bool MidSema_is_rnce_scope(enum MidSema_ScopeType type);
@@ -45,50 +46,54 @@ struct MidSema_Scope *MidSema_closest_rnce_scope(struct MidSema_Scope *self);
 
 const struct MidSema_Scope *
 MidSema_closest_scope_of_type_const(const struct MidSema_Scope *self,
-                                 enum MidSema_ScopeType type);
-struct MidSema_Scope *MidSema_closest_scope_of_type(struct MidSema_Scope *self,
-                                              enum MidSema_ScopeType type);
+                                    enum MidSema_ScopeType type);
+struct MidSema_Scope *
+MidSema_closest_scope_of_type(struct MidSema_Scope *self,
+                              enum MidSema_ScopeType type);
 
-const struct MidSema_Ident *MidSema_find_ident_const(const struct MidSema_Scope *scope,
-                                               const char *name);
-struct MidSema_Ident *MidSema_find_ident(struct MidSema_Scope *scope, const char *name);
+const struct MidSema_Ident *
+MidSema_find_ident_const(const struct MidSema_Scope *scope, const char *name);
+struct MidSema_Ident *MidSema_find_ident(struct MidSema_Scope *scope,
+                                         const char *name);
 
 bool MidSema_is_type_name(const struct MidSema_Scope *scope, const char *name);
-bool MidSema_is_namespace_name(const struct MidSema_Scope *scope, const char *name);
-bool MidSema_ident_type(struct MidSema_Scope *scope, const struct MidSema_Ident *ident,
-                     struct MidParser_Type *out_type);
+bool MidSema_is_namespace_name(const struct MidSema_Scope *scope,
+                               const char *name);
+bool MidSema_ident_type(struct MidSema_Scope *scope,
+                        const struct MidSema_Ident *ident,
+                        struct MidParser_Type *out_type);
 bool MidSema_name_type(struct MidSema_Scope *scope, const char *name,
-                    struct MidParser_Type *out_type);
+                       struct MidParser_Type *out_type);
 // type of a type-name.
 struct MidParser_Type MidSema_type_name_type(struct MidSema_Scope *scope,
-                                       const char *name);
+                                             const char *name);
 struct MidParser_Type MidSema_tok_type(struct MidSema_Scope *scope,
-                                 const struct MidLexer_Token *tok);
+                                       const struct MidLexer_Token *tok);
 
 // if the scope already has an identifier of the same name, nothing is added and
 // the old identifier is returned
 // ident->parent is changed to scope
 struct MidSema_Ident *MidSema_add_ident(struct MidSema_Scope *scope,
-                                  struct MidSema_Ident *ident);
+                                        struct MidSema_Ident *ident);
 // same as MidSema_add_ident but adds a copy of the ident instead
 // ident's copy's parent is changed to scope
-struct MidSema_Ident *MidSema_add_ident_copy(struct MidSema_Scope *scope,
-                                       const struct MidSema_Ident *ident,
-                                       bool copy_ident_scopes,
-                                       struct MidParser_Allocators *allocs);
+struct MidSema_Ident *MidSema_add_ident_copy(
+    struct MidSema_Scope *scope, const struct MidSema_Ident *ident,
+    bool copy_ident_scopes, struct MidParser_Allocators *allocs);
 // returns 0 on success, returns 1 if the identifier already has a declaration
 i32 MidSema_add_ident_def(struct MidSema_Scope *scope, const char *name,
-                       struct MidParser_ASTNode *def);
+                          struct MidParser_ASTNode *def);
 
 // finds an RNCE scope in scope
 // returns NULL if the scope name couldn't be resolved
 const struct MidSema_Scope *
-MidSema_resolve_scope_const(const char *name, const struct MidSema_Scope *scope);
+MidSema_resolve_scope_const(const char *name,
+                            const struct MidSema_Scope *scope);
 struct MidSema_Scope *MidSema_resolve_scope(const char *name,
-                                      struct MidSema_Scope *scope);
+                                            struct MidSema_Scope *scope);
 
 // returns NULL if it doesn't have one
 const char *MidSema_scope_name(const struct MidSema_Scope *scope);
 
 void MidSema_add_tmplt_params_to_scope(struct MidSema_Scope *scope,
-                                    const struct MidSema_Scope *tmplt);
+                                       const struct MidSema_Scope *tmplt);

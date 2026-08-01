@@ -23,8 +23,8 @@ bool MidSema_is_nce_ident(enum MidSema_IdentType type);
 struct MidSema_IdentFuncInfo {
     struct MidSema_Scope *def_scope;
     struct MidParser_Expr **default_args; // one element for each parameter,
-                                       // NULL for parameters without a default
-                                       // argument
+                                          // NULL for parameters without a
+                                          // default argument
 };
 
 void MidSema_IdentFuncInfo_deinit(struct MidSema_IdentFuncInfo *self);
@@ -53,9 +53,9 @@ bool MidSema_ident_is_tmplt(enum MidSema_IdentType type);
 
 // copy_scopes     - should child scopes of the identifier be copied
 struct MidSema_Ident MidSema_copy_ident(const struct MidSema_Ident *src,
-                                  struct MidSema_Scope *dest_parent,
-                                  bool copy_scopes,
-                                  struct MidParser_Allocators *allocs);
+                                        struct MidSema_Scope *dest_parent,
+                                        bool copy_scopes,
+                                        struct MidParser_Allocators *allocs);
 
 mid_isize MidSema_ident_idx(const struct MidSema_Ident *self);
 
@@ -70,7 +70,7 @@ MidSema_copy_var_ident(const struct MidSema_Ident *self)
 // only gets invalidated if the identifier's idx in its scope gets invalidated
 struct MidSema_IdentPtr {
     struct MidSema_Scope *parent; // NULL means the ptr is null
-    i32 idx;                   // -1 means the ptr is null
+    i32 idx;                      // -1 means the ptr is null
 };
 MidGen_dynarray_struct_named(MidSema_IdentPtrVec, struct MidSema_IdentPtr);
 
@@ -79,4 +79,5 @@ struct MidSema_IdentPtr MidSema_create_identptr(struct MidSema_Ident *ident);
 struct MidSema_IdentPtr MidSema_identptr_to_last(struct MidSema_Scope *parent);
 struct MidSema_IdentPtr MidSema_IdentPtr_null(struct MidSema_Scope *parent);
 bool MidSema_is_identptr_null(const struct MidSema_IdentPtr *self);
-struct MidSema_Ident *MidSema_deref_identptr(const struct MidSema_IdentPtr *self);
+struct MidSema_Ident *
+MidSema_deref_identptr(const struct MidSema_IdentPtr *self);

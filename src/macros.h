@@ -4,13 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MID_CRASH(msg)                                                             \
+#define MID_CRASH(msg)                                                         \
     do {                                                                       \
         printf("crashed at %s, line %d: '%s'\n", __FILE__, __LINE__, msg);     \
         abort();                                                               \
     } while (0)
 
-#define MID_SWAP(x, y)                                                             \
+#define MID_SWAP(x, y)                                                         \
     do {                                                                       \
         typeof(x) tmp_super_specific_name______ = x;                           \
         x = y;                                                                 \

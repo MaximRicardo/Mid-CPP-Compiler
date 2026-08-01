@@ -24,7 +24,7 @@ static bool is_ptr(const struct MidParser_Type *type, bool ref_is_ptr)
 }
 
 LLVMTypeRef MidLLVM_convert_parser_type(const struct MidParser_Type *type,
-                                       LLVMContextRef context, bool ref_is_ptr)
+                                        LLVMContextRef context, bool ref_is_ptr)
 {
     if (is_ptr(type, ref_is_ptr))
         return LLVMPointerTypeInContext(context, 0);
@@ -107,7 +107,8 @@ static void add_scopes_to_str(const struct MidSema_Scope *scope,
     MidDynstr_append(str, MidSema_scope_name(scope));
 }
 
-static const struct MidSema_Scope *get_start_scope(const struct MidSema_Ident *ident)
+static const struct MidSema_Scope *
+get_start_scope(const struct MidSema_Ident *ident)
 {
     switch (ident->type) {
     case MIDSEMA_IDENTTYPE_CLASS:
@@ -135,7 +136,7 @@ char *MidLLVM_named_type_full_name(const struct MidSema_IdentPtr *named)
 
 struct MidLLVM_TypeRefVec
 MidLLVM_class_to_struct_fields(const struct MidParser_Class *src,
-                              LLVMContextRef context)
+                               LLVMContextRef context)
 {
     struct MidLLVM_TypeRefVec ret = {};
 
@@ -148,16 +149,17 @@ MidLLVM_class_to_struct_fields(const struct MidParser_Class *src,
         for (mid_isize j = 0; j < child->var_decl.insts.len; ++j) {
             const struct MidParser_VarDeclInst *inst =
                 child->var_decl.insts.arr[j];
-            MidGen_dynpush(&ret,
-                        MidLLVM_convert_parser_type(&inst->type, context, true));
+            MidGen_dynpush(
+                &ret, MidLLVM_convert_parser_type(&inst->type, context, true));
         }
     }
 
     return ret;
 }
 
-mid_isize MidLLVM_class_field_to_struct_field_idx(const struct MidParser_Class *src,
-                                               const char *name)
+mid_isize
+MidLLVM_class_field_to_struct_field_idx(const struct MidParser_Class *src,
+                                        const char *name)
 {
     mid_isize ret = 0;
 
@@ -182,7 +184,7 @@ mid_isize MidLLVM_class_field_to_struct_field_idx(const struct MidParser_Class *
 }
 
 LLVMTypeRef MidLLVM_create_struct(const struct MidParser_Class *src,
-                                 LLVMContextRef context)
+                                  LLVMContextRef context)
 {
     struct MidLLVM_TypeRefVec fields =
         MidLLVM_class_to_struct_fields(src, context);

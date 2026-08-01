@@ -57,7 +57,7 @@ void MidParser_copy_var_decl_inst(struct MidParser_VarDeclInst *dest,
         MidGen_dynreserve(&dest->ctor.args, src->ctor.args.len);
         for (mid_isize i = 0; i < src->ctor.args.len; ++i) {
             MidGen_dynpush(&dest->ctor.args,
-                        MidParser_copy_expr(&src->ctor.args.arr[i]));
+                           MidParser_copy_expr(&src->ctor.args.arr[i]));
         }
     } else {
         if (src->init.expr) {
@@ -140,9 +140,9 @@ mid_isize MidParser_parse_var_decl_inst_def(
 
 void MidParser_parse_var_decl_def(
     const struct MidLexer_Token *toks, const enum MidLexer_TokenType *end_types,
-    mid_isize n_end_types, struct MidParser_VarDecl *decl, bool exprs_prealloced,
-    struct MidSema_Scope *scope, struct MidParser_Allocators *allocs,
-    struct MidDiag_DiagVec *diags)
+    mid_isize n_end_types, struct MidParser_VarDecl *decl,
+    bool exprs_prealloced, struct MidSema_Scope *scope,
+    struct MidParser_Allocators *allocs, struct MidDiag_DiagVec *diags)
 {
     for (mid_isize i = 0; i < decl->insts.len; ++i) {
         auto inst = decl->insts.arr[i];
@@ -173,16 +173,16 @@ static bool valid_name_idx(mid_isize idx, const struct MidLexer_Token *toks)
 }
 
 static mid_isize parse_inst_ctor(const struct MidLexer_Token *toks,
-                               mid_isize lparen,
-                               struct MidParser_VarDeclInst *inst,
-                               struct MidSema_Scope *scope,
-                               struct MidDiag_DiagVec *diags)
+                                 mid_isize lparen,
+                                 struct MidParser_VarDeclInst *inst,
+                                 struct MidSema_Scope *scope,
+                                 struct MidDiag_DiagVec *diags)
 {
     mid_isize rparen = MidParser_find_twin_paren(toks, lparen, MID_ISIZE_MAX);
     if (rparen == -1) {
         MidGen_dynpush(diags,
-                    MidDiag_expected_token_err("')'", &toks[lparen],
-                                               MIDDIAG_ERR_MISSING_PAREN));
+                       MidDiag_expected_token_err("')'", &toks[lparen],
+                                                  MIDDIAG_ERR_MISSING_PAREN));
         rparen = lparen;
     }
 
@@ -193,22 +193,23 @@ static mid_isize parse_inst_ctor(const struct MidLexer_Token *toks,
 
         if (toks[i].type != MIDLEXER_TOKENTYPE_R_PAREN &&
             toks[i].type != MIDLEXER_TOKENTYPE_COMMA) {
-            MidGen_dynpush(diags,
-                        MidDiag_expected_token_err("','", &toks[lparen],
-                                                   MIDDIAG_ERR_MISSING_PAREN));
+            MidGen_dynpush(
+                diags, MidDiag_expected_token_err("','", &toks[lparen],
+                                                  MIDDIAG_ERR_MISSING_PAREN));
         }
     }
 
     return rparen + 1;
 }
 
-static mid_isize parse_inst_init(const struct MidLexer_Token *toks, mid_isize start,
-                               const enum MidLexer_TokenType *end_types,
-                               mid_isize n_end_types,
-                               struct MidParser_VarDeclInst *inst,
-                               bool skip_init, struct MidSema_Scope *scope,
-                               struct MidParser_Allocators *allocs,
-                               struct MidDiag_DiagVec *diags)
+static mid_isize parse_inst_init(const struct MidLexer_Token *toks,
+                                 mid_isize start,
+                                 const enum MidLexer_TokenType *end_types,
+                                 mid_isize n_end_types,
+                                 struct MidParser_VarDeclInst *inst,
+                                 bool skip_init, struct MidSema_Scope *scope,
+                                 struct MidParser_Allocators *allocs,
+                                 struct MidDiag_DiagVec *diags)
 {
     inst->init.start = &toks[start];
     if (skip_init) {
@@ -253,12 +254,12 @@ mid_isize MidParser_parse_var_decl_inst(
     self->name = valid_name_idx(name, toks) ? toks[name].ident : NULL;
     if (MidParser_type_is_void(&self->type) && self->name)
         MidGen_dynpush(diags, void_var_err(self->name, &toks[start],
-                                        MIDDIAG_ERR_BAD_VAR_DECLARATION));
+                                           MIDDIAG_ERR_BAD_VAR_DECLARATION));
 
     if (self->name && flags.add_to_scope && add_ident(self, res))
         MidGen_dynpush(diags,
-                    MidDiag_ident_redefined_err(self->name, &toks[start],
-                                                MIDDIAG_ERR_BAD_IDENTIFIER));
+                       MidDiag_ident_redefined_err(self->name, &toks[start],
+                                                   MIDDIAG_ERR_BAD_IDENTIFIER));
 
     mid_isize assign_idx = type_end;
     self->has_ctor = toks[assign_idx].type == MIDLEXER_TOKENTYPE_L_PAREN;

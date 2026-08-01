@@ -11,7 +11,8 @@ bool MidLexer_is_lit(enum MidLexer_TokenType type);
 bool MidLexer_is_ternaryop(enum MidLexer_TokenType type);
 bool MidLexer_is_binop(enum MidLexer_TokenType type);
 bool MidLexer_is_unaryop(enum MidLexer_TokenType type);
-// operators that can be unary (eg. MIDLEXER_TOKENTYPE_SUB can be in a - b and -b)
+// operators that can be unary (eg. MIDLEXER_TOKENTYPE_SUB can be in a - b and
+// -b)
 bool MidLexer_can_be_unary(enum MidLexer_TokenType type);
 bool MidLexer_is_op(enum MidLexer_TokenType type);
 bool MidLexer_is_typespec(enum MidLexer_TokenType type);
@@ -27,7 +28,7 @@ bool MidLexer_is_accessspec(enum MidLexer_TokenType type);
 struct MidLexer_Token {
     union {
         union MidLit_Value val; // NOTE: NON-OWNING! LIFE-TIME IS MANAGED BY
-                             //       THE STR_LITS TABLE
+                                //       THE STR_LITS TABLE
         const char *ident;
     };
     struct Mid_Position pos;

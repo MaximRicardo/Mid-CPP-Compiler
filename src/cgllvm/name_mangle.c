@@ -29,7 +29,8 @@ static void mangle_type_indirs(const struct MidParser_Type *type,
     }
 }
 
-static void mangle_scope(const struct MidSema_Scope *scope, struct Mid_Dynstr *str)
+static void mangle_scope(const struct MidSema_Scope *scope,
+                         struct Mid_Dynstr *str)
 {
     if (scope->parent)
         mangle_scope(scope->parent, str);

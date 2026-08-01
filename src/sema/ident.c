@@ -10,8 +10,8 @@
 
 bool MidSema_is_nce_ident(enum MidSema_IdentType type)
 {
-    return type == MIDSEMA_IDENTTYPE_NAMESPACE || type == MIDSEMA_IDENTTYPE_CLASS ||
-           type == MIDSEMA_IDENTTYPE_ENUM;
+    return type == MIDSEMA_IDENTTYPE_NAMESPACE ||
+           type == MIDSEMA_IDENTTYPE_CLASS || type == MIDSEMA_IDENTTYPE_ENUM;
 }
 
 void MidSema_IdentFuncInfo_deinit(struct MidSema_IdentFuncInfo *self)
@@ -51,9 +51,9 @@ copy_func_info(const struct MidSema_IdentFuncInfo *src,
 }
 
 struct MidSema_Ident MidSema_copy_ident(const struct MidSema_Ident *src,
-                                  struct MidSema_Scope *dest_parent,
-                                  bool copy_scopes,
-                                  struct MidParser_Allocators *allocs)
+                                        struct MidSema_Scope *dest_parent,
+                                        bool copy_scopes,
+                                        struct MidParser_Allocators *allocs)
 {
     struct MidSema_Ident ret = *src;
     ret.parent = dest_parent;
@@ -65,8 +65,8 @@ struct MidSema_Ident MidSema_copy_ident(const struct MidSema_Ident *src,
     } else if (src->type == MIDSEMA_IDENTTYPE_CLASS) {
         if (copy_scopes) {
             MidGen_bumpmalloc(&allocs->scope, &ret.class_info.def_scope);
-            MidSema_copy_scope(ret.class_info.def_scope, src->class_info.def_scope,
-                            ret.parent, allocs);
+            MidSema_copy_scope(ret.class_info.def_scope,
+                               src->class_info.def_scope, ret.parent, allocs);
         } else {
             ret.class_info.def_scope = NULL;
         }
@@ -110,13 +110,13 @@ mid_isize MidSema_ident_idx(const struct MidSema_Ident *self)
 struct MidSema_IdentPtr MidSema_create_identptr(struct MidSema_Ident *ident)
 {
     return (struct MidSema_IdentPtr){.parent = ident->parent,
-                                  .idx = MidSema_ident_idx(ident)};
+                                     .idx = MidSema_ident_idx(ident)};
 }
 
 struct MidSema_IdentPtr MidSema_identptr_to_last(struct MidSema_Scope *parent)
 {
     return (struct MidSema_IdentPtr){.parent = parent,
-                                  .idx = parent->idents.len - 1};
+                                     .idx = parent->idents.len - 1};
 }
 
 struct MidSema_IdentPtr MidSema_IdentPtr_null(struct MidSema_Scope *parent)
@@ -129,7 +129,8 @@ bool MidSema_is_identptr_null(const struct MidSema_IdentPtr *self)
     return !self->parent || self->idx == -1;
 }
 
-struct MidSema_Ident *MidSema_deref_identptr(const struct MidSema_IdentPtr *self)
+struct MidSema_Ident *
+MidSema_deref_identptr(const struct MidSema_IdentPtr *self)
 {
     return &self->parent->idents.arr[self->idx];
 }
