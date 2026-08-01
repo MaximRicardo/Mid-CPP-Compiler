@@ -1,4 +1,5 @@
 #include "template.h"
+#include "cmd.h"
 #include "diag.h"
 #include "end_types.h"
 #include "generics/bumpalloc.h"
@@ -14,7 +15,6 @@
 #include "parser/expr.h"
 #include "parser/find_twin.h"
 #include "parser/type.h"
-#include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include <string.h>
@@ -523,7 +523,7 @@ static void check_child_valid(const struct midpar_Tmplt *tmplt,
         midgen_dynpush(
             diags, ((struct mid_Diag){.pos = tmplt->child->start->pos,
                                       .line = tmplt->child->start->line,
-                                      .msg = midprt_fmt_to_str(
+                                      .msg = midcmd_fmt_to_str(
                                           "statement can not be a template"),
                                       .err = MIDDIAG_ERR_BAD_TEMPLATE,
                                       .type = MIDDIAG_TYPE_ERROR}));

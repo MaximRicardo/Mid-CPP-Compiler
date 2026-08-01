@@ -1,4 +1,5 @@
 #include "type.h"
+#include "cmd.h"
 #include "diag.h"
 #include "dynstr.h"
 #include "generics/dynarray.h"
@@ -9,7 +10,6 @@
 #include "mid_alloc.h"
 #include "parser/find_twin.h"
 #include "parser/template.h"
-#include "print.h"
 #include "scope.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
@@ -224,7 +224,7 @@ static struct mid_Diag unnecessary_qual_warn(const char *qual,
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("unnecessary '%s' qualifier", qual),
+        .msg = midcmd_fmt_to_str("unnecessary '%s' qualifier", qual),
         .warn = MIDDIAG_WARN_UNNECESSARY_QUALIFIER,
         .type = MIDDIAG_TYPE_WARNING,
     };
@@ -235,7 +235,7 @@ static struct mid_Diag ptr_to_ref_err(const struct midlex_Token *tok)
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("pointer to a reference is not allowed"),
+        .msg = midcmd_fmt_to_str("pointer to a reference is not allowed"),
         .err = MIDDIAG_ERR_PTR_TO_REF,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -246,7 +246,7 @@ static struct mid_Diag missplaced_const_err(const struct midlex_Token *tok)
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("missplaced const specifier"),
+        .msg = midcmd_fmt_to_str("missplaced const specifier"),
         .err = MIDDIAG_ERR_MISPLACED_QUALIFIER,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -257,7 +257,7 @@ static struct mid_Diag type_alr_const_err(const struct midlex_Token *tok)
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("type is already a reference"),
+        .msg = midcmd_fmt_to_str("type is already a reference"),
         .err = MIDDIAG_ERR_TYPE_ALREADY_REF,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -268,7 +268,7 @@ static struct mid_Diag expected_paren(bool left, const struct midlex_Token *tok)
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("expected '%c'", left ? '(' : ')'),
+        .msg = midcmd_fmt_to_str("expected '%c'", left ? '(' : ')'),
         .err = MIDDIAG_ERR_MISSING_PAREN,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -280,7 +280,7 @@ static struct mid_Diag spec_unsignable_err(const char *type_name,
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("type '%s' cannot be made signed or unsigned",
+        .msg = midcmd_fmt_to_str("type '%s' cannot be made signed or unsigned",
                                  type_name),
         .err = MIDDIAG_ERR_TYPE_UNSIGNABLE,
         .type = MIDDIAG_TYPE_ERROR,
@@ -293,7 +293,7 @@ static struct mid_Diag bad_qual_err(const char *type_name,
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("bad qualifier '%s'", type_name),
+        .msg = midcmd_fmt_to_str("bad qualifier '%s'", type_name),
         .err = MIDDIAG_ERR_TYPE_UNSIGNABLE,
         .type = MIDDIAG_TYPE_ERROR,
     };

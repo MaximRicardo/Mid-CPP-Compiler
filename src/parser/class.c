@@ -1,4 +1,5 @@
 #include "class.h"
+#include "cmd.h"
 #include "diag.h"
 #include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
@@ -14,7 +15,6 @@
 #include "parser/scope.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
-#include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/type.h"
@@ -127,7 +127,7 @@ static mid_isize parse_class_inheritance(struct midpar_Class *self,
         midgen_dynpush(diags, ((struct mid_Diag){
                                   .pos = toks[ident].pos,
                                   .line = toks[ident].line,
-                                  .msg = midprt_fmt_to_str("'%s' is undefined",
+                                  .msg = midcmd_fmt_to_str("'%s' is undefined",
                                                            super_name),
                                   .err = MIDDIAG_ERR_BAD_SUPERCLASS,
                                   .type = MIDDIAG_TYPE_ERROR,
@@ -137,7 +137,7 @@ static mid_isize parse_class_inheritance(struct midpar_Class *self,
             diags, ((struct mid_Diag){
                        .pos = toks[ident].pos,
                        .line = toks[ident].line,
-                       .msg = midprt_fmt_to_str("'%s' is not a defined class",
+                       .msg = midcmd_fmt_to_str("'%s' is not a defined class",
                                                 super_name),
                        .err = MIDDIAG_ERR_BAD_SUPERCLASS,
                        .type = MIDDIAG_TYPE_ERROR,

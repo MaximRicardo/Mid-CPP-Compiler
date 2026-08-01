@@ -1,10 +1,10 @@
 #include "scope.h"
+#include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/token_type.h"
-#include "print.h"
 #include "sema/scope.h"
 
 static struct mid_Diag not_a_nmpace_err(const char *tok_name,
@@ -13,7 +13,7 @@ static struct mid_Diag not_a_nmpace_err(const char *tok_name,
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("'%s' is not a namespace", tok_name),
+        .msg = midcmd_fmt_to_str("'%s' is not a namespace", tok_name),
         .err = MIDDIAG_ERR_MISSING_TOKEN,
         .type = MIDDIAG_TYPE_ERROR,
     };

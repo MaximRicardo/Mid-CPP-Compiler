@@ -1,4 +1,5 @@
 #include "expr.h"
+#include "cmd.h"
 #include "diag.h"
 #include "find_twin.h"
 #include "generics/dynarray.h"
@@ -9,7 +10,6 @@
 #include "parser/end_types.h"
 #include "parser/expr_type.h"
 #include "parser/type.h"
-#include "print.h"
 #include "sema/scope.h"
 #include "sema/type.h"
 #include <assert.h>
@@ -986,7 +986,7 @@ static void add_op_to_out(struct midpar_Expr *op, struct midpar_ExprVec *out,
         struct mid_Diag err = {
             .pos = op->tok->pos,
             .line = op->tok->line,
-            .msg = midprt_fmt_to_str(
+            .msg = midcmd_fmt_to_str(
                 "%s operator expects %d %s, received %" PRIisz,
                 midpar_is_unaryop(op->type) ? "unary"
                 : midpar_is_binop(op->type) ? "binary"
@@ -1061,7 +1061,7 @@ static struct midpar_Expr parse_subexpr(const struct midlex_Token *toks,
     if (midpar_find_twin_paren(toks, l_paren, MID_ISIZE_MAX) == -1) {
         struct mid_Diag err = {.pos = toks[l_paren].pos,
                                .line = toks[l_paren].line,
-                               .msg = midprt_fmt_to_str("expected ')'"),
+                               .msg = midcmd_fmt_to_str("expected ')'"),
                                .err = MIDDIAG_ERR_MISSING_PAREN,
                                .type = MIDDIAG_TYPE_ERROR};
         midgen_dynpush(diags, err);

@@ -1,5 +1,7 @@
 #include "cmd.h"
+#include "mid_alloc.h"
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -50,4 +52,36 @@ const struct midcmd_Args *midcmd_get_args(void)
 {
     assert(cmd_args_inited);
     return &cmd_args;
+}
+
+void midcmd_prt_line(const char *line)
+{
+    for (mid_isize i = 0; line[i] != '\n'; ++i)
+        putchar(line[i]);
+}
+
+char *midcmd_fmt_to_str(const char *fmt, ...)
+{
+    char *str = NULL;
+
+    va_list args;
+    va_start(args, fmt);
+    va_list argscpy;
+    va_start(argscpy, fmt);
+
+    int len = vsnprintf(str, 0, fmt, args);
+    str = mid_malloc((len + 1) * sizeof(*str));
+    vsprintf(str, fmt, argscpy);
+
+    va_end(argscpy);
+    va_end(args);
+
+    return str;
+}
+
+void midcmd_prt_column_arrow(i32 column)
+{
+    for (i32 i = 0; i < column - 1; ++i)
+        printf(" ");
+    printf("^\n");
 }

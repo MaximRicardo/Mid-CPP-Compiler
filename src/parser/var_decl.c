@@ -1,4 +1,5 @@
 #include "var_decl.h"
+#include "cmd.h"
 #include "diag.h"
 #include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
@@ -14,7 +15,6 @@
 #include "parser/find_twin.h"
 #include "parser/scope.h"
 #include "parser/type.h"
-#include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/type.h"
@@ -157,7 +157,7 @@ static struct mid_Diag uninited_deduced_type_err(const char *name,
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str(
+        .msg = midcmd_fmt_to_str(
             "declaration of '%s' as a deduced type '%s' needs an initializer",
             name, type),
         .err = MIDDIAG_ERR_BAD_VAR_DECLARATION,
@@ -222,7 +222,7 @@ static struct mid_Diag void_var_err(const char *name,
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("'%s' has incomplete type 'void'", name),
+        .msg = midcmd_fmt_to_str("'%s' has incomplete type 'void'", name),
         .err = type,
         .type = MIDDIAG_TYPE_ERROR,
     };

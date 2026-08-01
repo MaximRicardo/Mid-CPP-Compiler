@@ -1,4 +1,5 @@
 #include "tokenize.h"
+#include "cmd.h"
 #include "diag.h"
 #include "dynstr.h"
 #include "generics/dynarray.h"
@@ -9,7 +10,6 @@
 #include "macros.h"
 #include "mid_alloc.h"
 #include "position.h"
-#include "print.h"
 #include "symbol.h"
 #include "types.h"
 #include "utf8.h"
@@ -193,7 +193,7 @@ static struct mid_Diag intlit_too_big_err(struct mid_Position pos,
     return (struct mid_Diag){
         .pos = pos,
         .line = line,
-        .msg = midprt_fmt_to_str("integer literal too big"),
+        .msg = midcmd_fmt_to_str("integer literal too big"),
         .err = MIDDIAG_ERR_BAD_LITERAL,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -527,7 +527,7 @@ enum midlit_StringType charlit_type(const char *src, mid_isize start,
                        ((struct mid_Diag){
                            .pos = pos,
                            .line = line,
-                           .msg = midprt_fmt_to_str(
+                           .msg = midcmd_fmt_to_str(
                                "unknown char literal prefix '%c'", src[start]),
                            .err = MIDDIAG_ERR_BAD_LITERAL,
                            .type = MIDDIAG_TYPE_ERROR,
@@ -544,7 +544,7 @@ static struct mid_Diag expected_tok_err(const char *name,
     return (struct mid_Diag){
         .pos = pos,
         .line = line,
-        .msg = midprt_fmt_to_str("expected %s", name),
+        .msg = midcmd_fmt_to_str("expected %s", name),
         .err = type,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -615,7 +615,7 @@ bool verify_charlit_value(u32 val, enum midlit_StringType type,
                        ((struct mid_Diag){
                            .pos = pos,
                            .line = line,
-                           .msg = midprt_fmt_to_str(
+                           .msg = midcmd_fmt_to_str(
                                "character to big to fit in character literal"),
                            .err = MIDDIAG_ERR_BAD_LITERAL,
                            .type = MIDDIAG_TYPE_ERROR,
@@ -1395,7 +1395,7 @@ static struct midlex_Tokenize read_tokens(const char *src, const char *file)
             struct mid_Diag err = {
                 .type = MIDDIAG_TYPE_ERROR,
                 .err = MIDDIAG_ERR_UNKNOWN_SYMBOL,
-                .msg = midprt_fmt_to_str("unknown symbol '%s'", c),
+                .msg = midcmd_fmt_to_str("unknown symbol '%s'", c),
                 .pos = pos,
                 .line = line_start};
             midgen_dynpush(&diags, err);

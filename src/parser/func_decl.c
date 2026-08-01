@@ -1,4 +1,5 @@
 #include "func_decl.h"
+#include "cmd.h"
 #include "diag.h"
 #include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
@@ -16,7 +17,6 @@
 #include "parser/scope.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
-#include "print.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/type.h"
@@ -30,7 +30,7 @@ static struct mid_Diag missing_default_arg_err(const char *func,
         .pos = tok->pos,
         .line = tok->line,
         .msg =
-            midprt_fmt_to_str("function '%s' missing default argument", func),
+            midcmd_fmt_to_str("function '%s' missing default argument", func),
         .err = err_type,
         .type = MIDDIAG_TYPE_ERROR,
     };

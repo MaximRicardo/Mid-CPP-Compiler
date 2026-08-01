@@ -1,4 +1,5 @@
 #include "type.h"
+#include "cmd.h"
 #include "diag.h"
 #include "dynstr.h"
 #include "generics/dynarray.h"
@@ -15,7 +16,6 @@
 #include "parser/template.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
-#include "print.h"
 #include "sema/ident.h"
 #include "sema/lookup.h"
 #include "sema/scope.h"
@@ -205,7 +205,7 @@ static struct mid_Diag bad_ctor_call_type(const struct midpar_Type *type,
     struct mid_Diag ret = {
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("can not call constructor on type '%s'", str),
+        .msg = midcmd_fmt_to_str("can not call constructor on type '%s'", str),
         .err = MIDDIAG_ERR_BAD_IDENTIFIER,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -264,7 +264,7 @@ this_outside_nonstatic_method_err(const struct midlex_Token *tok)
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str(
+        .msg = midcmd_fmt_to_str(
             "can't use 'this' outside a non-static member function"),
         .err = MIDDIAG_ERR_BAD_THIS_USAGE,
         .type = MIDDIAG_TYPE_ERROR,
@@ -375,7 +375,7 @@ static struct mid_Diag bad_overload_call_err(const char *name,
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("call to nonexistent overload of '%s'", name),
+        .msg = midcmd_fmt_to_str("call to nonexistent overload of '%s'", name),
         .err = MIDDIAG_ERR_BAD_IDENTIFIER,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -396,7 +396,7 @@ static struct mid_Diag note_func_candidate(const struct midpar_FuncDecl *func)
     return (struct mid_Diag){
         .pos = MIDPAR_GET_START(func)->pos,
         .line = MIDPAR_GET_START(func)->line,
-        .msg = midprt_fmt_to_str("candidate not viable"),
+        .msg = midcmd_fmt_to_str("candidate not viable"),
         .type = MIDDIAG_TYPE_NOTE,
     };
 }
@@ -508,7 +508,7 @@ static void typecheck_assignment_expr(struct midpar_Expr *expr,
             ((struct mid_Diag){
                 .pos = expr->tok->pos,
                 .line = expr->tok->line,
-                .msg = midprt_fmt_to_str("can't assign to %s",
+                .msg = midcmd_fmt_to_str("can't assign to %s",
                                          lhs->valtype == MIDPAR_EXPRVALUE_XVALUE
                                              ? "an xvalue"
                                              : "a prvalue"),
@@ -536,7 +536,7 @@ static void typecheck_inc_dec_expr(struct midpar_Expr *expr,
             ((struct mid_Diag){
                 .pos = expr->tok->pos,
                 .line = expr->tok->line,
-                .msg = midprt_fmt_to_str("%s %s requires an lvalue",
+                .msg = midcmd_fmt_to_str("%s %s requires an lvalue",
                                          is_prefix ? "prefix" : "postfix",
                                          is_inc ? "increment" : "decrement"),
                 .err = MIDDIAG_ERR_BAD_ASSIGNMENT,
@@ -560,7 +560,7 @@ static void typecheck_deref_expr(struct midpar_Expr *expr,
             ((struct mid_Diag){
                 .pos = expr->tok->pos,
                 .line = expr->tok->line,
-                .msg = midprt_fmt_to_str("cannot dereference type '%s'", tname),
+                .msg = midcmd_fmt_to_str("cannot dereference type '%s'", tname),
                 .err = MIDDIAG_ERR_BAD_DEREF,
                 .type = MIDDIAG_TYPE_ERROR,
             }));
@@ -583,7 +583,7 @@ static void typecheck_ref_expr(struct midpar_Expr *expr,
                        ((struct mid_Diag){
                            .pos = expr->tok->pos,
                            .line = expr->tok->line,
-                           .msg = midprt_fmt_to_str("cannot reference rvalue"),
+                           .msg = midcmd_fmt_to_str("cannot reference rvalue"),
                            .err = MIDDIAG_ERR_BAD_REF,
                            .type = MIDDIAG_TYPE_ERROR,
                        }));
@@ -617,7 +617,7 @@ static void typecheck_arr_subscr_expr(struct midpar_Expr *expr,
             ((struct mid_Diag){
                 .pos = expr->tok->pos,
                 .line = expr->tok->line,
-                .msg = midprt_fmt_to_str("cannot subscript types '%s' and '%s'",
+                .msg = midcmd_fmt_to_str("cannot subscript types '%s' and '%s'",
                                          lhs_tname, rhs_tname),
                 .err = MIDDIAG_ERR_BAD_ARRAY_SUBSCRIPT,
                 .type = MIDDIAG_TYPE_ERROR,
@@ -704,7 +704,7 @@ static struct mid_Diag bad_operands(const struct midpar_Expr *expr,
         ret = (struct mid_Diag){
             .pos = expr->tok->pos,
             .line = expr->tok->line,
-            .msg = midprt_fmt_to_str("%s operator can not operate on '%s'",
+            .msg = midcmd_fmt_to_str("%s operator can not operate on '%s'",
                                      type, lhs_tname),
             .err = err_type,
             .type = MIDDIAG_TYPE_ERROR,
@@ -713,7 +713,7 @@ static struct mid_Diag bad_operands(const struct midpar_Expr *expr,
         ret = (struct mid_Diag){
             .pos = expr->tok->pos,
             .line = expr->tok->line,
-            .msg = midprt_fmt_to_str(
+            .msg = midcmd_fmt_to_str(
                 "%s operator can not operate on '%s' and '%s'", type, lhs_tname,
                 rhs_tname),
             .err = err_type,
@@ -932,7 +932,7 @@ memb_sel_lhs_not_class_err(const struct midpar_Expr *memb_sel)
     struct mid_Diag ret = {
         .pos = memb_sel->tok->pos,
         .line = memb_sel->tok->line,
-        .msg = midprt_fmt_to_str(
+        .msg = midcmd_fmt_to_str(
             "member select lhs '%s' is not a class or union", lhs_type),
         .err = MIDDIAG_ERR_BAD_MEMB_SEL,
         .type = MIDDIAG_TYPE_ERROR};
@@ -949,7 +949,7 @@ memb_sel_expects_ptr_err(const struct midpar_Expr *memb_sel)
     struct mid_Diag ret = {
         .pos = memb_sel->tok->pos,
         .line = memb_sel->tok->line,
-        .msg = midprt_fmt_to_str("member select lhs '%s' is not a pointer",
+        .msg = midcmd_fmt_to_str("member select lhs '%s' is not a pointer",
                                  lhs_type),
         .err = MIDDIAG_ERR_BAD_MEMB_SEL,
         .type = MIDDIAG_TYPE_ERROR};
@@ -965,7 +965,7 @@ memb_sel_expects_non_ptr_err(const struct midpar_Expr *memb_sel)
 
     struct mid_Diag ret = {.pos = memb_sel->tok->pos,
                            .line = memb_sel->tok->line,
-                           .msg = midprt_fmt_to_str(
+                           .msg = midcmd_fmt_to_str(
                                "member select lhs '%s' is a pointer", lhs_type),
                            .err = MIDDIAG_ERR_BAD_MEMB_SEL,
                            .type = MIDDIAG_TYPE_ERROR};
@@ -987,7 +987,7 @@ static struct mid_Diag unknown_field_err(const char *field, const char *class_,
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("unknown field '%s' in %s '%s'", field,
+        .msg = midcmd_fmt_to_str("unknown field '%s' in %s '%s'", field,
                                  is_union ? "union" : "class", class_),
         .err = MIDDIAG_ERR_BAD_IDENTIFIER,
         .type = MIDDIAG_TYPE_ERROR,
@@ -1165,7 +1165,7 @@ static struct mid_Diag no_matching_ctor_err(const struct midpar_Type *type,
     struct mid_Diag ret = {
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("no matching constructor for '%s'", str),
+        .msg = midcmd_fmt_to_str("no matching constructor for '%s'", str),
         .err = MIDDIAG_ERR_NO_MATCHING_CTOR,
         .type = MIDDIAG_TYPE_ERROR,
     };
@@ -1236,7 +1236,7 @@ invalid_return_stmt_type_err(const struct midpar_Type *func_type,
         ret = (struct mid_Diag){
             .pos = tok->pos,
             .line = tok->line,
-            .msg = midprt_fmt_to_str("returning '%s' in function of type '%s'",
+            .msg = midcmd_fmt_to_str("returning '%s' in function of type '%s'",
                                      ret_type_str, func_type_str),
             .err = MIDDIAG_ERR_BAD_RETURN_STMT_TYPE,
             .type = MIDDIAG_TYPE_ERROR,
@@ -1247,7 +1247,7 @@ invalid_return_stmt_type_err(const struct midpar_Type *func_type,
         ret = (struct mid_Diag){
             .pos = tok->pos,
             .line = tok->line,
-            .msg = midprt_fmt_to_str(
+            .msg = midcmd_fmt_to_str(
                 "expected a return value in function of type '%s'",
                 func_type_str),
             .err = MIDDIAG_ERR_BAD_RETURN_STMT_TYPE,
@@ -1265,7 +1265,7 @@ static struct mid_Diag return_outside_func_err(const struct midlex_Token *tok)
     return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = midprt_fmt_to_str("return statement outside a function"),
+        .msg = midcmd_fmt_to_str("return statement outside a function"),
         .err = MIDDIAG_ERR_RETURN_OUTSIDE_FUNC,
         .type = MIDDIAG_TYPE_ERROR,
     };
