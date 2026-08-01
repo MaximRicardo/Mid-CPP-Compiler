@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool midsema_node_creates_type_name(const struct midpar_ASTNode *node)
+bool midsema_node_creates_new_type(const struct midpar_ASTNode *node)
 {
     switch (node->type) {
     case MIDPAR_ASTNODETYPE_CLASS:
@@ -236,7 +236,7 @@ static void typecheck_ident_expr(struct midpar_Expr *expr,
                         ? MIDPAR_EXPRVALUE_PRVALUE
                         : MIDPAR_EXPRVALUE_LVALUE;
 
-    if (midsema_node_creates_type_name(ident->decl)) {
+    if (midsema_node_creates_new_type(ident->decl)) {
         // functional cast stuff
         // example: ClassName(1, 2, 3)
         auto type = midsema_type_name_type(scope, expr->tok->ident);

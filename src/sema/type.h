@@ -8,8 +8,11 @@
 #include "sema/scope.h"
 
 // returns whether or not the node creates a new named type
-bool midsema_node_creates_type_name(const struct midpar_ASTNode *node);
-
+bool midsema_node_creates_new_type(const struct midpar_ASTNode *node);
+// returns the type associated with the node.
+// for example, a var decl inst like "int *x" has the type "int *" associated
+// with it. and a class node like "class Name {...}" has the type "class Name"
+// associated with it.
 struct midpar_Type midsema_node_type(const struct midpar_ASTNode *node,
                                      struct midsema_Scope *scope);
 

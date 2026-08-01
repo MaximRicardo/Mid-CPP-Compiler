@@ -160,7 +160,7 @@ bool midsema_is_type_name(const struct midsema_Scope *scope, const char *name)
     if (!ident)
         return false;
 
-    if (ident->decl && midsema_node_creates_type_name(ident->decl))
+    if (ident->decl && midsema_node_creates_new_type(ident->decl))
         return true;
     return false;
 }
