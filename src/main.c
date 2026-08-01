@@ -30,7 +30,7 @@ static char *read_file(const char *path)
     mid_isize len = ftell(f);
     rewind(f);
 
-    char *str = Mid_malloc((len + 1) * sizeof(*str));
+    char *str = mid_malloc((len + 1) * sizeof(*str));
     str[len] = '\0';
 
     for (mid_isize i = 0; i < len; ++i)
@@ -42,13 +42,13 @@ static char *read_file(const char *path)
 }
 
 // removes duplicate diags
-static void clean_diags(struct MidDiag_DiagVec *diags)
+static void clean_diags(struct mid_DiagVec *diags)
 {
     for (mid_isize i = diags->len - 1; i >= 1; --i) {
         auto cur = &diags->arr[i];
         auto prev = &diags->arr[i - 1];
 
-        if (!Mid_position_equal(&cur->pos, &prev->pos))
+        if (!mid_position_equal(&cur->pos, &prev->pos))
             continue;
 
         bool remove = false;
@@ -62,12 +62,12 @@ static void clean_diags(struct MidDiag_DiagVec *diags)
         }
 
         if (remove)
-            MidGen_dynremove(diags, i, MidDiag_deinit);
+            midgen_dynremove(diags, i, middiag_deinit);
     }
 }
 
 // returns true if at least one of them was an error
-static bool print_diags(struct MidDiag_DiagVec *diags)
+static bool print_diags(struct mid_DiagVec *diags)
 {
     clean_diags(diags);
 
@@ -75,49 +75,49 @@ static bool print_diags(struct MidDiag_DiagVec *diags)
     for (mid_isize i = 0; i < diags->len; ++i) {
         if (diags->arr[i].type == MIDDIAG_TYPE_ERROR)
             err = true;
-        MidDiag_print(&diags->arr[i]);
+        middiag_print(&diags->arr[i]);
     }
 
     return err;
 }
 
-static void log_tokens(const struct MidLexer_TokenVec *toks)
+static void log_tokens(const struct midlex_TokenVec *toks)
 {
     for (mid_isize i = 0; i < toks->len; ++i) {
         printf("i = %" PRIisz ", pos = (%d, %d), type = %d", i,
                toks->arr[i].pos.line, toks->arr[i].pos.column,
                toks->arr[i].type);
-        if (toks->arr[i].type == MIDLEXER_TOKENTYPE_INT_LIT)
+        if (toks->arr[i].type == MIDLEX_TOKENTYPE_INT_LIT)
             printf(", value int = %" PRId64, toks->arr[i].val.sint);
-        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_LONG_LIT)
+        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONG_LIT)
             printf(", value long = %" PRId64, toks->arr[i].val.sint);
-        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_LONGLONG_LIT)
+        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONGLONG_LIT)
             printf(", value long long = %" PRId64, toks->arr[i].val.sint);
-        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_UINT_LIT)
+        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_UINT_LIT)
             printf(", value u int = %" PRId64, toks->arr[i].val.uint);
-        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_ULONG_LIT)
+        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_ULONG_LIT)
             printf(", value u long = %" PRId64, toks->arr[i].val.uint);
-        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_ULONGLONG_LIT)
+        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_ULONGLONG_LIT)
             printf(", value u long long = %" PRId64, toks->arr[i].val.uint);
-        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_FLOAT_LIT)
+        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_FLOAT_LIT)
             printf(", value f = %Lf", toks->arr[i].val.flt);
-        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_DOUBLE_LIT)
+        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_DOUBLE_LIT)
             printf(", value d = %Lf", toks->arr[i].val.flt);
-        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_LONGDOUBLE_LIT)
+        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONGDOUBLE_LIT)
             printf(", value ld = %Lf", toks->arr[i].val.flt);
-        else if (toks->arr[i].type == MIDLEXER_TOKENTYPE_STRING_LIT)
+        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_STRING_LIT)
             printf(", value str = '%s'", toks->arr[i].val.str.c);
         printf("\n");
     }
 }
 
-static void log_symbols(const struct MidSymbol_Table *symtbl)
+static void log_symbols(const struct midsymb_Table *symtbl)
 {
     for (mid_isize i = 0; i < symtbl->len; ++i)
         printf("symtbl[%" PRIisz "] = '%s'\n", i, symtbl->arr[i]);
 }
 
-static void log_ast(const char *path, const struct MidParser_ASTNode *root)
+static void log_ast(const char *path, const struct midpar_ASTNode *root)
 {
     FILE *f = fopen(path, "w");
     if (!f) {
@@ -125,21 +125,21 @@ static void log_ast(const char *path, const struct MidParser_ASTNode *root)
         return;
     }
 
-    MidParser_log_ast(root, f);
+    midpar_log_ast(root, f);
 
     fclose(f);
 }
 
 /*
-static void test_mangling(const struct MidSema_Scope *scope)
+static void test_mangling(const struct midsema_Scope *scope)
 {
     for (mid_isize i = 0; i < scope->idents.len; ++i) {
-        struct MidSema_Ident *ident = &scope->idents.arr[i];
+        struct midsema_Ident *ident = &scope->idents.arr[i];
 
         if (ident->type != MIDSEMA_IDENTTYPE_FUNC)
             continue;
 
-        char *mangled = MidLLVM_mangle_func(&ident->decl->func_decl);
+        char *mangled = midllvm_mangle_func(&ident->decl->func_decl);
         printf("func at %d:%d becomes '%s'\n", ident->decl->start->pos.line,
                ident->decl->start->pos.column, mangled);
         free(mangled);
@@ -159,107 +159,107 @@ static void apint_test()
     i32 largest_fib =
         ceil(bits * (log(2.0) / log(phi)) + 0.5 * (log(5.0) / log(phi)));
 
-    struct APInt a = MidAPInt_zero(bits);
-    struct APInt b = MidAPInt_init(bits, 1, false);
-    struct APInt c = MidAPInt_zero(bits);
+    struct APInt a = midint_zero(bits);
+    struct APInt b = midint_init(bits, 1, false);
+    struct APInt c = midint_zero(bits);
 
     for (int i = 0; i < largest_fib; ++i) {
         printf("nr %d: ", i);
-        MidAPInt_log(&a, stdout, false);
+        midint_log(&a, stdout, false);
         putchar('\n');
 
-        MidAPInt_copy_value(&c, &a);
-        MidAPInt_add(&c, &b);
+        midint_copy_value(&c, &a);
+        midint_add(&c, &b);
 
-        MidAPInt_copy_value(&a, &b);
-        MidAPInt_copy_value(&b, &c);
+        midint_copy_value(&a, &b);
+        midint_copy_value(&b, &c);
     }
 
-    MidAPInt_deinit(&c);
-    MidAPInt_deinit(&b);
-    MidAPInt_deinit(&a);
+    midint_deinit(&c);
+    midint_deinit(&b);
+    midint_deinit(&a);
 }
 */
 
 /*
 static void apint_test()
 {
-    struct APInt num = MidAPInt_init_arr(
-        128, (MidAPInt_Word[]){0x123456789aebcdef, 0x123456789aebcdef}, 2,
+    struct APInt num = midint_init_arr(
+        128, (midint_Word[]){0x123456789aebcdef, 0x123456789aebcdef}, 2,
 false);
 
-    MidAPInt_log_hex(&num, stdout);
+    midint_log_hex(&num, stdout);
     printf("\nlhs = ");
-    MidAPInt_log(&num, stdout, false);
+    midint_log(&num, stdout, false);
     putchar('\n');
 
-    struct APInt other = MidAPInt_init_arr(
-        128, (MidAPInt_Word[]){0xdeadbeefdeadbeef, 0x00000000deadbeef}, 2,
+    struct APInt other = midint_init_arr(
+        128, (midint_Word[]){0xdeadbeefdeadbeef, 0x00000000deadbeef}, 2,
 false);
 
     printf("rhs = ");
-    MidAPInt_log(&other, stdout, false);
+    midint_log(&other, stdout, false);
     putchar('\n');
 
-    MidAPInt_add(&num, &other);
+    midint_add(&num, &other);
 
     printf("sum = ");
-    MidAPInt_log(&num, stdout, false);
+    midint_log(&num, stdout, false);
     putchar('\n');
 
-    MidAPInt_deinit(&other);
-    MidAPInt_deinit(&num);
+    midint_deinit(&other);
+    midint_deinit(&num);
 }
 */
 
 /*
 static void apint_test()
 {
-    auto a = MidAPInt_init(128, -1128, true);
-    auto b = MidAPInt_init(128, -10, true);
+    auto a = midint_init(128, -1128, true);
+    auto b = midint_init(128, -10, true);
 
     printf("a = ");
-    MidAPInt_log(&a, stdout, true);
+    midint_log(&a, stdout, true);
     putchar('\n');
 
     printf("b = ");
-    MidAPInt_log(&b, stdout, true);
+    midint_log(&b, stdout, true);
     putchar('\n');
 
-    auto c = MidAPInt_nip_mul(&a, &b);
+    auto c = midint_nip_mul(&a, &b);
 
     printf("c = ");
-    MidAPInt_log(&c, stdout, true);
+    midint_log(&c, stdout, true);
     putchar('\n');
 
     printf("a = %" PRIi64 ", b = %" PRIi64 ", c = %" PRIi64 "\n",
-           MidAPInt_to_sint(&a), MidAPInt_to_sint(&b), MidAPInt_to_sint(&c));
+           midint_to_sint(&a), midint_to_sint(&b), midint_to_sint(&c));
 
-    MidAPInt_deinit(&a);
-    MidAPInt_deinit(&b);
-    MidAPInt_deinit(&c);
+    midint_deinit(&a);
+    midint_deinit(&b);
+    midint_deinit(&c);
 }
 */
 
 static void apint_test()
 {
-    auto a = MidAPInt_init(128, 1128, true);
-    auto b = MidAPInt_init(128, 10, true);
+    auto a = midint_init(128, 1128, true);
+    auto b = midint_init(128, 10, true);
 
     printf("a = ");
-    MidAPInt_log(&a, stdout, true);
+    midint_log(&a, stdout, true);
     putchar('\n');
 
     printf("b = ");
-    MidAPInt_log(&b, stdout, true);
+    midint_log(&b, stdout, true);
     putchar('\n');
 
-    int c = MidAPInt_signed_cmp(&a, &b);
-    int d = MidAPInt_unsigned_cmp(&a, &b);
+    int c = midint_signed_cmp(&a, &b);
+    int d = midint_unsigned_cmp(&a, &b);
     printf("signed = %d, unsigned = %d\n", c, d);
 
-    MidAPInt_deinit(&a);
-    MidAPInt_deinit(&b);
+    midint_deinit(&a);
+    midint_deinit(&b);
 }
 
 int main(int argc, char **argv)
@@ -270,64 +270,64 @@ int main(int argc, char **argv)
     apint_test();
     MID_CRASH("asdf");
 
-    MidCMD_init_args(argc, argv);
+    midcmd_init_args(argc, argv);
 
     int ret = 0;
 
-    struct MidParser_Allocators allocs = {};
+    struct midpar_Allocators allocs = {};
 
-    assert(MidCMD_get_args()->src);
-    char *src = read_file(MidCMD_get_args()->src);
+    assert(midcmd_get_args()->src);
+    char *src = read_file(midcmd_get_args()->src);
 
-    auto lex = MidLexer_tokenize(src, MidCMD_get_args()->src);
+    auto lex = midlex_tokenize(src, midcmd_get_args()->src);
     if (print_diags(&lex.diags)) {
         ret = 1;
         goto tokenize_failed;
     }
 
-    if (MidCMD_get_args()->log_tokens)
+    if (midcmd_get_args()->log_tokens)
         log_tokens(&lex.toks);
-    if (MidCMD_get_args()->log_symbols)
+    if (midcmd_get_args()->log_symbols)
         log_symbols(&lex.symtbl);
 
-    struct MidDiag_DiagVec parser_diags = MidGen_dyninit();
+    struct mid_DiagVec parser_diags = midgen_dyninit();
 
-    struct MidParser_ASTNode root = {.type = MIDPARSER_ASTNODETYPE_ROOT};
-    struct MidSema_Scope scope = {.type = MIDSEMA_SCOPETYPE_ROOT,
+    struct midpar_ASTNode root = {.type = MIDPAR_ASTNODETYPE_ROOT};
+    struct midsema_Scope scope = {.type = MIDSEMA_SCOPETYPE_ROOT,
                                   .node = &root};
 
-    for (mid_isize i = 0; lex.toks.arr[i].type != MIDLEXER_TOKENTYPE_END;) {
-        auto node = MidParser_parse_node(
-            lex.toks.arr, i, &i, &root, &scope,
-            (struct MidParser_ParseNodeFlags){.skip_def = false}, &allocs,
-            &parser_diags);
-        MidGen_dynpush(&root.root, node);
+    for (mid_isize i = 0; lex.toks.arr[i].type != MIDLEX_TOKENTYPE_END;) {
+        auto node =
+            midpar_parse_node(lex.toks.arr, i, &i, &root, &scope,
+                              (struct midpar_ParseNodeFlags){.skip_def = false},
+                              &allocs, &parser_diags);
+        midgen_dynpush(&root.root, node);
     }
     if (print_diags(&parser_diags)) {
         ret = 1;
         goto parser_failed;
     }
 
-    if (MidCMD_get_args()->ast_out)
-        log_ast(MidCMD_get_args()->ast_out, &root);
+    if (midcmd_get_args()->ast_out)
+        log_ast(midcmd_get_args()->ast_out, &root);
 
     /*
     test_mangling(&scope);
 
-    MidLLVM_init_codegen();
-    MidLLVM_codegen(&root);
+    midllvm_init_codegen();
+    midllvm_codegen(&root);
     */
 
 parser_failed:
     // the root scope and root node need to be deallocated manually cuz they
     // weren't dynamically allocated
-    MidSema_Scope_deinit(&scope);
-    MidParser_ASTNode_deinit(&root);
-    MidGen_dyndeinit(&parser_diags, MidDiag_deinit);
+    midsema_Scope_deinit(&scope);
+    midpar_ASTNode_deinit(&root);
+    midgen_dyndeinit(&parser_diags, middiag_deinit);
 tokenize_failed:
-    MidLexer_Tokenize_deinit(&lex);
+    midlex_Tokenize_deinit(&lex);
     free(src);
 
-    MidParser_Allocators_deinit(&allocs);
+    midpar_Allocators_deinit(&allocs);
     return ret;
 }

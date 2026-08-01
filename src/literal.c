@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <wchar.h>
 
-void MidLit_String_deinit(struct MidLit_String *self)
+void midlit_String_deinit(struct midlit_String *self)
 {
     switch (self->type) {
     case MIDLIT_STRINGTYPE_CHAR:
@@ -62,7 +62,7 @@ static mid_isize c32_str_len(const u32 *str)
     return i;
 }
 
-mid_isize MidLit_strlit_len(const struct MidLit_String *strlit)
+mid_isize midlit_strlit_len(const struct midlit_String *strlit)
 {
     switch (strlit->type) {
     case MIDLIT_STRINGTYPE_CHAR:
@@ -79,74 +79,73 @@ mid_isize MidLit_strlit_len(const struct MidLit_String *strlit)
     }
 }
 
-void MidLit_fprint(FILE *out, union MidLit_Value val,
-                   enum MidParser_ExprType type)
+void midlit_fprint(FILE *out, union midlit_Value val, enum midpar_ExprType type)
 {
     switch (type) {
-    case MIDPARSER_EXPRTYPE_CHAR_LIT:
+    case MIDPAR_EXPRTYPE_CHAR_LIT:
         fprintf(out, "'%c'", (char)val.sint);
         break;
 
-    case MIDPARSER_EXPRTYPE_WCHAR_LIT:
+    case MIDPAR_EXPRTYPE_WCHAR_LIT:
         fprintf(out, "'%C'", (wchar_t)val.sint);
         break;
 
-    case MIDPARSER_EXPRTYPE_CHAR16_LIT:
-    case MIDPARSER_EXPRTYPE_CHAR32_LIT:
+    case MIDPAR_EXPRTYPE_CHAR16_LIT:
+    case MIDPAR_EXPRTYPE_CHAR32_LIT:
         fputc('\'', out);
-        MidUTF8_fprint_char(out, val.uint);
+        midutf8_fprint_char(out, val.uint);
         fputc('\'', out);
         break;
 
-    case MIDPARSER_EXPRTYPE_STRING_LIT:
+    case MIDPAR_EXPRTYPE_STRING_LIT:
         fprintf(out, "\"%s\"", val.str.c);
         break;
 
-    case MIDPARSER_EXPRTYPE_WSTRING_LIT:
+    case MIDPAR_EXPRTYPE_WSTRING_LIT:
         fputc('"', out);
-        static_assert(MidTypes_wchar_size == 2 || MidTypes_wchar_size == 4);
-        if (MidTypes_wchar_size == 2)
-            MidUTF8_fprint_str16(out, (void *)val.str.wc);
+        static_assert(midtype_wchar_size == 2 || midtype_wchar_size == 4);
+        if (midtype_wchar_size == 2)
+            midutf8_fprint_str16(out, (void *)val.str.wc);
         else
-            MidUTF8_fprint_str32(out, (void *)val.str.wc);
+            midutf8_fprint_str32(out, (void *)val.str.wc);
         fputc('"', out);
         break;
 
-    case MIDPARSER_EXPRTYPE_STRING16_LIT:
+    case MIDPAR_EXPRTYPE_STRING16_LIT:
         fputc('"', out);
-        MidUTF8_fprint_str16(out, val.str.c16);
-        fputc('"', out);
-        break;
-
-    case MIDPARSER_EXPRTYPE_STRING32_LIT:
-        fputc('"', out);
-        MidUTF8_fprint_str32(out, val.str.c32);
+        midutf8_fprint_str16(out, val.str.c16);
         fputc('"', out);
         break;
 
-    case MIDPARSER_EXPRTYPE_INT_LIT:
-    case MIDPARSER_EXPRTYPE_LONG_LIT:
-    case MIDPARSER_EXPRTYPE_LONGLONG_LIT:
+    case MIDPAR_EXPRTYPE_STRING32_LIT:
+        fputc('"', out);
+        midutf8_fprint_str32(out, val.str.c32);
+        fputc('"', out);
+        break;
+
+    case MIDPAR_EXPRTYPE_INT_LIT:
+    case MIDPAR_EXPRTYPE_LONG_LIT:
+    case MIDPAR_EXPRTYPE_LONGLONG_LIT:
         fprintf(out, "%" PRIi64, val.sint);
         break;
 
-    case MIDPARSER_EXPRTYPE_UINT_LIT:
-    case MIDPARSER_EXPRTYPE_ULONG_LIT:
-    case MIDPARSER_EXPRTYPE_ULONGLONG_LIT:
+    case MIDPAR_EXPRTYPE_UINT_LIT:
+    case MIDPAR_EXPRTYPE_ULONG_LIT:
+    case MIDPAR_EXPRTYPE_ULONGLONG_LIT:
         fprintf(out, "%" PRIu64, val.uint);
         break;
 
-    case MIDPARSER_EXPRTYPE_FLOAT_LIT:
-    case MIDPARSER_EXPRTYPE_DOUBLE_LIT:
-    case MIDPARSER_EXPRTYPE_LONGDOUBLE_LIT:
+    case MIDPAR_EXPRTYPE_FLOAT_LIT:
+    case MIDPAR_EXPRTYPE_DOUBLE_LIT:
+    case MIDPAR_EXPRTYPE_LONGDOUBLE_LIT:
         fprintf(out, "%Lf", val.flt);
         break;
 
-    case MIDPARSER_EXPRTYPE_BOOL_LIT:
+    case MIDPAR_EXPRTYPE_BOOL_LIT:
         fprintf(out, "%s", val.sint ? "true" : "false");
         break;
 
-    case MIDPARSER_EXPRTYPE_NULLPTR_LIT:
+    case MIDPAR_EXPRTYPE_NULLPTR_LIT:
         fprintf(out, "nullptr");
         break;
 
@@ -155,84 +154,84 @@ void MidLit_fprint(FILE *out, union MidLit_Value val,
     }
 }
 
-void MidLit_fprint_toktype(FILE *out, union MidLit_Value val,
-                           enum MidLexer_TokenType type)
+void midlit_fprint_toktype(FILE *out, union midlit_Value val,
+                           enum midlex_TokenType type)
 {
     switch (type) {
-    case MIDLEXER_TOKENTYPE_CHAR_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_CHAR_LIT);
+    case MIDLEX_TOKENTYPE_CHAR_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_CHAR_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_WCHAR_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_WCHAR_LIT);
+    case MIDLEX_TOKENTYPE_WCHAR_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_WCHAR_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_CHAR16_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_CHAR16_LIT);
+    case MIDLEX_TOKENTYPE_CHAR16_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_CHAR16_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_CHAR32_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_CHAR32_LIT);
+    case MIDLEX_TOKENTYPE_CHAR32_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_CHAR32_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_STRING_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_STRING_LIT);
+    case MIDLEX_TOKENTYPE_STRING_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_STRING_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_WSTRING_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_WSTRING_LIT);
+    case MIDLEX_TOKENTYPE_WSTRING_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_WSTRING_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_STRING16_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_STRING16_LIT);
+    case MIDLEX_TOKENTYPE_STRING16_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_STRING16_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_STRING32_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_STRING32_LIT);
+    case MIDLEX_TOKENTYPE_STRING32_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_STRING32_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_INT_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_INT_LIT);
+    case MIDLEX_TOKENTYPE_INT_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_INT_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_UINT_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_UINT_LIT);
+    case MIDLEX_TOKENTYPE_UINT_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_UINT_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_LONG_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_LONG_LIT);
+    case MIDLEX_TOKENTYPE_LONG_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_LONG_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_ULONG_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_ULONG_LIT);
+    case MIDLEX_TOKENTYPE_ULONG_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_ULONG_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_LONGLONG_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_LONGLONG_LIT);
+    case MIDLEX_TOKENTYPE_LONGLONG_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_LONGLONG_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_ULONGLONG_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_ULONGLONG_LIT);
+    case MIDLEX_TOKENTYPE_ULONGLONG_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_ULONGLONG_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_FLOAT_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_FLOAT_LIT);
+    case MIDLEX_TOKENTYPE_FLOAT_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_FLOAT_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_DOUBLE_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_DOUBLE_LIT);
+    case MIDLEX_TOKENTYPE_DOUBLE_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_DOUBLE_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_LONGDOUBLE_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_LONGDOUBLE_LIT);
+    case MIDLEX_TOKENTYPE_LONGDOUBLE_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_LONGDOUBLE_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_BOOL_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_BOOL_LIT);
+    case MIDLEX_TOKENTYPE_BOOL_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_BOOL_LIT);
         break;
 
-    case MIDLEXER_TOKENTYPE_NULLPTR_LIT:
-        MidLit_fprint(out, val, MIDPARSER_EXPRTYPE_NULLPTR_LIT);
+    case MIDLEX_TOKENTYPE_NULLPTR_LIT:
+        midlit_fprint(out, val, MIDPAR_EXPRTYPE_NULLPTR_LIT);
         break;
 
     default:
@@ -240,14 +239,14 @@ void MidLit_fprint_toktype(FILE *out, union MidLit_Value val,
     }
 }
 
-void MidLit_print(union MidLit_Value val, enum MidParser_ExprType type)
+void midlit_print(union midlit_Value val, enum midpar_ExprType type)
 {
-    MidLit_fprint(stdout, val, type);
+    midlit_fprint(stdout, val, type);
 }
 
-void MidLit_print_toktype(union MidLit_Value val, enum MidLexer_TokenType type)
+void midlit_print_toktype(union midlit_Value val, enum midlex_TokenType type)
 {
-    MidLit_fprint_toktype(stdout, val, type);
+    midlit_fprint_toktype(stdout, val, type);
 }
 
 static bool is_hex_digit(char c)
@@ -365,12 +364,12 @@ static u64 read_intlit_decimal(const char *str, mid_isize start,
     return ret;
 }
 
-struct MidLit_ReadIntLitInfo
-MidLit_read_intlit(const char *str, mid_isize start, mid_isize *out_end)
+struct midlit_ReadIntLitInfo
+midlit_read_intlit(const char *str, mid_isize start, mid_isize *out_end)
 {
     assert(isdigit(str[start]));
 
-    struct MidLit_ReadIntLitInfo ret = {};
+    struct midlit_ReadIntLitInfo ret = {};
 
     if (str[start] == '0') {
         if (str[start + 1] == 'x') {

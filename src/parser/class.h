@@ -9,69 +9,64 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 
-enum MidParser_ClassType {
-    MIDPARSER_CLASSTYPE_CLASS,
-    MIDPARSER_CLASSTYPE_STRUCT,
-    MIDPARSER_CLASSTYPE_UNION,
+enum midpar_ClassType {
+    MIDPAR_CLASSTYPE_CLASS,
+    MIDPAR_CLASSTYPE_STRUCT,
+    MIDPAR_CLASSTYPE_UNION,
 };
 
-enum MidParser_ClassAccess {
-    MIDPARSER_CLASSACCESS_PUBLIC,
-    MIDPARSER_CLASSACCESS_PRIVATE,
-    MIDPARSER_CLASSACCESS_PROTECTED,
+enum midpar_ClassAccess {
+    MIDPAR_CLASSACCESS_PUBLIC,
+    MIDPAR_CLASSACCESS_PRIVATE,
+    MIDPAR_CLASSACCESS_PROTECTED,
 };
 
-struct MidParser_Class;
-MidGen_dynarray_struct_named(MidParser_ClassPVec, struct MidParser_Class *);
+struct midpar_Class;
+midgen_dynarray_struct_named(midpar_ClassPVec, struct midpar_Class *);
 
 // classes, structs and unions
-struct MidParser_Class {
-    struct MidParser_ASTNodePVec childs;
-    struct MidParser_ASTNodePVec pub_childs;  // public
-    struct MidParser_ASTNodePVec priv_childs; // private
-    struct MidParser_ASTNodePVec prot_childs; // protected
-    struct MidParser_VarDecl *var; // a class declaration can also act
-                                   // as a variable declaration cuz why
-                                   // tf not i guess.
-                                   // class A {...} x, *y, *const z;
+struct midpar_Class {
+    struct midpar_ASTNodePVec childs;
+    struct midpar_ASTNodePVec pub_childs;  // public
+    struct midpar_ASTNodePVec priv_childs; // private
+    struct midpar_ASTNodePVec prot_childs; // protected
+    struct midpar_VarDecl *var;            // a class declaration can also act
+                                           // as a variable declaration cuz why
+                                           // tf not i guess.
+                                           // class A {...} x, *y, *const z;
     const char *name;
-    struct MidParser_ClassPVec supers;      // classes this class inherits from
-    const struct MidLexer_Token *def_start; // the left curly '{'
-    struct MidSema_IdentPtr ident;
-    enum MidParser_ClassType type;
+    struct midpar_ClassPVec supers;       // classes this class inherits from
+    const struct midlex_Token *def_start; // the left curly '{'
+    struct midsema_IdentPtr ident;
+    enum midpar_ClassType type;
     bool has_def;
 };
 
-void MidParser_Class_deinit(struct MidParser_Class *self);
-void MidParser_copy_class(struct MidParser_Class *dest,
-                          const struct MidParser_Class *src,
-                          struct MidSema_Scope *dest_scope,
-                          struct MidParser_Allocators *allocs);
-struct MidSema_Scope *
-MidParser_class_parent(const struct MidParser_Class *self);
+void midpar_Class_deinit(struct midpar_Class *self);
+void midpar_copy_class(struct midpar_Class *dest,
+                       const struct midpar_Class *src,
+                       struct midsema_Scope *dest_scope,
+                       struct midpar_Allocators *allocs);
+struct midsema_Scope *midpar_class_parent(const struct midpar_Class *self);
 // returns the end of the class
-mid_isize MidParser_parse_class(struct MidParser_Class *self,
-                                struct MidSema_Scope *scope,
-                                const struct MidLexer_Token *toks,
-                                mid_isize start, bool skip_def,
-                                struct MidParser_Allocators *allocs,
-                                struct MidDiag_DiagVec *diags);
-void MidParser_parse_class_def(struct MidParser_Class *self,
-                               const struct MidLexer_Token *toks,
-                               struct MidSema_Scope *scope,
-                               struct MidParser_Allocators *allocs,
-                               struct MidDiag_DiagVec *diags);
-bool MidParser_is_field_pub(const struct MidParser_Class *self,
-                            const struct MidParser_ASTNode *child);
-bool MidParser_is_field_priv(const struct MidParser_Class *self,
-                             const struct MidParser_ASTNode *child);
-bool MidParser_is_field_prot(const struct MidParser_Class *self,
-                             const struct MidParser_ASTNode *child);
-enum MidParser_ClassAccess
-MidParser_field_access(const struct MidParser_Class *self,
-                       const struct MidParser_ASTNode *child);
+mid_isize midpar_parse_class(struct midpar_Class *self,
+                             struct midsema_Scope *scope,
+                             const struct midlex_Token *toks, mid_isize start,
+                             bool skip_def, struct midpar_Allocators *allocs,
+                             struct mid_DiagVec *diags);
+void midpar_parse_class_def(struct midpar_Class *self,
+                            const struct midlex_Token *toks,
+                            struct midsema_Scope *scope,
+                            struct midpar_Allocators *allocs,
+                            struct mid_DiagVec *diags);
+bool midpar_is_field_pub(const struct midpar_Class *self,
+                         const struct midpar_ASTNode *child);
+bool midpar_is_field_priv(const struct midpar_Class *self,
+                          const struct midpar_ASTNode *child);
+bool midpar_is_field_prot(const struct midpar_Class *self,
+                          const struct midpar_ASTNode *child);
+enum midpar_ClassAccess midpar_field_access(const struct midpar_Class *self,
+                                            const struct midpar_ASTNode *child);
 // returns the idx of the field in self->childs
-mid_isize MidParser_find_field(const struct MidParser_Class *self,
-                               const char *name);
-struct MidParser_FuncDeclPVec
-MidParser_class_ctors(const struct MidParser_Class *self);
+mid_isize midpar_find_field(const struct midpar_Class *self, const char *name);
+struct midpar_FuncDeclPVec midpar_class_ctors(const struct midpar_Class *self);

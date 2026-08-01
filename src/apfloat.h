@@ -3,33 +3,33 @@
 #include "apint.h"
 #include "ints.h"
 
-enum MidAPFloat_IEEEKind {
-    MIDAPFLOAT_IEEE_HALF,
-    MIDAPFLOAT_IEEE_SINGLE,
-    MIDAPFLOAT_IEEE_DOUBLE,
+enum midflt_IEEEKind {
+    MIDFLT_IEEE_HALF,
+    MIDFLT_IEEE_SINGLE,
+    MIDFLT_IEEE_DOUBLE,
 };
 
-struct MidAPFloat_IEEE {
-    struct MidAPInt mant; // mantissa
-    i64 exp;              // exponent
-    enum MidAPFloat_IEEEKind kind;
+struct midflt_IEEE {
+    struct mid_APInt mant; // mantissa
+    i64 exp;               // exponent
+    enum midflt_IEEEKind kind;
     bool is_neg; // sign bit
 };
 
-void MidAPFloat_IEEE_deinit(struct MidAPFloat_IEEE *self);
-bool MidAPFloat_IEEE_is_zero(const struct MidAPFloat_IEEE *self);
-bool MidAPFloat_IEEE_is_inf(const struct MidAPFloat_IEEE *self);
-bool MidAPFloat_IEEE_is_nan(const struct MidAPFloat_IEEE *self);
+void midflt_IEEE_deinit(struct midflt_IEEE *self);
+bool midflt_IEEE_is_zero(const struct midflt_IEEE *self);
+bool midflt_IEEE_is_inf(const struct midflt_IEEE *self);
+bool midflt_IEEE_is_nan(const struct midflt_IEEE *self);
 
-enum MidAPFloat_Kind {
-    MIDAPFLOAT_IEEE,
+enum midflt_Kind {
+    MIDFLT_IEEE,
 };
 
-struct MidAPFloat {
+struct mid_APFloat {
     union {
-        struct MidAPFloat_IEEE ieee;
+        struct midflt_IEEE ieee;
     };
-    enum MidAPFloat_Kind kind;
+    enum midflt_Kind kind;
 };
 
-void MidAPFloat_deinit(struct MidAPFloat *self);
+void midflt_deinit(struct mid_APFloat *self);

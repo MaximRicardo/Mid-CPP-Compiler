@@ -1,6 +1,6 @@
 #pragma once
 
-struct MidCMD_Args {
+struct midcmd_Args {
     const char *src;
     const char *ast_out;
     const char *asm_out;
@@ -8,5 +8,5 @@ struct MidCMD_Args {
     bool log_symbols;
 };
 
-void MidCMD_init_args(int argc, char **argv);
-const struct MidCMD_Args *MidCMD_get_args(void);
+void midcmd_init_args(int argc, char **argv);
+const struct midcmd_Args *midcmd_get_args(void);

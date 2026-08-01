@@ -1,7 +1,7 @@
 #include "common.h"
 #include <stdint.h>
 
-uintmax_t MidGen_ceil_pow2(uintmax_t x)
+uintmax_t midgen_ceil_pow2(uintmax_t x)
 {
     --x;
     for (size_t i = 1; i < (sizeof(x) * 8); i = i * 2) {

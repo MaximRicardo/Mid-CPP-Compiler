@@ -4,9 +4,9 @@
 #include "parser/expr.h"
 #include "sema/scope.h"
 
-void MidParser_Allocators_deinit(struct MidParser_Allocators *allocers)
+void midpar_Allocators_deinit(struct midpar_Allocators *allocers)
 {
-    MidGen_bumpdeinit(&allocers->expr, MidParser_Expr_deinit);
-    MidGen_bumpdeinit(&allocers->ast, MidParser_ASTNode_deinit);
-    MidGen_bumpdeinit(&allocers->scope, MidSema_Scope_deinit);
+    midgen_bumpdeinit(&allocers->expr, midpar_Expr_deinit);
+    midgen_bumpdeinit(&allocers->ast, midpar_ASTNode_deinit);
+    midgen_bumpdeinit(&allocers->scope, midsema_Scope_deinit);
 }

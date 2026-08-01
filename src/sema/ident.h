@@ -5,7 +5,7 @@
 #include "parser/allocator.h"
 #include <assert.h>
 
-enum MidSema_IdentType {
+enum midsema_IdentType {
     MIDSEMA_IDENTTYPE_VAR,
     MIDSEMA_IDENTTYPE_TYPEDEF, // TODO: rename this to alias instead of typedef
     MIDSEMA_IDENTTYPE_FUNC,
@@ -18,66 +18,66 @@ enum MidSema_IdentType {
 };
 
 // NCE - Namespace, Class, or Enum
-bool MidSema_is_nce_ident(enum MidSema_IdentType type);
+bool midsema_is_nce_ident(enum midsema_IdentType type);
 
-struct MidSema_IdentFuncInfo {
-    struct MidSema_Scope *def_scope;
-    struct MidParser_Expr **default_args; // one element for each parameter,
-                                          // NULL for parameters without a
-                                          // default argument
+struct midsema_IdentFuncInfo {
+    struct midsema_Scope *def_scope;
+    struct midpar_Expr **default_args; // one element for each parameter,
+                                       // NULL for parameters without a
+                                       // default argument
 };
 
-void MidSema_IdentFuncInfo_deinit(struct MidSema_IdentFuncInfo *self);
+void midsema_IdentFuncInfo_deinit(struct midsema_IdentFuncInfo *self);
 
-struct MidSema_IdentClassInfo {
-    struct MidSema_Scope *def_scope;
+struct midsema_IdentClassInfo {
+    struct midsema_Scope *def_scope;
 };
 
-struct MidSema_Ident {
+struct midsema_Ident {
     union {
-        struct MidSema_IdentFuncInfo func_info;
-        struct MidSema_IdentClassInfo class_info;
+        struct midsema_IdentFuncInfo func_info;
+        struct midsema_IdentClassInfo class_info;
     };
 
     const char *name;
-    struct MidSema_Scope *parent;
-    struct MidParser_ASTNode *decl;
-    struct MidParser_ASTNode *def;
-    enum MidSema_IdentType type;
+    struct midsema_Scope *parent;
+    struct midpar_ASTNode *decl;
+    struct midpar_ASTNode *def;
+    enum midsema_IdentType type;
 };
-MidGen_dynarray_struct_named(MidSema_IdentVec, struct MidSema_Ident);
+midgen_dynarray_struct_named(midsema_IdentVec, struct midsema_Ident);
 
-void MidSema_Ident_deinit(struct MidSema_Ident *self);
-struct MidSema_Scope *MidSema_ident_scope(const struct MidSema_Ident *self);
-bool MidSema_ident_is_tmplt(enum MidSema_IdentType type);
+void midsema_Ident_deinit(struct midsema_Ident *self);
+struct midsema_Scope *midsema_ident_scope(const struct midsema_Ident *self);
+bool midsema_ident_is_tmplt(enum midsema_IdentType type);
 
 // copy_scopes     - should child scopes of the identifier be copied
-struct MidSema_Ident MidSema_copy_ident(const struct MidSema_Ident *src,
-                                        struct MidSema_Scope *dest_parent,
+struct midsema_Ident midsema_copy_ident(const struct midsema_Ident *src,
+                                        struct midsema_Scope *dest_parent,
                                         bool copy_scopes,
-                                        struct MidParser_Allocators *allocs);
+                                        struct midpar_Allocators *allocs);
 
-mid_isize MidSema_ident_idx(const struct MidSema_Ident *self);
+mid_isize midsema_ident_idx(const struct midsema_Ident *self);
 
 // this is here in case i eventually need to make a more complex copy function
-static inline struct MidSema_Ident
-MidSema_copy_var_ident(const struct MidSema_Ident *self)
+static inline struct midsema_Ident
+midsema_copy_var_ident(const struct midsema_Ident *self)
 {
     assert(self->type == MIDSEMA_IDENTTYPE_VAR);
     return *self;
 }
 
 // only gets invalidated if the identifier's idx in its scope gets invalidated
-struct MidSema_IdentPtr {
-    struct MidSema_Scope *parent; // NULL means the ptr is null
+struct midsema_IdentPtr {
+    struct midsema_Scope *parent; // NULL means the ptr is null
     i32 idx;                      // -1 means the ptr is null
 };
-MidGen_dynarray_struct_named(MidSema_IdentPtrVec, struct MidSema_IdentPtr);
+midgen_dynarray_struct_named(midsema_IdentPtrVec, struct midsema_IdentPtr);
 
-struct MidSema_IdentPtr MidSema_create_identptr(struct MidSema_Ident *ident);
+struct midsema_IdentPtr midsema_create_identptr(struct midsema_Ident *ident);
 // creates an ident ptr pointing to the last identifier in parent
-struct MidSema_IdentPtr MidSema_identptr_to_last(struct MidSema_Scope *parent);
-struct MidSema_IdentPtr MidSema_IdentPtr_null(struct MidSema_Scope *parent);
-bool MidSema_is_identptr_null(const struct MidSema_IdentPtr *self);
-struct MidSema_Ident *
-MidSema_deref_identptr(const struct MidSema_IdentPtr *self);
+struct midsema_IdentPtr midsema_identptr_to_last(struct midsema_Scope *parent);
+struct midsema_IdentPtr midsema_IdentPtr_null(struct midsema_Scope *parent);
+bool midsema_is_identptr_null(const struct midsema_IdentPtr *self);
+struct midsema_Ident *
+midsema_deref_identptr(const struct midsema_IdentPtr *self);

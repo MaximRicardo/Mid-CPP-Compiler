@@ -5,16 +5,16 @@
 
 // finds a left parenthesis' corresponding right parenthesis
 // gives up at and past end_idx
-mid_isize MidParser_find_twin_paren(const struct MidLexer_Token *toks,
-                                    mid_isize l_idx, mid_isize end_idx);
-mid_isize MidParser_find_twin_sqbracket(const struct MidLexer_Token *toks,
-                                        mid_isize l_idx, mid_isize end_idx);
-mid_isize MidParser_find_twin_curly(const struct MidLexer_Token *toks,
-                                    mid_isize l_idx, mid_isize end_idx);
-mid_isize MidParser_find_twin_angle(const struct MidLexer_Token *toks,
-                                    mid_isize l_idx, mid_isize end_idx);
+mid_isize midpar_find_twin_paren(const struct midlex_Token *toks,
+                                 mid_isize l_idx, mid_isize end_idx);
+mid_isize midpar_find_twin_sqbracket(const struct midlex_Token *toks,
+                                     mid_isize l_idx, mid_isize end_idx);
+mid_isize midpar_find_twin_curly(const struct midlex_Token *toks,
+                                 mid_isize l_idx, mid_isize end_idx);
+mid_isize midpar_find_twin_angle(const struct midlex_Token *toks,
+                                 mid_isize l_idx, mid_isize end_idx);
 
-mid_isize MidParser_find_twin_generic(const struct MidLexer_Token *toks,
-                                      mid_isize l_idx, mid_isize end_idx,
-                                      enum MidLexer_TokenType l_type,
-                                      enum MidLexer_TokenType r_type);
+mid_isize midpar_find_twin_generic(const struct midlex_Token *toks,
+                                   mid_isize l_idx, mid_isize end_idx,
+                                   enum midlex_TokenType l_type,
+                                   enum midlex_TokenType r_type);

@@ -4,22 +4,20 @@
 #include "ints.h"
 #include "parser/ast.h"
 
-struct MidParser_ASTNodePVec
-MidParser_copy_nodepvec(const struct MidParser_ASTNodePVec *src,
-                        struct MidParser_ASTNode *dest_parent,
-                        struct MidSema_Scope *dest_scope,
-                        struct MidParser_Allocators *allocs)
+struct midpar_ASTNodePVec midpar_copy_nodepvec(
+    const struct midpar_ASTNodePVec *src, struct midpar_ASTNode *dest_parent,
+    struct midsema_Scope *dest_scope, struct midpar_Allocators *allocs)
 {
-    struct MidParser_ASTNodePVec ret = {};
-    MidGen_dynreserve(&ret, src->len);
+    struct midpar_ASTNodePVec ret = {};
+    midgen_dynreserve(&ret, src->len);
 
     for (mid_isize i = 0; i < src->len; ++i) {
-        struct MidParser_ASTNode *cpy;
-        MidGen_bumpmalloc(&allocs->ast, &cpy);
+        struct midpar_ASTNode *cpy;
+        midgen_bumpmalloc(&allocs->ast, &cpy);
 
-        MidParser_copy_node(cpy, src->arr[i], dest_parent, dest_scope, allocs);
+        midpar_copy_node(cpy, src->arr[i], dest_parent, dest_scope, allocs);
 
-        MidGen_dynpush(&ret, cpy);
+        midgen_dynpush(&ret, cpy);
     }
 
     return ret;

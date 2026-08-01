@@ -2,14 +2,14 @@
 
 #include "generics/bumpalloc.h"
 
-MidGen_bumpalloc_struct_named(MidParser_ExprBump, struct MidParser_Expr);
-MidGen_bumpalloc_struct_named(MidParser_ASTNodeBump, struct MidParser_ASTNode);
-MidGen_bumpalloc_struct_named(MidSema_ScopeBump, struct MidSema_Scope);
+midgen_bumpalloc_struct_named(midpar_ExprBump, struct midpar_Expr);
+midgen_bumpalloc_struct_named(midpar_ASTNodeBump, struct midpar_ASTNode);
+midgen_bumpalloc_struct_named(midsema_ScopeBump, struct midsema_Scope);
 
-struct MidParser_Allocators {
-    struct MidParser_ExprBump expr;
-    struct MidParser_ASTNodeBump ast;
-    struct MidSema_ScopeBump scope;
+struct midpar_Allocators {
+    struct midpar_ExprBump expr;
+    struct midpar_ASTNodeBump ast;
+    struct midsema_ScopeBump scope;
 };
 
-void MidParser_Allocators_deinit(struct MidParser_Allocators *allocers);
+void midpar_Allocators_deinit(struct midpar_Allocators *allocers);

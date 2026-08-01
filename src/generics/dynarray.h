@@ -29,7 +29,7 @@
         MIDGEN_DYNARRAY_DEFAULT_SIZE_TYPE cap;                                 \
     }
 
-#define MidGen_dynarray_struct_named(name, elem_type)                          \
+#define midgen_dynarray_struct_named(name, elem_type)                          \
     struct name {                                                              \
         elem_type *arr;                                                        \
         MIDGEN_DYNARRAY_DEFAULT_SIZE_TYPE len;                                 \
@@ -38,7 +38,7 @@
 
 // picks MIDGEN_DYNARRAY_NO_PREFIX if only a type is provided, else picks
 // MIDGEN_DYNARRAY_W_PREFIX
-#define MidGen_dynarray_struct(...)                                            \
+#define midgen_dynarray_struct(...)                                            \
     MIDGEN_EXPAND(                                                             \
         MIDGEN_GET_MACRO_2(__VA_ARGS__, MIDGEN_DYNARRAY_STRUCT_W_PREFIX,       \
                            MIDGEN_DYNARRAY_STRUCT_NO_PREFIX)(__VA_ARGS__))
@@ -48,7 +48,7 @@
 
 #define MIDGEN_DYNARRAY_NO_PREFIX(elem_type) struct elem_type##MIDGEN_DYNARRAY
 
-#define MidGen_dynarray(...)                                                   \
+#define midgen_dynarray(...)                                                   \
     MIDGEN_EXPAND(MIDGEN_GET_MACRO_2(__VA_ARGS__, MIDGEN_DYNARRAY_W_PREFIX,    \
                                      MIDGEN_DYNARRAY_NO_PREFIX)(__VA_ARGS__))
 
@@ -60,7 +60,7 @@
 
 #define MIDGEN_DYNARRAY_ALLOC_SPACE(self)                                      \
     do {                                                                       \
-        self->cap = MidGen_ceil_pow2(self->len);                               \
+        self->cap = midgen_ceil_pow2(self->len);                               \
         MIDGEN_DYNARRAY_REALLOC(self);                                         \
     } while (0)
 
@@ -69,7 +69,7 @@
         assert((idx) >= 0 && (idx) < (self)->len);                             \
     } while (0)
 
-#define MidGen_dyninit()                                                       \
+#define midgen_dyninit()                                                       \
     {                                                                          \
         0                                                                      \
     }
@@ -93,26 +93,26 @@
         self_super_specific_name______->len = 0;                               \
     } while (0)
 
-// void MidGen_dyndeinit(MidGen_dynarray<elem_type> *self,
+// void midgen_dyndeinit(midgen_dynarray<elem_type> *self,
 //                    /* optional */ void free_func(elem_type *))
-#define MidGen_dyndeinit(...)                                                  \
+#define midgen_dyndeinit(...)                                                  \
     MIDGEN_EXPAND(MIDGEN_GET_MACRO_2(__VA_ARGS__, MIDGEN_DYNDEINIT_W_FREE,     \
                                      MIDGEN_DYNDEINIT_NO_FREE)(__VA_ARGS__))
 
 // rounds new_cap up to a power of 2
-// void MidGen_dynreserve(MidGen_dynarray<elem_type> *self, size_type new_cap)
-#define MidGen_dynreserve(self_arg, new_cap_arg)                               \
+// void midgen_dynreserve(midgen_dynarray<elem_type> *self, size_type new_cap)
+#define midgen_dynreserve(self_arg, new_cap_arg)                               \
     do {                                                                       \
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         typeof(new_cap_arg) new_cap_super_specific_name______ = new_cap_arg;   \
         self_super_specific_name______->cap =                                  \
-            MidGen_ceil_pow2(new_cap_super_specific_name______);               \
+            midgen_ceil_pow2(new_cap_super_specific_name______);               \
         MIDGEN_DYNARRAY_REALLOC(self_arg);                                     \
     } while (0)
 
 // DOES NOT round new_cap
-// void MidGen_dynreserve(MidGen_dynarray<elem_type> *self, size_type new_cap)
-#define MidGen_dynreserve_no_round(self_arg, new_cap_arg)                      \
+// void midgen_dynreserve(midgen_dynarray<elem_type> *self, size_type new_cap)
+#define midgen_dynreserve_no_round(self_arg, new_cap_arg)                      \
     do {                                                                       \
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         typeof(new_cap_arg) new_cap_super_specific_name______ = new_cap_arg;   \
@@ -121,8 +121,8 @@
         MIDGEN_DYNARRAY_REALLOC(self_arg);                                     \
     } while (0)
 
-// void MidGen_dynpush(MidGen_dynarray<elem_type> *self, elem_type elem)
-#define MidGen_dynpush(self_arg, elem_arg)                                     \
+// void midgen_dynpush(midgen_dynarray<elem_type> *self, elem_type elem)
+#define midgen_dynpush(self_arg, elem_arg)                                     \
     do {                                                                       \
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         typeof(elem_arg) elem_super_specific_name______ = elem_arg;            \
@@ -147,9 +147,9 @@
         --self_super_specific_name______->len;                                 \
     } while (0)
 
-// void MidGen_dynpop(MidGen_dynarray<elem_type> *self,
+// void midgen_dynpop(midgen_dynarray<elem_type> *self,
 //                 /* optional */ void free_func(elem_type *))
-#define MidGen_dynpop(...)                                                     \
+#define midgen_dynpop(...)                                                     \
     MIDGEN_EXPAND(MIDGEN_GET_MACRO_2(__VA_ARGS__, MIDGEN_DYNPOP_W_FREE,        \
                                      MIDGEN_DYNPOP_NO_FREE)(__VA_ARGS__))
 
@@ -185,16 +185,16 @@
         --self_super_specific_name______->len;                                 \
     } while (0)
 
-// void MidGen_dynremove(MidGen_dynarray<elem_type> *self, size_type idx,
+// void midgen_dynremove(midgen_dynarray<elem_type> *self, size_type idx,
 //                    /* optional */ void free_func(elem_type *))
-#define MidGen_dynremove(self, ...)                                            \
+#define midgen_dynremove(self, ...)                                            \
     MIDGEN_EXPAND(                                                             \
         MIDGEN_GET_MACRO_2(__VA_ARGS__, MIDGEN_DYNREMOVE_W_FREE,               \
                            MIDGEN_DYNREMOVE_NO_FREE)(self, __VA_ARGS__))
 
-// void MidGen_dyninsert(MidGen_dynarray<elem_type> *self, size_type idx,
+// void midgen_dyninsert(midgen_dynarray<elem_type> *self, size_type idx,
 //                    elem_type elem)
-#define MidGen_dyninsert(self_arg, idx_arg, elem_arg)                          \
+#define midgen_dyninsert(self_arg, idx_arg, elem_arg)                          \
     do {                                                                       \
         typeof(self_arg) self_super_specific_name______ = self_arg;            \
         typeof(idx_arg) idx_super_specific_name______ = idx_arg;               \

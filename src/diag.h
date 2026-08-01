@@ -3,7 +3,7 @@
 #include "generics/dynarray.h"
 #include "position.h"
 
-enum MidDiag_ErrT {
+enum middiag_ErrT {
     MIDDIAG_ERR_UNKNOWN_SYMBOL,
     MIDDIAG_ERR_MISSING_PAREN,
     MIDDIAG_ERR_MISSING_SQBRACKET,
@@ -47,67 +47,64 @@ enum MidDiag_ErrT {
     MIDDIAG_ERR_BAD_TEMPLATE,
 };
 
-enum MidDiag_WarnT {
+enum middiag_WarnT {
     MIDDIAG_WARN_UNNECESSARY_QUALIFIER,
 };
 
-enum MidDiag_Type {
+enum middiag_Type {
     MIDDIAG_TYPE_ERROR,
     MIDDIAG_TYPE_WARNING,
     MIDDIAG_TYPE_NOTE,
 };
 
-struct MidDiag_Diag {
-    struct Mid_Position pos;
+struct mid_Diag {
+    struct mid_Position pos;
     const char *line; // terminated by '\n'
     char *msg;
     union {
-        enum MidDiag_ErrT err;
-        enum MidDiag_WarnT warn;
+        enum middiag_ErrT err;
+        enum middiag_WarnT warn;
     };
-    enum MidDiag_Type type;
+    enum middiag_Type type;
 };
-MidGen_dynarray_struct_named(MidDiag_DiagVec, struct MidDiag_Diag);
+midgen_dynarray_struct_named(mid_DiagVec, struct mid_Diag);
 
-void MidDiag_deinit(struct MidDiag_Diag *self);
-void MidDiag_print(const struct MidDiag_Diag *diag);
+void middiag_deinit(struct mid_Diag *self);
+void middiag_print(const struct mid_Diag *diag);
 
-struct MidLexer_Token;
+struct midlex_Token;
 
-struct MidDiag_Diag MidDiag_expected_token_err(const char *name,
-                                               const struct MidLexer_Token *tok,
-                                               enum MidDiag_ErrT type);
-struct MidDiag_Diag
-MidDiag_expected_token_warn(const char *name, const struct MidLexer_Token *tok,
-                            enum MidDiag_WarnT type);
-struct MidDiag_Diag
-MidDiag_unexpected_token_err(const char *name, const struct MidLexer_Token *tok,
-                             enum MidDiag_ErrT type);
-struct MidDiag_Diag
-MidDiag_unexpected_token_warn(const char *name,
-                              const struct MidLexer_Token *tok,
-                              enum MidDiag_WarnT type);
-struct MidDiag_Diag
-MidDiag_ident_redefined_err(const char *name, const struct MidLexer_Token *tok,
-                            enum MidDiag_ErrT type);
-struct MidDiag_Diag
-MidDiag_ident_redefined_warn(const char *name, const struct MidLexer_Token *tok,
-                             enum MidDiag_WarnT type);
-struct MidDiag_Diag
-MidDiag_ident_undeclared_err(const char *name, const struct MidLexer_Token *tok,
-                             enum MidDiag_ErrT type);
-struct MidDiag_Diag
-MidDiag_ident_undeclared_warn(const char *name,
-                              const struct MidLexer_Token *tok,
-                              enum MidDiag_WarnT type);
-struct MidDiag_Diag
-MidDiag_func_undeclared_err(const char *name, const struct MidLexer_Token *tok,
-                            enum MidDiag_ErrT type);
-struct MidDiag_Diag
-MidDiag_func_undeclared_warn(const char *name, const struct MidLexer_Token *tok,
-                             enum MidDiag_WarnT type);
-struct MidDiag_Diag MidDiag_type_id_w_name_err(const struct MidLexer_Token *tok,
-                                               enum MidDiag_ErrT type);
-struct MidDiag_Diag
-MidDiag_type_id_w_name_warn(const struct MidLexer_Token *tok,
-                            enum MidDiag_WarnT type);
+struct mid_Diag middiag_expected_token_err(const char *name,
+                                           const struct midlex_Token *tok,
+                                           enum middiag_ErrT type);
+struct mid_Diag middiag_expected_token_warn(const char *name,
+                                            const struct midlex_Token *tok,
+                                            enum middiag_WarnT type);
+struct mid_Diag middiag_unexpected_token_err(const char *name,
+                                             const struct midlex_Token *tok,
+                                             enum middiag_ErrT type);
+struct mid_Diag middiag_unexpected_token_warn(const char *name,
+                                              const struct midlex_Token *tok,
+                                              enum middiag_WarnT type);
+struct mid_Diag middiag_ident_redefined_err(const char *name,
+                                            const struct midlex_Token *tok,
+                                            enum middiag_ErrT type);
+struct mid_Diag middiag_ident_redefined_warn(const char *name,
+                                             const struct midlex_Token *tok,
+                                             enum middiag_WarnT type);
+struct mid_Diag middiag_ident_undeclared_err(const char *name,
+                                             const struct midlex_Token *tok,
+                                             enum middiag_ErrT type);
+struct mid_Diag middiag_ident_undeclared_warn(const char *name,
+                                              const struct midlex_Token *tok,
+                                              enum middiag_WarnT type);
+struct mid_Diag middiag_func_undeclared_err(const char *name,
+                                            const struct midlex_Token *tok,
+                                            enum middiag_ErrT type);
+struct mid_Diag middiag_func_undeclared_warn(const char *name,
+                                             const struct midlex_Token *tok,
+                                             enum middiag_WarnT type);
+struct mid_Diag middiag_type_id_w_name_err(const struct midlex_Token *tok,
+                                           enum middiag_ErrT type);
+struct mid_Diag middiag_type_id_w_name_warn(const struct midlex_Token *tok,
+                                            enum middiag_WarnT type);

@@ -5,15 +5,15 @@
 #include "parser/ast.h"
 #include <string.h>
 
-void MidLLVM_Scope_deinit(struct MidLLVM_Scope *self)
+void midllvm_Scope_deinit(struct midllvm_Scope *self)
 {
-    MidGen_dyndeinit(&self->idents, MidLLVM_Ident_deinit);
-    MidGen_dyndeinit(&self->childs);
+    midgen_dyndeinit(&self->idents, midllvm_Ident_deinit);
+    midgen_dyndeinit(&self->childs);
 }
 
-const struct MidLLVM_Ident *
-MidLLVM_find_ident_const(const struct MidLLVM_Scope *scope, const char *name,
-                         const struct MidLLVM_Scope **out_ident_scope)
+const struct midllvm_Ident *
+midllvm_find_ident_const(const struct midllvm_Scope *scope, const char *name,
+                         const struct midllvm_Scope **out_ident_scope)
 {
     for (mid_isize i = 0; i < scope->idents.len; ++i) {
         auto ident = &scope->idents.arr[i];
@@ -25,36 +25,36 @@ MidLLVM_find_ident_const(const struct MidLLVM_Scope *scope, const char *name,
     }
 
     if (scope->parent)
-        return MidLLVM_find_ident_const(scope->parent, name, out_ident_scope);
+        return midllvm_find_ident_const(scope->parent, name, out_ident_scope);
     return NULL;
 }
 
-struct MidLLVM_Ident *MidLLVM_find_ident(struct MidLLVM_Scope *scope,
+struct midllvm_Ident *midllvm_find_ident(struct midllvm_Scope *scope,
                                          const char *name,
-                                         struct MidLLVM_Scope **out_ident_scope)
+                                         struct midllvm_Scope **out_ident_scope)
 {
-    return (struct MidLLVM_Ident *)MidLLVM_find_ident_const(
-        scope, name, (const struct MidLLVM_Scope **)out_ident_scope);
+    return (struct midllvm_Ident *)midllvm_find_ident_const(
+        scope, name, (const struct midllvm_Scope **)out_ident_scope);
 }
 
-const struct MidLLVM_Scope *
-MidLLVM_find_func_scope_const(const struct MidLLVM_Scope *scope)
+const struct midllvm_Scope *
+midllvm_find_func_scope_const(const struct midllvm_Scope *scope)
 {
-    if (scope->node && scope->node->type == MIDPARSER_ASTNODETYPE_FUNC_DECL)
+    if (scope->node && scope->node->type == MIDPAR_ASTNODETYPE_FUNC_DECL)
         return scope;
     else if (scope->parent)
-        return MidLLVM_find_func_scope_const(scope->parent);
+        return midllvm_find_func_scope_const(scope->parent);
     else
         return NULL;
 }
 
-struct MidLLVM_Scope *MidLLVM_find_func_scope(struct MidLLVM_Scope *scope)
+struct midllvm_Scope *midllvm_find_func_scope(struct midllvm_Scope *scope)
 {
-    return (struct MidLLVM_Scope *)MidLLVM_find_func_scope_const(scope);
+    return (struct midllvm_Scope *)midllvm_find_func_scope_const(scope);
 }
 
-const struct MidLLVM_Scope *
-MidLLVM_find_root_scope_const(const struct MidLLVM_Scope *scope)
+const struct midllvm_Scope *
+midllvm_find_root_scope_const(const struct midllvm_Scope *scope)
 {
     if (scope->parent)
         return scope->parent;
@@ -62,7 +62,7 @@ MidLLVM_find_root_scope_const(const struct MidLLVM_Scope *scope)
         return scope;
 }
 
-struct MidLLVM_Scope *MidLLVM_find_root_scope(struct MidLLVM_Scope *scope)
+struct midllvm_Scope *midllvm_find_root_scope(struct midllvm_Scope *scope)
 {
-    return (struct MidLLVM_Scope *)MidLLVM_find_root_scope_const(scope);
+    return (struct midllvm_Scope *)midllvm_find_root_scope_const(scope);
 }

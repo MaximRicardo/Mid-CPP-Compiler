@@ -2,5 +2,5 @@
 
 #include "parser/ast.h"
 
-void MidLLVM_init_codegen(void);
-void MidLLVM_codegen(const struct MidParser_ASTNode *root);
+void midllvm_init_codegen(void);
+void midllvm_codegen(const struct midpar_ASTNode *root);

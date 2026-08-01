@@ -7,21 +7,21 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 
-struct MidParser_Namespace {
-    struct MidSema_IdentPtr ident;
-    struct MidParser_ASTNodePVec childs;
-    struct MidSema_Scope *scope;
+struct midpar_Namespace {
+    struct midsema_IdentPtr ident;
+    struct midpar_ASTNodePVec childs;
+    struct midsema_Scope *scope;
     const char *name; // NULL for anonymous namespaces
 };
 
-void MidParser_Namespace_deinit(struct MidParser_Namespace *self);
-void MidParser_copy_namespace(struct MidParser_Namespace *dest,
-                              const struct MidParser_Namespace *src,
-                              struct MidSema_Scope *dest_scope,
-                              struct MidParser_Allocators *allocs);
-mid_isize MidParser_parse_namespace(struct MidParser_Namespace *self,
-                                    struct MidSema_Scope *scope,
-                                    const struct MidLexer_Token *toks,
-                                    mid_isize start,
-                                    struct MidParser_Allocators *allocs,
-                                    struct MidDiag_DiagVec *diags);
+void midpar_Namespace_deinit(struct midpar_Namespace *self);
+void midpar_copy_namespace(struct midpar_Namespace *dest,
+                           const struct midpar_Namespace *src,
+                           struct midsema_Scope *dest_scope,
+                           struct midpar_Allocators *allocs);
+mid_isize midpar_parse_namespace(struct midpar_Namespace *self,
+                                 struct midsema_Scope *scope,
+                                 const struct midlex_Token *toks,
+                                 mid_isize start,
+                                 struct midpar_Allocators *allocs,
+                                 struct mid_DiagVec *diags);

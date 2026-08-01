@@ -56,11 +56,11 @@ mid_qsort_impl(void *v, mid_isize size, mid_isize left, mid_isize right,
     mid_qsort_impl(v, size, last + 1, right, comp, info, buffer);
 }
 
-void Mid_qsort(void *v, mid_isize nmemb, mid_isize size,
+void mid_qsort(void *v, mid_isize nmemb, mid_isize size,
                int comp(const void *, const void *, const void *),
                const void *info)
 {
-    char *buffer = Mid_malloc(size);
+    char *buffer = mid_malloc(size);
     mid_qsort_impl(v, size, 0, nmemb - 1, comp, info, buffer);
     free(buffer);
 }

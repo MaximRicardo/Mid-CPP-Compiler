@@ -2,10 +2,10 @@
 
 #include "ints.h"
 
-struct Mid_Position {
+struct mid_Position {
     const char *file;
     i32 line, column;
 };
 
-bool Mid_position_equal(const struct Mid_Position *a,
-                        const struct Mid_Position *b);
+bool mid_position_equal(const struct mid_Position *a,
+                        const struct mid_Position *b);

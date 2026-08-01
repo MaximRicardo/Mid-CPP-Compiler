@@ -31,100 +31,98 @@ static void log_w_indent(FILE *out, int indent, const char *fmt, ...)
     va_end(args);
 }
 
-static void log_expr(const struct MidParser_Expr *expr, FILE *out);
+static void log_expr(const struct midpar_Expr *expr, FILE *out);
 
-static void log_lit_expr(const struct MidParser_Expr *expr, FILE *out)
+static void log_lit_expr(const struct midpar_Expr *expr, FILE *out)
 {
     switch (expr->type) {
-    case MIDPARSER_EXPRTYPE_CHAR_LIT:
-    case MIDPARSER_EXPRTYPE_STRING_LIT:
-        MidLit_fprint(out, expr->info.val, expr->type);
+    case MIDPAR_EXPRTYPE_CHAR_LIT:
+    case MIDPAR_EXPRTYPE_STRING_LIT:
+        midlit_fprint(out, expr->info.val, expr->type);
         break;
 
-    case MIDPARSER_EXPRTYPE_WCHAR_LIT:
-    case MIDPARSER_EXPRTYPE_WSTRING_LIT:
+    case MIDPAR_EXPRTYPE_WCHAR_LIT:
+    case MIDPAR_EXPRTYPE_WSTRING_LIT:
         fputc('L', out);
-        MidLit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, expr->info.val, expr->type);
         break;
 
-    case MIDPARSER_EXPRTYPE_CHAR16_LIT:
-    case MIDPARSER_EXPRTYPE_STRING16_LIT:
+    case MIDPAR_EXPRTYPE_CHAR16_LIT:
+    case MIDPAR_EXPRTYPE_STRING16_LIT:
         fputc('u', out);
-        MidLit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, expr->info.val, expr->type);
         break;
 
-    case MIDPARSER_EXPRTYPE_CHAR32_LIT:
-    case MIDPARSER_EXPRTYPE_STRING32_LIT:
+    case MIDPAR_EXPRTYPE_CHAR32_LIT:
+    case MIDPAR_EXPRTYPE_STRING32_LIT:
         fputc('U', out);
-        MidLit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, expr->info.val, expr->type);
         break;
 
-    case MIDPARSER_EXPRTYPE_UINT_LIT:
-        MidLit_fprint(out, expr->info.val, expr->type);
+    case MIDPAR_EXPRTYPE_UINT_LIT:
+        midlit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "u");
         break;
 
-    case MIDPARSER_EXPRTYPE_LONG_LIT:
-    case MIDPARSER_EXPRTYPE_LONGDOUBLE_LIT:
-        MidLit_fprint(out, expr->info.val, expr->type);
+    case MIDPAR_EXPRTYPE_LONG_LIT:
+    case MIDPAR_EXPRTYPE_LONGDOUBLE_LIT:
+        midlit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "l");
         break;
 
-    case MIDPARSER_EXPRTYPE_ULONG_LIT:
-        MidLit_fprint(out, expr->info.val, expr->type);
+    case MIDPAR_EXPRTYPE_ULONG_LIT:
+        midlit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "ul");
         break;
 
-    case MIDPARSER_EXPRTYPE_LONGLONG_LIT:
-        MidLit_fprint(out, expr->info.val, expr->type);
+    case MIDPAR_EXPRTYPE_LONGLONG_LIT:
+        midlit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "ll");
         break;
 
-    case MIDPARSER_EXPRTYPE_ULONGLONG_LIT:
-        MidLit_fprint(out, expr->info.val, expr->type);
+    case MIDPAR_EXPRTYPE_ULONGLONG_LIT:
+        midlit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "ull");
         break;
 
-    case MIDPARSER_EXPRTYPE_FLOAT_LIT:
-        MidLit_fprint(out, expr->info.val, expr->type);
+    case MIDPAR_EXPRTYPE_FLOAT_LIT:
+        midlit_fprint(out, expr->info.val, expr->type);
         fprintf(out, "f");
         break;
 
     default:
-        MidLit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, expr->info.val, expr->type);
         break;
     }
 }
 
-static void log_ident_expr(const struct MidParser_Expr *expr, FILE *out)
+static void log_ident_expr(const struct midpar_Expr *expr, FILE *out)
 {
-    assert(expr->type == MIDPARSER_EXPRTYPE_IDENTIFIER);
+    assert(expr->type == MIDPAR_EXPRTYPE_IDENTIFIER);
 
     fprintf(out, "%s", expr->info.ident);
 }
 
-static void log_this_expr(const struct MidParser_Expr *expr, FILE *out)
+static void log_this_expr(const struct midpar_Expr *expr, FILE *out)
 {
-    assert(expr->type == MIDPARSER_EXPRTYPE_THIS);
+    assert(expr->type == MIDPAR_EXPRTYPE_THIS);
 
     fprintf(out, "this");
 }
 
-static void log_scope_res_expr(const struct MidParser_Expr *expr, FILE *out)
+static void log_scope_res_expr(const struct midpar_Expr *expr, FILE *out)
 {
-    if (expr->type == MIDPARSER_EXPRTYPE_IDENTIFIER) {
+    if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER) {
         fprintf(out, "%s", expr->info.ident);
     } else {
-        struct MidParser_Expr *scope =
-            expr->type == MIDPARSER_EXPRTYPE_BIN_SCOPE_RES
-                ? &expr->info.args.arr[0]
-                : NULL;
-        struct MidParser_Expr *child =
-            expr->type == MIDPARSER_EXPRTYPE_BIN_SCOPE_RES
-                ? &expr->info.args.arr[1]
-                : &expr->info.args.arr[0];
+        struct midpar_Expr *scope = expr->type == MIDPAR_EXPRTYPE_BIN_SCOPE_RES
+                                        ? &expr->info.args.arr[0]
+                                        : NULL;
+        struct midpar_Expr *child = expr->type == MIDPAR_EXPRTYPE_BIN_SCOPE_RES
+                                        ? &expr->info.args.arr[1]
+                                        : &expr->info.args.arr[0];
 
-        if (scope && scope->type == MIDPARSER_EXPRTYPE_IDENTIFIER)
+        if (scope && scope->type == MIDPAR_EXPRTYPE_IDENTIFIER)
             fprintf(out, "%s", scope->info.ident);
         fprintf(out, "::");
 
@@ -133,7 +131,7 @@ static void log_scope_res_expr(const struct MidParser_Expr *expr, FILE *out)
 }
 
 // doesn't include parentheses
-static void log_func_call_args(const struct MidParser_Expr *args, mid_isize n,
+static void log_func_call_args(const struct midpar_Expr *args, mid_isize n,
                                FILE *out)
 {
     for (mid_isize i = 0; i < n; ++i) {
@@ -144,14 +142,14 @@ static void log_func_call_args(const struct MidParser_Expr *args, mid_isize n,
     }
 }
 
-static void log_func_call_expr(const struct MidParser_Expr *expr, FILE *out)
+static void log_func_call_expr(const struct midpar_Expr *expr, FILE *out)
 {
-    const struct MidParser_Expr *dest = &expr->info.args.arr[0];
-    if (MidParser_is_scope_res(dest->type))
+    const struct midpar_Expr *dest = &expr->info.args.arr[0];
+    if (midpar_is_scope_res(dest->type))
         log_scope_res_expr(dest, out);
-    else if (MidParser_is_memb_sel(dest->type))
+    else if (midpar_is_memb_sel(dest->type))
         log_expr(dest, out);
-    else if (dest->ret.spec == MIDPARSER_TYPESPEC_FUNC)
+    else if (dest->ret.spec == MIDPAR_TYPESPEC_FUNC)
         fprintf(out, "%s", dest->ret.func.name);
     else
         MID_CRASH("func call dest expr not supported");
@@ -164,9 +162,9 @@ static void log_func_call_expr(const struct MidParser_Expr *expr, FILE *out)
     fprintf(out, ")");
 }
 
-static void log_generic_expr(const struct MidParser_Expr *expr, FILE *out)
+static void log_generic_expr(const struct midpar_Expr *expr, FILE *out)
 {
-    fprintf(out, "_%s", MidParser_exprtype_name(expr->type));
+    fprintf(out, "_%s", midpar_exprtype_name(expr->type));
     if (expr->overloaded)
         fprintf(out, "#%" PRIi32 ":%" PRIi32, expr->node->start->pos.line,
                 expr->node->start->pos.column);
@@ -183,29 +181,29 @@ static void log_generic_expr(const struct MidParser_Expr *expr, FILE *out)
     fprintf(out, ")");
 }
 
-static void log_expr(const struct MidParser_Expr *expr, FILE *out)
+static void log_expr(const struct midpar_Expr *expr, FILE *out)
 {
-    if (expr->type == MIDPARSER_EXPRTYPE_IDENTIFIER)
+    if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
         log_ident_expr(expr, out);
-    else if (expr->type == MIDPARSER_EXPRTYPE_THIS)
+    else if (expr->type == MIDPAR_EXPRTYPE_THIS)
         log_this_expr(expr, out);
-    else if (MidParser_is_numlit(expr->type))
+    else if (midpar_is_numlit(expr->type))
         log_lit_expr(expr, out);
-    else if (MidParser_is_scope_res(expr->type))
+    else if (midpar_is_scope_res(expr->type))
         log_scope_res_expr(expr, out);
-    else if (expr->type == MIDPARSER_EXPRTYPE_FUNC_CALL)
+    else if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL)
         log_func_call_expr(expr, out);
     else
         log_generic_expr(expr, out);
 }
 
-static void log_func_params(const struct MidParser_ASTNode *node, FILE *out)
+static void log_func_params(const struct midpar_ASTNode *node, FILE *out)
 {
     mid_isize end = node->func_decl.params.len;
     for (mid_isize i = 0; i < end; ++i) {
         auto param = node->func_decl.params.arr[i]->insts.arr[0];
 
-        char *type = MidParser_type_to_str(&param->type);
+        char *type = midpar_type_to_str(&param->type);
         fprintf(out, "%s", type);
         free(type);
         type = NULL;
@@ -217,7 +215,7 @@ static void log_func_params(const struct MidParser_ASTNode *node, FILE *out)
     }
 }
 
-static void log_tor_entry(const struct MidParser_ASTNode *node, FILE *out,
+static void log_tor_entry(const struct midpar_ASTNode *node, FILE *out,
                           int indent, bool is_dtor)
 {
     const char *type = node->func_decl.param_scope->parent->node->class_.name;
@@ -232,24 +230,23 @@ static void log_tor_entry(const struct MidParser_ASTNode *node, FILE *out,
     fprintf(out, ")");
 }
 
-static void log_generic_func_entry(const struct MidParser_ASTNode *node,
-                                   FILE *out, int indent)
+static void log_generic_func_entry(const struct midpar_ASTNode *node, FILE *out,
+                                   int indent)
 {
-    char *type = MidParser_type_to_str(&node->func_decl.ret);
+    char *type = midpar_type_to_str(&node->func_decl.ret);
     log_w_indent(out, indent, "%s %s", type, node->func_decl.name);
     free(type);
     type = NULL;
 
     if (node->func_decl.is_op_overload)
-        fprintf(out, "#%s",
-                MidParser_exprtype_name(node->func_decl.op_overload));
+        fprintf(out, "#%s", midpar_exprtype_name(node->func_decl.op_overload));
 
     fprintf(out, "(");
     log_func_params(node, out);
     fprintf(out, ")");
 }
 
-static void log_func_entry(const struct MidParser_ASTNode *node, FILE *out,
+static void log_func_entry(const struct midpar_ASTNode *node, FILE *out,
                            int indent)
 {
     if (node->func_decl.is_tor)
@@ -258,7 +255,7 @@ static void log_func_entry(const struct MidParser_ASTNode *node, FILE *out,
         log_generic_func_entry(node, out, indent);
 }
 
-static void log_func_node(const struct MidParser_ASTNode *node, FILE *out,
+static void log_func_node(const struct midpar_ASTNode *node, FILE *out,
                           int indent)
 {
     log_func_entry(node, out, indent);
@@ -271,14 +268,14 @@ static void log_func_node(const struct MidParser_ASTNode *node, FILE *out,
     log_w_indent(out, indent, "{\n");
 
     for (mid_isize i = 0; i < node->func_decl.nodes.len; ++i) {
-        const struct MidParser_ASTNode *child = node->func_decl.nodes.arr[i];
-        MidParser_log_node(child, out, indent + 1);
+        const struct midpar_ASTNode *child = node->func_decl.nodes.arr[i];
+        midpar_log_node(child, out, indent + 1);
     }
 
     log_w_indent(out, indent, "}\n\n");
 }
 
-static void log_class_supers(const struct MidParser_ASTNode *node, FILE *out)
+static void log_class_supers(const struct midpar_ASTNode *node, FILE *out)
 {
     if (node->class_.supers.len > 0) {
         fprintf(out, " : ");
@@ -294,19 +291,19 @@ static void log_class_supers(const struct MidParser_ASTNode *node, FILE *out)
     }
 }
 
-static void log_class_entry(const struct MidParser_ASTNode *node, FILE *out,
+static void log_class_entry(const struct midpar_ASTNode *node, FILE *out,
                             int indent)
 {
     switch (node->class_.type) {
-    case MIDPARSER_CLASSTYPE_CLASS:
+    case MIDPAR_CLASSTYPE_CLASS:
         log_w_indent(out, indent, "class ");
         break;
 
-    case MIDPARSER_CLASSTYPE_STRUCT:
+    case MIDPAR_CLASSTYPE_STRUCT:
         log_w_indent(out, indent, "struct ");
         break;
 
-    case MIDPARSER_CLASSTYPE_UNION:
+    case MIDPAR_CLASSTYPE_UNION:
         log_w_indent(out, indent, "union ");
         break;
     }
@@ -315,7 +312,7 @@ static void log_class_entry(const struct MidParser_ASTNode *node, FILE *out,
     log_class_supers(node, out);
 }
 
-static void log_class_node(const struct MidParser_ASTNode *node, FILE *out,
+static void log_class_node(const struct midpar_ASTNode *node, FILE *out,
                            int indent)
 {
     log_class_entry(node, out, indent);
@@ -333,47 +330,47 @@ static void log_class_node(const struct MidParser_ASTNode *node, FILE *out,
 
     log_w_indent(out, indent, "public:\n");
     for (mid_isize i = 0; i < node->class_.pub_childs.len; ++i) {
-        const struct MidParser_ASTNode *child = node->class_.pub_childs.arr[i];
-        MidParser_log_node(child, out, indent + 1);
+        const struct midpar_ASTNode *child = node->class_.pub_childs.arr[i];
+        midpar_log_node(child, out, indent + 1);
     }
 
     log_w_indent(out, indent, "private:\n");
     for (mid_isize i = 0; i < node->class_.priv_childs.len; ++i) {
-        const struct MidParser_ASTNode *child = node->class_.priv_childs.arr[i];
-        MidParser_log_node(child, out, indent + 1);
+        const struct midpar_ASTNode *child = node->class_.priv_childs.arr[i];
+        midpar_log_node(child, out, indent + 1);
     }
 
     log_w_indent(out, indent, "protected:\n");
     for (mid_isize i = 0; i < node->class_.prot_childs.len; ++i) {
-        const struct MidParser_ASTNode *child = node->class_.prot_childs.arr[i];
-        MidParser_log_node(child, out, indent + 1);
+        const struct midpar_ASTNode *child = node->class_.prot_childs.arr[i];
+        midpar_log_node(child, out, indent + 1);
     }
 
     log_w_indent(out, indent, "};\n");
 
     if (node->class_.var)
-        MidParser_log_node(MIDPARSER_GET_NODE(node->class_.var), out, indent);
+        midpar_log_node(MIDPAR_GET_NODE(node->class_.var), out, indent);
     else
         fprintf(out, "\n");
 }
 
-static void log_namespace_node(const struct MidParser_ASTNode *node, FILE *out,
+static void log_namespace_node(const struct midpar_ASTNode *node, FILE *out,
                                int indent)
 {
     log_w_indent(out, indent, "namespace %s\n", node->nmspace.name);
     log_w_indent(out, indent, "{\n");
 
     for (mid_isize i = 0; i < node->nmspace.childs.len; ++i) {
-        const struct MidParser_ASTNode *child = node->nmspace.childs.arr[i];
-        MidParser_log_node(child, out, indent);
+        const struct midpar_ASTNode *child = node->nmspace.childs.arr[i];
+        midpar_log_node(child, out, indent);
     }
 
     log_w_indent(out, indent, "} // namespace %s\n\n", node->nmspace.name);
 }
 
-static void log_var_inst(const struct MidParser_VarDeclInst *inst, FILE *out)
+static void log_var_inst(const struct midpar_VarDeclInst *inst, FILE *out)
 {
-    char *type = MidParser_type_to_str(&inst->type);
+    char *type = midpar_type_to_str(&inst->type);
     fprintf(out, "%s %s", type, inst->name);
     free(type);
     type = NULL;
@@ -381,8 +378,8 @@ static void log_var_inst(const struct MidParser_VarDeclInst *inst, FILE *out)
     if (inst->has_ctor) {
         if (inst->ctor.ctor)
             fprintf(out, "#%" PRIi32 ":%" PRIi32,
-                    MIDPARSER_GET_START(inst->ctor.ctor)->pos.line,
-                    MIDPARSER_GET_START(inst->ctor.ctor)->pos.column);
+                    MIDPAR_GET_START(inst->ctor.ctor)->pos.line,
+                    MIDPAR_GET_START(inst->ctor.ctor)->pos.column);
         fprintf(out, "(");
         log_func_call_args(inst->ctor.args.arr, inst->ctor.args.len, out);
         fprintf(out, ")");
@@ -392,7 +389,7 @@ static void log_var_inst(const struct MidParser_VarDeclInst *inst, FILE *out)
     }
 }
 
-static void log_var_node(const struct MidParser_ASTNode *node, FILE *out,
+static void log_var_node(const struct midpar_ASTNode *node, FILE *out,
                          int indent)
 {
     log_w_indent(out, indent, "");
@@ -408,7 +405,7 @@ static void log_var_node(const struct MidParser_ASTNode *node, FILE *out,
     }
 }
 
-static void log_return_node(const struct MidParser_ASTNode *node, FILE *out,
+static void log_return_node(const struct midpar_ASTNode *node, FILE *out,
                             int indent)
 {
     log_w_indent(out, indent, "return");
@@ -421,7 +418,7 @@ static void log_return_node(const struct MidParser_ASTNode *node, FILE *out,
     fprintf(out, ";\n\n");
 }
 
-static void log_expr_node(const struct MidParser_ASTNode *node, FILE *out,
+static void log_expr_node(const struct midpar_ASTNode *node, FILE *out,
                           int indent)
 {
     log_w_indent(out, indent, "");
@@ -429,29 +426,28 @@ static void log_expr_node(const struct MidParser_ASTNode *node, FILE *out,
     fprintf(out, "\n\n");
 }
 
-void MidParser_log_node(const struct MidParser_ASTNode *node, FILE *out,
-                        int indent)
+void midpar_log_node(const struct midpar_ASTNode *node, FILE *out, int indent)
 {
-    if (node->type == MIDPARSER_ASTNODETYPE_FUNC_DECL)
+    if (node->type == MIDPAR_ASTNODETYPE_FUNC_DECL)
         log_func_node(node, out, indent);
-    else if (node->type == MIDPARSER_ASTNODETYPE_CLASS)
+    else if (node->type == MIDPAR_ASTNODETYPE_CLASS)
         log_class_node(node, out, indent);
-    else if (node->type == MIDPARSER_ASTNODETYPE_NAMESPACE)
+    else if (node->type == MIDPAR_ASTNODETYPE_NAMESPACE)
         log_namespace_node(node, out, indent);
-    else if (node->type == MIDPARSER_ASTNODETYPE_VAR_DECL)
+    else if (node->type == MIDPAR_ASTNODETYPE_VAR_DECL)
         log_var_node(node, out, indent);
-    else if (node->type == MIDPARSER_ASTNODETYPE_RETURN)
+    else if (node->type == MIDPAR_ASTNODETYPE_RETURN)
         log_return_node(node, out, indent);
-    else if (node->type == MIDPARSER_ASTNODETYPE_EXPR)
+    else if (node->type == MIDPAR_ASTNODETYPE_EXPR)
         log_expr_node(node, out, indent);
 }
 
-void MidParser_log_ast(const struct MidParser_ASTNode *root, FILE *out)
+void midpar_log_ast(const struct midpar_ASTNode *root, FILE *out)
 {
-    assert(root->type == MIDPARSER_ASTNODETYPE_ROOT);
+    assert(root->type == MIDPAR_ASTNODETYPE_ROOT);
 
     for (mid_isize i = 0; i < root->root.len; ++i) {
-        const struct MidParser_ASTNode *child = root->root.arr[i];
-        MidParser_log_node(child, out, 0);
+        const struct midpar_ASTNode *child = root->root.arr[i];
+        midpar_log_node(child, out, 0);
     }
 }

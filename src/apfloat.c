@@ -2,19 +2,19 @@
 #include "apint.h"
 #include "macros.h"
 
-typedef enum MidAPFloat_IEEEKind IEEEKind;
-typedef struct MidAPFloat_IEEE IEEE;
+typedef enum midflt_IEEEKind IEEEKind;
+typedef struct midflt_IEEE IEEE;
 
-void MidAPFloat_IEEE_deinit(struct MidAPFloat_IEEE *self)
+void midflt_IEEE_deinit(struct midflt_IEEE *self)
 {
-    MidAPInt_deinit(&self->mant);
+    midint_deinit(&self->mant);
 }
 
-void MidAPFloat_deinit(struct MidAPFloat *self)
+void midflt_deinit(struct mid_APFloat *self)
 {
     switch (self->kind) {
-    case MIDAPFLOAT_IEEE:
-        MidAPFloat_IEEE_deinit(&self->ieee);
+    case MIDFLT_IEEE:
+        midflt_IEEE_deinit(&self->ieee);
         break;
 
     default:
@@ -25,13 +25,13 @@ void MidAPFloat_deinit(struct MidAPFloat *self)
 static int ieee_exp_n_bits(IEEEKind kind)
 {
     switch (kind) {
-    case MIDAPFLOAT_IEEE_HALF:
+    case MIDFLT_IEEE_HALF:
         return 5;
 
-    case MIDAPFLOAT_IEEE_SINGLE:
+    case MIDFLT_IEEE_SINGLE:
         return 8;
 
-    case MIDAPFLOAT_IEEE_DOUBLE:
+    case MIDFLT_IEEE_DOUBLE:
         return 11;
     }
 }
@@ -83,17 +83,17 @@ static u64 ieee_exp_all_ones(const IEEE *self)
     return ieee_biased_exp(self) == ieee_biased_exp_max(self->kind);
 }
 
-bool MidAPFloat_IEEE_is_zero(const struct MidAPFloat_IEEE *self)
+bool midflt_IEEE_is_zero(const struct midflt_IEEE *self)
 {
-    return ieee_exp_all_zeroes(self) && MidAPInt_is_zero(&self->mant);
+    return ieee_exp_all_zeroes(self) && midint_is_zero(&self->mant);
 }
 
-bool MidAPFloat_IEEE_is_inf(const struct MidAPFloat_IEEE *self)
+bool midflt_IEEE_is_inf(const struct midflt_IEEE *self)
 {
-    return ieee_exp_all_ones(self) && MidAPInt_is_zero(&self->mant);
+    return ieee_exp_all_ones(self) && midint_is_zero(&self->mant);
 }
 
-bool MidAPFloat_IEEE_is_nan(const struct MidAPFloat_IEEE *self)
+bool midflt_IEEE_is_nan(const struct midflt_IEEE *self)
 {
-    return ieee_exp_all_ones(self) && !MidAPInt_is_zero(&self->mant);
+    return ieee_exp_all_ones(self) && !midint_is_zero(&self->mant);
 }

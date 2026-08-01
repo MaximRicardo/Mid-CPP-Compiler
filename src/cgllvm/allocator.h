@@ -2,10 +2,10 @@
 
 #include "generics/bumpalloc.h"
 
-MidGen_bumpalloc_struct_named(MidLLVM_ScopeBump, struct MidLLVM_Scope);
+midgen_bumpalloc_struct_named(midllvm_ScopeBump, struct midllvm_Scope);
 
-struct MidLLVM_Allocators {
-    struct MidLLVM_ScopeBump scope;
+struct midllvm_Allocators {
+    struct midllvm_ScopeBump scope;
 };
 
-void MidLLVM_Allocators_deinit(struct MidLLVM_Allocators *allocs);
+void midllvm_Allocators_deinit(struct midllvm_Allocators *allocs);

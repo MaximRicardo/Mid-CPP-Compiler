@@ -91,7 +91,7 @@ static u32 uni_to_c32(struct UnicodeChar uni)
     return ret;
 }
 
-u32 MidUTF8_read_char(const char *src, mid_isize start, mid_isize *out_end)
+u32 midutf8_read_char(const char *src, mid_isize start, mid_isize *out_end)
 {
     unsigned char b0 = src[start];
 
@@ -120,7 +120,7 @@ u32 MidUTF8_read_char(const char *src, mid_isize start, mid_isize *out_end)
     return uni_to_c32(ret);
 }
 
-void MidUTF8_fprint_char(FILE *out, u32 c)
+void midutf8_fprint_char(FILE *out, u32 c)
 {
     char buf[MB_LEN_MAX + 1] = {0};
     mbstate_t ps;
@@ -130,12 +130,12 @@ void MidUTF8_fprint_char(FILE *out, u32 c)
     fprintf(out, "%s", buf);
 }
 
-void MidUTF8_print_char(u32 c)
+void midutf8_print_char(u32 c)
 {
-    MidUTF8_fprint_char(stdout, c);
+    midutf8_fprint_char(stdout, c);
 }
 
-char *MidUTF8_char_to_str(u32 c)
+char *midutf8_char_to_str(u32 c)
 {
     char *ret = calloc(MB_LEN_MAX + 1, 1);
     mbstate_t ps;
@@ -146,48 +146,48 @@ char *MidUTF8_char_to_str(u32 c)
     return ret;
 }
 
-void MidUTF8_fprint_str32(FILE *out, u32 *str)
+void midutf8_fprint_str32(FILE *out, u32 *str)
 {
     for (mid_isize i = 0; str[i] != '\0'; ++i)
-        MidUTF8_fprint_char(out, str[i]);
+        midutf8_fprint_char(out, str[i]);
 }
 
-void MidUTF8_print_str32(u32 *str)
+void midutf8_print_str32(u32 *str)
 {
-    MidUTF8_fprint_str32(stdout, str);
+    midutf8_fprint_str32(stdout, str);
 }
 
-void MidUTF8_fprint_str16(FILE *out, u16 *str)
+void midutf8_fprint_str16(FILE *out, u16 *str)
 {
     for (mid_isize i = 0; str[i] != '\0'; ++i)
-        MidUTF8_fprint_char(out, str[i]);
+        midutf8_fprint_char(out, str[i]);
 }
 
-void MidUTF8_print_str16(u16 *str)
+void midutf8_print_str16(u16 *str)
 {
-    MidUTF8_fprint_str16(stdout, str);
+    midutf8_fprint_str16(stdout, str);
 }
 
-char *MidUTF8_str32_to_str(u32 *str)
+char *midutf8_str32_to_str(u32 *str)
 {
-    struct Mid_Dynstr ret = {};
+    struct mid_Dynstr ret = {};
 
     for (mid_isize i = 0; str[i] != '\0'; ++i) {
-        char *c = MidUTF8_char_to_str(str[i]);
-        MidDynstr_append(&ret, c);
+        char *c = midutf8_char_to_str(str[i]);
+        midstr_append(&ret, c);
         free(c);
     }
 
     return ret.str;
 }
 
-char *MidUTF8_str16_to_str(u16 *str)
+char *midutf8_str16_to_str(u16 *str)
 {
-    struct Mid_Dynstr ret = {};
+    struct mid_Dynstr ret = {};
 
     for (mid_isize i = 0; str[i] != '\0'; ++i) {
-        char *c = MidUTF8_char_to_str(str[i]);
-        MidDynstr_append(&ret, c);
+        char *c = midutf8_char_to_str(str[i]);
+        midstr_append(&ret, c);
         free(c);
     }
 

@@ -5,13 +5,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void MidPrint_line(const char *line)
+void midprt_line(const char *line)
 {
     for (mid_isize i = 0; line[i] != '\n'; ++i)
         putchar(line[i]);
 }
 
-char *MidPrint_fmt_to_str(const char *fmt, ...)
+char *midprt_fmt_to_str(const char *fmt, ...)
 {
     char *str = NULL;
 
@@ -21,7 +21,7 @@ char *MidPrint_fmt_to_str(const char *fmt, ...)
     va_start(argscpy, fmt);
 
     int len = vsnprintf(str, 0, fmt, args);
-    str = Mid_malloc((len + 1) * sizeof(*str));
+    str = mid_malloc((len + 1) * sizeof(*str));
     vsprintf(str, fmt, argscpy);
 
     va_end(argscpy);
@@ -30,7 +30,7 @@ char *MidPrint_fmt_to_str(const char *fmt, ...)
     return str;
 }
 
-void MidPrint_column_arrow(i32 column)
+void midprt_column_arrow(i32 column)
 {
     for (i32 i = 0; i < column - 1; ++i)
         printf(" ");

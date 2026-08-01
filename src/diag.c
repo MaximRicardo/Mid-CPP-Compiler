@@ -7,13 +7,13 @@
 #include <stddef.h>
 #include <stdio.h>
 
-void MidDiag_deinit(struct MidDiag_Diag *self)
+void middiag_deinit(struct mid_Diag *self)
 {
     free(self->msg);
     self->msg = NULL;
 }
 
-void MidDiag_print(const struct MidDiag_Diag *diag)
+void middiag_print(const struct mid_Diag *diag)
 {
     // example: "test.cpp:10:5: error: expected ';' after expression"
     //          "00010 | printf("hello world")"
@@ -22,178 +22,179 @@ void MidDiag_print(const struct MidDiag_Diag *diag)
            diag->pos.column);
     switch (diag->type) {
     case MIDDIAG_TYPE_ERROR:
-        printf("%serror%s: ", MidPrint_ansi_red, MidPrint_ansi_reset);
+        printf("%serror%s: ", midprt_ansi_red, midprt_ansi_reset);
         break;
 
     case MIDDIAG_TYPE_WARNING:
-        printf("%swarning%s: ", MidPrint_ansi_magenta, MidPrint_ansi_reset);
+        printf("%swarning%s: ", midprt_ansi_magenta, midprt_ansi_reset);
         break;
 
     case MIDDIAG_TYPE_NOTE:
-        printf("%snote%s: ", MidPrint_ansi_cyan, MidPrint_ansi_reset);
+        printf("%snote%s: ", midprt_ansi_cyan, midprt_ansi_reset);
         break;
     }
     printf("%s\n", diag->msg);
 
     printf("%05" PRId32 " | ", diag->pos.line);
-    MidPrint_line(diag->line);
+    midprt_line(diag->line);
     putchar('\n');
 
     i32 n_digits = MID_MAX(log10(diag->pos.line) + 1, 5);
     for (mid_isize i = 0; i < n_digits; ++i)
         putchar(' ');
     printf(" | ");
-    MidPrint_column_arrow(diag->pos.column);
+    midprt_column_arrow(diag->pos.column);
 }
 
-struct MidDiag_Diag MidDiag_expected_token_err(const char *name,
-                                               const struct MidLexer_Token *tok,
-                                               enum MidDiag_ErrT type)
+struct mid_Diag middiag_expected_token_err(const char *name,
+                                           const struct midlex_Token *tok,
+                                           enum middiag_ErrT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("expected %s", name),
+        .msg = midprt_fmt_to_str("expected %s", name),
         .err = type,
         .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-struct MidDiag_Diag
-MidDiag_expected_token_warn(const char *name, const struct MidLexer_Token *tok,
-                            enum MidDiag_WarnT type)
+struct mid_Diag middiag_expected_token_warn(const char *name,
+                                            const struct midlex_Token *tok,
+                                            enum middiag_WarnT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("expected %s", name),
+        .msg = midprt_fmt_to_str("expected %s", name),
         .warn = type,
         .type = MIDDIAG_TYPE_WARNING,
     };
 }
 
-struct MidDiag_Diag
-MidDiag_unexpected_token_err(const char *name, const struct MidLexer_Token *tok,
-                             enum MidDiag_ErrT type)
+struct mid_Diag middiag_unexpected_token_err(const char *name,
+                                             const struct midlex_Token *tok,
+                                             enum middiag_ErrT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("unexpected %s", name),
+        .msg = midprt_fmt_to_str("unexpected %s", name),
         .err = type,
         .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-struct MidDiag_Diag MidDiag_unexpected_token_warn(
-    const char *name, const struct MidLexer_Token *tok, enum MidDiag_WarnT type)
+struct mid_Diag middiag_unexpected_token_warn(const char *name,
+                                              const struct midlex_Token *tok,
+                                              enum middiag_WarnT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("unexpected %s", name),
+        .msg = midprt_fmt_to_str("unexpected %s", name),
         .warn = type,
         .type = MIDDIAG_TYPE_WARNING,
     };
 }
 
-struct MidDiag_Diag
-MidDiag_ident_redefined_err(const char *name, const struct MidLexer_Token *tok,
-                            enum MidDiag_ErrT type)
+struct mid_Diag middiag_ident_redefined_err(const char *name,
+                                            const struct midlex_Token *tok,
+                                            enum middiag_ErrT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("'%s' redefined", name),
+        .msg = midprt_fmt_to_str("'%s' redefined", name),
         .err = type,
         .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-struct MidDiag_Diag
-MidDiag_ident_redefined_warn(const char *name, const struct MidLexer_Token *tok,
-                             enum MidDiag_WarnT type)
+struct mid_Diag middiag_ident_redefined_warn(const char *name,
+                                             const struct midlex_Token *tok,
+                                             enum middiag_WarnT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("'%s' redefined", name),
+        .msg = midprt_fmt_to_str("'%s' redefined", name),
         .warn = type,
         .type = MIDDIAG_TYPE_WARNING,
     };
 }
 
-struct MidDiag_Diag
-MidDiag_ident_undeclared_err(const char *name, const struct MidLexer_Token *tok,
-                             enum MidDiag_ErrT type)
+struct mid_Diag middiag_ident_undeclared_err(const char *name,
+                                             const struct midlex_Token *tok,
+                                             enum middiag_ErrT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("undeclared identifier '%s'", name),
+        .msg = midprt_fmt_to_str("undeclared identifier '%s'", name),
         .err = type,
         .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-struct MidDiag_Diag MidDiag_ident_undeclared_warn(
-    const char *name, const struct MidLexer_Token *tok, enum MidDiag_WarnT type)
+struct mid_Diag middiag_ident_undeclared_warn(const char *name,
+                                              const struct midlex_Token *tok,
+                                              enum middiag_WarnT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("undeclared identifier '%s'", name),
+        .msg = midprt_fmt_to_str("undeclared identifier '%s'", name),
         .warn = type,
         .type = MIDDIAG_TYPE_WARNING,
     };
 }
 
-struct MidDiag_Diag
-MidDiag_func_undeclared_err(const char *name, const struct MidLexer_Token *tok,
-                            enum MidDiag_ErrT type)
+struct mid_Diag middiag_func_undeclared_err(const char *name,
+                                            const struct midlex_Token *tok,
+                                            enum middiag_ErrT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("undeclared function '%s'", name),
+        .msg = midprt_fmt_to_str("undeclared function '%s'", name),
         .err = type,
         .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-struct MidDiag_Diag
-MidDiag_func_undeclared_warn(const char *name, const struct MidLexer_Token *tok,
-                             enum MidDiag_WarnT type)
+struct mid_Diag middiag_func_undeclared_warn(const char *name,
+                                             const struct midlex_Token *tok,
+                                             enum middiag_WarnT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("undeclared function '%s'", name),
+        .msg = midprt_fmt_to_str("undeclared function '%s'", name),
         .warn = type,
         .type = MIDDIAG_TYPE_WARNING,
     };
 }
 
-struct MidDiag_Diag MidDiag_type_id_w_name_err(const struct MidLexer_Token *tok,
-                                               enum MidDiag_ErrT type)
+struct mid_Diag middiag_type_id_w_name_err(const struct midlex_Token *tok,
+                                           enum middiag_ErrT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("type-id can't be named"),
+        .msg = midprt_fmt_to_str("type-id can't be named"),
         .err = type,
         .type = MIDDIAG_TYPE_ERROR,
     };
 }
 
-struct MidDiag_Diag
-MidDiag_type_id_w_name_warn(const struct MidLexer_Token *tok,
-                            enum MidDiag_WarnT type)
+struct mid_Diag middiag_type_id_w_name_warn(const struct midlex_Token *tok,
+                                            enum middiag_WarnT type)
 {
-    return (struct MidDiag_Diag){
+    return (struct mid_Diag){
         .pos = tok->pos,
         .line = tok->line,
-        .msg = MidPrint_fmt_to_str("type-id can't be named"),
+        .msg = midprt_fmt_to_str("type-id can't be named"),
         .warn = type,
         .type = MIDDIAG_TYPE_WARNING,
     };

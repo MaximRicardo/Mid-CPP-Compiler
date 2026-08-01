@@ -4,6 +4,5 @@
 #include <stdio.h>
 
 // logs the AST to a file
-void MidParser_log_ast(const struct MidParser_ASTNode *root, FILE *out);
-void MidParser_log_node(const struct MidParser_ASTNode *node, FILE *out,
-                        int indent);
+void midpar_log_ast(const struct midpar_ASTNode *root, FILE *out);
+void midpar_log_node(const struct midpar_ASTNode *node, FILE *out, int indent);

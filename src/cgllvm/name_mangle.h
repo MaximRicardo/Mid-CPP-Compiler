@@ -3,5 +3,5 @@
 #include "parser/func_decl.h"
 #include "parser/type.h"
 
-char *MidLLVM_mangle_type(const struct MidParser_Type *type);
-char *MidLLVM_mangle_func(const struct MidParser_FuncDecl *func);
+char *midllvm_mangle_type(const struct midpar_Type *type);
+char *midllvm_mangle_func(const struct midpar_FuncDecl *func);

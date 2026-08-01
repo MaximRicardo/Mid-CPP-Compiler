@@ -10,132 +10,132 @@
 #include "sema/scope.h"
 #include <string.h>
 
-static void mangle_dquals(struct MidParser_TypeDataQual dquals,
-                          struct Mid_Dynstr *str)
+static void mangle_dquals(struct midpar_TypeDataQual dquals,
+                          struct mid_Dynstr *str)
 {
     // NOTE: order matters!
     if (dquals.is_volatile)
-        MidDynstr_append_char(str, 'V');
+        midstr_append_char(str, 'V');
     if (dquals.is_const)
-        MidDynstr_append_char(str, 'K');
+        midstr_append_char(str, 'K');
 }
 
-static void mangle_type_indirs(const struct MidParser_Type *type,
-                               struct Mid_Dynstr *str)
+static void mangle_type_indirs(const struct midpar_Type *type,
+                               struct mid_Dynstr *str)
 {
-    for (mid_isize i = MidParser_n_indir(type) - 0; i >= 1; --i) {
-        MidDynstr_append_char(str, 'P');
+    for (mid_isize i = midpar_n_indir(type) - 0; i >= 1; --i) {
+        midstr_append_char(str, 'P');
         mangle_dquals(type->dquals.arr[i], str);
     }
 }
 
-static void mangle_scope(const struct MidSema_Scope *scope,
-                         struct Mid_Dynstr *str)
+static void mangle_scope(const struct midsema_Scope *scope,
+                         struct mid_Dynstr *str)
 {
     if (scope->parent)
         mangle_scope(scope->parent, str);
 
-    if (!MidSema_is_rnce_scope(scope->type) ||
+    if (!midsema_is_rnce_scope(scope->type) ||
         scope->type == MIDSEMA_SCOPETYPE_ROOT)
         return;
 
-    const char *name = MidSema_scope_name(scope);
+    const char *name = midsema_scope_name(scope);
     assert(name);
 
     if (!strcmp(name, "std"))
         // namespace std is abbreviated to "St" with no length markers
-        MidDynstr_append(str, "St");
+        midstr_append(str, "St");
     else
-        MidDynstr_append_printf(str, "%zu%s", strlen(name), name);
+        midstr_append_printf(str, "%zu%s", strlen(name), name);
 }
 
-static void mangle_type_spec_class(const struct MidParser_Type *type,
-                                   struct Mid_Dynstr *str)
+static void mangle_type_spec_class(const struct midpar_Type *type,
+                                   struct mid_Dynstr *str)
 {
-    const struct MidSema_Scope *scope =
-        MidSema_deref_identptr(&type->named)->class_info.def_scope;
+    const struct midsema_Scope *scope =
+        midsema_deref_identptr(&type->named)->class_info.def_scope;
 
     if (scope->parent->type != MIDSEMA_SCOPETYPE_ROOT)
-        MidDynstr_append_char(str, 'N');
+        midstr_append_char(str, 'N');
     mangle_scope(scope, str);
 }
 
-static void mangle_type_spec(const struct MidParser_Type *type,
-                             struct Mid_Dynstr *str)
+static void mangle_type_spec(const struct midpar_Type *type,
+                             struct mid_Dynstr *str)
 {
     switch (type->spec) {
-    case MIDPARSER_TYPESPEC_VOID:
-        MidDynstr_append_char(str, 'v');
+    case MIDPAR_TYPESPEC_VOID:
+        midstr_append_char(str, 'v');
         break;
 
-    case MIDPARSER_TYPESPEC_CHAR:
-        MidDynstr_append_char(str, 'c');
+    case MIDPAR_TYPESPEC_CHAR:
+        midstr_append_char(str, 'c');
         break;
-    case MIDPARSER_TYPESPEC_SCHAR:
-        MidDynstr_append_char(str, 'a');
+    case MIDPAR_TYPESPEC_SCHAR:
+        midstr_append_char(str, 'a');
         break;
-    case MIDPARSER_TYPESPEC_UCHAR:
-        MidDynstr_append_char(str, 'h');
-        break;
-
-    case MIDPARSER_TYPESPEC_WCHAR:
-        MidDynstr_append_char(str, 'w');
-        break;
-    case MIDPARSER_TYPESPEC_CHAR16:
-        MidDynstr_append(str, "Ds");
-        break;
-    case MIDPARSER_TYPESPEC_CHAR32:
-        MidDynstr_append(str, "Di");
+    case MIDPAR_TYPESPEC_UCHAR:
+        midstr_append_char(str, 'h');
         break;
 
-    case MIDPARSER_TYPESPEC_BOOL:
-        MidDynstr_append_char(str, 'b');
+    case MIDPAR_TYPESPEC_WCHAR:
+        midstr_append_char(str, 'w');
+        break;
+    case MIDPAR_TYPESPEC_CHAR16:
+        midstr_append(str, "Ds");
+        break;
+    case MIDPAR_TYPESPEC_CHAR32:
+        midstr_append(str, "Di");
         break;
 
-    case MIDPARSER_TYPESPEC_SHORT:
-        MidDynstr_append_char(str, 's');
-        break;
-    case MIDPARSER_TYPESPEC_USHORT:
-        MidDynstr_append_char(str, 't');
+    case MIDPAR_TYPESPEC_BOOL:
+        midstr_append_char(str, 'b');
         break;
 
-    case MIDPARSER_TYPESPEC_INT:
-        MidDynstr_append_char(str, 'i');
+    case MIDPAR_TYPESPEC_SHORT:
+        midstr_append_char(str, 's');
         break;
-    case MIDPARSER_TYPESPEC_UINT:
-        MidDynstr_append_char(str, 'j');
-        break;
-
-    case MIDPARSER_TYPESPEC_LONG:
-        MidDynstr_append_char(str, 'l');
-        break;
-    case MIDPARSER_TYPESPEC_ULONG:
-        MidDynstr_append_char(str, 'm');
+    case MIDPAR_TYPESPEC_USHORT:
+        midstr_append_char(str, 't');
         break;
 
-    case MIDPARSER_TYPESPEC_LONGLONG:
-        MidDynstr_append_char(str, 'x');
+    case MIDPAR_TYPESPEC_INT:
+        midstr_append_char(str, 'i');
         break;
-    case MIDPARSER_TYPESPEC_ULONGLONG:
-        MidDynstr_append_char(str, 'y');
-        break;
-
-    case MIDPARSER_TYPESPEC_FLOAT:
-        MidDynstr_append_char(str, 'f');
-        break;
-    case MIDPARSER_TYPESPEC_DOUBLE:
-        MidDynstr_append_char(str, 'd');
-        break;
-    case MIDPARSER_TYPESPEC_LONGDOUBLE:
-        MidDynstr_append_char(str, 'e');
+    case MIDPAR_TYPESPEC_UINT:
+        midstr_append_char(str, 'j');
         break;
 
-    case MIDPARSER_TYPESPEC_NULLPTR:
-        MidDynstr_append(str, "Dn");
+    case MIDPAR_TYPESPEC_LONG:
+        midstr_append_char(str, 'l');
+        break;
+    case MIDPAR_TYPESPEC_ULONG:
+        midstr_append_char(str, 'm');
         break;
 
-    case MIDPARSER_TYPESPEC_CLASS:
-    case MIDPARSER_TYPESPEC_UNION:
+    case MIDPAR_TYPESPEC_LONGLONG:
+        midstr_append_char(str, 'x');
+        break;
+    case MIDPAR_TYPESPEC_ULONGLONG:
+        midstr_append_char(str, 'y');
+        break;
+
+    case MIDPAR_TYPESPEC_FLOAT:
+        midstr_append_char(str, 'f');
+        break;
+    case MIDPAR_TYPESPEC_DOUBLE:
+        midstr_append_char(str, 'd');
+        break;
+    case MIDPAR_TYPESPEC_LONGDOUBLE:
+        midstr_append_char(str, 'e');
+        break;
+
+    case MIDPAR_TYPESPEC_NULLPTR:
+        midstr_append(str, "Dn");
+        break;
+
+    case MIDPAR_TYPESPEC_CLASS:
+    case MIDPAR_TYPESPEC_UNION:
         mangle_type_spec_class(type, str);
         break;
 
@@ -144,11 +144,11 @@ static void mangle_type_spec(const struct MidParser_Type *type,
     }
 }
 
-static void mangle_type_impl(const struct MidParser_Type *type,
-                             struct Mid_Dynstr *str)
+static void mangle_type_impl(const struct midpar_Type *type,
+                             struct mid_Dynstr *str)
 {
     if (type->lv_ref || type->rv_ref) {
-        MidDynstr_append_char(str, type->lv_ref ? 'R' : 'O');
+        midstr_append_char(str, type->lv_ref ? 'R' : 'O');
         mangle_dquals(type->dquals.arr[0], str);
     }
 
@@ -156,188 +156,188 @@ static void mangle_type_impl(const struct MidParser_Type *type,
     mangle_type_spec(type, str);
 }
 
-char *MidLLVM_mangle_type(const struct MidParser_Type *type)
+char *midllvm_mangle_type(const struct midpar_Type *type)
 {
-    struct Mid_Dynstr str = {};
+    struct mid_Dynstr str = {};
     mangle_type_impl(type, &str);
     return str.str;
 }
 
-static void mangle_func_params(const struct MidParser_FuncDecl *func,
-                               struct Mid_Dynstr *str)
+static void mangle_func_params(const struct midpar_FuncDecl *func,
+                               struct mid_Dynstr *str)
 {
     if (func->params.len == 0 && !func->variadic) {
-        MidDynstr_append_char(str, 'v');
+        midstr_append_char(str, 'v');
         return;
     }
 
     for (mid_isize i = 0; i < func->params.len; ++i) {
-        const struct MidParser_VarDeclInst *param =
+        const struct midpar_VarDeclInst *param =
             func->params.arr[i]->insts.arr[0];
 
         mangle_type_impl(&param->type, str);
     }
 
     if (func->variadic)
-        MidDynstr_append_char(str, 'z');
+        midstr_append_char(str, 'z');
 }
 
-static const char *operator_name(enum MidParser_ExprType op)
+static const char *operator_name(enum midpar_ExprType op)
 {
     switch (op) {
-    case MIDPARSER_EXPRTYPE_LOGICAL_AND:
+    case MIDPAR_EXPRTYPE_LOGICAL_AND:
         return "aa";
 
-    case MIDPARSER_EXPRTYPE_REF:
+    case MIDPAR_EXPRTYPE_REF:
         return "ad";
 
-    case MIDPARSER_EXPRTYPE_BITWISE_AND:
+    case MIDPAR_EXPRTYPE_BITWISE_AND:
         return "an";
 
-    case MIDPARSER_EXPRTYPE_AND_ASSIGN:
+    case MIDPAR_EXPRTYPE_AND_ASSIGN:
         return "aN";
 
-    case MIDPARSER_EXPRTYPE_ASSIGN:
+    case MIDPAR_EXPRTYPE_ASSIGN:
         return "aS";
 
         /*
-    case MIDPARSER_EXPRTYPE_ALIGNOF:
+    case MIDPAR_EXPRTYPE_ALIGNOF:
         return "N";
         */
 
-    case MIDPARSER_EXPRTYPE_FUNC_CALL:
+    case MIDPAR_EXPRTYPE_FUNC_CALL:
         return "cl";
 
-    case MIDPARSER_EXPRTYPE_COMMA:
+    case MIDPAR_EXPRTYPE_COMMA:
         return "cm";
 
-    case MIDPARSER_EXPRTYPE_BITWISE_NOT:
+    case MIDPAR_EXPRTYPE_BITWISE_NOT:
         return "co";
 
-    case MIDPARSER_EXPRTYPE_CAST:
+    case MIDPAR_EXPRTYPE_CAST:
         return "cv";
 
-    case MIDPARSER_EXPRTYPE_DELETE_ARR:
+    case MIDPAR_EXPRTYPE_DELETE_ARR:
         return "da";
 
-    case MIDPARSER_EXPRTYPE_DEREF:
+    case MIDPAR_EXPRTYPE_DEREF:
         return "de";
 
-    case MIDPARSER_EXPRTYPE_DELETE:
+    case MIDPAR_EXPRTYPE_DELETE:
         return "dl";
 
-    case MIDPARSER_EXPRTYPE_DIV:
+    case MIDPAR_EXPRTYPE_DIV:
         return "dv";
 
-    case MIDPARSER_EXPRTYPE_DIV_ASSIGN:
+    case MIDPAR_EXPRTYPE_DIV_ASSIGN:
         return "dV";
 
-    case MIDPARSER_EXPRTYPE_BITWISE_XOR:
+    case MIDPAR_EXPRTYPE_BITWISE_XOR:
         return "eo";
 
-    case MIDPARSER_EXPRTYPE_XOR_ASSIGN:
+    case MIDPAR_EXPRTYPE_XOR_ASSIGN:
         return "eO";
 
-    case MIDPARSER_EXPRTYPE_EQ:
+    case MIDPAR_EXPRTYPE_EQ:
         return "eq";
 
-    case MIDPARSER_EXPRTYPE_GTEQ:
+    case MIDPAR_EXPRTYPE_GTEQ:
         return "ge";
 
-    case MIDPARSER_EXPRTYPE_GT:
+    case MIDPAR_EXPRTYPE_GT:
         return "gt";
 
-    case MIDPARSER_EXPRTYPE_ARRAY_SUBSCR:
+    case MIDPAR_EXPRTYPE_ARRAY_SUBSCR:
         return "ix";
 
-    case MIDPARSER_EXPRTYPE_LTEQ:
+    case MIDPAR_EXPRTYPE_LTEQ:
         return "le";
 
-    case MIDPARSER_EXPRTYPE_LEFT_SHIFT:
+    case MIDPAR_EXPRTYPE_LEFT_SHIFT:
         return "ls";
 
-    case MIDPARSER_EXPRTYPE_LEFT_SHIFT_ASSIGN:
+    case MIDPAR_EXPRTYPE_LEFT_SHIFT_ASSIGN:
         return "lS";
 
-    case MIDPARSER_EXPRTYPE_LT:
+    case MIDPAR_EXPRTYPE_LT:
         return "lt";
 
-    case MIDPARSER_EXPRTYPE_SUB:
+    case MIDPAR_EXPRTYPE_SUB:
         return "mi";
 
-    case MIDPARSER_EXPRTYPE_SUB_ASSIGN:
+    case MIDPAR_EXPRTYPE_SUB_ASSIGN:
         return "mI";
 
-    case MIDPARSER_EXPRTYPE_MUL:
+    case MIDPAR_EXPRTYPE_MUL:
         return "ml";
 
-    case MIDPARSER_EXPRTYPE_MUL_ASSIGN:
+    case MIDPAR_EXPRTYPE_MUL_ASSIGN:
         return "mL";
 
-    case MIDPARSER_EXPRTYPE_PREFIX_DEC:
-    case MIDPARSER_EXPRTYPE_POSTFIX_DEC:
+    case MIDPAR_EXPRTYPE_PREFIX_DEC:
+    case MIDPAR_EXPRTYPE_POSTFIX_DEC:
         return "mm";
 
-    case MIDPARSER_EXPRTYPE_NEW_ARR:
+    case MIDPAR_EXPRTYPE_NEW_ARR:
         return "na";
 
-    case MIDPARSER_EXPRTYPE_NEQ:
+    case MIDPAR_EXPRTYPE_NEQ:
         return "ne";
 
-    case MIDPARSER_EXPRTYPE_UNARY_MINUS:
+    case MIDPAR_EXPRTYPE_UNARY_MINUS:
         return "ng";
 
-    case MIDPARSER_EXPRTYPE_LOGICAL_NOT:
+    case MIDPAR_EXPRTYPE_LOGICAL_NOT:
         return "nt";
 
-    case MIDPARSER_EXPRTYPE_NEW:
+    case MIDPAR_EXPRTYPE_NEW:
         return "nw";
 
-    case MIDPARSER_EXPRTYPE_LOGICAL_OR:
+    case MIDPAR_EXPRTYPE_LOGICAL_OR:
         return "oo";
 
-    case MIDPARSER_EXPRTYPE_BITWISE_OR:
+    case MIDPAR_EXPRTYPE_BITWISE_OR:
         return "or";
 
-    case MIDPARSER_EXPRTYPE_OR_ASSIGN:
+    case MIDPAR_EXPRTYPE_OR_ASSIGN:
         return "oR";
 
-    case MIDPARSER_EXPRTYPE_ADD:
+    case MIDPAR_EXPRTYPE_ADD:
         return "pl";
 
-    case MIDPARSER_EXPRTYPE_ADD_ASSIGN:
+    case MIDPAR_EXPRTYPE_ADD_ASSIGN:
         return "pL";
 
-    case MIDPARSER_EXPRTYPE_PTR_TO_PTR_MEMB_SEL:
+    case MIDPAR_EXPRTYPE_PTR_TO_PTR_MEMB_SEL:
         return "pm";
 
-    case MIDPARSER_EXPRTYPE_PREFIX_INC:
-    case MIDPARSER_EXPRTYPE_POSTFIX_INC:
+    case MIDPAR_EXPRTYPE_PREFIX_INC:
+    case MIDPAR_EXPRTYPE_POSTFIX_INC:
         return "pp";
 
-    case MIDPARSER_EXPRTYPE_UNARY_PLUS:
+    case MIDPAR_EXPRTYPE_UNARY_PLUS:
         return "ps";
 
-    case MIDPARSER_EXPRTYPE_PTR_MEMB_SEL:
+    case MIDPAR_EXPRTYPE_PTR_MEMB_SEL:
         return "pt";
 
-    case MIDPARSER_EXPRTYPE_CONDITIONAL:
+    case MIDPAR_EXPRTYPE_CONDITIONAL:
         return "qu";
 
-    case MIDPARSER_EXPRTYPE_MOD:
+    case MIDPAR_EXPRTYPE_MOD:
         return "rm";
 
-    case MIDPARSER_EXPRTYPE_MOD_ASSIGN:
+    case MIDPAR_EXPRTYPE_MOD_ASSIGN:
         return "rM";
 
-    case MIDPARSER_EXPRTYPE_RIGHT_SHIFT:
+    case MIDPAR_EXPRTYPE_RIGHT_SHIFT:
         return "rs";
 
-    case MIDPARSER_EXPRTYPE_RIGHT_SHIFT_ASSIGN:
+    case MIDPAR_EXPRTYPE_RIGHT_SHIFT_ASSIGN:
         return "rS";
 
-    case MIDPARSER_EXPRTYPE_BIN_SCOPE_RES:
-    case MIDPARSER_EXPRTYPE_UNARY_SCOPE_RES:
+    case MIDPAR_EXPRTYPE_BIN_SCOPE_RES:
+    case MIDPAR_EXPRTYPE_UNARY_SCOPE_RES:
         return "sr";
 
     default:
@@ -345,34 +345,34 @@ static const char *operator_name(enum MidParser_ExprType op)
     }
 }
 
-static void mangle_func_name(const struct MidParser_FuncDecl *func,
-                             struct Mid_Dynstr *str)
+static void mangle_func_name(const struct midpar_FuncDecl *func,
+                             struct mid_Dynstr *str)
 {
     if (func->is_op_overload) {
         operator_name(func->op_overload);
     } else if (func->is_dtor) {
         // TODO: properly implement this
-        MidDynstr_append_printf(str, "D1");
+        midstr_append_printf(str, "D1");
     } else if (func->is_tor) {
         // TODO: properly implement this
-        MidDynstr_append_printf(str, "C1");
+        midstr_append_printf(str, "C1");
     } else {
-        MidDynstr_append_printf(str, "%zu%s", strlen(func->name), func->name);
+        midstr_append_printf(str, "%zu%s", strlen(func->name), func->name);
     }
 }
 
-static void mangle_generic_func(const struct MidParser_FuncDecl *func,
-                                struct Mid_Dynstr *str)
+static void mangle_generic_func(const struct midpar_FuncDecl *func,
+                                struct mid_Dynstr *str)
 {
-    const struct MidSema_Scope *scope = func->param_scope->parent;
+    const struct midsema_Scope *scope = func->param_scope->parent;
 
-    MidDynstr_append(str, "_Z");
+    midstr_append(str, "_Z");
     if (scope->parent) {
         // scope is nested
-        MidDynstr_append_char(str, 'N');
+        midstr_append_char(str, 'N');
         mangle_scope(scope, str);
         mangle_func_name(func, str);
-        MidDynstr_append_char(str, 'E');
+        midstr_append_char(str, 'E');
     } else {
         mangle_func_name(func, str);
     }
@@ -380,34 +380,34 @@ static void mangle_generic_func(const struct MidParser_FuncDecl *func,
     mangle_func_params(func, str);
 }
 
-static void mangle_member_func(const struct MidParser_FuncDecl *func,
-                               struct Mid_Dynstr *str)
+static void mangle_member_func(const struct midpar_FuncDecl *func,
+                               struct mid_Dynstr *str)
 {
-    const struct MidSema_Scope *scope = func->param_scope->parent;
+    const struct midsema_Scope *scope = func->param_scope->parent;
 
-    MidDynstr_append(str, "_ZN");
+    midstr_append(str, "_ZN");
 
     if (func->quals.is_volatile)
-        MidDynstr_append_char(str, 'V');
+        midstr_append_char(str, 'V');
     if (func->quals.is_const)
-        MidDynstr_append_char(str, 'K');
+        midstr_append_char(str, 'K');
 
     mangle_scope(scope, str);
     mangle_func_name(func, str);
-    MidDynstr_append_char(str, 'E');
+    midstr_append_char(str, 'E');
 
     mangle_func_params(func, str);
 }
 
-char *MidLLVM_mangle_func(const struct MidParser_FuncDecl *func)
+char *midllvm_mangle_func(const struct midpar_FuncDecl *func)
 {
-    struct Mid_Dynstr str = {};
+    struct mid_Dynstr str = {};
 
-    if (MidParser_func_is_method(func))
+    if (midpar_func_is_method(func))
         mangle_member_func(func, &str);
-    else if (MidParser_func_is_main(func))
+    else if (midpar_func_is_main(func))
         // the main function doesn't get mangled
-        MidDynstr_append(&str, "main");
+        midstr_append(&str, "main");
     else
         mangle_generic_func(func, &str);
 

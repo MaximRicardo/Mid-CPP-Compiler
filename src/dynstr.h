@@ -5,9 +5,9 @@
 #include "attribute.h"
 #include "ints.h"
 
-constexpr mid_isize dynstr_start_cap = 128;
+constexpr mid_isize midstr_start_cap = 128;
 
-struct Mid_Dynstr {
+struct mid_Dynstr {
 
     // NULL terminated
     char *str;
@@ -15,15 +15,14 @@ struct Mid_Dynstr {
     mid_isize cap; // counts the null terminator
 };
 
-struct Mid_Dynstr MidDynstr_init(void);
-void MidDynstr_deinit(struct Mid_Dynstr *self);
-void MidDynstr_append(struct Mid_Dynstr *self, const char *src);
-void MidDynstr_append_dyn(struct Mid_Dynstr *self,
-                          const struct Mid_Dynstr *other);
+struct mid_Dynstr midstr_init(void);
+void midstr_deinit(struct mid_Dynstr *self);
+void midstr_append(struct mid_Dynstr *self, const char *src);
+void midstr_append_dyn(struct mid_Dynstr *self, const struct mid_Dynstr *other);
 /* appends the formatted string to self */
-void MidDynstr_append_printf(struct Mid_Dynstr *self, const char *fmt, ...)
+void midstr_append_printf(struct mid_Dynstr *self, const char *fmt, ...)
     MID_ATTRIBUTE((format(printf, 2, 3)));
-void MidDynstr_append_char(struct Mid_Dynstr *self, char c);
+void midstr_append_char(struct mid_Dynstr *self, char c);
 /* doesn't do anything if self->size == 0 */
-void MidDynstr_pop(struct Mid_Dynstr *self);
-void MidDynstr_shrink_to_fit(struct Mid_Dynstr *self);
+void midstr_pop(struct mid_Dynstr *self);
+void midstr_shrink_to_fit(struct mid_Dynstr *self);
