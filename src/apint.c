@@ -425,7 +425,6 @@ static void log_uint_bignum(const struct mid_APInt *self, FILE *out)
         // the first word
         digits[i] = d.v.words[0] + '0';
 
-        midint_deinit(&d);
         ++i;
     }
 
@@ -1526,7 +1525,7 @@ void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
     struct mid_APInt rem;
 
     if (!is_bignum_used(a->n_bits)) {
-        if (a->v.val == 0)
+        if (b->v.val == 0)
             MID_CRASH("division by 0");
 
         quot = midint_init(a->n_bits, a->v.val / b->v.val, false);
@@ -1608,7 +1607,7 @@ void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
     assert(out_rem->n_bits == a->n_bits);
 
     if (!is_bignum_used(a->n_bits)) {
-        if (a->v.val == 0)
+        if (b->v.val == 0)
             MID_CRASH("division by 0");
 
         auto q_val = a->v.val / b->v.val;
