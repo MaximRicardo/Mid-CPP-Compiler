@@ -701,7 +701,7 @@ static int tc_multiply_part(midint_Word *dst, const midint_Word *src,
 {
     assert(dst <= src || dst >= src + src_parts);
     assert(0 <= dst_parts);
-    assert(dst_parts <= src_parts);
+    assert(dst_parts <= src_parts + 1);
 
     i32 n = MID_MIN(dst_parts, src_parts);
 
