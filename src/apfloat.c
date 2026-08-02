@@ -210,8 +210,8 @@ void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out)
         return;
     }
 
-    long double val = midflt_ieee_to_flt(self);
-    fprintf(out, "%Lf", fabsl(val));
+    double val = midflt_ieee_to_flt(self);
+    fprintf(out, "%f", fabs(val));
 }
 
 static bool ieee_should_inc_mant(IEEERounding mode, bool is_neg, bool guard,
@@ -601,7 +601,7 @@ float ieee_to_single(const IEEE *self)
     return res.f;
 }
 
-long double midflt_ieee_to_flt(const struct midflt_IEEE *self)
+double midflt_ieee_to_flt(const struct midflt_IEEE *self)
 {
     switch (self->kind) {
     case MIDFLT_IEEE_SINGLE:

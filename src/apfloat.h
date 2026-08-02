@@ -63,8 +63,7 @@ void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_assign(struct midflt_IEEE *dest,
                         const struct midflt_IEEE *src);
 
-// TODO: use double instead of long double for ABI stability
-long double midflt_ieee_to_flt(const struct midflt_IEEE *self);
+double midflt_ieee_to_flt(const struct midflt_IEEE *self);
 
 enum midflt_Kind {
     MIDFLT_IEEE,
