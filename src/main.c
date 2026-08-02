@@ -293,7 +293,7 @@ static void apfloat_test()
     midflt_ieee_log(&b, stdout);
     putchar('\n');
 
-    midflt_ieee_mul(&a, &b);
+    midflt_ieee_add(&a, &b);
 
     midflt_ieee_log(&a, stdout);
     putchar('\n');

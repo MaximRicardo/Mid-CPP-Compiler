@@ -39,6 +39,7 @@ struct midflt_IEEE {
 };
 
 void midflt_IEEE_deinit(struct midflt_IEEE *self);
+struct midflt_IEEE midflt_ieee_copy(const struct midflt_IEEE *src);
 struct midflt_IEEE midflt_ieee_alloc(enum midflt_IEEEKind kind,
                                      enum midflt_IEEERounding rounding);
 struct midflt_IEEE midflt_ieee_zero(bool is_neg, enum midflt_IEEEKind kind,
@@ -56,9 +57,11 @@ struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
                                            enum midflt_IEEERounding rounding);
 void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out);
 
+void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 
+// TODO: use double instead of long double for ABI stability
 long double midflt_ieee_to_flt(const struct midflt_IEEE *self);
 
 enum midflt_Kind {

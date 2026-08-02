@@ -14,6 +14,17 @@ void midflt_IEEE_deinit(struct midflt_IEEE *self)
     midint_deinit(&self->mant);
 }
 
+struct midflt_IEEE midflt_ieee_copy(const struct midflt_IEEE *src)
+{
+    struct midflt_IEEE ret = {.mant = midint_copy(&src->mant),
+                              .exp = src->exp,
+                              .kind = src->kind,
+                              .rounding = src->rounding,
+                              .val_cat = src->val_cat,
+                              .is_neg = src->is_neg};
+    return ret;
+}
+
 void midflt_deinit(struct mid_APFloat *self)
 {
     switch (self->kind) {
@@ -378,11 +389,11 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     if (zeroes < norm_shift) {
         bool round_bit = midint_get_bit(&unnorm, norm_shift - 1);
         bool sticky_bit = zeroes < norm_shift - 1;
-        bool guard_bit = midint_get_bit(&unnorm, zeroes);
+        bool guard_bit = midint_get_bit(&unnorm, norm_shift);
 
         if (ieee_should_inc_mant(a->rounding, a->is_neg, guard_bit, round_bit,
                                  sticky_bit)) {
-            midint_inc_bit(&unnorm, zeroes);
+            midint_inc_bit(&unnorm, norm_shift);
             // rounding might have introduced another significant bit
             bits = midint_unsigned_sig_bits(&unnorm);
             assert(bits >= norm_bits);
@@ -447,6 +458,68 @@ void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     midint_deinit(&a->mant);
     a->mant = unnorm;
     midint_ext(&a->mant, norm_bits, false);
+}
+
+static void ieee_add_normalize_mant(IEEE *a)
+{
+    i32 unnorm_bits = midint_unsigned_sig_bits(&a->mant);
+    i32 norm_bits = ieee_mant_n_bits(a->kind);
+    assert(unnorm_bits >= norm_bits);
+
+    i32 shift = unnorm_bits - norm_bits;
+    if (shift == 0)
+        return;
+
+    bool guard_bit = midint_get_bit(&a->mant, shift);
+    bool rounding_bit = midint_get_bit(&a->mant, shift - 1);
+    i32 zeroes = midint_count_trailing_zeroes(&a->mant);
+    bool sticky_bit = zeroes < shift - 1;
+
+    if (ieee_should_inc_mant(a->rounding, a->is_neg, guard_bit, rounding_bit,
+                             sticky_bit))
+        midint_inc_bit(&a->mant, shift);
+
+    midint_lshr_imm(&a->mant, shift);
+    a->exp += shift;
+}
+
+static void ieee_add_no_sign_check(IEEE *a, const IEEE *og_b)
+{
+    assert(ieee_floats_compatible(a, og_b));
+
+    auto b = midflt_ieee_copy(og_b);
+
+    // make the exponents equal and reserve an extra bit for carry information
+    if (a->exp > b.exp) {
+        auto shift = a->exp - b.exp;
+
+        midint_ext(&a->mant, a->mant.n_bits + shift + 1, false);
+        midint_ext(&b.mant, b.mant.n_bits + shift + 1, false);
+        midint_shl_imm(&a->mant, shift);
+        a->exp = b.exp;
+    } else if (b.exp > a->exp) {
+        auto shift = b.exp - a->exp;
+
+        midint_ext(&a->mant, a->mant.n_bits + shift + 1, false);
+        midint_ext(&b.mant, b.mant.n_bits + shift + 1, false);
+        midint_shl_imm(&b.mant, shift);
+        b.exp = a->exp;
+    } else {
+        midint_ext(&a->mant, a->mant.n_bits + 1, false);
+        midint_ext(&b.mant, b.mant.n_bits + 1, false);
+    }
+
+    midint_add(&a->mant, &b.mant);
+
+    ieee_add_normalize_mant(a);
+
+    midint_ext(&a->mant, ieee_mant_n_bits(a->kind), false);
+    midflt_IEEE_deinit(&b);
+}
+
+void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    ieee_add_no_sign_check(a, b);
 }
 
 #ifndef __STDC_IEC_60559_BFP__
