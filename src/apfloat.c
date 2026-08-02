@@ -2,6 +2,7 @@
 #include "apint.h"
 #include "macros.h"
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -91,7 +92,6 @@ static u64 ieee_biased_exp_max(IEEEKind kind)
         return UINT64_MAX;
     return (1ULL << n_bits) - 1;
 }
-*/
 
 static u64 get_low_bits(u64 num, int bits)
 {
@@ -113,6 +113,7 @@ static u64 ieee_biased_exp(const IEEE *self)
 {
     return ieee_bias_exp(self->exp, self->kind);
 }
+*/
 
 struct midflt_IEEE midflt_ieee_alloc(enum midflt_IEEEKind kind,
                                      enum midflt_IEEERounding rounding)
@@ -211,7 +212,7 @@ void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out)
         return;
     }
 
-    double val = midflt_ieee_to_flt(self);
+    double val = midflt_ieee_to_dbl(self);
     fprintf(out, "%f", fabs(val));
 }
 
@@ -421,7 +422,8 @@ void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 
     a->exp -= b->exp;
 
-    // OPTIM: reuse a->mant for the remainder
+    // OPTIM: reuse a->mant for the remainder, tho btw that wouldn't work if
+    //        a and b alias
     auto rem = midint_alloc(a->mant.n_bits);
     auto unnorm = midint_copy(&a->mant);
     // the division operation will shift all the bits to the right,
@@ -608,8 +610,15 @@ static bool ieee_addsub_special_cases(IEEE *a, const IEEE *b, bool sub)
 
 void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
+    assert(ieee_floats_compatible(a, b));
+
     if (ieee_addsub_special_cases(a, b, false))
         return;
+
+    if (a == b) {
+        ++a->exp;
+        return;
+    }
 
     // account for going above or below zero
     if (a->is_neg && !b->is_neg) {
@@ -638,6 +647,16 @@ void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 
 void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
+    assert(ieee_floats_compatible(a, b));
+
+    if (a == b) {
+        if (a->val_cat == MIDFLT_IEEE_VAL_NORMAL) {
+            a->val_cat = MIDFLT_IEEE_VAL_ZERO;
+            a->is_neg = false;
+        }
+        return;
+    }
+
     if (ieee_addsub_special_cases(a, b, true))
         return;
 
@@ -673,43 +692,40 @@ void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     }
 }
 
-#ifndef __STDC_IEC_60559_BFP__
-// midflt_ieee_to_flt doesn't work otherwise rn
-static_assert(false);
-#endif
-
-// TODO: write a version of this that doesn't rely on the implementation
-//       using IEEE 754
-float ieee_to_single(const IEEE *self)
+double midflt_ieee_to_dbl(const struct midflt_IEEE *self)
 {
-    union TypePun {
-        u32 i;
-        float f;
-    } res;
-    res.i = 0;
+    if (self->val_cat == MIDFLT_IEEE_VAL_NAN)
+        // 0 / 0 = -nan
+        return self->is_neg ? 0.0 / 0.0 : -(0.0 / 0.0);
+    else if (self->val_cat == MIDFLT_IEEE_VAL_INF)
+        // 1 / 0 = inf
+        return self->is_neg ? -(1.0 / 0.0) : 1.0 / 0.0;
+    else if (self->val_cat == MIDFLT_IEEE_VAL_ZERO)
+        return self->is_neg ? -0.0 : 0.0;
 
-    u32 mant = midint_to_uint(&self->mant);
-    // the MSb representing the implicit one needs to be masked away
-    u32 mant_mask = (1ULL << (ieee_mant_n_bits(self->kind) - 1)) - 1;
-    res.i |= mant & mant_mask;
+    // these assertions rely on the radix being the same base as the internal
+    // float, which is base 2
+    static_assert(FLT_RADIX == 2);
+    assert(self->exp <= DBL_MAX_EXP);
+    assert(self->exp >= DBL_MIN_EXP);
 
-    u32 exp = ieee_biased_exp(self);
-    res.i |= exp << (ieee_mant_n_bits(self->kind) - 1);
+    double res = pow(2.0, self->exp);
 
-    res.i |= (unsigned long long)self->is_neg << 31;
+    double mant = 1.0;
+    double inc = 0.5;
+    // skip the implicit leading 1
+    for (i32 i = self->mant.n_bits - 2; i >= 0; --i) {
+        if (midint_get_bit(&self->mant, i))
+            mant += inc;
 
-    return res.f;
-}
-
-double midflt_ieee_to_flt(const struct midflt_IEEE *self)
-{
-    switch (self->kind) {
-    case MIDFLT_IEEE_SINGLE:
-        return ieee_to_single(self);
-
-    default:
-        MID_CRASH("converting this ieee kind is not supported");
+        // no point looping past the precision of double
+        if (inc < DBL_TRUE_MIN * 2.0)
+            break;
+        inc /= 2.0;
     }
+
+    res *= mant;
+    return res;
 }
 
 void midflt_ieee_assign(struct midflt_IEEE *dest, const struct midflt_IEEE *src)

@@ -306,7 +306,7 @@ static void apfloat_test()
     midint_log_hex(&a.mant, stdout);
     putchar('\n');
 
-    float a_flt = midflt_ieee_to_flt(&a);
+    float a_flt = midflt_ieee_to_dbl(&a);
     printf("float bits = 0x%08" PRIx32 "\n", *(u32 *)&a_flt);
 
     midflt_IEEE_deinit(&a);
