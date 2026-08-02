@@ -143,6 +143,7 @@ struct midflt_IEEE midflt_ieee_one(bool is_neg, enum midflt_IEEEKind kind,
                 .val_cat = MIDFLT_IEEE_VAL_NORMAL,
                 .is_neg = is_neg};
     ret.mant = midint_zero(ieee_mant_n_bits(ret.kind));
+    midint_flip_bit(&ret.mant, ret.mant.n_bits - 1);
 
     return ret;
 }
@@ -483,6 +484,30 @@ static void ieee_add_normalize_mant(IEEE *a)
     a->exp += shift;
 }
 
+// automatically resizes the mantissa APInts to hold the extra bits required
+// to match the exponents as well as extra_bits
+static void ieee_match_exps(IEEE *a, IEEE *b, i32 extra_bits)
+{
+    if (a->exp > b->exp) {
+        auto shift = a->exp - b->exp;
+
+        midint_ext(&a->mant, a->mant.n_bits + shift + extra_bits, false);
+        midint_ext(&b->mant, b->mant.n_bits + shift + extra_bits, false);
+        midint_shl_imm(&a->mant, shift);
+        a->exp = b->exp;
+    } else if (b->exp > a->exp) {
+        auto shift = b->exp - a->exp;
+
+        midint_ext(&a->mant, a->mant.n_bits + shift + extra_bits, false);
+        midint_ext(&b->mant, b->mant.n_bits + shift + extra_bits, false);
+        midint_shl_imm(&b->mant, shift);
+        b->exp = a->exp;
+    } else if (extra_bits != 0) {
+        midint_ext(&a->mant, a->mant.n_bits + extra_bits, false);
+        midint_ext(&b->mant, b->mant.n_bits + extra_bits, false);
+    }
+}
+
 // does no sign checks and doesnt detect special cases
 static void ieee_add_base(IEEE *a, const IEEE *og_b)
 {
@@ -490,25 +515,8 @@ static void ieee_add_base(IEEE *a, const IEEE *og_b)
 
     auto b = midflt_ieee_copy(og_b);
 
-    // make the exponents equal and reserve an extra bit for carry information
-    if (a->exp > b.exp) {
-        auto shift = a->exp - b.exp;
-
-        midint_ext(&a->mant, a->mant.n_bits + shift + 1, false);
-        midint_ext(&b.mant, b.mant.n_bits + shift + 1, false);
-        midint_shl_imm(&a->mant, shift);
-        a->exp = b.exp;
-    } else if (b.exp > a->exp) {
-        auto shift = b.exp - a->exp;
-
-        midint_ext(&a->mant, a->mant.n_bits + shift + 1, false);
-        midint_ext(&b.mant, b.mant.n_bits + shift + 1, false);
-        midint_shl_imm(&b.mant, shift);
-        b.exp = a->exp;
-    } else {
-        midint_ext(&a->mant, a->mant.n_bits + 1, false);
-        midint_ext(&b.mant, b.mant.n_bits + 1, false);
-    }
+    // reserve an extra bit for carry information
+    ieee_match_exps(a, &b, 1);
 
     midint_add(&a->mant, &b.mant);
 
@@ -518,12 +526,33 @@ static void ieee_add_base(IEEE *a, const IEEE *og_b)
     midflt_IEEE_deinit(&b);
 }
 
-// handles special cases when adding.
+// does no sign checks and doesnt detect special cases
+static void ieee_sub_base(IEEE *a, const IEEE *og_b)
+{
+    assert(ieee_floats_compatible(a, og_b));
+
+    auto b = midflt_ieee_copy(og_b);
+
+    // reserve an extra bit for carry information
+    ieee_match_exps(a, &b, 1);
+
+    midint_sub(&a->mant, &b.mant);
+
+    ieee_add_normalize_mant(a);
+
+    midint_ext(&a->mant, ieee_mant_n_bits(a->kind), false);
+    midflt_IEEE_deinit(&b);
+}
+
+// handles special cases when adding or subtracting.
 // returns true if a special case was handled, false otherwise.
 // if a special case was handled a is set to the result of the special
 // case, otherwise a is unmodified.
-static bool ieee_add_special_cases(IEEE *a, const IEEE *b)
+// sub        - is this a subtraction or a multiplication?
+static bool ieee_addsub_special_cases(IEEE *a, const IEEE *b, bool sub)
 {
+    bool b_neg = sub ? b->is_neg : !b->is_neg;
+
     bool inf_arg =
         a->val_cat == MIDFLT_IEEE_VAL_INF || b->val_cat == MIDFLT_IEEE_VAL_INF;
     bool both_inf =
@@ -540,14 +569,14 @@ static bool ieee_add_special_cases(IEEE *a, const IEEE *b)
     if (both_nan) {
         // nan + nan = either -nan if both operands are negative or nan if not
         a->val_cat = MIDFLT_IEEE_VAL_NAN;
-        a->is_neg = a->is_neg && a->is_neg == b->is_neg;
+        a->is_neg = a->is_neg && a->is_neg == b_neg;
     } else if (nan_arg) {
         // nan + x = +nan
         a->val_cat = MIDFLT_IEEE_VAL_NAN;
         a->is_neg = false;
     } else if (both_inf) {
         // inf + inf = either +/-inf if the signs match or -nan if not
-        if (a->is_neg != b->is_neg) {
+        if (a->is_neg != b_neg) {
             a->val_cat = MIDFLT_IEEE_VAL_NAN;
             a->is_neg = true;
         }
@@ -556,7 +585,7 @@ static bool ieee_add_special_cases(IEEE *a, const IEEE *b)
         a->val_cat = MIDFLT_IEEE_VAL_INF;
     } else if (both_zero) {
         // 0 + 0 = is either -0 if both operands are negative or 0 otherwise
-        a->is_neg = a->is_neg && b->is_neg;
+        a->is_neg = a->is_neg && b_neg;
     } else if (zero_arg) {
         // x + 0 = x if x is not nan
         if (a->val_cat == MIDFLT_IEEE_VAL_ZERO) {
@@ -571,8 +600,24 @@ static bool ieee_add_special_cases(IEEE *a, const IEEE *b)
 
 void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
-    if (!ieee_add_special_cases(a, b))
+    if (ieee_addsub_special_cases(a, b, false))
+        return;
+
+    if (b->is_neg)
+        ieee_sub_base(a, b);
+    else
         ieee_add_base(a, b);
+}
+
+void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    if (ieee_addsub_special_cases(a, b, true))
+        return;
+
+    if (b->is_neg)
+        ieee_add_base(a, b);
+    else
+        ieee_sub_base(a, b);
 }
 
 #ifndef __STDC_IEC_60559_BFP__

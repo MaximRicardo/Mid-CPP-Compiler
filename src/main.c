@@ -1,7 +1,6 @@
 // #include "cgllvm/codegen.h"
 // #include "cgllvm/name_mangle.h"
 #include "apfloat.h"
-#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
@@ -263,6 +262,7 @@ static void apint_test()
 }
 */
 
+/*
 static void apfloat_test()
 {
 #if 0
@@ -287,9 +287,9 @@ static void apfloat_test()
                                      MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 #else
     auto mant = midint_init(24, 0xb18000, false);
-    auto a = midflt_ieee_zero(true, MIDFLT_IEEE_SINGLE,
+    auto a = midflt_ieee_zero(false, MIDFLT_IEEE_SINGLE,
                               MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
-    auto b = midflt_ieee_nan(true, MIDFLT_IEEE_SINGLE,
+    auto b = midflt_ieee_one(false, MIDFLT_IEEE_SINGLE,
                              MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 #endif
 
@@ -313,6 +313,33 @@ static void apfloat_test()
     midflt_IEEE_deinit(&a);
     midflt_IEEE_deinit(&b);
     midint_deinit(&mant);
+}
+*/
+
+static void apfloat_test()
+{
+    enum midflt_IEEERounding rounding = MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN;
+    enum midflt_IEEEKind kind = MIDFLT_IEEE_SINGLE;
+
+    auto a = midflt_ieee_zero(false, kind, rounding);
+    auto b = midflt_ieee_one(false, kind, rounding);
+    auto c = midflt_ieee_zero(false, kind, rounding);
+
+    for (int i = 0; i <= 37; ++i) {
+        printf("nr %d: ", i);
+        midflt_ieee_log(&a, stdout);
+        putchar('\n');
+
+        midflt_ieee_assign(&c, &a);
+        midflt_ieee_add(&c, &b);
+
+        midflt_ieee_assign(&a, &b);
+        midflt_ieee_assign(&b, &c);
+    }
+
+    midflt_IEEE_deinit(&c);
+    midflt_IEEE_deinit(&b);
+    midflt_IEEE_deinit(&a);
 }
 
 int main(int argc, char **argv)

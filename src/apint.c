@@ -2034,7 +2034,7 @@ i32 midint_count_trailing_zeroes(const struct mid_APInt *self)
 
 void midint_inc_bit(struct mid_APInt *self, i32 bit)
 {
-    assert(bit < self->n_bits);
+    assert(bit >= 0 && bit < self->n_bits);
 
     if (is_bignum_used(self->n_bits)) {
         i32 n_words = get_n_words(self->n_bits);
@@ -2063,4 +2063,19 @@ void midint_inc_bit(struct mid_APInt *self, i32 bit)
     }
 
     midint_mask_extra_bits(self);
+}
+
+void midint_flip_bit(struct mid_APInt *self, i32 bit)
+{
+    assert(bit >= 0 && bit < self->n_bits);
+
+    if (is_bignum_used(self->n_bits)) {
+        i32 word = bit / midint_word_n_bits;
+        i32 word_bit = bit % midint_word_n_bits;
+        midint_Word mask = 1ULL << word_bit;
+        self->v.words[word] ^= mask;
+    } else {
+        midint_Word mask = 1ULL << bit;
+        self->v.val ^= mask;
+    }
 }

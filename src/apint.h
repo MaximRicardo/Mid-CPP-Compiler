@@ -52,6 +52,7 @@ void midint_mask_extra_bits(struct mid_APInt *self);
 u64 midint_to_uint(const struct mid_APInt *self);
 i64 midint_to_sint(const struct mid_APInt *self);
 i32 midint_count_trailing_zeroes(const struct mid_APInt *self);
+void midint_flip_bit(struct mid_APInt *self, i32 bit);
 // increments the bit at the given index.
 // if the bit is already high it gets flipped and a carry gets added to the
 // next bit
