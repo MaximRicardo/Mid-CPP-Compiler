@@ -203,76 +203,33 @@ void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out)
     fprintf(out, "%Lf", fabsl(val));
 }
 
-// NOTE: destroys unnorm
-static void normalize_mant(IEEE *self, struct mid_APInt *unnorm)
+static bool ieee_should_inc_mant(IEEERounding mode, bool is_neg, bool guard,
+                                 bool round_, bool sticky)
 {
-    printf("unnorm = ");
-    midint_log_hex(unnorm, stdout);
-    printf("\n");
+    switch (mode) {
+    case MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN:
+    case MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY:
+        if (!guard)
+            return false;
+        else if (round_)
+            return true;
+        else if (sticky)
+            return true;
+        else
+            return mode == MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY;
 
-    i32 bits = midint_unsigned_sig_bits(unnorm);
-    i32 norm_bits = self->mant.n_bits;
-    assert(bits >= norm_bits);
+    case MIDFLT_IEEE_ROUND_UP:
+        return !is_neg && (round_ || sticky);
 
-    i32 norm_shift = bits - norm_bits;
-    printf("norm shift = %d\n", norm_shift);
+    case MIDFLT_IEEE_ROUND_DOWN:
+        return is_neg && (round_ || sticky);
 
-    i32 zeroes = midint_count_trailing_zeroes(unnorm);
-    printf("zeroes = %d\n", zeroes);
+    case MIDFLT_IEEE_ROUND_TOWARDS_ZERO:
+        return false;
 
-    if (zeroes < norm_shift) {
-        // the most significant bit to be rounded away
-        bool round_bit = midint_get_bit(unnorm, norm_shift - 1);
-        // are we an equal distance away from the next and previous values?
-        bool eq_dist = round_bit && zeroes == norm_shift - 1;
-
-        bool inc_guard = false;
-        switch (self->rounding) {
-        case MIDFLT_IEEE_ROUND_TOWARDS_ZERO:
-            // the bit shift already automatically rounds towards zero
-            break;
-
-        case MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN:
-            if (eq_dist) {
-                // round in whichever direction makes the normalized LSb a zero
-                if (midint_get_bit(unnorm, zeroes))
-                    inc_guard = true;
-            } else {
-                inc_guard = round_bit;
-            }
-            break;
-
-        case MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY:
-            inc_guard = round_bit;
-            break;
-
-        case MIDFLT_IEEE_ROUND_UP:
-            inc_guard = !self->is_neg;
-            break;
-
-        case MIDFLT_IEEE_ROUND_DOWN:
-            inc_guard = self->is_neg;
-            break;
-
-        default:
-            MID_CRASH("invalid rounding mode");
-        }
-
-        if (inc_guard) {
-            midint_inc_bit(unnorm, zeroes);
-            // rounding might have introduced another significant bit
-            bits = midint_unsigned_sig_bits(unnorm);
-            assert(bits >= norm_bits);
-            norm_shift = bits - norm_bits;
-        }
+    default:
+        MID_CRASH("invalid rounding mode");
     }
-
-    midint_lshr_imm(unnorm, norm_shift);
-    midint_deinit(&self->mant);
-    self->mant = *unnorm;
-    midint_ext(&self->mant, norm_bits, false);
-
-    self->exp += norm_shift;
 }
 
 static bool ieee_muldiv_sign_bit(const IEEE *a, const IEEE *b)
@@ -411,33 +368,34 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     // by 2 ^ (mant.n_bits - 1) for integer multiplication.
     midint_lshr_imm(&unnorm, a->mant.n_bits - 1);
 
-    normalize_mant(a, &unnorm);
-}
+    i32 bits = midint_unsigned_sig_bits(&unnorm);
+    i32 norm_bits = a->mant.n_bits;
+    assert(bits >= norm_bits);
 
-static bool ieee_should_inc_mant(IEEERounding mode, bool is_neg, bool guard,
-                                 bool round_, bool sticky)
-{
-    switch (mode) {
-    case MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN:
-    case MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY:
-        if (!guard)
-            return false;
-        else if (round_)
-            return true;
-        else if (sticky)
-            return true;
-        else
-            return mode == MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY;
+    i32 norm_shift = bits - norm_bits;
+    i32 zeroes = midint_count_trailing_zeroes(&unnorm);
 
-    case MIDFLT_IEEE_ROUND_UP:
-        return !is_neg && (round_ || sticky);
+    if (zeroes < norm_shift) {
+        bool round_bit = midint_get_bit(&unnorm, norm_shift - 1);
+        bool sticky_bit = zeroes < norm_shift - 1;
+        bool guard_bit = midint_get_bit(&unnorm, zeroes);
 
-    case MIDFLT_IEEE_ROUND_DOWN:
-        return is_neg && (round_ || sticky);
-
-    case MIDFLT_IEEE_ROUND_TOWARDS_ZERO:
-        return false;
+        if (ieee_should_inc_mant(a->rounding, a->is_neg, guard_bit, round_bit,
+                                 sticky_bit)) {
+            midint_inc_bit(&unnorm, zeroes);
+            // rounding might have introduced another significant bit
+            bits = midint_unsigned_sig_bits(&unnorm);
+            assert(bits >= norm_bits);
+            norm_shift = bits - norm_bits;
+        }
     }
+
+    midint_lshr_imm(&unnorm, norm_shift);
+    midint_deinit(&a->mant);
+    a->mant = unnorm;
+    midint_ext(&a->mant, norm_bits, false);
+
+    a->exp += norm_shift;
 }
 
 void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)

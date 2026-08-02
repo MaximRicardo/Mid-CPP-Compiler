@@ -265,7 +265,7 @@ static void apint_test()
 
 static void apfloat_test()
 {
-#if 0
+#if 1
     auto mant = midint_init(24, 0xb33333, false);
     // a = 0.7f
     auto a = midflt_ieee_init_manual(&mant, -1, false, MIDFLT_IEEE_SINGLE,
@@ -293,7 +293,7 @@ static void apfloat_test()
     midflt_ieee_log(&b, stdout);
     putchar('\n');
 
-    midflt_ieee_div(&a, &b);
+    midflt_ieee_mul(&a, &b);
 
     midflt_ieee_log(&a, stdout);
     putchar('\n');
