@@ -483,7 +483,8 @@ static void ieee_add_normalize_mant(IEEE *a)
     a->exp += shift;
 }
 
-static void ieee_add_no_sign_check(IEEE *a, const IEEE *og_b)
+// does no sign checks and doesnt detect special cases
+static void ieee_add_base(IEEE *a, const IEEE *og_b)
 {
     assert(ieee_floats_compatible(a, og_b));
 
@@ -517,9 +518,61 @@ static void ieee_add_no_sign_check(IEEE *a, const IEEE *og_b)
     midflt_IEEE_deinit(&b);
 }
 
+// handles special cases when adding.
+// returns true if a special case was handled, false otherwise.
+// if a special case was handled a is set to the result of the special
+// case, otherwise a is unmodified.
+static bool ieee_add_special_cases(IEEE *a, const IEEE *b)
+{
+    bool inf_arg =
+        a->val_cat == MIDFLT_IEEE_VAL_INF || b->val_cat == MIDFLT_IEEE_VAL_INF;
+    bool both_inf =
+        a->val_cat == MIDFLT_IEEE_VAL_INF && b->val_cat == MIDFLT_IEEE_VAL_INF;
+    bool nan_arg =
+        a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN;
+    bool both_nan =
+        a->val_cat == MIDFLT_IEEE_VAL_NAN && b->val_cat == MIDFLT_IEEE_VAL_NAN;
+    bool zero_arg = a->val_cat == MIDFLT_IEEE_VAL_ZERO ||
+                    b->val_cat == MIDFLT_IEEE_VAL_ZERO;
+    bool both_zero = a->val_cat == MIDFLT_IEEE_VAL_ZERO &&
+                     b->val_cat == MIDFLT_IEEE_VAL_ZERO;
+
+    if (both_nan) {
+        // nan + nan = either -nan if both operands are negative or nan if not
+        a->val_cat = MIDFLT_IEEE_VAL_NAN;
+        a->is_neg = a->is_neg && a->is_neg == b->is_neg;
+    } else if (nan_arg) {
+        // nan + x = +nan
+        a->val_cat = MIDFLT_IEEE_VAL_NAN;
+        a->is_neg = false;
+    } else if (both_inf) {
+        // inf + inf = either +/-inf if the signs match or -nan if not
+        if (a->is_neg != b->is_neg) {
+            a->val_cat = MIDFLT_IEEE_VAL_NAN;
+            a->is_neg = true;
+        }
+    } else if (inf_arg) {
+        // inf + x = inf if x is not nan
+        a->val_cat = MIDFLT_IEEE_VAL_INF;
+    } else if (both_zero) {
+        // 0 + 0 = is either -0 if both operands are negative or 0 otherwise
+        a->is_neg = a->is_neg && b->is_neg;
+    } else if (zero_arg) {
+        // x + 0 = x if x is not nan
+        if (a->val_cat == MIDFLT_IEEE_VAL_ZERO) {
+            midflt_ieee_assign(a, b);
+        }
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
 void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
-    ieee_add_no_sign_check(a, b);
+    if (!ieee_add_special_cases(a, b))
+        ieee_add_base(a, b);
 }
 
 #ifndef __STDC_IEC_60559_BFP__
@@ -557,4 +610,13 @@ long double midflt_ieee_to_flt(const struct midflt_IEEE *self)
     default:
         MID_CRASH("converting this ieee kind is not supported");
     }
+}
+
+void midflt_ieee_assign(struct midflt_IEEE *dest, const struct midflt_IEEE *src)
+{
+    assert(ieee_floats_compatible(dest, src));
+
+    dest->val_cat = src->val_cat;
+    dest->exp = src->exp;
+    midint_assign(&dest->mant, &src->mant);
 }
