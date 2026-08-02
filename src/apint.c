@@ -391,7 +391,7 @@ void midint_ext(struct mid_APInt *self, i32 new_n_bits, bool sign_ext)
 
 bool midint_get_bit(const struct mid_APInt *self, i32 n)
 {
-    assert(n > 0 && n < self->n_bits);
+    assert(n >= 0 && n < self->n_bits);
 
     if (is_bignum_used(self->n_bits)) {
         i32 word_idx = get_n_words(n + 1) - 1;
@@ -2082,8 +2082,8 @@ static int count_trailing_zeroes(midint_Word word, int n_bits)
     if (word == 0)
         return n_bits;
 
-    int n = -1;
-    while (word >>= 1)
+    int n = 0;
+    while (((word >>= 1) & 1) == 0)
         ++n;
 
     return n;
@@ -2111,4 +2111,37 @@ i32 midint_count_trailing_zeroes(const struct mid_APInt *self)
     } else {
         return count_trailing_zeroes(self->v.val, self->n_bits);
     }
+}
+
+void midint_inc_bit(struct mid_APInt *self, i32 bit)
+{
+    assert(bit < self->n_bits);
+
+    if (is_bignum_used(self->n_bits)) {
+        i32 n_words = get_n_words(self->n_bits);
+        i32 start_word = get_n_words(bit + 1);
+
+        for (i32 i = start_word; i < n_words; ++i) {
+            auto word = &self->v.words[i];
+
+            i32 start_bit = bit - i * midint_word_n_bits;
+            for (i32 j = start_bit; j < midint_word_n_bits; ++j) {
+                // flip the bit
+                midint_Word mask = 1ULL << j;
+                *word ^= mask;
+
+                // if the bit was high then we need to carry over to the next
+                // bit if it was low then there's no more carry and the rest of
+                // the bits are unchanged
+                if ((*word >> j) & 1)
+                    goto loop_end;
+            }
+        }
+
+    loop_end:
+    } else {
+        self->v.val += 1ULL << bit;
+    }
+
+    midint_mask_extra_bits(self);
 }

@@ -265,15 +265,27 @@ static void apint_test()
 
 static void apfloat_test()
 {
+#if 1
+    auto mant = midint_init(24, 0xb33333, false);
+    // a = 0.7f
+    auto a = midflt_ieee_init_manual(&mant, -1, false, MIDFLT_IEEE_SINGLE,
+                                     MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
+
+    midint_assign_uimm(&mant, 0xc80000);
+    // b = 100.f
+    auto b = midflt_ieee_init_manual(&mant, 6, false, MIDFLT_IEEE_SINGLE,
+                                     MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
+#else
     auto mant = midint_init(24, 0xb00000, false);
     // a = 5.5f
     auto a = midflt_ieee_init_manual(&mant, 2, false, MIDFLT_IEEE_SINGLE,
-                                     MIDFLT_IEEE_ROUND_NEAREST);
+                                     MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 
     midint_assign_uimm(&mant, 0xc80000);
     // b = 6.25f
     auto b = midflt_ieee_init_manual(&mant, 2, true, MIDFLT_IEEE_SINGLE,
-                                     MIDFLT_IEEE_ROUND_NEAREST);
+                                     MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
+#endif
 
     midflt_ieee_log(&a, stdout);
     putchar('\n');

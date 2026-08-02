@@ -5,8 +5,9 @@
 #include <math.h>
 #include <stdio.h>
 
-typedef enum midflt_IEEEKind IEEEKind;
 typedef struct midflt_IEEE IEEE;
+typedef enum midflt_IEEEKind IEEEKind;
+typedef enum midflt_IEEEKind IEEERounding;
 
 void midflt_IEEE_deinit(struct midflt_IEEE *self)
 {
@@ -202,18 +203,102 @@ void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out)
     fprintf(out, "%Lf", fabsl(val));
 }
 
+// NOTE: destroys unnorm
+static void normalize_mant(IEEE *self, struct mid_APInt *unnorm)
+{
+    printf("unnorm = ");
+    midint_log_hex(unnorm, stdout);
+    printf("\n");
+
+    i32 bits = midint_unsigned_sig_bits(unnorm);
+    i32 norm_bits = self->mant.n_bits;
+    assert(bits >= norm_bits);
+
+    i32 norm_shift = bits - norm_bits;
+    printf("norm shift = %d\n", norm_shift);
+
+    i32 zeroes = midint_count_trailing_zeroes(unnorm);
+    printf("zeroes = %d\n", zeroes);
+
+    if (zeroes < norm_shift) {
+        printf("rounding\n");
+        // the most significant bit to be rounded away
+        bool sigbit = midint_get_bit(unnorm, norm_shift - 1);
+        // are we an equal distance away from the next and previous values?
+        bool eq_dist = sigbit && zeroes == norm_shift - 1;
+
+        switch (self->rounding) {
+        case MIDFLT_IEEE_ROUND_TOWARDS_ZERO:
+            // the bit shift already automatically rounds towards zero
+            break;
+
+        case MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN:
+            if (eq_dist) {
+                // round in whichever direction makes the normalized LSb a zero
+                if (midint_get_bit(unnorm, zeroes))
+                    midint_inc_bit(unnorm, zeroes);
+            } else if (sigbit) {
+                midint_inc_bit(unnorm, zeroes);
+            }
+            break;
+
+        case MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY:
+            if (sigbit)
+                midint_inc_bit(unnorm, zeroes);
+            break;
+
+        case MIDFLT_IEEE_ROUND_UP:
+            if (!self->is_neg)
+                midint_inc_bit(unnorm, zeroes);
+            break;
+
+        case MIDFLT_IEEE_ROUND_DOWN:
+            if (self->is_neg)
+                midint_inc_bit(unnorm, zeroes);
+            break;
+
+        default:
+            MID_CRASH("invalid rounding mode");
+        }
+    }
+
+    midint_lshr_imm(unnorm, norm_shift);
+    midint_deinit(&self->mant);
+    self->mant = *unnorm;
+    midint_ext(&self->mant, norm_bits, false);
+
+    self->exp += norm_shift;
+}
+
 void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
     assert(a->kind == b->kind);
 
-    // the sign bit is the XOR of the operands' sign bits
-    a->is_neg = a->is_neg != b->is_neg;
+    // if one of the operands is NaN, the sign of the NaN determines the sign
+    // of the result
+    if (b->val_cat == MIDFLT_IEEE_VAL_NAN)
+        a->is_neg = b->is_neg;
+    else if (a->val_cat != MIDFLT_IEEE_VAL_NAN)
+        // the sign bit is the XOR of the operands' sign bits
+        a->is_neg = a->is_neg != b->is_neg;
 
-    if (b->val_cat == MIDFLT_IEEE_VAL_ZERO) {
-        a->exp = b->exp;
-        midint_assign(&a->mant, &b->mant);
+    bool inf_arg =
+        a->val_cat == MIDFLT_IEEE_VAL_INF || b->val_cat == MIDFLT_IEEE_VAL_INF;
+    bool nan_arg =
+        a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN;
+    bool zero_arg = a->val_cat == MIDFLT_IEEE_VAL_ZERO ||
+                    b->val_cat == MIDFLT_IEEE_VAL_ZERO;
+
+    // handle special cases
+    if (nan_arg) {
+        a->val_cat = MIDFLT_IEEE_VAL_NAN;
         return;
-    } else if (a->val_cat == MIDFLT_IEEE_VAL_ZERO) {
+    } else if (inf_arg && zero_arg) {
+        // inf * 0 = nan
+        a->val_cat = MIDFLT_IEEE_VAL_NAN;
+        return;
+    } else if (inf_arg) {
+        a->val_cat = MIDFLT_IEEE_VAL_INF;
         return;
     }
 
@@ -221,30 +306,13 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 
     // we need to be able to hold twice the width of the mantissa in case
     // the multiplication overflows
-    auto tmp_res = midint_alloc(a->mant.n_bits * 2);
-    midint_ufullmul(&a->mant, &b->mant, &tmp_res);
+    auto unnorm = midint_alloc(a->mant.n_bits * 2);
+    midint_ufullmul(&a->mant, &b->mant, &unnorm);
+    // account for the fact that the operands are implicitly multiplied
+    // by 2 ^ (mant.n_bits - 1) for integer multiplication.
+    midint_lshr_imm(&unnorm, a->mant.n_bits - 1);
 
-    // we need to shift the result back to account for all the trailing zeroes
-    // in the multiplication
-    i32 a_zeroes = midint_count_trailing_zeroes(&a->mant);
-    i32 b_zeroes = midint_count_trailing_zeroes(&b->mant);
-    i32 mul_shift = MID_MIN(a_zeroes, b_zeroes);
-    midint_lshr_imm(&tmp_res, mul_shift);
-
-    i32 tmp_bits = midint_unsigned_sig_bits(&tmp_res);
-    assert(tmp_bits >= a->mant.n_bits);
-    i32 norm_shift = tmp_bits - a->mant.n_bits;
-    printf("shift = %d\n", norm_shift);
-    printf("tmp bits = %d, mant bits = %d\n", tmp_bits, a->mant.n_bits);
-
-    // if there was an overflow we shift the mantissa back to the decimal
-    // point and move the extra amount to the exponent
-    midint_lshr_imm(&tmp_res, norm_shift);
-    a->exp += norm_shift - 1;
-
-    midint_deinit(&a->mant);
-    a->mant = tmp_res;
-    midint_ext(&a->mant, b->mant.n_bits, false);
+    normalize_mant(a, &unnorm);
 }
 
 #ifndef __STDC_IEC_60559_BFP__
