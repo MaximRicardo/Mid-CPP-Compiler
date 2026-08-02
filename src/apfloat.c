@@ -7,7 +7,7 @@
 
 typedef struct midflt_IEEE IEEE;
 typedef enum midflt_IEEEKind IEEEKind;
-typedef enum midflt_IEEEKind IEEERounding;
+typedef enum midflt_IEEERounding IEEERounding;
 
 void midflt_IEEE_deinit(struct midflt_IEEE *self)
 {
@@ -221,12 +221,12 @@ static void normalize_mant(IEEE *self, struct mid_APInt *unnorm)
     printf("zeroes = %d\n", zeroes);
 
     if (zeroes < norm_shift) {
-        printf("rounding\n");
         // the most significant bit to be rounded away
-        bool sigbit = midint_get_bit(unnorm, norm_shift - 1);
+        bool round_bit = midint_get_bit(unnorm, norm_shift - 1);
         // are we an equal distance away from the next and previous values?
-        bool eq_dist = sigbit && zeroes == norm_shift - 1;
+        bool eq_dist = round_bit && zeroes == norm_shift - 1;
 
+        bool inc_guard = false;
         switch (self->rounding) {
         case MIDFLT_IEEE_ROUND_TOWARDS_ZERO:
             // the bit shift already automatically rounds towards zero
@@ -236,29 +236,34 @@ static void normalize_mant(IEEE *self, struct mid_APInt *unnorm)
             if (eq_dist) {
                 // round in whichever direction makes the normalized LSb a zero
                 if (midint_get_bit(unnorm, zeroes))
-                    midint_inc_bit(unnorm, zeroes);
-            } else if (sigbit) {
-                midint_inc_bit(unnorm, zeroes);
+                    inc_guard = true;
+            } else {
+                inc_guard = round_bit;
             }
             break;
 
         case MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY:
-            if (sigbit)
-                midint_inc_bit(unnorm, zeroes);
+            inc_guard = round_bit;
             break;
 
         case MIDFLT_IEEE_ROUND_UP:
-            if (!self->is_neg)
-                midint_inc_bit(unnorm, zeroes);
+            inc_guard = !self->is_neg;
             break;
 
         case MIDFLT_IEEE_ROUND_DOWN:
-            if (self->is_neg)
-                midint_inc_bit(unnorm, zeroes);
+            inc_guard = self->is_neg;
             break;
 
         default:
             MID_CRASH("invalid rounding mode");
+        }
+
+        if (inc_guard) {
+            midint_inc_bit(unnorm, zeroes);
+            // rounding might have introduced another significant bit
+            bits = midint_unsigned_sig_bits(unnorm);
+            assert(bits >= norm_bits);
+            norm_shift = bits - norm_bits;
         }
     }
 
@@ -270,18 +275,33 @@ static void normalize_mant(IEEE *self, struct mid_APInt *unnorm)
     self->exp += norm_shift;
 }
 
-void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
+static bool ieee_muldiv_sign_bit(const IEEE *a, const IEEE *b)
 {
-    assert(a->kind == b->kind);
+    bool nan_arg =
+        a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN;
+    bool both_nan =
+        a->val_cat == MIDFLT_IEEE_VAL_NAN && b->val_cat == MIDFLT_IEEE_VAL_NAN;
 
-    // if one of the operands is NaN, the sign of the NaN determines the sign
-    // of the result
-    if (b->val_cat == MIDFLT_IEEE_VAL_NAN)
-        a->is_neg = b->is_neg;
-    else if (a->val_cat != MIDFLT_IEEE_VAL_NAN)
+    bool is_neg;
+    // if only one of the operands is NaN, the sign of the NaN determines the
+    // sign of the result
+    if (!nan_arg || both_nan)
         // the sign bit is the XOR of the operands' sign bits
-        a->is_neg = a->is_neg != b->is_neg;
+        is_neg = a->is_neg != b->is_neg;
+    else if (b->val_cat == MIDFLT_IEEE_VAL_NAN)
+        is_neg = b->is_neg;
+    else
+        is_neg = a->is_neg;
 
+    return is_neg;
+}
+
+// handles special cases when multiplying.
+// returns true if a special case was handled, false otherwise.
+// if a special case was handled a is set to the result of the special
+// case, otherwise a is unmodified.
+static bool ieee_mul_special_cases(IEEE *a, const IEEE *b)
+{
     bool inf_arg =
         a->val_cat == MIDFLT_IEEE_VAL_INF || b->val_cat == MIDFLT_IEEE_VAL_INF;
     bool nan_arg =
@@ -289,18 +309,97 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     bool zero_arg = a->val_cat == MIDFLT_IEEE_VAL_ZERO ||
                     b->val_cat == MIDFLT_IEEE_VAL_ZERO;
 
-    // handle special cases
+    bool is_neg = ieee_muldiv_sign_bit(a, b);
+
+    bool special_case = false;
+
     if (nan_arg) {
         a->val_cat = MIDFLT_IEEE_VAL_NAN;
-        return;
+        special_case = true;
     } else if (inf_arg && zero_arg) {
         // inf * 0 = nan
         a->val_cat = MIDFLT_IEEE_VAL_NAN;
-        return;
+        special_case = true;
     } else if (inf_arg) {
+        // inf * x = inf if x is not 0 or NaN
         a->val_cat = MIDFLT_IEEE_VAL_INF;
-        return;
+        special_case = true;
+    } else if (zero_arg) {
+        // x * 0 = 0 if x is not inf or NaN
+        a->val_cat = MIDFLT_IEEE_VAL_ZERO;
+        special_case = true;
     }
+
+    if (special_case)
+        a->is_neg = is_neg;
+    return special_case;
+}
+
+// handles special cases when dividing.
+// returns true if a special case was handled, false otherwise.
+// if a special case was handled a is set to the result of the special
+// case, otherwise a is unmodified.
+static bool ieee_div_special_cases(IEEE *a, const IEEE *b)
+{
+    bool a_inf = a->val_cat == MIDFLT_IEEE_VAL_INF;
+    bool b_inf = b->val_cat == MIDFLT_IEEE_VAL_INF;
+    bool a_nan = a->val_cat == MIDFLT_IEEE_VAL_NAN;
+    bool b_nan = b->val_cat == MIDFLT_IEEE_VAL_NAN;
+    bool a_zero = a->val_cat == MIDFLT_IEEE_VAL_ZERO;
+    bool b_zero = b->val_cat == MIDFLT_IEEE_VAL_ZERO;
+
+    bool is_neg = ieee_muldiv_sign_bit(a, b);
+
+    bool special_case = false;
+
+    if (a_nan || b_nan) {
+        a->val_cat = MIDFLT_IEEE_VAL_NAN;
+        special_case = true;
+    } else if (a_inf && b_inf) {
+        // inf / inf = -nan
+        a->val_cat = MIDFLT_IEEE_VAL_NAN;
+        is_neg = true;
+        special_case = true;
+    } else if (a_inf) {
+        // inf / x = inf if x is not nan
+        special_case = true;
+    } else if (b_inf) {
+        // x / inf = 0 if x is not nan
+        a->val_cat = MIDFLT_IEEE_VAL_ZERO;
+        special_case = true;
+    } else if (a_zero && b_zero) {
+        // 0 / 0 = -nan
+        a->val_cat = MIDFLT_IEEE_VAL_NAN;
+        is_neg = true;
+        special_case = true;
+    } else if (b_zero) {
+        // x / 0 = inf if x is not nan or 0
+        a->val_cat = MIDFLT_IEEE_VAL_INF;
+        special_case = true;
+    } else if (a_zero) {
+        // 0 / x = 0 if x is not 0 or nan
+        a->val_cat = MIDFLT_IEEE_VAL_ZERO;
+        special_case = true;
+    }
+
+    if (special_case)
+        a->is_neg = is_neg;
+    return special_case;
+}
+
+static bool ieee_floats_compatible(const IEEE *a, const IEEE *b)
+{
+    return a->kind == b->kind && a->rounding == b->rounding;
+}
+
+void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    assert(ieee_floats_compatible(a, b));
+
+    if (ieee_mul_special_cases(a, b))
+        return;
+
+    a->is_neg = ieee_muldiv_sign_bit(a, b);
 
     a->exp += b->exp;
 
@@ -313,6 +412,83 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     midint_lshr_imm(&unnorm, a->mant.n_bits - 1);
 
     normalize_mant(a, &unnorm);
+}
+
+static bool ieee_should_inc_mant(IEEERounding mode, bool is_neg, bool guard,
+                                 bool round_, bool sticky)
+{
+    switch (mode) {
+    case MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN:
+    case MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY:
+        if (!guard)
+            return false;
+        else if (round_)
+            return true;
+        else if (sticky)
+            return true;
+        else
+            return mode == MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY;
+
+    case MIDFLT_IEEE_ROUND_UP:
+        return !is_neg && (round_ || sticky);
+
+    case MIDFLT_IEEE_ROUND_DOWN:
+        return is_neg && (round_ || sticky);
+
+    case MIDFLT_IEEE_ROUND_TOWARDS_ZERO:
+        return false;
+    }
+}
+
+void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    assert(ieee_floats_compatible(a, b));
+
+    if (ieee_div_special_cases(a, b))
+        return;
+
+    a->is_neg = ieee_muldiv_sign_bit(a, b);
+
+    a->exp -= b->exp;
+
+    // OPTIM: reuse a->mant for the remainder
+    auto rem = midint_alloc(a->mant.n_bits);
+    auto unnorm = midint_copy(&a->mant);
+    // the division operation will shift all the bits to the right,
+    // so we gotta put shift them all in front of the decimal point first.
+    // note, we also shift by one extra bit to include rounding info
+    midint_ext(&unnorm, a->mant.n_bits * 2, false);
+    midint_shl_imm(&unnorm, a->mant.n_bits);
+    midint_udivrem(&unnorm, &b->mant, &unnorm, &rem);
+    bool round_bit = midint_get_bit(&unnorm, 0);
+    midint_lshr_imm(&unnorm, 1);
+
+    // if any of the remainder bits are active then one of the lost bits would
+    // have been high if we we're dividing with infinite precision
+    bool sticky_bit = midint_is_zero(&rem);
+
+    bool guard_bit = midint_get_bit(&unnorm, 0);
+    if (ieee_should_inc_mant(a->rounding, a->is_neg, guard_bit, round_bit,
+                             sticky_bit))
+        midint_inc_bit(&unnorm, 0);
+
+    // normalize
+    i32 n_bits = midint_unsigned_sig_bits(&unnorm);
+    i32 norm_bits = a->mant.n_bits;
+    if (n_bits > norm_bits) {
+        auto shift = n_bits - norm_bits;
+        a->exp += shift;
+        midint_lshr_imm(&unnorm, shift);
+    } else if (n_bits < norm_bits) {
+        auto shift = norm_bits - n_bits;
+        a->exp -= shift;
+        midint_shl_imm(&unnorm, shift);
+    }
+
+    midint_deinit(&rem);
+    midint_deinit(&a->mant);
+    a->mant = unnorm;
+    midint_ext(&a->mant, norm_bits, false);
 }
 
 #ifndef __STDC_IEC_60559_BFP__

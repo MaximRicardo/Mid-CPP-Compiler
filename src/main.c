@@ -265,7 +265,7 @@ static void apint_test()
 
 static void apfloat_test()
 {
-#if 1
+#if 0
     auto mant = midint_init(24, 0xb33333, false);
     // a = 0.7f
     auto a = midflt_ieee_init_manual(&mant, -1, false, MIDFLT_IEEE_SINGLE,
@@ -276,14 +276,14 @@ static void apfloat_test()
     auto b = midflt_ieee_init_manual(&mant, 6, false, MIDFLT_IEEE_SINGLE,
                                      MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 #else
-    auto mant = midint_init(24, 0xb00000, false);
-    // a = 5.5f
-    auto a = midflt_ieee_init_manual(&mant, 2, false, MIDFLT_IEEE_SINGLE,
+    auto mant = midint_init(24, 0xb18000, false);
+    // a = 355.f
+    auto a = midflt_ieee_init_manual(&mant, 8, false, MIDFLT_IEEE_SINGLE,
                                      MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 
-    midint_assign_uimm(&mant, 0xc80000);
-    // b = 6.25f
-    auto b = midflt_ieee_init_manual(&mant, 2, true, MIDFLT_IEEE_SINGLE,
+    midint_assign_uimm(&mant, 0xe20000);
+    // b = 113.f
+    auto b = midflt_ieee_init_manual(&mant, 6, false, MIDFLT_IEEE_SINGLE,
                                      MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 #endif
 
@@ -293,7 +293,7 @@ static void apfloat_test()
     midflt_ieee_log(&b, stdout);
     putchar('\n');
 
-    midflt_ieee_mul(&a, &b);
+    midflt_ieee_div(&a, &b);
 
     midflt_ieee_log(&a, stdout);
     putchar('\n');

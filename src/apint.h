@@ -130,6 +130,8 @@ struct mid_APInt midint_nip_xor(const struct mid_APInt *a,
  * a and b can also be passed as the outputs of the function
  * NOTE: both outputs are required and can not be NULL
  * NOTE: assumes out_quot and out_rem are already allocated
+ * NOTE: a and b don't need to be the same width, out_quot should be at least
+ *       as wide as a, and out_rem should be at least as wide as b
  */
 void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
                     struct mid_APInt *out_quot, struct mid_APInt *out_rem);

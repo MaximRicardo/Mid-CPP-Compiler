@@ -1514,97 +1514,12 @@ struct mid_APInt midint_nip_srem(const struct mid_APInt *a,
     }
 }
 
-/*
 void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
                     struct mid_APInt *out_quot, struct mid_APInt *out_rem)
 {
     assert(out_quot && out_rem);
-    assert(a->n_bits == b->n_bits);
-
-    struct mid_APInt quot;
-    struct mid_APInt rem;
-
-    if (!is_bignum_used(a->n_bits)) {
-        if (b->v.val == 0)
-            MID_CRASH("division by 0");
-
-        quot = midint_init(a->n_bits, a->v.val / b->v.val, false);
-        rem = midint_init(a->n_bits, a->v.val % b->v.val, false);
-        goto finish_normal;
-    }
-
-    i32 a_words = get_n_words(midint_unsigned_sig_bits(a));
-    i32 b_bits = midint_unsigned_sig_bits(b);
-    i32 b_words = get_n_words(b_bits);
-
-    // degenerate cases
-    if (a_words == 0) {
-        quot = midint_zero(a->n_bits); // 0 / x = 0
-        rem = midint_zero(a->n_bits);  // 0 % x = 0
-        goto finish_normal;
-    }
-    if (b_bits == 1) {
-        rem = midint_zero(a->n_bits); // x % 1 = 0
-        goto finish_cpy_a_to_quot;    // x / 1 = x
-    }
-    if (a_words < b_words || midint_is_ult(a, b)) {
-        quot = midint_zero(a->n_bits); // x / y = 0 if x < y
-        goto finish_cpy_a_to_rem;      // x % y = x if x < y
-    }
-    if (midint_is_eq(a, b)) {
-        quot = midint_init(a->n_bits, 1, false); // x / x = 1
-        rem = midint_zero(a->n_bits);            // x % x = 0
-        goto finish_normal;
-    }
-
-    quot = midint_zero(a->n_bits);
-    rem = midint_zero(a->n_bits);
-    bignum_div(a->v.words, a_words, b->v.words, b_words, quot.v.words,
-               rem.v.words);
-
-    // holy spaghetti
-finish_normal:
-    // if a or b is going to be overwritten then we need to deinit them first
-    if (a == out_quot || a == out_rem)
-        midint_deinit((struct mid_APInt *)a);
-
-    if (b == out_quot || b == out_rem)
-        midint_deinit((struct mid_APInt *)b);
-
-    *out_quot = quot;
-    *out_rem = rem;
-
-    return;
-
-finish_cpy_a_to_quot:
-    if (b == out_quot || b == out_rem)
-        midint_deinit((struct mid_APInt *)b);
-
-    if (out_quot != a)
-        *out_quot = midint_copy(a);
-    *out_rem = rem;
-
-    return;
-
-finish_cpy_a_to_rem:
-    if (b == out_quot || b == out_rem)
-        midint_deinit((struct mid_APInt *)b);
-
-    if (out_rem != a)
-        *out_rem = midint_copy(a);
-    *out_quot = quot;
-
-    return;
-}
- */
-
-void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
-                    struct mid_APInt *out_quot, struct mid_APInt *out_rem)
-{
-    assert(out_quot && out_rem);
-    assert(a->n_bits == b->n_bits);
-    assert(out_quot->n_bits == a->n_bits);
-    assert(out_rem->n_bits == a->n_bits);
+    assert(out_quot->n_bits >= a->n_bits);
+    assert(out_rem->n_bits >= b->n_bits);
 
     if (!is_bignum_used(a->n_bits)) {
         if (b->v.val == 0)
@@ -1650,6 +1565,10 @@ void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
 void midint_sdivrem(const struct mid_APInt *a, const struct mid_APInt *b,
                     struct mid_APInt *out_quot, struct mid_APInt *out_rem)
 {
+    assert(out_quot && out_rem);
+    assert(out_quot->n_bits >= a->n_bits);
+    assert(out_rem->n_bits >= b->n_bits);
+
     bool a_neg = midint_get_sign_bit(a);
     bool b_neg = midint_get_sign_bit(b);
 

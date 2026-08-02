@@ -57,6 +57,7 @@ struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
 void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out);
 
 void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b);
+void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 
 long double midflt_ieee_to_flt(const struct midflt_IEEE *self);
 
