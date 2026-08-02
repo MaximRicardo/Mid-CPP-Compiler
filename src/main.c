@@ -262,18 +262,17 @@ static void apint_test()
 }
 */
 
-/*
 static void apfloat_test()
 {
-#if 0
+#if 1
     auto mant = midint_init(24, 0xb33333, false);
     // a = 0.7f
-    auto a = midflt_ieee_init_manual(&mant, -1, false, MIDFLT_IEEE_SINGLE,
+    auto a = midflt_ieee_init_manual(&mant, -1, true, MIDFLT_IEEE_SINGLE,
                                      MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 
     midint_assign_uimm(&mant, 0xc80000);
     // b = 100.f
-    auto b = midflt_ieee_init_manual(&mant, 6, false, MIDFLT_IEEE_SINGLE,
+    auto b = midflt_ieee_init_manual(&mant, 6, true, MIDFLT_IEEE_SINGLE,
                                      MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 #elif 0
     auto mant = midint_init(24, 0xb18000, false);
@@ -286,9 +285,9 @@ static void apfloat_test()
     auto b = midflt_ieee_init_manual(&mant, 6, false, MIDFLT_IEEE_SINGLE,
                                      MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 #else
-    auto mant = midint_init(24, 0xb18000, false);
-    auto a = midflt_ieee_zero(false, MIDFLT_IEEE_SINGLE,
-                              MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
+    auto mant = midint_init(24, 0xb80000, false);
+    auto a = midflt_ieee_init_manual(&mant, 0, false, MIDFLT_IEEE_SINGLE,
+                                     MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
     auto b = midflt_ieee_one(false, MIDFLT_IEEE_SINGLE,
                              MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN);
 #endif
@@ -314,8 +313,8 @@ static void apfloat_test()
     midflt_IEEE_deinit(&b);
     midint_deinit(&mant);
 }
-*/
 
+/*
 static void apfloat_test()
 {
     enum midflt_IEEERounding rounding = MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN;
@@ -341,6 +340,7 @@ static void apfloat_test()
     midflt_IEEE_deinit(&b);
     midflt_IEEE_deinit(&a);
 }
+*/
 
 int main(int argc, char **argv)
 {

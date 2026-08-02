@@ -57,12 +57,19 @@ struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
                                            enum midflt_IEEERounding rounding);
 void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out);
 
+// TODO: make these functions work if a and b alias
 void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_assign(struct midflt_IEEE *dest,
                         const struct midflt_IEEE *src);
+
+bool midflt_ieee_eq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
+bool midflt_ieee_gt(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
+bool midflt_ieee_gteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
+bool midflt_ieee_lt(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
+bool midflt_ieee_lteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
 
 double midflt_ieee_to_flt(const struct midflt_IEEE *self);
 

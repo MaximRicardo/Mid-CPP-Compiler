@@ -461,27 +461,30 @@ void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     midint_ext(&a->mant, norm_bits, false);
 }
 
-static void ieee_add_normalize_mant(IEEE *a)
+static void ieee_addsub_normalize_mant(IEEE *a)
 {
     i32 unnorm_bits = midint_unsigned_sig_bits(&a->mant);
     i32 norm_bits = ieee_mant_n_bits(a->kind);
-    assert(unnorm_bits >= norm_bits);
 
-    i32 shift = unnorm_bits - norm_bits;
-    if (shift == 0)
-        return;
+    if (unnorm_bits > norm_bits) {
+        i32 shift = unnorm_bits - norm_bits;
 
-    bool guard_bit = midint_get_bit(&a->mant, shift);
-    bool rounding_bit = midint_get_bit(&a->mant, shift - 1);
-    i32 zeroes = midint_count_trailing_zeroes(&a->mant);
-    bool sticky_bit = zeroes < shift - 1;
+        bool guard_bit = midint_get_bit(&a->mant, shift);
+        bool rounding_bit = midint_get_bit(&a->mant, shift - 1);
+        i32 zeroes = midint_count_trailing_zeroes(&a->mant);
+        bool sticky_bit = zeroes < shift - 1;
 
-    if (ieee_should_inc_mant(a->rounding, a->is_neg, guard_bit, rounding_bit,
-                             sticky_bit))
-        midint_inc_bit(&a->mant, shift);
+        if (ieee_should_inc_mant(a->rounding, a->is_neg, guard_bit,
+                                 rounding_bit, sticky_bit))
+            midint_inc_bit(&a->mant, shift);
 
-    midint_lshr_imm(&a->mant, shift);
-    a->exp += shift;
+        midint_lshr_imm(&a->mant, shift);
+        a->exp += shift;
+    } else if (unnorm_bits < norm_bits) {
+        i32 shift = norm_bits - unnorm_bits;
+        midint_shl_imm(&a->mant, shift);
+        a->exp -= shift;
+    }
 }
 
 // automatically resizes the mantissa APInts to hold the extra bits required
@@ -520,7 +523,7 @@ static void ieee_add_base(IEEE *a, const IEEE *og_b)
 
     midint_add(&a->mant, &b.mant);
 
-    ieee_add_normalize_mant(a);
+    ieee_addsub_normalize_mant(a);
 
     midint_ext(&a->mant, ieee_mant_n_bits(a->kind), false);
     midflt_IEEE_deinit(&b);
@@ -533,12 +536,12 @@ static void ieee_sub_base(IEEE *a, const IEEE *og_b)
 
     auto b = midflt_ieee_copy(og_b);
 
-    // reserve an extra bit for carry information
+    // reserve an extra bit for borrow information
     ieee_match_exps(a, &b, 1);
 
     midint_sub(&a->mant, &b.mant);
 
-    ieee_add_normalize_mant(a);
+    ieee_addsub_normalize_mant(a);
 
     midint_ext(&a->mant, ieee_mant_n_bits(a->kind), false);
     midflt_IEEE_deinit(&b);
@@ -590,7 +593,12 @@ static bool ieee_addsub_special_cases(IEEE *a, const IEEE *b, bool sub)
         // x + 0 = x if x is not nan
         if (a->val_cat == MIDFLT_IEEE_VAL_ZERO) {
             midflt_ieee_assign(a, b);
+            a->is_neg = b_neg;
         }
+    } else if (sub && midflt_ieee_eq(a, b)) {
+        // x - x = +0 if x is a normal value or zero
+        a->val_cat = MIDFLT_IEEE_VAL_ZERO;
+        a->is_neg = false;
     } else {
         return false;
     }
@@ -603,10 +611,29 @@ void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     if (ieee_addsub_special_cases(a, b, false))
         return;
 
-    if (b->is_neg)
-        ieee_sub_base(a, b);
-    else
+    // account for going above or below zero
+    if (a->is_neg && !b->is_neg) {
+        a->is_neg = false; // temporarily flip the sign of a to cmp magnitudes
+        if (midflt_ieee_lt(a, b)) {
+            // -a + +b == +b - +a
+            auto tmp_b = midflt_ieee_copy(b);
+            ieee_sub_base(&tmp_b, a);
+
+            midflt_IEEE_deinit(a);
+            *a = tmp_b;
+
+            return;
+        }
+        a->is_neg = true;
+    }
+
+    if (b->is_neg) {
+        auto tmp_b = *b;
+        tmp_b.is_neg = false;
+        midflt_ieee_sub(a, &tmp_b);
+    } else {
         ieee_add_base(a, b);
+    }
 }
 
 void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b)
@@ -614,10 +641,36 @@ void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     if (ieee_addsub_special_cases(a, b, true))
         return;
 
-    if (b->is_neg)
+    // account for going above or below zero
+    if (!a->is_neg && !b->is_neg && midflt_ieee_lt(a, b)) {
+        // +a - +b == -(+b - +a)
+        auto tmp_b = midflt_ieee_copy(b);
+        ieee_sub_base(&tmp_b, a);
+
+        midflt_IEEE_deinit(a);
+        *a = tmp_b;
+        a->is_neg = true;
+    } else if (a->is_neg && b->is_neg && midflt_ieee_gt(a, b)) {
+        // -a - -b == +b - +a
+        auto tmp_b = midflt_ieee_copy(b);
+        tmp_b.is_neg = false;
+        a->is_neg = false;
+        ieee_sub_base(&tmp_b, a);
+
+        midflt_IEEE_deinit(a);
+        *a = tmp_b;
+    } else if (a->is_neg && !b->is_neg) {
+        // -a - +b == -(+b - -a) == -(+b + +a) == -(+a + +b)
+        a->is_neg = false;
         ieee_add_base(a, b);
-    else
+        a->is_neg = true;
+    } else if (!a->is_neg && b->is_neg) {
+        auto tmp_b = *b;
+        tmp_b.is_neg = false;
+        midflt_ieee_add(a, &tmp_b);
+    } else {
         ieee_sub_base(a, b);
+    }
 }
 
 #ifndef __STDC_IEC_60559_BFP__
@@ -625,6 +678,8 @@ void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 static_assert(false);
 #endif
 
+// TODO: write a version of this that doesn't rely on the implementation
+//       using IEEE 754
 float ieee_to_single(const IEEE *self)
 {
     union TypePun {
@@ -664,4 +719,121 @@ void midflt_ieee_assign(struct midflt_IEEE *dest, const struct midflt_IEEE *src)
     dest->val_cat = src->val_cat;
     dest->exp = src->exp;
     midint_assign(&dest->mant, &src->mant);
+}
+
+bool midflt_ieee_eq(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    assert(ieee_floats_compatible(a, b));
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN)
+        return false;
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_ZERO &&
+        b->val_cat == MIDFLT_IEEE_VAL_ZERO)
+        return true;
+
+    if (a->is_neg != b->is_neg)
+        return false;
+
+    if (a->val_cat != b->val_cat)
+        return false;
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_NORMAL)
+        return a->exp == b->exp && midint_is_eq(&a->mant, &b->mant);
+
+    return true;
+}
+
+bool midflt_ieee_gt(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    assert(ieee_floats_compatible(a, b));
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN)
+        return false;
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_ZERO &&
+        b->val_cat == MIDFLT_IEEE_VAL_ZERO)
+        return false;
+    else if (a->val_cat == MIDFLT_IEEE_VAL_ZERO)
+        return b->is_neg; // 0 > +x == false and 0 > -x == true
+    else if (b->val_cat == MIDFLT_IEEE_VAL_ZERO)
+        return !a->is_neg; // +x > 0 == true and -x > 0 == false
+
+    if (a->is_neg != b->is_neg)
+        return b->is_neg; // +x > -y == true and -x > +y == false
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_INF)
+        return !a->is_neg; // inf > x == true and -inf > x == false
+    else if (b->val_cat == MIDFLT_IEEE_VAL_INF)
+        return b->is_neg; // x > inf == false and x > -inf == true
+
+    // both operands are normal values
+
+    if (a->exp != b->exp)
+        return a->is_neg ? a->exp < b->exp : a->exp > b->exp;
+
+    int cmp = midint_unsigned_cmp(&a->mant, &b->mant);
+    if (cmp == 0)
+        return false;
+    else if (cmp > 0)
+        return !a->is_neg;
+    else
+        return a->is_neg;
+}
+
+bool midflt_ieee_gteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    assert(ieee_floats_compatible(a, b));
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN)
+        return false;
+
+    return !midflt_ieee_lt(a, b);
+}
+
+bool midflt_ieee_lt(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    assert(ieee_floats_compatible(a, b));
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN)
+        return false;
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_ZERO &&
+        b->val_cat == MIDFLT_IEEE_VAL_ZERO)
+        return false;
+    else if (a->val_cat == MIDFLT_IEEE_VAL_ZERO)
+        return !b->is_neg; // 0 < +x == true and 0 < -x == false
+    else if (b->val_cat == MIDFLT_IEEE_VAL_ZERO)
+        return a->is_neg; // +x < 0 == false and -x < 0 == true
+
+    if (a->is_neg != b->is_neg)
+        return a->is_neg; // +x < -y == false and -x < +y == true
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_INF)
+        return a->is_neg; // inf < x == false and -inf < x == true
+    else if (b->val_cat == MIDFLT_IEEE_VAL_INF)
+        return !b->is_neg; // x < inf == true and x < -inf == false
+
+    // both operands are normal values
+
+    if (a->exp != b->exp)
+        return !a->is_neg ? a->exp < b->exp : a->exp > b->exp;
+
+    int cmp = midint_unsigned_cmp(&a->mant, &b->mant);
+    if (cmp == 0)
+        return false;
+    else if (cmp < 0)
+        return !a->is_neg;
+    else
+        return a->is_neg;
+}
+
+bool midflt_ieee_lteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    assert(ieee_floats_compatible(a, b));
+
+    if (a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN)
+        return false;
+
+    return !midflt_ieee_gt(a, b);
 }
