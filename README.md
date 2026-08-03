@@ -68,12 +68,13 @@ but it should be completely cross platform.
 
 # Project Structure
 
-* src/                - All the compiler code goes here
 * src/lexer/          - Stuff related to the lexing pass
 * src/parser/         - Stuff related to the AST construction pass
 * src/sema/           - Stuff related to semantic analysis (eg. typechecking, overload resolution, etc.)
 * src/generics/       - Generic data structures
 * tests/              - C++ test programs go here
+
+The include directory mirrors the src directory.
 
 # Modules
 
