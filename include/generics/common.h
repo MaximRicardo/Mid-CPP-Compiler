@@ -3,6 +3,10 @@
 #include "mid_alloc.h"
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static inline uintmax_t midgen_ceil_pow2(uintmax_t x)
 {
     --x;
@@ -26,4 +30,8 @@ static inline uintmax_t midgen_ceil_pow2(uintmax_t x)
 
 #ifndef MIDGEN_REALLOC
 #define MIDGEN_REALLOC(p, n) mid_realloc(p, n)
+#endif
+
+#ifdef __cplusplus
+}
 #endif

@@ -10,6 +10,10 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct midpar_TmpltParam;
 midgen_dynarray_struct_named(midpar_TmpltParamPVec, struct midpar_TmpltParam *);
 
@@ -121,3 +125,7 @@ midpar_parse_tmplt_args(const struct midlex_Token *toks, mid_isize l_angle,
 
 mid_isize midpar_tmplt_param_idx(const struct midpar_Tmplt *tmplt,
                                  const char *name);
+
+#ifdef __cplusplus
+}
+#endif

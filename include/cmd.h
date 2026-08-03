@@ -3,6 +3,10 @@
 #include "attribute.h"
 #include "ints.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 constexpr char midcmd_ansi_reset[] = "\x1b[0m";
 constexpr char midcmd_ansi_red[] = "\x1b[31m";
 constexpr char midcmd_ansi_green[] = "\x1b[32m";
@@ -32,3 +36,7 @@ char *midcmd_fmt_to_str(const char *fmt, ...)
 // prints a line with an arrow at the specified column
 // NOTE: doesn't account for unicode stuff
 void midcmd_prt_column_arrow(i32 column);
+
+#ifdef __cplusplus
+}
+#endif

@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static inline void *mid_malloc(size_t n)
 {
     void *ret = malloc(n);
@@ -33,3 +37,7 @@ static inline void *mid_realloc(void *p, size_t n)
     }
     return ret;
 }
+
+#ifdef __cplusplus
+}
+#endif

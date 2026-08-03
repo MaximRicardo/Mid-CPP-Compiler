@@ -3,6 +3,10 @@
 #include "generics/dynarray.h"
 #include "position.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum middiag_ErrT {
     MIDDIAG_ERR_UNKNOWN_SYMBOL,
     MIDDIAG_ERR_MISSING_PAREN,
@@ -108,3 +112,7 @@ struct mid_Diag middiag_type_id_w_name_err(const struct midlex_Token *tok,
                                            enum middiag_ErrT type);
 struct mid_Diag middiag_type_id_w_name_warn(const struct midlex_Token *tok,
                                             enum middiag_WarnT type);
+
+#ifdef __cplusplus
+}
+#endif

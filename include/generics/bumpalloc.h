@@ -6,6 +6,10 @@
 
 #include "ints.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE
 #define MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE long long
 #endif
@@ -135,3 +139,7 @@
         memset(*out_ptr_super_specific_name______, 0,                          \
                sizeof(**out_ptr_super_specific_name______));                   \
     } while (0)
+
+#ifdef __cplusplus
+}
+#endif

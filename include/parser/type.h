@@ -6,6 +6,10 @@
 #include "lexer/token.h"
 #include "sema/ident.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct midsema_Scope;
 
 enum midpar_TypeSpec {
@@ -186,3 +190,7 @@ bool midpar_type_is_nullptr_t(const struct midpar_Type *type);
 bool midpar_type_is_ref(const struct midpar_Type *type);
 // lvls of indir doesn't matter here
 bool midpar_type_is_typecheckable(const struct midpar_Type *type);
+
+#ifdef __cplusplus
+}
+#endif

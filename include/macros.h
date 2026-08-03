@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MID_CRASH(msg)                                                         \
     do {                                                                       \
         printf("crashed at %s, line %d: '%s'\n", __FILE__, __LINE__, msg);     \
@@ -22,3 +26,7 @@
 
 #define MID_MAX(x, y) ((x) < (y) ? (y) : (x))
 #define MID_MIN(x, y) ((x) > (y) ? (y) : (x))
+
+#ifdef __cplusplus
+}
+#endif

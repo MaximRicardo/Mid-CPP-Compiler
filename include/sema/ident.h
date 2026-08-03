@@ -5,6 +5,10 @@
 #include "parser/allocator.h"
 #include <assert.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum midsema_IdentType {
     MIDSEMA_IDENTTYPE_VAR,
     MIDSEMA_IDENTTYPE_TYPEDEF, // TODO: rename this to alias instead of typedef
@@ -81,3 +85,7 @@ struct midsema_IdentPtr midsema_IdentPtr_null(struct midsema_Scope *parent);
 bool midsema_is_identptr_null(const struct midsema_IdentPtr *self);
 struct midsema_Ident *
 midsema_deref_identptr(const struct midsema_IdentPtr *self);
+
+#ifdef __cplusplus
+}
+#endif

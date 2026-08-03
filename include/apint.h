@@ -3,6 +3,10 @@
 #include "ints.h"
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef u64 midint_Word;
 constexpr u64 midint_word_max = UINT64_MAX;
 constexpr int midint_word_n_bits = 64;
@@ -177,3 +181,7 @@ bool midint_is_slteq_imm(const struct mid_APInt *a, i64 b);
 // returns -1 if a < b, 1 if a > b, and 0 if a == b
 int midint_signed_cmp(const struct mid_APInt *a, const struct mid_APInt *b);
 int midint_signed_cmp_imm(const struct mid_APInt *a, i64 b);
+
+#ifdef __cplusplus
+}
+#endif

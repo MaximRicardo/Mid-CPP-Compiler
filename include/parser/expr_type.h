@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum midpar_ExprType {
     // num literals
     MIDPAR_EXPRTYPE_NUMMIDLIT_START,
@@ -103,3 +107,7 @@ enum midpar_ExprType {
 };
 
 const char *midpar_exprtype_name(enum midpar_ExprType type);
+
+#ifdef __cplusplus
+}
+#endif

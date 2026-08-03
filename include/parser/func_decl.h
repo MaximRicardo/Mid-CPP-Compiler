@@ -9,6 +9,10 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 constexpr char midpar_ctor_name[] = "__constructor";
 constexpr char midpar_dtor_name[] = "__destructor";
 
@@ -91,3 +95,7 @@ bool midpar_func_takes_implicit_this(const struct midpar_FuncDecl *self,
 struct midpar_Type
 midpar_implicit_this_type(const struct midpar_FuncDecl *self);
 bool midpar_func_is_main(const struct midpar_FuncDecl *self);
+
+#ifdef __cplusplus
+}
+#endif

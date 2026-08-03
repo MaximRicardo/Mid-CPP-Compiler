@@ -8,6 +8,10 @@
 #include "literal.h"
 #include "parser/type.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 bool midpar_is_strlit(enum midpar_ExprType type);
 bool midpar_is_numlit(enum midpar_ExprType type);
 bool midpar_is_ternaryop(enum midpar_ExprType type);
@@ -80,3 +84,7 @@ struct midpar_Expr midpar_parse_expr(const struct midlex_Token *toks,
 mid_isize midpar_skip_expr(const struct midlex_Token *toks, mid_isize start,
                            const enum midlex_TokenType *end_types,
                            mid_isize n_end_types, struct mid_DiagVec *diags);
+
+#ifdef __cplusplus
+}
+#endif

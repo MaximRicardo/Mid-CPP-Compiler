@@ -10,6 +10,10 @@
 #include "sema/scope.h"
 #include "type.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct midpar_VarDecl;
 
 struct midpar_VarDeclInst {
@@ -102,3 +106,7 @@ void midpar_parse_var_decl_def(
 
 struct midpar_VarDeclInst *
 midpar_decl_inst_of_name(const struct midpar_VarDecl *decl, const char *name);
+
+#ifdef __cplusplus
+}
+#endif

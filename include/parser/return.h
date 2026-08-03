@@ -7,6 +7,10 @@
 #include "parser/expr.h"
 #include "sema/scope.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct midpar_Return {
     struct midpar_Expr *expr;
 };
@@ -19,3 +23,7 @@ mid_isize midpar_parse_return(struct midpar_Return *self,
                               struct midsema_Scope *scope,
                               struct midpar_Allocators *allocs,
                               struct mid_DiagVec *diags);
+
+#ifdef __cplusplus
+}
+#endif

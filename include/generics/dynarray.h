@@ -10,6 +10,10 @@
 
 #include "ints.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef MIDGEN_DYNARRAY_DEFAULT_SIZE_TYPE
 #define MIDGEN_DYNARRAY_DEFAULT_SIZE_TYPE long long
 #endif
@@ -69,10 +73,7 @@
         assert((idx) >= 0 && (idx) < (self)->len);                             \
     } while (0)
 
-#define midgen_dyninit()                                                       \
-    {                                                                          \
-        0                                                                      \
-    }
+#define midgen_dyninit() {0}
 
 #define MIDGEN_DYNDEINIT_NO_FREE(self_arg)                                     \
     do {                                                                       \
@@ -212,3 +213,7 @@
         self_super_specific_name______->arr[idx_super_specific_name______] =   \
             elem_super_specific_name______;                                    \
     } while (0)
+
+#ifdef __cplusplus
+}
+#endif

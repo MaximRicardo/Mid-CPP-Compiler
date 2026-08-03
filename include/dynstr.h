@@ -5,6 +5,10 @@
 #include "attribute.h"
 #include "ints.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 constexpr mid_isize midstr_start_cap = 128;
 
 struct mid_Dynstr {
@@ -26,3 +30,7 @@ void midstr_append_char(struct mid_Dynstr *self, char c);
 /* doesn't do anything if self->size == 0 */
 void midstr_pop(struct mid_Dynstr *self);
 void midstr_shrink_to_fit(struct mid_Dynstr *self);
+
+#ifdef __cplusplus
+}
+#endif

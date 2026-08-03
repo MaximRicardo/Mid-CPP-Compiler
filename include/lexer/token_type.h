@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum midlex_TokenType {
     MIDLEX_TOKENTYPE_END,
 
@@ -159,3 +163,7 @@ enum midlex_TokenType {
 
 #define MIDLEX_TTALIAS_L_ANGLE MIDLEX_TOKENTYPE_LT
 #define MIDLEX_TTALIAS_R_ANGLE MIDLEX_TOKENTYPE_GT
+
+#ifdef __cplusplus
+}
+#endif

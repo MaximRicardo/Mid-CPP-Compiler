@@ -15,6 +15,10 @@
 #include "sema/scope.h"
 #include "template.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // generic access macros
 
 #define MIDPAR_GET_NODE_IMPL_MUT(node) ((struct midpar_ASTNode *)node)
@@ -119,3 +123,7 @@ struct midpar_ASTNode *midpar_parse_node(const struct midlex_Token *toks,
 //                          ^
 //                        node
 bool midpar_node_is_templated(const struct midpar_ASTNode *node);
+
+#ifdef __cplusplus
+}
+#endif

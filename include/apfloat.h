@@ -4,6 +4,10 @@
 #include "ints.h"
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum midflt_IEEEKind {
     MIDFLT_IEEE_HALF,
     MIDFLT_IEEE_SINGLE,
@@ -84,3 +88,7 @@ struct mid_APFloat {
 };
 
 void midflt_deinit(struct mid_APFloat *self);
+
+#ifdef __cplusplus
+}
+#endif

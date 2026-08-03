@@ -4,6 +4,10 @@
 
 #include <inttypes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef int8_t i8;
 typedef uint8_t u8;
 
@@ -21,3 +25,7 @@ typedef i64 mid_isize;
 #define PRIisz PRId64
 #define MID_ISIZE_MAX INT64_MAX
 #define MID_ISIZE_MIN INT64_MIN
+
+#ifdef __cplusplus
+}
+#endif

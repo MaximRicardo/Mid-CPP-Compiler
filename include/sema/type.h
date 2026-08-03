@@ -7,6 +7,10 @@
 #include "parser/var_decl.h"
 #include "sema/scope.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // returns whether or not the node creates a new named type
 bool midsema_node_creates_new_type(const struct midpar_ASTNode *node);
 // returns the type associated with the node.
@@ -34,3 +38,7 @@ bool midsema_can_convert(const struct midpar_Type *src,
 // 3) conversion,
 int midsema_conversion_rank(const struct midpar_Type *src,
                             const struct midpar_Type *dest);
+
+#ifdef __cplusplus
+}
+#endif

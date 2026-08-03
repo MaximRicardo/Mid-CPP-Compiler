@@ -7,6 +7,10 @@
 #include "sema/ident.h"
 #include <llvm-c/Types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 LLVMTypeRef midllvm_convert_parser_type(const struct midpar_Type *type,
                                         LLVMContextRef context,
                                         bool ref_is_ptr);
@@ -20,3 +24,7 @@ LLVMTypeRef midllvm_create_struct(const struct midpar_Class *src,
 mid_isize
 midllvm_class_field_to_struct_field_idx(const struct midpar_Class *src,
                                         const char *name);
+
+#ifdef __cplusplus
+}
+#endif

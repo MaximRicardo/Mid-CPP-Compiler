@@ -4,6 +4,10 @@
 #include "lexer/token.h"
 #include "parser/allocator.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct midpar_ASTNode;
 struct midpar_Type;
 
@@ -98,3 +102,7 @@ const char *midsema_scope_name(const struct midsema_Scope *scope);
 
 void midsema_add_tmplt_params_to_scope(struct midsema_Scope *scope,
                                        const struct midsema_Scope *tmplt);
+
+#ifdef __cplusplus
+}
+#endif

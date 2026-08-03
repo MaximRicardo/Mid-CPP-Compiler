@@ -5,6 +5,10 @@
 #include "position.h"
 #include "token_type.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 bool midlex_is_numlit(enum midlex_TokenType type);
 bool midlex_is_strlit(enum midlex_TokenType type);
 bool midlex_is_lit(enum midlex_TokenType type);
@@ -36,3 +40,7 @@ struct midlex_Token {
     enum midlex_TokenType type;
 };
 midgen_dynarray_struct_named(midlex_TokenVec, struct midlex_Token);
+
+#ifdef __cplusplus
+}
+#endif

@@ -7,6 +7,10 @@
 #include "parser/type.h"
 #include "sema/scope.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // this_quals - set to NULL to if "this" is explicitly passed
 bool midsema_is_func_viable(const struct midpar_Expr *args, mid_isize n_args,
                             const struct midpar_FuncDecl *func,
@@ -41,3 +45,7 @@ struct midpar_FuncDecl *midsema_find_op_overload(enum midpar_ExprType op,
                                                  const struct midpar_Expr *args,
                                                  mid_isize n_args,
                                                  struct midsema_Scope *scope);
+
+#ifdef __cplusplus
+}
+#endif

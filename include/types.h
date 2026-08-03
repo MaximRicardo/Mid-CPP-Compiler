@@ -13,6 +13,10 @@
 #include "ints.h"
 #include "limits.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 constexpr i32 midtype_bool_size = 1;
 
 // DO NOT CHANGE THESE SIZES OR THE SUS IMPOSTOR AMOGUS WILL FIND YOU
@@ -59,3 +63,7 @@ constexpr i32 midtype_longlong_size = 8;
 constexpr i64 midtype_longlong_smax = INT64_MAX;
 constexpr i64 midtype_longlong_smin = INT64_MIN;
 constexpr u64 midtype_longlong_umax = UINT64_MAX;
+
+#ifdef __cplusplus
+}
+#endif

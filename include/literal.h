@@ -7,6 +7,10 @@
 #include "types.h"
 #include <uchar.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct midlit_String {
     TypesCharType *c;
     TypesWCharType *wc;
@@ -49,3 +53,7 @@ struct midlit_ReadIntLitInfo {
     u64 value;
     int base;
 } midlit_read_intlit(const char *str, mid_isize start, mid_isize *out_end);
+
+#ifdef __cplusplus
+}
+#endif

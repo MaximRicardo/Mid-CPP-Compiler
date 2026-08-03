@@ -4,6 +4,10 @@
 #include "ident.h"
 #include "ints.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct midllvm_Scope;
 midgen_dynarray_struct_named(midllvm_ScopePVec, struct midllvm_Scope *);
 
@@ -33,3 +37,7 @@ struct midllvm_Scope *midllvm_find_func_scope(struct midllvm_Scope *scope);
 const struct midllvm_Scope *
 midllvm_find_root_scope_const(const struct midllvm_Scope *scope);
 struct midllvm_Scope *midllvm_find_root_scope(struct midllvm_Scope *scope);
+
+#ifdef __cplusplus
+}
+#endif

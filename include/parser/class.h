@@ -9,6 +9,10 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum midpar_ClassType {
     MIDPAR_CLASSTYPE_CLASS,
     MIDPAR_CLASSTYPE_STRUCT,
@@ -70,3 +74,7 @@ enum midpar_ClassAccess midpar_field_access(const struct midpar_Class *self,
 // returns the idx of the field in self->childs
 mid_isize midpar_find_field(const struct midpar_Class *self, const char *name);
 struct midpar_FuncDeclPVec midpar_class_ctors(const struct midpar_Class *self);
+
+#ifdef __cplusplus
+}
+#endif

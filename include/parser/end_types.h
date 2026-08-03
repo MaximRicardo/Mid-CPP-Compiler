@@ -3,6 +3,10 @@
 #include "lexer/token_type.h"
 #include "macros.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // when parsing an expression or declaration or something like that, you should
 // stop at these token types
 
@@ -35,3 +39,7 @@ constexpr enum midlex_TokenType midpar_tmplt_arg_endtypes[] = {
     MIDLEX_TOKENTYPE_COMMA, MIDLEX_TTALIAS_R_ANGLE};
 #define MIDPAR_TMPLT_ARG_ENDTYPES                                              \
     midpar_tmplt_arg_endtypes, MID_ARRLEN(midpar_tmplt_arg_endtypes)
+
+#ifdef __cplusplus
+}
+#endif

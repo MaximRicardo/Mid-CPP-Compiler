@@ -7,6 +7,10 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct midpar_Namespace {
     struct midsema_IdentPtr ident;
     struct midpar_ASTNodePVec childs;
@@ -25,3 +29,7 @@ mid_isize midpar_parse_namespace(struct midpar_Namespace *self,
                                  mid_isize start,
                                  struct midpar_Allocators *allocs,
                                  struct mid_DiagVec *diags);
+
+#ifdef __cplusplus
+}
+#endif
