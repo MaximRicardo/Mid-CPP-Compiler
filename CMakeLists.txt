@@ -18,9 +18,4 @@ add_definitions(${LLVM_DEFINITIONS})
 
 # include(llvm.cmake)
 
-# file(GLOB_RECURSE Sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
-
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src")
-
-# add_library(mcppc-lib "${CMAKE_CURRENT_SOURCE_DIR}")
-# add_executable(mcppc "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
