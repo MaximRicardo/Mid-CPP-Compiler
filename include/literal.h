@@ -11,18 +11,20 @@
 extern "C" {
 #endif
 
+enum midlit_StringType {
+    MIDLIT_STRINGTYPE_CHAR,
+    MIDLIT_STRINGTYPE_WCHAR,
+    MIDLIT_STRINGTYPE_CHAR16,
+    MIDLIT_STRINGTYPE_CHAR32,
+};
+
 struct midlit_String {
     TypesCharType *c;
     TypesWCharType *wc;
     char16_t *c16;
     char32_t *c32;
 
-    enum midlit_StringType {
-        MIDLIT_STRINGTYPE_CHAR,
-        MIDLIT_STRINGTYPE_WCHAR,
-        MIDLIT_STRINGTYPE_CHAR16,
-        MIDLIT_STRINGTYPE_CHAR32,
-    } type;
+    enum midlit_StringType type;
 };
 
 mid_isize midlit_strlit_len(const struct midlit_String *strlit);
