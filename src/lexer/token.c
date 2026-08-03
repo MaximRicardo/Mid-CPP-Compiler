@@ -1,4 +1,4 @@
-#include "token.h"
+#include "lexer/token.h"
 #include "lexer/token_type.h"
 
 bool midlex_is_numlit(enum midlex_TokenType type)

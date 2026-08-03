@@ -1,4 +1,4 @@
-#include "scope.h"
+#include "sema/scope.h"
 #include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
 #include "ints.h"

@@ -1,4 +1,4 @@
-#include "namespace.h"
+#include "parser/namespace.h"
 #include "diag.h"
 #include "generics/bumpalloc.h"
 #include "generics/dynarray.h"

@@ -1,4 +1,4 @@
-#include "tokenize.h"
+#include "lexer/tokenize.h"
 #include "cmd.h"
 #include "diag.h"
 #include "dynstr.h"

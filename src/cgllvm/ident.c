@@ -1,4 +1,4 @@
-#include "ident.h"
+#include "cgllvm/ident.h"
 
 void midllvm_Ident_deinit(struct midllvm_Ident *self)
 {

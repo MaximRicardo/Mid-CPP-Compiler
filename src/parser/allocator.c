@@ -1,4 +1,4 @@
-#include "allocator.h"
+#include "parser/allocator.h"
 #include "generics/bumpalloc.h"
 #include "parser/ast.h"
 #include "parser/expr.h"

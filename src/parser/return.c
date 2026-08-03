@@ -1,8 +1,8 @@
-#include "return.h"
-#include "end_types.h"
+#include "parser/return.h"
 #include "generics/bumpalloc.h"
 #include "ints.h"
 #include "lexer/token_type.h"
+#include "parser/end_types.h"
 #include "parser/expr.h"
 #include "sema/type.h"
 

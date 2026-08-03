@@ -1,4 +1,4 @@
-#include "scope.h"
+#include "parser/scope.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"

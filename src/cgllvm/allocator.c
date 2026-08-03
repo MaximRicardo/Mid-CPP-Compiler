@@ -1,6 +1,6 @@
-#include "allocator.h"
+#include "cgllvm/allocator.h"
+#include "cgllvm/scope.h"
 #include "generics/bumpalloc.h"
-#include "scope.h"
 
 void midllvm_Allocators_deinit(struct midllvm_Allocators *allocs)
 {

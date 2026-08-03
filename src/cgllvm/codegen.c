@@ -1,7 +1,9 @@
-#include "codegen.h"
-#include "allocator.h"
+#include "cgllvm/codegen.h"
+#include "cgllvm/allocator.h"
 #include "cgllvm/ident.h"
 #include "cgllvm/name_mangle.h"
+#include "cgllvm/scope.h"
+#include "cgllvm/type.h"
 #include "cmd.h"
 #include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
@@ -16,10 +18,8 @@
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
-#include "scope.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
-#include "type.h"
 #include "types.h"
 #include <assert.h>
 #include <llvm-c/Analysis.h>

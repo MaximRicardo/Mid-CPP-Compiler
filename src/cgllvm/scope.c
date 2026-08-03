@@ -1,4 +1,4 @@
-#include "scope.h"
+#include "cgllvm/scope.h"
 #include "cgllvm/ident.h"
 #include "generics/dynarray.h"
 #include "ints.h"

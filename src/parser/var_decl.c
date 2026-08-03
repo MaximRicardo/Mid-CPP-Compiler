@@ -1,4 +1,4 @@
-#include "var_decl.h"
+#include "parser/var_decl.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/bumpalloc.h"

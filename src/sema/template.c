@@ -1,4 +1,4 @@
-#include "template.h"
+#include "sema/template.h"
 #include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
 #include "ints.h"

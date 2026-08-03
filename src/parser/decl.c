@@ -1,4 +1,4 @@
-#include "decl.h"
+#include "parser/decl.h"
 #include "diag.h"
 #include "ints.h"
 #include "lexer/token.h"

@@ -1,6 +1,6 @@
-#include "enum.h"
-#include "ast.h"
+#include "parser/enum.h"
 #include "generics/dynarray.h"
+#include "parser/ast.h"
 #include "parser/astvec.h"
 
 void midpar_Enum_deinit(struct midpar_Enum *self)

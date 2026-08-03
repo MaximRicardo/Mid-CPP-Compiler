@@ -1,4 +1,4 @@
-#include "class.h"
+#include "parser/class.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/bumpalloc.h"

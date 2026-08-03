@@ -1,4 +1,4 @@
-#include "lookup.h"
+#include "sema/lookup.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "macros.h"
@@ -10,8 +10,8 @@
 #include "parser/type.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include "sort.h"
-#include "type.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
