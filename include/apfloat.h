@@ -106,6 +106,11 @@ bool midflt_compatible(const struct mid_APFloat *a,
                        const struct mid_APFloat *b);
 
 void midflt_log(const struct mid_APFloat *self, FILE *out);
+// prints a format string with APFloat arguments.
+// example: midflt_print(stdout, "{} + {} is equal to {}\n", &a, &b, &sum);
+// to print a curly bracket, use the "{{" and "}}" escape sequences.
+// doesn't parse printf's '%' formats
+void midflt_print(FILE *out, const char *restrict fmt, ...);
 
 void midflt_add(struct mid_APFloat *a, const struct mid_APFloat *b);
 void midflt_sub(struct mid_APFloat *a, const struct mid_APFloat *b);

@@ -268,16 +268,11 @@ static void apfloat_test()
     auto a = midflt_init(0.7f, midtype_float_kind, midtype_default_rmode);
     auto b = midflt_init(-100.f, midtype_float_kind, midtype_default_rmode);
 
-    midflt_log(&a, stdout);
-    putchar('\n');
-
-    midflt_log(&b, stdout);
-    putchar('\n');
+    midflt_print(stdout, "a = {}\nb = {}\n", &a, &b);
 
     midflt_add(&a, &b);
 
-    midflt_log(&a, stdout);
-    putchar('\n');
+    midflt_print(stdout, "sum = {}\n", &a);
 
     float a_flt = midflt_to_dbl(&a);
     printf("float bits = 0x%08" PRIx32 "\n", *(u32 *)&a_flt);

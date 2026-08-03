@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <float.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 
 typedef struct midflt_IEEE IEEE;
@@ -1042,4 +1043,37 @@ void midflt_log(const struct mid_APFloat *self, FILE *out)
         midflt_ieee_log(&self->ieee, out);
     else
         MID_CRASH("unsupported APFloat kind");
+}
+
+void midflt_print(FILE *out, const char *restrict fmt, ...)
+{
+    va_list args;
+    va_start(args);
+
+    char c;
+    while ((c = *(fmt++)) != '\0') {
+        if (c == '{') {
+            c = *(fmt++);
+            if (c == '{') {
+                fputc('{', out);
+            } else if (c == '}') {
+                auto val = va_arg(args, const struct mid_APFloat *);
+                midflt_log(val, out);
+            } else {
+                MID_CRASH(
+                    "expected a closing curly bracket in the format string");
+            }
+        } else if (c == '}') {
+            c = *(fmt++);
+            if (c == '}')
+                fputc('}', out);
+            else
+                MID_CRASH(
+                    "extraneous closing curly bracket in the format string");
+        } else {
+            fputc(c, out);
+        }
+    }
+
+    va_end(args);
 }
