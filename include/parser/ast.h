@@ -19,50 +19,6 @@
 extern "C" {
 #endif
 
-// generic access macros
-
-#define MIDPAR_GET_NODE_IMPL_MUT(node) ((struct midpar_ASTNode *)node)
-#define MIDPAR_GET_NODE_IMPL_CONST(node) ((const struct midpar_ASTNode *)node)
-
-/*
- * generic macro to convert a piece of syntax to a generic midpar_ASTNode
- * ptr. gives a compile time error if you use an invalid type. preserves
- * const-ness.
- */
-#define MIDPAR_GET_NODE(node)                                                  \
-    _Generic((node),                                                           \
-        struct midpar_VarDecl *: MIDPAR_GET_NODE_IMPL_MUT(node),               \
-        struct midpar_VarDeclInst *: MIDPAR_GET_NODE_IMPL_MUT(node),           \
-        struct midpar_FuncDecl *: MIDPAR_GET_NODE_IMPL_MUT(node),              \
-        struct midpar_Class *: MIDPAR_GET_NODE_IMPL_MUT(node),                 \
-        struct midpar_Enum *: MIDPAR_GET_NODE_IMPL_MUT(node),                  \
-        struct midpar_Namespace *: MIDPAR_GET_NODE_IMPL_MUT(node),             \
-        struct midpar_Return *: MIDPAR_GET_NODE_IMPL_MUT(node),                \
-        struct midpar_Tmplt *: MIDPAR_GET_NODE_IMPL_MUT(node),                 \
-        struct midpar_TmpltParam *: MIDPAR_GET_NODE_IMPL_MUT(node),            \
-        struct midpar_TmpltNonTypeParam *: MIDPAR_GET_NODE_IMPL_MUT(node),     \
-        struct midpar_TmpltTypeParam *: MIDPAR_GET_NODE_IMPL_MUT(node),        \
-        struct midpar_TmpltTmpltParam *: MIDPAR_GET_NODE_IMPL_MUT(node),       \
-        const struct midpar_VarDecl *: MIDPAR_GET_NODE_IMPL_CONST(node),       \
-        const struct midpar_VarDeclInst *: MIDPAR_GET_NODE_IMPL_CONST(node),   \
-        const struct midpar_FuncDecl *: MIDPAR_GET_NODE_IMPL_CONST(node),      \
-        const struct midpar_Class *: MIDPAR_GET_NODE_IMPL_CONST(node),         \
-        const struct midpar_Enum *: MIDPAR_GET_NODE_IMPL_CONST(node),          \
-        const struct midpar_Namespace *: MIDPAR_GET_NODE_IMPL_CONST(node),     \
-        const struct midpar_Return *: MIDPAR_GET_NODE_IMPL_CONST(node),        \
-        const struct midpar_Tmplt *: MIDPAR_GET_NODE_IMPL_CONST(node),         \
-        const struct midpar_TmpltParam *: MIDPAR_GET_NODE_IMPL_CONST(node),    \
-        const struct midpar_TmpltNonTypeParam *: MIDPAR_GET_NODE_IMPL_CONST(   \
-                 node),                                                        \
-        const struct midpar_TmpltTypeParam *: MIDPAR_GET_NODE_IMPL_CONST(      \
-                 node),                                                        \
-        const struct midpar_TmpltTmpltParam *: MIDPAR_GET_NODE_IMPL_CONST(     \
-                 node))
-
-#define MIDPAR_GET_PARENT(node) (MIDPAR_GET_NODE(node)->parent)
-#define MIDPAR_GET_START(node) (MIDPAR_GET_NODE(node)->start)
-#define MIDPAR_GET_TYPE(node) (MIDPAR_GET_NODE(node)->type)
-
 enum midpar_ASTNodeType {
     MIDPAR_ASTNODETYPE_ROOT,
     MIDPAR_ASTNODETYPE_EXPR,
@@ -103,6 +59,175 @@ void midpar_copy_node(struct midpar_ASTNode *dest,
                       struct midpar_ASTNode *dest_parent,
                       struct midsema_Scope *dest_scope,
                       struct midpar_Allocators *allocs);
+
+#ifndef __cplusplus
+#define MIDPAR_GET_NODE_IMPL_MUT(node) ((struct midpar_ASTNode *)node)
+#define MIDPAR_GET_NODE_IMPL_CONST(node) ((const struct midpar_ASTNode *)node)
+
+/*
+ * generic macro to convert a piece of syntax to a generic midpar_ASTNode
+ * ptr. gives a compile time error if you use an invalid type. preserves
+ * const-ness.
+ */
+#define MIDPAR_GET_NODE(node)                                                  \
+    _Generic((node),                                                           \
+        struct midpar_VarDecl *: MIDPAR_GET_NODE_IMPL_MUT(node),               \
+        struct midpar_VarDeclInst *: MIDPAR_GET_NODE_IMPL_MUT(node),           \
+        struct midpar_FuncDecl *: MIDPAR_GET_NODE_IMPL_MUT(node),              \
+        struct midpar_Class *: MIDPAR_GET_NODE_IMPL_MUT(node),                 \
+        struct midpar_Enum *: MIDPAR_GET_NODE_IMPL_MUT(node),                  \
+        struct midpar_Namespace *: MIDPAR_GET_NODE_IMPL_MUT(node),             \
+        struct midpar_Return *: MIDPAR_GET_NODE_IMPL_MUT(node),                \
+        struct midpar_Tmplt *: MIDPAR_GET_NODE_IMPL_MUT(node),                 \
+        struct midpar_TmpltParam *: MIDPAR_GET_NODE_IMPL_MUT(node),            \
+        struct midpar_TmpltNonTypeParam *: MIDPAR_GET_NODE_IMPL_MUT(node),     \
+        struct midpar_TmpltTypeParam *: MIDPAR_GET_NODE_IMPL_MUT(node),        \
+        struct midpar_TmpltTmpltParam *: MIDPAR_GET_NODE_IMPL_MUT(node),       \
+        const struct midpar_VarDecl *: MIDPAR_GET_NODE_IMPL_CONST(node),       \
+        const struct midpar_VarDeclInst *: MIDPAR_GET_NODE_IMPL_CONST(node),   \
+        const struct midpar_FuncDecl *: MIDPAR_GET_NODE_IMPL_CONST(node),      \
+        const struct midpar_Class *: MIDPAR_GET_NODE_IMPL_CONST(node),         \
+        const struct midpar_Enum *: MIDPAR_GET_NODE_IMPL_CONST(node),          \
+        const struct midpar_Namespace *: MIDPAR_GET_NODE_IMPL_CONST(node),     \
+        const struct midpar_Return *: MIDPAR_GET_NODE_IMPL_CONST(node),        \
+        const struct midpar_Tmplt *: MIDPAR_GET_NODE_IMPL_CONST(node),         \
+        const struct midpar_TmpltParam *: MIDPAR_GET_NODE_IMPL_CONST(node),    \
+        const struct midpar_TmpltNonTypeParam *: MIDPAR_GET_NODE_IMPL_CONST(   \
+                 node),                                                        \
+        const struct midpar_TmpltTypeParam *: MIDPAR_GET_NODE_IMPL_CONST(      \
+                 node),                                                        \
+        const struct midpar_TmpltTmpltParam *: MIDPAR_GET_NODE_IMPL_CONST(     \
+                 node))
+#else
+// c++ doesn't have _Generic so we gotta do some tomfoolery
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_VarDecl *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_VarDeclInst *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_FuncDecl *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Class *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Enum *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Namespace *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Return *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Tmplt *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_TmpltParam *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_TmpltNonTypeParam *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_TmpltTypeParam *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_TmpltTmpltParam *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_VarDecl *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_VarDeclInst *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_FuncDecl *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Class *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Enum *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Namespace *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Return *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Tmplt *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_TmpltParam *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *
+MIDPAR_GET_NODE(const midpar_TmpltNonTypeParam *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *
+MIDPAR_GET_NODE(const midpar_TmpltTypeParam *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+
+static inline const midpar_ASTNode *
+MIDPAR_GET_NODE(const midpar_TmpltTmpltParam *p)
+{
+    return static_cast<midpar_midpar_ASTNode *>(p);
+}
+#endif
+
+#define MIDPAR_GET_PARENT(node) (MIDPAR_GET_NODE(node)->parent)
+#define MIDPAR_GET_START(node) (MIDPAR_GET_NODE(node)->start)
+#define MIDPAR_GET_TYPE(node) (MIDPAR_GET_NODE(node)->type)
 
 struct midpar_ParseNodeFlags {
     bool skip_def;
