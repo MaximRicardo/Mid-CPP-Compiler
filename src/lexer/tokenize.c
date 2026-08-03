@@ -118,15 +118,15 @@ static mid_isize find_numlit_digits_end(const char *src, mid_isize start)
 }
 
 enum NumLitType {
-    NUMMIDLIT_INT,
-    NUMMIDLIT_UINT,
-    NUMMIDLIT_LONG,
-    NUMMIDLIT_ULONG,
-    NUMMIDLIT_LONGLONG,
-    NUMMIDLIT_ULONGLONG,
-    NUMMIDLIT_FLOAT,
-    NUMMIDLIT_DOUBLE,
-    NUMMIDLIT_LONGDOUBLE,
+    NUMLIT_INT,
+    NUMLIT_UINT,
+    NUMLIT_LONG,
+    NUMLIT_ULONG,
+    NUMLIT_LONGLONG,
+    NUMLIT_ULONGLONG,
+    NUMLIT_FLOAT,
+    NUMLIT_DOUBLE,
+    NUMLIT_LONGDOUBLE,
 };
 
 // end is the end of the digits
@@ -143,32 +143,32 @@ static enum NumLitType numlit_type(const char *src, mid_isize end,
             if (c2 == 'l') {
                 if (suffix_end)
                     *suffix_end = end + 3;
-                return NUMMIDLIT_ULONGLONG;
+                return NUMLIT_ULONGLONG;
             }
             if (suffix_end)
                 *suffix_end = end + 2;
-            return NUMMIDLIT_ULONG;
+            return NUMLIT_ULONG;
         }
         if (suffix_end)
             *suffix_end = end + 1;
-        return NUMMIDLIT_UINT;
+        return NUMLIT_UINT;
     } else if (c0 == 'l') {
         if (c1 == 'l') {
             if (suffix_end)
                 *suffix_end = end + 2;
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         }
         if (suffix_end)
             *suffix_end = end + 1;
-        return is_decimal ? NUMMIDLIT_LONGDOUBLE : NUMMIDLIT_LONG;
+        return is_decimal ? NUMLIT_LONGDOUBLE : NUMLIT_LONG;
     } else if (c0 == 'f') {
         if (suffix_end)
             *suffix_end = end + 1;
-        return NUMMIDLIT_FLOAT;
+        return NUMLIT_FLOAT;
     } else {
         if (suffix_end)
             *suffix_end = end;
-        return is_decimal ? NUMMIDLIT_DOUBLE : NUMMIDLIT_INT;
+        return is_decimal ? NUMLIT_DOUBLE : NUMLIT_INT;
     }
 }
 
@@ -206,31 +206,31 @@ static enum NumLitType sel_numlit_type_int(u64 val, int base,
 {
     if (base == 10) {
         if (val <= midtype_int_smax) {
-            return NUMMIDLIT_INT;
+            return NUMLIT_INT;
         } else if (val <= midtype_long_smax) {
-            return NUMMIDLIT_LONG;
+            return NUMLIT_LONG;
         } else if (val <= midtype_longlong_smax) {
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         }
     } else {
         if (val <= midtype_int_smax) {
-            return NUMMIDLIT_INT;
+            return NUMLIT_INT;
         } else if (val <= midtype_int_umax) {
-            return NUMMIDLIT_UINT;
+            return NUMLIT_UINT;
         } else if (val <= midtype_long_smax) {
-            return NUMMIDLIT_LONG;
+            return NUMLIT_LONG;
         } else if (val <= midtype_long_umax) {
-            return NUMMIDLIT_ULONG;
+            return NUMLIT_ULONG;
         } else if (val <= midtype_longlong_smax) {
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         } else if (val <= midtype_longlong_umax) {
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         }
     }
 }
@@ -242,25 +242,25 @@ static enum NumLitType sel_numlit_type_uint(u64 val, int base,
 {
     if (base == 10) {
         if (val <= midtype_int_umax) {
-            return NUMMIDLIT_UINT;
+            return NUMLIT_UINT;
         } else if (val <= midtype_long_umax) {
-            return NUMMIDLIT_ULONG;
+            return NUMLIT_ULONG;
         } else if (val <= midtype_longlong_umax) {
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         }
     } else {
         if (val <= midtype_int_umax) {
-            return NUMMIDLIT_UINT;
+            return NUMLIT_UINT;
         } else if (val <= midtype_long_umax) {
-            return NUMMIDLIT_ULONG;
+            return NUMLIT_ULONG;
         } else if (val <= midtype_longlong_umax) {
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         }
     }
 }
@@ -272,27 +272,27 @@ static enum NumLitType sel_numlit_type_long(u64 val, int base,
 {
     if (base == 10) {
         if (val <= midtype_long_smax) {
-            return NUMMIDLIT_LONG;
+            return NUMLIT_LONG;
         } else if (val <= midtype_long_umax) {
-            return NUMMIDLIT_ULONG;
+            return NUMLIT_ULONG;
         } else if (val <= midtype_longlong_smax) {
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         }
     } else {
         if (val <= midtype_long_smax) {
-            return NUMMIDLIT_LONG;
+            return NUMLIT_LONG;
         } else if (val <= midtype_long_umax) {
-            return NUMMIDLIT_ULONG;
+            return NUMLIT_ULONG;
         } else if (val <= midtype_longlong_smax) {
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         } else if (val <= midtype_longlong_umax) {
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         }
     }
 }
@@ -304,21 +304,21 @@ static enum NumLitType sel_numlit_type_ulong(u64 val, int base,
 {
     if (base == 10) {
         if (val <= midtype_long_umax) {
-            return NUMMIDLIT_ULONG;
+            return NUMLIT_ULONG;
         } else if (val <= midtype_longlong_umax) {
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         }
     } else {
         if (val <= midtype_long_umax) {
-            return NUMMIDLIT_ULONG;
+            return NUMLIT_ULONG;
         } else if (val <= midtype_longlong_umax) {
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         }
     }
 }
@@ -330,19 +330,19 @@ static enum NumLitType sel_numlit_type_longlong(u64 val, int base,
 {
     if (base == 10) {
         if (val <= midtype_longlong_smax) {
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         }
     } else {
         if (val <= midtype_longlong_smax) {
-            return NUMMIDLIT_LONGLONG;
+            return NUMLIT_LONGLONG;
         } else if (val <= midtype_longlong_umax) {
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         }
     }
 }
@@ -354,17 +354,17 @@ static enum NumLitType sel_numlit_type_ulonglong(u64 val, int base,
 {
     if (base == 10) {
         if (val <= midtype_longlong_umax) {
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         }
     } else {
         if (val <= midtype_longlong_umax) {
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
-            return NUMMIDLIT_ULONGLONG;
+            return NUMLIT_ULONGLONG;
         }
     }
 }
@@ -375,28 +375,59 @@ static enum NumLitType sel_numlit_type(u64 val, int base, enum NumLitType type,
                                        struct mid_DiagVec *diags)
 {
     switch (type) {
-    case NUMMIDLIT_INT:
+    case NUMLIT_INT:
         return sel_numlit_type_int(val, base, pos, line, diags);
 
-    case NUMMIDLIT_UINT:
+    case NUMLIT_UINT:
         return sel_numlit_type_uint(val, base, pos, line, diags);
 
-    case NUMMIDLIT_LONG:
+    case NUMLIT_LONG:
         return sel_numlit_type_long(val, base, pos, line, diags);
 
-    case NUMMIDLIT_ULONG:
+    case NUMLIT_ULONG:
         return sel_numlit_type_ulong(val, base, pos, line, diags);
 
-    case NUMMIDLIT_LONGLONG:
+    case NUMLIT_LONGLONG:
         return sel_numlit_type_longlong(val, base, pos, line, diags);
 
-    case NUMMIDLIT_ULONGLONG:
+    case NUMLIT_ULONGLONG:
         return sel_numlit_type_ulonglong(val, base, pos, line, diags);
 
     default:
         MID_CRASH("type is not an integer lit");
     }
 }
+
+/*
+static i32 numlit_type_width(enum NumLitType type)
+{
+    switch (type) {
+    case NUMLIT_INT:
+    case NUMLIT_UINT:
+        return midtype_int_size * 8;
+
+    case NUMLIT_LONG:
+    case NUMLIT_ULONG:
+        return midtype_long_size * 8;
+
+    case NUMLIT_LONGLONG:
+    case NUMLIT_ULONGLONG:
+        return midtype_longlong_size * 8;
+
+    case NUMLIT_FLOAT:
+        return midtype_float_size * 8;
+
+    case NUMLIT_DOUBLE:
+        return midtype_double_size * 8;
+
+    case NUMLIT_LONGDOUBLE:
+        return midtype_longdouble_size * 8;
+
+    default:
+        MID_CRASH("invalid numlit type");
+    }
+}
+*/
 
 // end - out variable and can be NULL
 static struct NumLit read_numlit(const char *src, mid_isize start,
@@ -419,21 +450,21 @@ static struct NumLit read_numlit(const char *src, mid_isize start,
     ret.type = type;
 
     switch (type) {
-    case NUMMIDLIT_INT:
-    case NUMMIDLIT_LONG:
-    case NUMMIDLIT_LONGLONG:
-    case NUMMIDLIT_UINT:
-    case NUMMIDLIT_ULONG:
-    case NUMMIDLIT_ULONGLONG:
+    case NUMLIT_INT:
+    case NUMLIT_LONG:
+    case NUMLIT_LONGLONG:
+    case NUMLIT_UINT:
+    case NUMLIT_ULONG:
+    case NUMLIT_ULONGLONG:
         auto info = midlit_read_intlit(src, start, NULL);
         ret.val.uint = info.value;
-        ret.type = sel_numlit_type(ret.val.uint, info.base, ret.type, pos, line,
-                                   diags);
+        ret.type =
+            sel_numlit_type(info.value, info.base, ret.type, pos, line, diags);
         break;
 
-    case NUMMIDLIT_FLOAT:
-    case NUMMIDLIT_DOUBLE:
-    case NUMMIDLIT_LONGDOUBLE:
+    case NUMLIT_FLOAT:
+    case NUMLIT_DOUBLE:
+    case NUMLIT_LONGDOUBLE:
         ret.val.flt = strtold(&src[start], NULL);
         break;
     }
@@ -446,31 +477,31 @@ static struct NumLit read_numlit(const char *src, mid_isize start,
 static enum midlex_TokenType numlit_type_to_tok_type(enum NumLitType type)
 {
     switch (type) {
-    case NUMMIDLIT_INT:
+    case NUMLIT_INT:
         return MIDLEX_TOKENTYPE_INT_LIT;
 
-    case NUMMIDLIT_UINT:
+    case NUMLIT_UINT:
         return MIDLEX_TOKENTYPE_UINT_LIT;
 
-    case NUMMIDLIT_LONG:
+    case NUMLIT_LONG:
         return MIDLEX_TOKENTYPE_LONG_LIT;
 
-    case NUMMIDLIT_ULONG:
+    case NUMLIT_ULONG:
         return MIDLEX_TOKENTYPE_ULONG_LIT;
 
-    case NUMMIDLIT_LONGLONG:
+    case NUMLIT_LONGLONG:
         return MIDLEX_TOKENTYPE_LONGLONG_LIT;
 
-    case NUMMIDLIT_ULONGLONG:
+    case NUMLIT_ULONGLONG:
         return MIDLEX_TOKENTYPE_ULONGLONG_LIT;
 
-    case NUMMIDLIT_FLOAT:
+    case NUMLIT_FLOAT:
         return MIDLEX_TOKENTYPE_FLOAT_LIT;
 
-    case NUMMIDLIT_DOUBLE:
+    case NUMLIT_DOUBLE:
         return MIDLEX_TOKENTYPE_DOUBLE_LIT;
 
-    case NUMMIDLIT_LONGDOUBLE:
+    case NUMLIT_LONGDOUBLE:
         return MIDLEX_TOKENTYPE_LONGDOUBLE_LIT;
     }
 }

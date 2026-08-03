@@ -8,7 +8,7 @@
 
 typedef struct midflt_IEEE IEEE;
 typedef enum midflt_IEEEKind IEEEKind;
-typedef enum midflt_IEEERounding IEEERounding;
+typedef enum midflt_Rounding Rounding;
 
 void midflt_IEEE_deinit(struct midflt_IEEE *self)
 {
@@ -26,7 +26,7 @@ struct midflt_IEEE midflt_ieee_copy(const struct midflt_IEEE *src)
     return ret;
 }
 
-void midflt_deinit(struct mid_APFloat *self)
+void mid_APFloat_deinit(struct mid_APFloat *self)
 {
     switch (self->kind) {
     case MIDFLT_IEEE:
@@ -115,8 +115,45 @@ static u64 ieee_biased_exp(const IEEE *self)
 }
 */
 
+struct midflt_IEEE midflt_ieee_init(double val, enum midflt_IEEEKind kind,
+                                    enum midflt_Rounding rounding)
+{
+    auto ret = midflt_ieee_one(signbit(val), kind, rounding);
+
+    if (isnan(val)) {
+        ret.val_cat = MIDFLT_IEEE_VAL_NAN;
+        return ret;
+    } else if (isinf(val)) {
+        ret.val_cat = MIDFLT_IEEE_VAL_INF;
+        return ret;
+    } else if (iszero(val)) {
+        ret.val_cat = MIDFLT_IEEE_VAL_ZERO;
+        return ret;
+    }
+
+    ret.exp = floor(log2(fabs(val)));
+    assert(ret.exp <= ieee_exp_max(ret.kind));
+    assert(ret.exp >= ieee_exp_min(ret.kind));
+
+    double mant = fabs(val) * exp2(-ret.exp);
+    assert(mant >= 1.0 && mant < 2.0);
+
+    double digit_val = 0.5;
+    for (i32 i = ret.mant.n_bits - 2; i >= 0; --i, digit_val /= 2.0) {
+        if (mant - 1.0 >= digit_val) {
+            midint_flip_bit(&ret.mant, i);
+            mant -= digit_val;
+        }
+
+        if (digit_val < DBL_TRUE_MIN * 2.0)
+            break;
+    }
+
+    return ret;
+}
+
 struct midflt_IEEE midflt_ieee_alloc(enum midflt_IEEEKind kind,
-                                     enum midflt_IEEERounding rounding)
+                                     enum midflt_Rounding rounding)
 {
     IEEE ret = {.kind = kind, .rounding = rounding};
     ret.mant = midint_alloc(ieee_mant_n_bits(ret.kind));
@@ -125,7 +162,7 @@ struct midflt_IEEE midflt_ieee_alloc(enum midflt_IEEEKind kind,
 }
 
 struct midflt_IEEE midflt_ieee_zero(bool is_neg, enum midflt_IEEEKind kind,
-                                    enum midflt_IEEERounding rounding)
+                                    enum midflt_Rounding rounding)
 {
     IEEE ret = {.kind = kind,
                 .rounding = rounding,
@@ -137,7 +174,7 @@ struct midflt_IEEE midflt_ieee_zero(bool is_neg, enum midflt_IEEEKind kind,
 }
 
 struct midflt_IEEE midflt_ieee_one(bool is_neg, enum midflt_IEEEKind kind,
-                                   enum midflt_IEEERounding rounding)
+                                   enum midflt_Rounding rounding)
 {
     IEEE ret = {.kind = kind,
                 .rounding = rounding,
@@ -150,7 +187,7 @@ struct midflt_IEEE midflt_ieee_one(bool is_neg, enum midflt_IEEEKind kind,
 }
 
 struct midflt_IEEE midflt_ieee_inf(bool is_neg, enum midflt_IEEEKind kind,
-                                   enum midflt_IEEERounding rounding)
+                                   enum midflt_Rounding rounding)
 {
     IEEE ret = {.kind = kind,
                 .rounding = rounding,
@@ -162,7 +199,7 @@ struct midflt_IEEE midflt_ieee_inf(bool is_neg, enum midflt_IEEEKind kind,
 }
 
 struct midflt_IEEE midflt_ieee_nan(bool is_neg, enum midflt_IEEEKind kind,
-                                   enum midflt_IEEERounding rounding)
+                                   enum midflt_Rounding rounding)
 {
     IEEE ret = {.kind = kind,
                 .rounding = rounding,
@@ -176,7 +213,7 @@ struct midflt_IEEE midflt_ieee_nan(bool is_neg, enum midflt_IEEEKind kind,
 struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
                                            i64 exp, bool is_neg,
                                            enum midflt_IEEEKind kind,
-                                           enum midflt_IEEERounding rounding)
+                                           enum midflt_Rounding rounding)
 {
     assert(mant->n_bits == ieee_mant_n_bits(kind));
     assert(exp <= ieee_exp_max(kind));
@@ -216,12 +253,12 @@ void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out)
     fprintf(out, "%f", fabs(val));
 }
 
-static bool ieee_should_inc_mant(IEEERounding mode, bool is_neg, bool guard,
+static bool ieee_should_inc_mant(Rounding mode, bool is_neg, bool guard,
                                  bool round_, bool sticky)
 {
     switch (mode) {
-    case MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN:
-    case MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY:
+    case MIDFLT_ROUND_NEAREST_TIES_EVEN:
+    case MIDFLT_ROUND_NEAREST_TIES_AWAY:
         if (!guard)
             return false;
         else if (round_)
@@ -229,15 +266,15 @@ static bool ieee_should_inc_mant(IEEERounding mode, bool is_neg, bool guard,
         else if (sticky)
             return true;
         else
-            return mode == MIDFLT_IEEE_ROUND_NEAREST_TIES_AWAY;
+            return mode == MIDFLT_ROUND_NEAREST_TIES_AWAY;
 
-    case MIDFLT_IEEE_ROUND_UP:
+    case MIDFLT_ROUND_UP:
         return !is_neg && (round_ || sticky);
 
-    case MIDFLT_IEEE_ROUND_DOWN:
+    case MIDFLT_ROUND_DOWN:
         return is_neg && (round_ || sticky);
 
-    case MIDFLT_IEEE_ROUND_TOWARDS_ZERO:
+    case MIDFLT_ROUND_TOWARDS_ZERO:
         return false;
 
     default:
