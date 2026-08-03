@@ -25,7 +25,7 @@ struct mid_APInt {
     i32 n_bits; // starts at 1
 };
 
-void midint_deinit(struct mid_APInt *self);
+void mid_APInt_deinit(struct mid_APInt *self);
 struct mid_APInt midint_init(i32 n_bits, midint_Word val, bool is_signed);
 // doesn't check if val can fit within n_bits
 struct mid_APInt midint_init_no_limit_check(i32 n_bits, midint_Word val,
@@ -38,6 +38,7 @@ struct mid_APInt midint_init_arr(i32 n_bits, const midint_Word *words,
                                  i32 n_words, bool sign_ext);
 struct mid_APInt midint_alloc(i32 n_bits);
 struct mid_APInt midint_zero(i32 n_bits);
+struct mid_APInt midint_one(i32 n_bits);
 struct mid_APInt midint_copy(const struct mid_APInt *src);
 // changes the width of the APInt. the new width can also be smaller than the
 // old width

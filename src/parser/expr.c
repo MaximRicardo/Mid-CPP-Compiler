@@ -1,4 +1,6 @@
 #include "parser/expr.h"
+#include "apfloat.h"
+#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
@@ -23,10 +25,21 @@ bool midpar_is_strlit(enum midpar_ExprType type)
            type == MIDPAR_EXPRTYPE_STRING32_LIT;
 }
 
+bool midpar_is_fltlit(enum midpar_ExprType type)
+{
+    return type > MIDPAR_EXPRTYPE_FLTLIT_START &&
+           type < MIDPAR_EXPRTYPE_FLTLIT_END;
+}
+
+bool midpar_is_intlit(enum midpar_ExprType type)
+{
+    return midpar_is_numlit(type) && !midpar_is_fltlit(type);
+}
+
 bool midpar_is_numlit(enum midpar_ExprType type)
 {
-    return type > MIDPAR_EXPRTYPE_NUMMIDLIT_START &&
-           type < MIDPAR_EXPRTYPE_NUMMIDLIT_END;
+    return type > MIDPAR_EXPRTYPE_NUMLIT_START &&
+           type < MIDPAR_EXPRTYPE_NUMLIT_END;
 }
 
 bool midpar_is_ternaryop(enum midpar_ExprType type)
@@ -1213,6 +1226,10 @@ void midpar_Expr_deinit(struct midpar_Expr *expr)
         for (mid_isize i = 0; i < expr->info.args.len; ++i)
             midpar_Expr_deinit(&expr->info.args.arr[i]);
         midgen_dyndeinit(&expr->info.args);
+    } else if (midpar_is_fltlit(expr->type)) {
+        mid_APFloat_deinit(&expr->info.val.flt);
+    } else if (midpar_is_numlit(expr->type)) {
+        mid_APInt_deinit(&expr->info.val.i);
     }
 
     midpar_Type_deinit(&expr->ret);

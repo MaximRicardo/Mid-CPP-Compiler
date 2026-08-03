@@ -186,18 +186,19 @@ static LLVMValueRef codegen_strlit(const struct midlit_String *lit,
 static LLVMValueRef codegen_lit_expr(const struct midpar_Expr *expr,
                                      LLVMContextRef context, LLVMModuleRef mod)
 {
+    // TODO: add proper support for arbitrarily sized ints and floats
     if (midpar_is_signed_integral_typespec(expr->ret.spec))
         return LLVMConstInt(
             midllvm_convert_parser_type(&expr->ret, context, false),
-            expr->info.val.sint, true);
+            midint_to_sint(&expr->info.val.i), true);
     else if (midpar_is_unsigned_integral_typespec(expr->ret.spec))
         return LLVMConstInt(
             midllvm_convert_parser_type(&expr->ret, context, false),
-            expr->info.val.uint, false);
+            midint_to_uint(&expr->info.val.i), false);
     else if (midpar_is_floating_typespec(expr->ret.spec))
         return LLVMConstReal(
             midllvm_convert_parser_type(&expr->ret, context, false),
-            expr->info.val.flt);
+            midflt_to_dbl(&expr->info.val.flt));
     else if (midpar_is_strlit(expr->type))
         return codegen_strlit(&expr->info.val.str, context, mod);
     else if (expr->type == MIDPAR_EXPRTYPE_NULLPTR_LIT)

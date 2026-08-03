@@ -1,13 +1,13 @@
 // #include "cgllvm/codegen.h"
 // #include "cgllvm/name_mangle.h"
 #include "apfloat.h"
+#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/tokenize.h"
-#include "macros.h"
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
@@ -16,7 +16,6 @@
 #include "position.h"
 #include "sema/scope.h"
 #include "symbol.h"
-#include "types.h"
 #include <assert.h>
 #include <locale.h>
 #include <stddef.h>
@@ -89,23 +88,29 @@ static void log_tokens(const struct midlex_TokenVec *toks)
                toks->arr[i].pos.line, toks->arr[i].pos.column,
                toks->arr[i].type);
         if (toks->arr[i].type == MIDLEX_TOKENTYPE_INT_LIT)
-            printf(", value int = %" PRId64, toks->arr[i].val.sint);
+            printf(", value int = %" PRId64,
+                   midint_to_sint(&toks->arr[i].val.i));
         else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONG_LIT)
-            printf(", value long = %" PRId64, toks->arr[i].val.sint);
+            printf(", value long = %" PRId64,
+                   midint_to_sint(&toks->arr[i].val.i));
         else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONGLONG_LIT)
-            printf(", value long long = %" PRId64, toks->arr[i].val.sint);
+            printf(", value long long = %" PRId64,
+                   midint_to_sint(&toks->arr[i].val.i));
         else if (toks->arr[i].type == MIDLEX_TOKENTYPE_UINT_LIT)
-            printf(", value u int = %" PRId64, toks->arr[i].val.uint);
+            printf(", value u int = %" PRId64,
+                   midint_to_uint(&toks->arr[i].val.i));
         else if (toks->arr[i].type == MIDLEX_TOKENTYPE_ULONG_LIT)
-            printf(", value u long = %" PRId64, toks->arr[i].val.uint);
+            printf(", value u long = %" PRId64,
+                   midint_to_uint(&toks->arr[i].val.i));
         else if (toks->arr[i].type == MIDLEX_TOKENTYPE_ULONGLONG_LIT)
-            printf(", value u long long = %" PRId64, toks->arr[i].val.uint);
+            printf(", value u long long = %" PRId64,
+                   midint_to_uint(&toks->arr[i].val.i));
         else if (toks->arr[i].type == MIDLEX_TOKENTYPE_FLOAT_LIT)
-            printf(", value f = %Lf", toks->arr[i].val.flt);
+            midflt_print(stdout, ", value f = {}", &toks->arr[i].val.flt);
         else if (toks->arr[i].type == MIDLEX_TOKENTYPE_DOUBLE_LIT)
-            printf(", value d = %Lf", toks->arr[i].val.flt);
+            midflt_print(stdout, ", value d = {}", &toks->arr[i].val.flt);
         else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONGDOUBLE_LIT)
-            printf(", value ld = %Lf", toks->arr[i].val.flt);
+            midflt_print(stdout, ", value ld = {}", &toks->arr[i].val.flt);
         else if (toks->arr[i].type == MIDLEX_TOKENTYPE_STRING_LIT)
             printf(", value str = '%s'", toks->arr[i].val.str.c);
         printf("\n");
@@ -151,171 +156,10 @@ static void test_mangling(const struct midsema_Scope *scope)
 }
 */
 
-/*
-static void apint_test()
-{
-    i32 bits = 64;
-
-    double phi = (1.0 + sqrt(5.0)) / 2.0;
-    i32 largest_fib =
-        ceil(bits * (log(2.0) / log(phi)) + 0.5 * (log(5.0) / log(phi)));
-
-    struct APInt a = midint_zero(bits);
-    struct APInt b = midint_init(bits, 1, false);
-    struct APInt c = midint_zero(bits);
-
-    for (int i = 0; i < largest_fib; ++i) {
-        printf("nr %d: ", i);
-        midint_log(&a, stdout, false);
-        putchar('\n');
-
-        midint_copy_value(&c, &a);
-        midint_add(&c, &b);
-
-        midint_copy_value(&a, &b);
-        midint_copy_value(&b, &c);
-    }
-
-    midint_deinit(&c);
-    midint_deinit(&b);
-    midint_deinit(&a);
-}
-*/
-
-/*
-static void apint_test()
-{
-    struct APInt num = midint_init_arr(
-        128, (midint_Word[]){0x123456789aebcdef, 0x123456789aebcdef}, 2,
-false);
-
-    midint_log_hex(&num, stdout);
-    printf("\nlhs = ");
-    midint_log(&num, stdout, false);
-    putchar('\n');
-
-    struct APInt other = midint_init_arr(
-        128, (midint_Word[]){0xdeadbeefdeadbeef, 0x00000000deadbeef}, 2,
-false);
-
-    printf("rhs = ");
-    midint_log(&other, stdout, false);
-    putchar('\n');
-
-    midint_add(&num, &other);
-
-    printf("sum = ");
-    midint_log(&num, stdout, false);
-    putchar('\n');
-
-    midint_deinit(&other);
-    midint_deinit(&num);
-}
-*/
-
-/*
-static void apint_test()
-{
-    auto a = midint_init(128, -1, true);
-    auto b = midint_init(128, -1, true);
-
-    printf("a = ");
-    midint_log(&a, stdout, false);
-    putchar('\n');
-
-    printf("b = ");
-    midint_log(&b, stdout, false);
-    putchar('\n');
-
-    auto c = midint_alloc(a.n_bits * 2);
-    midint_ufullmul(&a, &b, &c);
-
-    printf("c = ");
-    midint_log(&c, stdout, false);
-    putchar('\n');
-
-    midint_deinit(&a);
-    midint_deinit(&b);
-    midint_deinit(&c);
-}
-*/
-
-/*
-static void apint_test()
-{
-    auto a = midint_init(128, 1128, true);
-    auto b = midint_init(128, 10, true);
-
-    printf("a = ");
-    midint_log(&a, stdout, true);
-    putchar('\n');
-
-    printf("b = ");
-    midint_log(&b, stdout, true);
-    putchar('\n');
-
-    int c = midint_signed_cmp(&a, &b);
-    int d = midint_unsigned_cmp(&a, &b);
-    printf("signed = %d, unsigned = %d\n", c, d);
-
-    midint_deinit(&a);
-    midint_deinit(&b);
-}
-*/
-
-static void apfloat_test()
-{
-    auto a = midflt_init(0.7f, midtype_float_kind, midtype_default_rmode);
-    auto b = midflt_init(-100.f, midtype_float_kind, midtype_default_rmode);
-
-    midflt_print(stdout, "a = {}\nb = {}\n", &a, &b);
-
-    midflt_add(&a, &b);
-
-    midflt_print(stdout, "sum = {}\n", &a);
-
-    float a_flt = midflt_to_dbl(&a);
-    printf("float bits = 0x%08" PRIx32 "\n", *(u32 *)&a_flt);
-
-    mid_APFloat_deinit(&a);
-    mid_APFloat_deinit(&b);
-}
-
-/*
-static void apfloat_test()
-{
-    enum midflt_IEEERounding rounding = MIDFLT_IEEE_ROUND_NEAREST_TIES_EVEN;
-    enum midflt_IEEEKind kind = MIDFLT_IEEE_SINGLE;
-
-    auto a = midflt_ieee_zero(false, kind, rounding);
-    auto b = midflt_ieee_one(false, kind, rounding);
-    auto c = midflt_ieee_zero(false, kind, rounding);
-
-    for (int i = 0; i <= 37; ++i) {
-        printf("nr %d: ", i);
-        midflt_ieee_log(&a, stdout);
-        putchar('\n');
-
-        midflt_ieee_assign(&c, &a);
-        midflt_ieee_add(&c, &b);
-
-        midflt_ieee_assign(&a, &b);
-        midflt_ieee_assign(&b, &c);
-    }
-
-    midflt_IEEE_deinit(&c);
-    midflt_IEEE_deinit(&b);
-    midflt_IEEE_deinit(&a);
-}
-*/
-
 int main(int argc, char **argv)
 {
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
-
-    apfloat_test();
-    MID_CRASH("asdf");
 
     midcmd_init_args(argc, argv);
 

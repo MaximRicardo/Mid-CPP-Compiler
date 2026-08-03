@@ -1,16 +1,32 @@
 #include "lexer/token.h"
+#include "apfloat.h"
 #include "lexer/token_type.h"
+
+void midlex_Token_deinit(struct midlex_Token *self)
+{
+    if (midlex_is_fltlit(self->type)) {
+        mid_APFloat_deinit(&self->val.flt);
+    } else if (midlex_is_numlit(self->type)) {
+        mid_APInt_deinit(&self->val.i);
+    }
+}
+
+bool midlex_is_fltlit(enum midlex_TokenType type)
+{
+    return type > MIDLEX_TOKENTYPE_FLTLIT_START &&
+           type < MIDLEX_TOKENTYPE_FLTLIT_END;
+}
 
 bool midlex_is_numlit(enum midlex_TokenType type)
 {
-    return type > MIDLEX_TOKENTYPE_NUMMIDLIT_START &&
-           type < MIDLEX_TOKENTYPE_NUMMIDLIT_END;
+    return type > MIDLEX_TOKENTYPE_NUMLIT_START &&
+           type < MIDLEX_TOKENTYPE_NUMLIT_END;
 }
 
 bool midlex_is_strlit(enum midlex_TokenType type)
 {
-    return type > MIDLEX_TOKENTYPE_STRMIDLIT_START &&
-           type < MIDLEX_TOKENTYPE_STRMIDLIT_END;
+    return type > MIDLEX_TOKENTYPE_STRLIT_START &&
+           type < MIDLEX_TOKENTYPE_STRLIT_END;
 }
 
 bool midlex_is_lit(enum midlex_TokenType type)

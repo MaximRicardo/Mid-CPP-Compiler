@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+bool midlex_is_fltlit(enum midlex_TokenType type);
 bool midlex_is_numlit(enum midlex_TokenType type);
 bool midlex_is_strlit(enum midlex_TokenType type);
 bool midlex_is_lit(enum midlex_TokenType type);
@@ -40,6 +41,8 @@ struct midlex_Token {
     enum midlex_TokenType type;
 };
 midgen_dynarray_struct_named(midlex_TokenVec, struct midlex_Token);
+
+void midlex_Token_deinit(struct midlex_Token *self);
 
 #ifdef __cplusplus
 }

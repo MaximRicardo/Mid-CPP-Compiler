@@ -132,7 +132,7 @@ static midint_Word sign_ext_word(midint_Word word, int old_n_bits,
     return mask_extra_bits(ret, new_n_bits);
 }
 
-void midint_deinit(struct mid_APInt *self)
+void mid_APInt_deinit(struct mid_APInt *self)
 {
     if (is_bignum_used(self->n_bits))
         free(self->v.words);
@@ -222,6 +222,11 @@ struct mid_APInt midint_zero(i32 n_bits)
         ret.v.words = mid_calloc(get_n_words(n_bits), sizeof(*ret.v.words));
 
     return ret;
+}
+
+struct mid_APInt midint_one(i32 n_bits)
+{
+    return midint_init(n_bits, 1, false);
 }
 
 struct mid_APInt midint_copy(const struct mid_APInt *src)
@@ -428,7 +433,7 @@ static void log_uint_bignum(const struct mid_APInt *self, FILE *out)
         ++i;
     }
 
-    midint_deinit(&d);
+    mid_APInt_deinit(&d);
     d = midint_nip_urem(&tmp, &ten);
     digits[i] = d.v.words[0] + '0';
 
@@ -437,9 +442,9 @@ static void log_uint_bignum(const struct mid_APInt *self, FILE *out)
     }
 
     free(digits);
-    midint_deinit(&d);
-    midint_deinit(&ten);
-    midint_deinit(&tmp);
+    mid_APInt_deinit(&d);
+    mid_APInt_deinit(&ten);
+    mid_APInt_deinit(&tmp);
 }
 
 static void log_uint(const struct mid_APInt *self, FILE *out)
@@ -470,7 +475,7 @@ static void log_sint(const struct mid_APInt *self, FILE *out)
             midint_negate(&tmp);
             log_uint_bignum(&tmp, out);
 
-            midint_deinit(&tmp);
+            mid_APInt_deinit(&tmp);
         } else {
             // negate the number and print its unsigned version
             fputc('-', out);
@@ -478,7 +483,7 @@ static void log_sint(const struct mid_APInt *self, FILE *out)
             auto tmp = midint_copy(self);
             midint_negate(&tmp);
             log_uint_bignum(&tmp, out);
-            midint_deinit(&tmp);
+            mid_APInt_deinit(&tmp);
         }
     } else {
         fprintf(out, "%" MIDINT_WORD_SIGNED_FORMAT,
@@ -865,7 +870,7 @@ void midint_mul_uimm(struct mid_APInt *a, u64 b)
 void midint_mul(struct mid_APInt *a, const struct mid_APInt *b)
 {
     auto tmp = midint_nip_mul(a, b);
-    midint_deinit(a);
+    mid_APInt_deinit(a);
     *a = tmp;
 }
 
@@ -1376,8 +1381,8 @@ struct mid_APInt midint_nip_sdiv(const struct mid_APInt *a,
         auto pos_b = midint_nip_negate(b);
         auto res = midint_nip_udiv(&pos_a, &pos_b);
 
-        midint_deinit(&pos_a);
-        midint_deinit(&pos_b);
+        mid_APInt_deinit(&pos_a);
+        mid_APInt_deinit(&pos_b);
         return res;
     } else if (a_neg) {
         // -a / +b = -c
@@ -1385,7 +1390,7 @@ struct mid_APInt midint_nip_sdiv(const struct mid_APInt *a,
         auto res = midint_nip_udiv(&pos_a, b);
         midint_negate(&res);
 
-        midint_deinit(&pos_a);
+        mid_APInt_deinit(&pos_a);
         return res;
     } else if (b_neg) {
         // +a / -b = -c
@@ -1393,7 +1398,7 @@ struct mid_APInt midint_nip_sdiv(const struct mid_APInt *a,
         auto res = midint_nip_udiv(a, &pos_b);
         midint_negate(&res);
 
-        midint_deinit(&pos_b);
+        mid_APInt_deinit(&pos_b);
         return res;
     } else {
         // +a / +b = +c
@@ -1404,28 +1409,28 @@ struct mid_APInt midint_nip_sdiv(const struct mid_APInt *a,
 void midint_udiv(struct mid_APInt *a, const struct mid_APInt *b)
 {
     auto tmp = midint_nip_udiv(a, b);
-    midint_deinit(a);
+    mid_APInt_deinit(a);
     *a = tmp;
 }
 
 void midint_sdiv(struct mid_APInt *a, const struct mid_APInt *b)
 {
     auto tmp = midint_nip_sdiv(a, b);
-    midint_deinit(a);
+    mid_APInt_deinit(a);
     *a = tmp;
 }
 
 void midint_urem(struct mid_APInt *a, const struct mid_APInt *b)
 {
     auto tmp = midint_nip_urem(a, b);
-    midint_deinit(a);
+    mid_APInt_deinit(a);
     *a = tmp;
 }
 
 void midint_srem(struct mid_APInt *a, const struct mid_APInt *b)
 {
     auto tmp = midint_nip_srem(a, b);
-    midint_deinit(a);
+    mid_APInt_deinit(a);
     *a = tmp;
 }
 
@@ -1490,8 +1495,8 @@ struct mid_APInt midint_nip_srem(const struct mid_APInt *a,
         auto res = midint_nip_urem(&pos_a, &pos_b);
         midint_negate(&res);
 
-        midint_deinit(&pos_a);
-        midint_deinit(&pos_b);
+        mid_APInt_deinit(&pos_a);
+        mid_APInt_deinit(&pos_b);
         return res;
     } else if (a_neg) {
         // -a % +b = -c
@@ -1499,14 +1504,14 @@ struct mid_APInt midint_nip_srem(const struct mid_APInt *a,
         auto res = midint_nip_urem(&pos_a, b);
         midint_negate(&res);
 
-        midint_deinit(&pos_a);
+        mid_APInt_deinit(&pos_a);
         return res;
     } else if (b_neg) {
         // +a % -b = +c
         auto pos_b = midint_nip_negate(b);
         auto res = midint_nip_urem(a, &pos_b);
 
-        midint_deinit(&pos_b);
+        mid_APInt_deinit(&pos_b);
         return res;
     } else {
         // +a % +b = +c
@@ -1580,8 +1585,8 @@ void midint_sdivrem(const struct mid_APInt *a, const struct mid_APInt *b,
         midint_udivrem(&pos_a, &pos_b, out_quot, out_rem);
         midint_negate(out_rem);
 
-        midint_deinit(&pos_a);
-        midint_deinit(&pos_b);
+        mid_APInt_deinit(&pos_a);
+        mid_APInt_deinit(&pos_b);
     } else if (a_neg) {
         // -a / +b = -c
         // -a % +b = -c
@@ -1590,7 +1595,7 @@ void midint_sdivrem(const struct mid_APInt *a, const struct mid_APInt *b,
         midint_negate(out_quot);
         midint_negate(out_rem);
 
-        midint_deinit(&pos_a);
+        mid_APInt_deinit(&pos_a);
     } else if (b_neg) {
         // +a / -b = -c
         // +a % -b = +c
@@ -1598,7 +1603,7 @@ void midint_sdivrem(const struct mid_APInt *a, const struct mid_APInt *b,
         midint_udivrem(a, &pos_b, out_quot, out_rem);
         midint_negate(out_quot);
 
-        midint_deinit(&pos_b);
+        mid_APInt_deinit(&pos_b);
     } else {
         // +a / +b = +c
         // +a % +b = +c

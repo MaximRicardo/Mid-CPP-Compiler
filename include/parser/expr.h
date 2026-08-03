@@ -13,6 +13,8 @@ extern "C" {
 #endif
 
 bool midpar_is_strlit(enum midpar_ExprType type);
+bool midpar_is_fltlit(enum midpar_ExprType type);
+bool midpar_is_intlit(enum midpar_ExprType type); // any integral type
 bool midpar_is_numlit(enum midpar_ExprType type);
 bool midpar_is_ternaryop(enum midpar_ExprType type);
 bool midpar_is_binop(enum midpar_ExprType type);

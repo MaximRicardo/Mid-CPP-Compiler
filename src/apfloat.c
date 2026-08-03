@@ -13,7 +13,7 @@ typedef enum midflt_Rounding Rounding;
 
 void midflt_IEEE_deinit(struct midflt_IEEE *self)
 {
-    midint_deinit(&self->mant);
+    mid_APInt_deinit(&self->mant);
 }
 
 struct midflt_IEEE midflt_ieee_copy(const struct midflt_IEEE *src)
@@ -438,7 +438,7 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     }
 
     midint_lshr_imm(&unnorm, norm_shift);
-    midint_deinit(&a->mant);
+    mid_APInt_deinit(&a->mant);
     a->mant = unnorm;
     midint_ext(&a->mant, norm_bits, false);
 
@@ -491,8 +491,8 @@ void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
         midint_shl_imm(&unnorm, shift);
     }
 
-    midint_deinit(&rem);
-    midint_deinit(&a->mant);
+    mid_APInt_deinit(&rem);
+    mid_APInt_deinit(&a->mant);
     a->mant = unnorm;
     midint_ext(&a->mant, norm_bits, false);
 }

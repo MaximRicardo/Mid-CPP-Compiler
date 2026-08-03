@@ -1,4 +1,6 @@
 #include "lexer/tokenize.h"
+#include "apfloat.h"
+#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "dynstr.h"
@@ -398,36 +400,34 @@ static enum NumLitType sel_numlit_type(u64 val, int base, enum NumLitType type,
     }
 }
 
-/*
-static i32 numlit_type_width(enum NumLitType type)
+static i32 numlit_type_size(enum NumLitType type)
 {
     switch (type) {
     case NUMLIT_INT:
     case NUMLIT_UINT:
-        return midtype_int_size * 8;
+        return midtype_int_size;
 
     case NUMLIT_LONG:
     case NUMLIT_ULONG:
-        return midtype_long_size * 8;
+        return midtype_long_size;
 
     case NUMLIT_LONGLONG:
     case NUMLIT_ULONGLONG:
-        return midtype_longlong_size * 8;
+        return midtype_longlong_size;
 
     case NUMLIT_FLOAT:
-        return midtype_float_size * 8;
+        return midtype_float_size;
 
     case NUMLIT_DOUBLE:
-        return midtype_double_size * 8;
+        return midtype_double_size;
 
     case NUMLIT_LONGDOUBLE:
-        return midtype_longdouble_size * 8;
+        return midtype_longdouble_size;
 
     default:
         MID_CRASH("invalid numlit type");
     }
 }
-*/
 
 // end - out variable and can be NULL
 static struct NumLit read_numlit(const char *src, mid_isize start,
@@ -455,17 +455,28 @@ static struct NumLit read_numlit(const char *src, mid_isize start,
     case NUMLIT_LONGLONG:
     case NUMLIT_UINT:
     case NUMLIT_ULONG:
-    case NUMLIT_ULONGLONG:
+    case NUMLIT_ULONGLONG: {
         auto info = midlit_read_intlit(src, start, NULL);
-        ret.val.uint = info.value;
+        ret.val.i = midint_init(numlit_type_size(type) * 8, info.value, false);
         ret.type =
             sel_numlit_type(info.value, info.base, ret.type, pos, line, diags);
         break;
+    }
 
     case NUMLIT_FLOAT:
+        ret.val.flt = midflt_init(strtof(&src[start], NULL), midtype_float_kind,
+                                  midtype_default_rmode);
+        break;
+
     case NUMLIT_DOUBLE:
+        ret.val.flt = midflt_init(strtod(&src[start], NULL),
+                                  midtype_double_kind, midtype_default_rmode);
+        break;
+
     case NUMLIT_LONGDOUBLE:
-        ret.val.flt = strtold(&src[start], NULL);
+        ret.val.flt =
+            midflt_init(strtod(&src[start], NULL), midtype_longdouble_kind,
+                        midtype_default_rmode);
         break;
     }
 
@@ -637,7 +648,6 @@ bool verify_charlit_value(u32 val, enum midlit_StringType type,
         break;
 
     case MIDLIT_STRINGTYPE_CHAR32:
-        // val is exactly 32 bits
         break;
     }
 
@@ -671,10 +681,12 @@ static struct midlex_Token create_charlit_tok(const char *src, mid_isize start,
     ret.line = line;
     ret.type = charlit_type_to_tok_type(type);
     mid_isize rquote;
-    ret.val.uint = midutf8_read_char(src, lquote + 1, &rquote);
+    auto c = midutf8_read_char(src, lquote + 1, &rquote);
+    ret.val.i = midint_init(midlit_strtype_char_size(type) * 8, c, false);
 
-    if (!verify_charlit_value(ret.val.uint, type, pos, line, diags))
-        ret.val.uint = '\0';
+    if (!verify_charlit_value(midint_to_uint(&ret.val.i), type, pos, line,
+                              diags))
+        midint_assign_uimm(&ret.val.i, 0);
 
     if (src[rquote] != '\'') {
         midgen_dynpush(
@@ -920,17 +932,20 @@ create_identifier_tok(char *id, struct mid_Position pos, const char *line)
         return (struct midlex_Token){.pos = pos,
                                      .line = line,
                                      .type = MIDLEX_TOKENTYPE_BOOL_LIT,
-                                     .val.sint = true};
+                                     .val.i =
+                                         midint_one(midtype_bool_size * 8)};
     else if (!strcmp(id, "false"))
         return (struct midlex_Token){.pos = pos,
                                      .line = line,
                                      .type = MIDLEX_TOKENTYPE_BOOL_LIT,
-                                     .val.sint = false};
+                                     .val.i =
+                                         midint_zero(midtype_bool_size * 8)};
     else if (!strcmp(id, "nullptr"))
         return (struct midlex_Token){.pos = pos,
                                      .line = line,
                                      .type = MIDLEX_TOKENTYPE_NULLPTR_LIT,
-                                     .val.uint = 0};
+                                     .val.i =
+                                         midint_zero(midtype_ptr_size * 8)};
 
     else if (!strcmp(id, "public"))
         return (struct midlex_Token){
@@ -1455,7 +1470,7 @@ struct midlex_Tokenize midlex_tokenize(const char *src, const char *file)
 
 void midlex_Tokenize_deinit(struct midlex_Tokenize *self)
 {
-    midgen_dyndeinit(&self->toks);
+    midgen_dyndeinit(&self->toks, midlex_Token_deinit);
     midgen_dyndeinit(&self->symtbl, midsymb_deinit_symbol);
     midgen_dyndeinit(&self->str_lits, midlit_String_deinit);
     midgen_dyndeinit(&self->diags, middiag_deinit);

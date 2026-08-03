@@ -70,6 +70,9 @@ constexpr i64 midtype_longlong_smax = INT64_MAX;
 constexpr i64 midtype_longlong_smin = INT64_MIN;
 constexpr u64 midtype_longlong_umax = UINT64_MAX;
 
+constexpr i32 midtype_ptr_size = 8;
+constexpr u64 midtype_ptr_umax = UINT64_MAX;
+
 #ifdef __cplusplus
 }
 #endif

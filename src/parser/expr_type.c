@@ -1,10 +1,11 @@
 #include "parser/expr_type.h"
+#include "macros.h"
 
 const char *midpar_exprtype_name(enum midpar_ExprType type)
 {
     switch (type) {
-    case MIDPAR_EXPRTYPE_NUMMIDLIT_START:
-        return "NUMMIDLIT_START";
+    case MIDPAR_EXPRTYPE_NUMLIT_START:
+        return "NUMLIT_START";
 
     case MIDPAR_EXPRTYPE_CHAR_LIT:
         return "CHAR_LIT";
@@ -48,6 +49,9 @@ const char *midpar_exprtype_name(enum midpar_ExprType type)
     case MIDPAR_EXPRTYPE_ULONGLONG_LIT:
         return "ULONGLONG_INT";
 
+    case MIDPAR_EXPRTYPE_FLTLIT_START:
+        return "FLTLIT_START";
+
     case MIDPAR_EXPRTYPE_FLOAT_LIT:
         return "FLOAT_LIT";
 
@@ -57,14 +61,17 @@ const char *midpar_exprtype_name(enum midpar_ExprType type)
     case MIDPAR_EXPRTYPE_LONGDOUBLE_LIT:
         return "LONGDOUBLE_LIT";
 
+    case MIDPAR_EXPRTYPE_FLTLIT_END:
+        return "FLTLIT_END";
+
     case MIDPAR_EXPRTYPE_BOOL_LIT:
         return "BOOL_LIT";
 
     case MIDPAR_EXPRTYPE_NULLPTR_LIT:
         return "NULLPTR_LIT";
 
-    case MIDPAR_EXPRTYPE_NUMMIDLIT_END:
-        return "NUMMIDLIT_END";
+    case MIDPAR_EXPRTYPE_NUMLIT_END:
+        return "NUMLIT_END";
 
     case MIDPAR_EXPRTYPE_IDENTIFIER:
         return "IDENTIFIER";
@@ -272,5 +279,8 @@ const char *midpar_exprtype_name(enum midpar_ExprType type)
 
     case MIDPAR_EXPRTYPE_UNARYOP_END:
         return "UNARYOP_END";
+
+    default:
+        MID_CRASH("invalid expr type");
     }
 }

@@ -1,4 +1,6 @@
 #include "literal.h"
+#include "apfloat.h"
+#include "apint.h"
 #include "ints.h"
 #include "lexer/token_type.h"
 #include "macros.h"
@@ -8,6 +10,26 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <wchar.h>
+
+int midlit_strtype_char_size(enum midlit_StringType type)
+{
+    switch (type) {
+    case MIDLIT_STRINGTYPE_CHAR:
+        return midtype_char_size;
+
+    case MIDLIT_STRINGTYPE_WCHAR:
+        return midtype_wchar_size;
+
+    case MIDLIT_STRINGTYPE_CHAR16:
+        return 2;
+
+    case MIDLIT_STRINGTYPE_CHAR32:
+        return 4;
+
+    default:
+        MID_CRASH("invalid string type");
+    }
+}
 
 void midlit_String_deinit(struct midlit_String *self)
 {
@@ -27,6 +49,9 @@ void midlit_String_deinit(struct midlit_String *self)
     case MIDLIT_STRINGTYPE_CHAR32:
         free(self->c32);
         break;
+
+    default:
+        MID_CRASH("invalid string type");
     }
 }
 
@@ -76,6 +101,9 @@ mid_isize midlit_strlit_len(const struct midlit_String *strlit)
 
     case MIDLIT_STRINGTYPE_CHAR32:
         return c32_str_len(strlit->c32);
+
+    default:
+        MID_CRASH("invalid string type");
     }
 }
 
@@ -83,17 +111,17 @@ void midlit_fprint(FILE *out, union midlit_Value val, enum midpar_ExprType type)
 {
     switch (type) {
     case MIDPAR_EXPRTYPE_CHAR_LIT:
-        fprintf(out, "'%c'", (char)val.sint);
+        fprintf(out, "'%c'", (char)midint_to_uint(&val.i));
         break;
 
     case MIDPAR_EXPRTYPE_WCHAR_LIT:
-        fprintf(out, "'%C'", (wchar_t)val.sint);
+        fprintf(out, "'%C'", (wchar_t)midint_to_uint(&val.i));
         break;
 
     case MIDPAR_EXPRTYPE_CHAR16_LIT:
     case MIDPAR_EXPRTYPE_CHAR32_LIT:
         fputc('\'', out);
-        midutf8_fprint_char(out, val.uint);
+        midutf8_fprint_char(out, midint_to_uint(&val.i));
         fputc('\'', out);
         break;
 
@@ -126,23 +154,23 @@ void midlit_fprint(FILE *out, union midlit_Value val, enum midpar_ExprType type)
     case MIDPAR_EXPRTYPE_INT_LIT:
     case MIDPAR_EXPRTYPE_LONG_LIT:
     case MIDPAR_EXPRTYPE_LONGLONG_LIT:
-        fprintf(out, "%" PRIi64, val.sint);
+        fprintf(out, "%" PRIi64, midint_to_sint(&val.i));
         break;
 
     case MIDPAR_EXPRTYPE_UINT_LIT:
     case MIDPAR_EXPRTYPE_ULONG_LIT:
     case MIDPAR_EXPRTYPE_ULONGLONG_LIT:
-        fprintf(out, "%" PRIu64, val.uint);
+        fprintf(out, "%" PRIu64, midint_to_uint(&val.i));
         break;
 
     case MIDPAR_EXPRTYPE_FLOAT_LIT:
     case MIDPAR_EXPRTYPE_DOUBLE_LIT:
     case MIDPAR_EXPRTYPE_LONGDOUBLE_LIT:
-        fprintf(out, "%Lf", val.flt);
+        fprintf(out, "%lf", midflt_to_dbl(&val.flt));
         break;
 
     case MIDPAR_EXPRTYPE_BOOL_LIT:
-        fprintf(out, "%s", val.sint ? "true" : "false");
+        fprintf(out, "%s", midint_is_zero(&val.i) ? "false" : "true");
         break;
 
     case MIDPAR_EXPRTYPE_NULLPTR_LIT:

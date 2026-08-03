@@ -1,5 +1,7 @@
 #pragma once
 
+#include "apfloat.h"
+#include "apint.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token_type.h"
@@ -18,6 +20,9 @@ enum midlit_StringType {
     MIDLIT_STRINGTYPE_CHAR32,
 };
 
+// in bytes
+int midlit_strtype_char_size(enum midlit_StringType type);
+
 struct midlit_String {
     TypesCharType *c;
     TypesWCharType *wc;
@@ -31,9 +36,8 @@ mid_isize midlit_strlit_len(const struct midlit_String *strlit);
 
 union midlit_Value {
     // scalars
-    i64 sint;
-    u64 uint;
-    long double flt;
+    struct mid_APInt i;
+    struct mid_APFloat flt;
 
     // strings
     struct midlit_String str;
