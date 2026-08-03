@@ -3,13 +3,13 @@
 #include "ident.h"
 #include "lexer/token.h"
 #include "parser/allocator.h"
+#include "parser/type.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct midpar_ASTNode;
-struct midpar_Type;
 
 enum midsema_ScopeType {
     MIDSEMA_SCOPETYPE_ROOT,
