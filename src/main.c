@@ -16,6 +16,7 @@
 #include "position.h"
 #include "sema/scope.h"
 #include "symbol.h"
+#include "types.h"
 #include <assert.h>
 #include <locale.h>
 #include <stddef.h>
@@ -264,28 +265,25 @@ static void apint_test()
 
 static void apfloat_test()
 {
-    auto a = midflt_ieee_init(0.7f, MIDFLT_IEEE_SINGLE, midflt_default_rmode);
-    auto b = midflt_ieee_init(-100.f, MIDFLT_IEEE_SINGLE, midflt_default_rmode);
+    auto a = midflt_init(0.7f, midtype_float_kind, midtype_default_rmode);
+    auto b = midflt_init(-100.f, midtype_float_kind, midtype_default_rmode);
 
-    midflt_ieee_log(&a, stdout);
+    midflt_log(&a, stdout);
     putchar('\n');
 
-    midflt_ieee_log(&b, stdout);
+    midflt_log(&b, stdout);
     putchar('\n');
 
-    midflt_ieee_add(&a, &b);
+    midflt_add(&a, &b);
 
-    midflt_ieee_log(&a, stdout);
-    putchar('\n');
-    printf("mantissa = ");
-    midint_log_hex(&a.mant, stdout);
+    midflt_log(&a, stdout);
     putchar('\n');
 
-    float a_flt = midflt_ieee_to_dbl(&a);
+    float a_flt = midflt_to_dbl(&a);
     printf("float bits = 0x%08" PRIx32 "\n", *(u32 *)&a_flt);
 
-    midflt_IEEE_deinit(&a);
-    midflt_IEEE_deinit(&b);
+    mid_APFloat_deinit(&a);
+    mid_APFloat_deinit(&b);
 }
 
 /*

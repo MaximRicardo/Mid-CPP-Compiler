@@ -28,14 +28,10 @@ struct midflt_IEEE midflt_ieee_copy(const struct midflt_IEEE *src)
 
 void mid_APFloat_deinit(struct mid_APFloat *self)
 {
-    switch (self->kind) {
-    case MIDFLT_IEEE:
+    if (midflt_kind_is_ieee(self->kind))
         midflt_IEEE_deinit(&self->ieee);
-        break;
-
-    default:
+    else
         MID_CRASH("invalid APFloat kind");
-    }
 }
 
 static int ieee_exp_n_bits(IEEEKind kind)
@@ -889,4 +885,161 @@ bool midflt_ieee_lteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
         return false;
 
     return !midflt_ieee_gt(a, b);
+}
+
+static IEEEKind kind_to_ieee_kind(enum midflt_Kind kind)
+{
+    switch (kind) {
+    case MIDFLT_KIND_IEEE_HALF:
+        return MIDFLT_IEEE_HALF;
+
+    case MIDFLT_KIND_IEEE_SINGLE:
+        return MIDFLT_IEEE_SINGLE;
+
+    case MIDFLT_KIND_IEEE_DOUBLE:
+        return MIDFLT_IEEE_DOUBLE;
+
+    default:
+        MID_CRASH("kind is not an IEEE float");
+    }
+}
+
+struct mid_APFloat midflt_init(double val, enum midflt_Kind kind,
+                               enum midflt_Rounding rounding)
+{
+    struct mid_APFloat ret = {.kind = kind};
+
+    if (midflt_kind_is_ieee(ret.kind))
+        ret.ieee = midflt_ieee_init(val, kind_to_ieee_kind(ret.kind), rounding);
+    else
+        MID_CRASH("unsupported APFloat kind");
+
+    return ret;
+}
+
+bool midflt_compatible(const struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    if (a->kind != b->kind)
+        return false;
+
+    if (midflt_kind_is_ieee(a->kind))
+        return ieee_floats_compatible(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+void midflt_add(struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        midflt_ieee_add(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+void midflt_sub(struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        midflt_ieee_sub(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+void midflt_mul(struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        midflt_ieee_mul(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+void midflt_div(struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        midflt_ieee_div(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+void midflt_assign(struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        midflt_ieee_assign(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+bool midflt_eq(const struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        return midflt_ieee_eq(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+bool midflt_gt(const struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        return midflt_ieee_gt(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+bool midflt_gteq(const struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        return midflt_ieee_gteq(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+bool midflt_lt(const struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        return midflt_ieee_lt(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+bool midflt_lteq(const struct mid_APFloat *a, const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    if (midflt_kind_is_ieee(a->kind))
+        return midflt_ieee_lteq(&a->ieee, &b->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+double midflt_to_dbl(const struct mid_APFloat *self)
+{
+    if (midflt_kind_is_ieee(self->kind))
+        return midflt_ieee_to_dbl(&self->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+void midflt_log(const struct mid_APFloat *self, FILE *out)
+{
+    if (midflt_kind_is_ieee(self->kind))
+        midflt_ieee_log(&self->ieee, out);
+    else
+        MID_CRASH("unsupported APFloat kind");
 }

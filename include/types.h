@@ -10,6 +10,7 @@
 
 // NOTE: types larger than 8 bytes are not supported
 
+#include "apfloat.h"
 #include "ints.h"
 #include "limits.h"
 
@@ -19,10 +20,15 @@ extern "C" {
 
 constexpr i32 midtype_bool_size = 1;
 
-// DO NOT CHANGE THESE SIZES OR THE SUS IMPOSTOR AMOGUS WILL FIND YOU
 constexpr i32 midtype_float_size = 4;
 constexpr i32 midtype_double_size = 8;
 constexpr i32 midtype_longdouble_size = 8;
+
+constexpr enum midflt_Rounding midtype_default_rmode =
+    MIDFLT_ROUND_NEAREST_TIES_EVEN;
+constexpr enum midflt_Kind midtype_float_kind = MIDFLT_KIND_IEEE_SINGLE;
+constexpr enum midflt_Kind midtype_double_kind = MIDFLT_KIND_IEEE_DOUBLE;
+constexpr enum midflt_Kind midtype_longdouble_kind = MIDFLT_KIND_IEEE_DOUBLE;
 
 typedef i8 TypesCharType;
 constexpr i32 midtype_char_size = 1;

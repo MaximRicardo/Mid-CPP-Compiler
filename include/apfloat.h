@@ -16,9 +16,6 @@ enum midflt_Rounding {
     MIDFLT_ROUND_TOWARDS_ZERO,
 };
 
-constexpr enum midflt_Rounding midflt_default_rmode =
-    MIDFLT_ROUND_NEAREST_TIES_EVEN;
-
 enum midflt_IEEEKind {
     MIDFLT_IEEE_HALF,
     MIDFLT_IEEE_SINGLE,
@@ -82,8 +79,17 @@ bool midflt_ieee_lteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
 double midflt_ieee_to_dbl(const struct midflt_IEEE *self);
 
 enum midflt_Kind {
-    MIDFLT_IEEE,
+    MIDFLT_KIND_IEEE_START,
+    MIDFLT_KIND_IEEE_HALF,
+    MIDFLT_KIND_IEEE_SINGLE,
+    MIDFLT_KIND_IEEE_DOUBLE,
+    MIDFLT_KIND_IEEE_END,
 };
+
+static inline bool midflt_kind_is_ieee(enum midflt_Kind kind)
+{
+    return kind > MIDFLT_KIND_IEEE_START && kind < MIDFLT_KIND_IEEE_END;
+}
 
 struct mid_APFloat {
     union {
@@ -93,6 +99,27 @@ struct mid_APFloat {
 };
 
 void mid_APFloat_deinit(struct mid_APFloat *self);
+struct mid_APFloat midflt_init(double val, enum midflt_Kind kind,
+                               enum midflt_Rounding rounding);
+
+bool midflt_compatible(const struct mid_APFloat *a,
+                       const struct mid_APFloat *b);
+
+void midflt_log(const struct mid_APFloat *self, FILE *out);
+
+void midflt_add(struct mid_APFloat *a, const struct mid_APFloat *b);
+void midflt_sub(struct mid_APFloat *a, const struct mid_APFloat *b);
+void midflt_mul(struct mid_APFloat *a, const struct mid_APFloat *b);
+void midflt_div(struct mid_APFloat *a, const struct mid_APFloat *b);
+void midflt_assign(struct mid_APFloat *a, const struct mid_APFloat *b);
+
+bool midflt_eq(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_gt(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_gteq(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_lt(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_lteq(const struct mid_APFloat *a, const struct mid_APFloat *b);
+
+double midflt_to_dbl(const struct mid_APFloat *self);
 
 #ifdef __cplusplus
 }
