@@ -14,7 +14,9 @@ struct midlex_Tokenize {
     struct midsymb_Table symtbl;
     struct midlit_StringVec str_lits;
     struct mid_DiagVec diags;
-} midlex_tokenize(const char *src, const char *file);
+};
+
+struct midlex_Tokenize midlex_tokenize(const char *src, const char *file);
 
 void midlex_Tokenize_deinit(struct midlex_Tokenize *self);
 

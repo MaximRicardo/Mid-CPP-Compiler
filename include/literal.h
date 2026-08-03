@@ -52,7 +52,9 @@ void midlit_print_toktype(union midlit_Value val, enum midlex_TokenType type);
 struct midlit_ReadIntLitInfo {
     u64 value;
     int base;
-} midlit_read_intlit(const char *str, mid_isize start, mid_isize *out_end);
+};
+struct midlit_ReadIntLitInfo
+midlit_read_intlit(const char *str, mid_isize start, mid_isize *out_end);
 
 #ifdef __cplusplus
 }

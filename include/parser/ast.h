@@ -103,125 +103,125 @@ void midpar_copy_node(struct midpar_ASTNode *dest,
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_VarDecl *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_VarDeclInst *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_FuncDecl *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Class *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Enum *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Namespace *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Return *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_Tmplt *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_TmpltParam *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_TmpltNonTypeParam *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_TmpltTypeParam *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_TmpltTmpltParam *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_VarDecl *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_VarDeclInst *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_FuncDecl *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Class *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Enum *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Namespace *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Return *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_Tmplt *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_TmpltParam *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *
 MIDPAR_GET_NODE(const midpar_TmpltNonTypeParam *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *
 MIDPAR_GET_NODE(const midpar_TmpltTypeParam *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 
 static inline const midpar_ASTNode *
 MIDPAR_GET_NODE(const midpar_TmpltTmpltParam *p)
 {
-    return static_cast<midpar_midpar_ASTNode *>(p);
+    return (midpar_ASTNode *)(p);
 }
 #endif
 
