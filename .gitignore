@@ -1,7 +1,6 @@
 .cache/
 CMakeCache.txt
-CMakeFiles/
-CMakeLists.txt/
+CMakeFiles
 Makefile
 cmake_install.cmake
 compile_commands.json
@@ -9,6 +8,3 @@ compile_commands.json
 bin/
 
 doxygen/
-
-tests/*.ast
-tests/*.s
