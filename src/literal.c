@@ -320,14 +320,15 @@ static int hex_digit_to_num(char c)
     }
 }
 
-static u64 read_intlit_hex(const char *str, mid_isize start, mid_isize *out_end)
+static struct mid_APInt read_intlit_hex(const char *str, mid_isize start,
+                                        mid_isize *out_end)
 {
-    u64 ret = 0;
+    auto ret = midint_zero(midtype_longlong_size * 8);
 
     mid_isize i;
     for (i = start; is_hex_digit(str[i]); ++i) {
-        ret *= 16;
-        ret += hex_digit_to_num(str[i]);
+        midint_mul_uimm(&ret, 16);
+        midint_add_uimm(&ret, hex_digit_to_num(str[i]));
     }
 
     if (out_end)
@@ -340,14 +341,15 @@ static bool is_bin_digit(char c)
     return c == '0' || c == '1';
 }
 
-static u64 read_intlit_bin(const char *str, mid_isize start, mid_isize *out_end)
+static struct mid_APInt read_intlit_bin(const char *str, mid_isize start,
+                                        mid_isize *out_end)
 {
-    u64 ret = 0;
+    auto ret = midint_zero(midtype_longlong_size * 8);
 
     mid_isize i;
     for (i = start; is_bin_digit(str[i]); ++i) {
-        ret *= 2;
-        ret += str[i] - '0';
+        midint_mul_uimm(&ret, 2);
+        midint_add_uimm(&ret, str[i] - '0');
     }
 
     if (out_end)
@@ -360,15 +362,15 @@ static bool is_octal_digit(char c)
     return c >= '0' && c <= '7';
 }
 
-static u64 read_intlit_octal(const char *str, mid_isize start,
-                             mid_isize *out_end)
+static struct mid_APInt read_intlit_octal(const char *str, mid_isize start,
+                                          mid_isize *out_end)
 {
-    u64 ret = 0;
+    auto ret = midint_zero(midtype_longlong_size * 8);
 
     mid_isize i;
     for (i = start; is_octal_digit(str[i]); ++i) {
-        ret *= 8;
-        ret += str[i] - '0';
+        midint_mul_uimm(&ret, 8);
+        midint_add_uimm(&ret, str[i] - '0');
     }
 
     if (out_end)
@@ -376,15 +378,16 @@ static u64 read_intlit_octal(const char *str, mid_isize start,
     return ret;
 }
 
-static u64 read_intlit_decimal(const char *str, mid_isize start,
-                               mid_isize *out_end)
+static struct mid_APInt read_intlit_decimal(const char *str, mid_isize start,
+                                            mid_isize *out_end)
 {
-    u64 ret = 0;
+    // TODO: grow ret so numbers bigger than a long long can fit
+    auto ret = midint_zero(midtype_longlong_size * 8);
 
     mid_isize i;
     for (i = start; isdigit(str[i]); ++i) {
-        ret *= 10;
-        ret += str[i] - '0';
+        midint_mul_uimm(&ret, 10);
+        midint_add_uimm(&ret, str[i] - '0');
     }
 
     if (out_end)
@@ -414,6 +417,10 @@ midlit_read_intlit(const char *str, mid_isize start, mid_isize *out_end)
         ret.base = 10;
         ret.value = read_intlit_decimal(str, start, out_end);
     }
+
+    printf("parsed val = ");
+    midint_log(&ret.value, stdout, false);
+    printf("\n");
 
     return ret;
 }

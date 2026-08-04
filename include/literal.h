@@ -56,7 +56,7 @@ void midlit_print(union midlit_Value val, enum midpar_ExprType type);
 void midlit_print_toktype(union midlit_Value val, enum midlex_TokenType type);
 
 struct midlit_ReadIntLitInfo {
-    u64 value;
+    struct mid_APInt value;
     int base;
 };
 // TODO: add support for APInt

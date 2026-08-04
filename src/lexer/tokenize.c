@@ -201,34 +201,34 @@ static struct mid_Diag intlit_too_big_err(struct mid_Position pos,
     };
 }
 
-static enum NumLitType sel_numlit_type_int(u64 val, int base,
-                                           struct mid_Position pos,
+static enum NumLitType sel_numlit_type_int(const struct mid_APInt *val,
+                                           int base, struct mid_Position pos,
                                            const char *line,
                                            struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= midtype_int_smax) {
+        if (midint_is_ulteq_imm(val, midtype_int_smax)) {
             return NUMLIT_INT;
-        } else if (val <= midtype_long_smax) {
+        } else if (midint_is_ulteq_imm(val, midtype_long_smax)) {
             return NUMLIT_LONG;
-        } else if (val <= midtype_longlong_smax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
             return NUMLIT_LONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_LONGLONG;
         }
     } else {
-        if (val <= midtype_int_smax) {
+        if (midint_is_ulteq_imm(val, midtype_int_smax)) {
             return NUMLIT_INT;
-        } else if (val <= midtype_int_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_int_umax)) {
             return NUMLIT_UINT;
-        } else if (val <= midtype_long_smax) {
+        } else if (midint_is_ulteq_imm(val, midtype_long_smax)) {
             return NUMLIT_LONG;
-        } else if (val <= midtype_long_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
             return NUMLIT_ULONG;
-        } else if (val <= midtype_longlong_smax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
             return NUMLIT_LONGLONG;
-        } else if (val <= midtype_longlong_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -237,28 +237,28 @@ static enum NumLitType sel_numlit_type_int(u64 val, int base,
     }
 }
 
-static enum NumLitType sel_numlit_type_uint(u64 val, int base,
-                                            struct mid_Position pos,
+static enum NumLitType sel_numlit_type_uint(const struct mid_APInt *val,
+                                            int base, struct mid_Position pos,
                                             const char *line,
                                             struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= midtype_int_umax) {
+        if (midint_is_ulteq_imm(val, midtype_int_umax)) {
             return NUMLIT_UINT;
-        } else if (val <= midtype_long_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
             return NUMLIT_ULONG;
-        } else if (val <= midtype_longlong_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_ULONGLONG;
         }
     } else {
-        if (val <= midtype_int_umax) {
+        if (midint_is_ulteq_imm(val, midtype_int_umax)) {
             return NUMLIT_UINT;
-        } else if (val <= midtype_long_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
             return NUMLIT_ULONG;
-        } else if (val <= midtype_longlong_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -267,30 +267,30 @@ static enum NumLitType sel_numlit_type_uint(u64 val, int base,
     }
 }
 
-static enum NumLitType sel_numlit_type_long(u64 val, int base,
-                                            struct mid_Position pos,
+static enum NumLitType sel_numlit_type_long(const struct mid_APInt *val,
+                                            int base, struct mid_Position pos,
                                             const char *line,
                                             struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= midtype_long_smax) {
+        if (midint_is_ulteq_imm(val, midtype_long_smax)) {
             return NUMLIT_LONG;
-        } else if (val <= midtype_long_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
             return NUMLIT_ULONG;
-        } else if (val <= midtype_longlong_smax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
             return NUMLIT_LONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_LONGLONG;
         }
     } else {
-        if (val <= midtype_long_smax) {
+        if (midint_is_ulteq_imm(val, midtype_long_smax)) {
             return NUMLIT_LONG;
-        } else if (val <= midtype_long_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
             return NUMLIT_ULONG;
-        } else if (val <= midtype_longlong_smax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
             return NUMLIT_LONGLONG;
-        } else if (val <= midtype_longlong_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -299,24 +299,24 @@ static enum NumLitType sel_numlit_type_long(u64 val, int base,
     }
 }
 
-static enum NumLitType sel_numlit_type_ulong(u64 val, int base,
-                                             struct mid_Position pos,
+static enum NumLitType sel_numlit_type_ulong(const struct mid_APInt *val,
+                                             int base, struct mid_Position pos,
                                              const char *line,
                                              struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= midtype_long_umax) {
+        if (midint_is_ulteq_imm(val, midtype_long_umax)) {
             return NUMLIT_ULONG;
-        } else if (val <= midtype_longlong_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_ULONGLONG;
         }
     } else {
-        if (val <= midtype_long_umax) {
+        if (midint_is_ulteq_imm(val, midtype_long_umax)) {
             return NUMLIT_ULONG;
-        } else if (val <= midtype_longlong_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -325,22 +325,23 @@ static enum NumLitType sel_numlit_type_ulong(u64 val, int base,
     }
 }
 
-static enum NumLitType sel_numlit_type_longlong(u64 val, int base,
+static enum NumLitType sel_numlit_type_longlong(const struct mid_APInt *val,
+                                                int base,
                                                 struct mid_Position pos,
                                                 const char *line,
                                                 struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= midtype_longlong_smax) {
+        if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
             return NUMLIT_LONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_LONGLONG;
         }
     } else {
-        if (val <= midtype_longlong_smax) {
+        if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
             return NUMLIT_LONGLONG;
-        } else if (val <= midtype_longlong_umax) {
+        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -349,20 +350,21 @@ static enum NumLitType sel_numlit_type_longlong(u64 val, int base,
     }
 }
 
-static enum NumLitType sel_numlit_type_ulonglong(u64 val, int base,
+static enum NumLitType sel_numlit_type_ulonglong(const struct mid_APInt *val,
+                                                 int base,
                                                  struct mid_Position pos,
                                                  const char *line,
                                                  struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (val <= midtype_longlong_umax) {
+        if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_ULONGLONG;
         }
     } else {
-        if (val <= midtype_longlong_umax) {
+        if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -371,7 +373,8 @@ static enum NumLitType sel_numlit_type_ulonglong(u64 val, int base,
     }
 }
 
-static enum NumLitType sel_numlit_type(u64 val, int base, enum NumLitType type,
+static enum NumLitType sel_numlit_type(const struct mid_APInt *val, int base,
+                                       enum NumLitType type,
                                        struct mid_Position pos,
                                        const char *line,
                                        struct mid_DiagVec *diags)
@@ -429,6 +432,12 @@ static i32 numlit_type_size(enum NumLitType type)
     }
 }
 
+static bool numlit_type_signed(enum NumLitType type)
+{
+    return !(type == NUMLIT_UINT || type == NUMLIT_ULONG ||
+             type == NUMLIT_ULONGLONG);
+}
+
 // end - out variable and can be NULL
 static struct NumLit read_numlit(const char *src, mid_isize start,
                                  mid_isize *out_end, struct mid_Position pos,
@@ -457,9 +466,11 @@ static struct NumLit read_numlit(const char *src, mid_isize start,
     case NUMLIT_ULONG:
     case NUMLIT_ULONGLONG: {
         auto info = midlit_read_intlit(src, start, NULL);
-        ret.val.i = midint_init(numlit_type_size(type) * 8, info.value, false);
+        ret.val.i = info.value;
         ret.type =
-            sel_numlit_type(info.value, info.base, ret.type, pos, line, diags);
+            sel_numlit_type(&ret.val.i, info.base, ret.type, pos, line, diags);
+        midint_ext(&ret.val.i, numlit_type_size(ret.type) * 8,
+                   numlit_type_signed(ret.type));
         break;
     }
 
