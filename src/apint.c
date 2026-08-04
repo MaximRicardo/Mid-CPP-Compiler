@@ -2134,12 +2134,13 @@ void midint_inc_bit(struct mid_APInt *self, i32 bit)
 
     if (is_bignum_used(self->n_bits)) {
         i32 n_words = get_n_words(self->n_bits);
-        i32 start_word = get_n_words(bit + 1);
+        i32 start_word = get_n_words(bit + 1) - 1;
 
         for (i32 i = start_word; i < n_words; ++i) {
             auto word = &self->v.words[i];
 
-            i32 start_bit = bit - i * midint_word_n_bits;
+            i32 start_bit =
+                i == start_word ? bit - start_word * midint_word_n_bits : 0;
             for (i32 j = start_bit; j < midint_word_n_bits; ++j) {
                 // flip the bit
                 midint_Word mask = 1ULL << j;
