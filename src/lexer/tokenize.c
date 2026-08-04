@@ -426,9 +426,6 @@ static i32 numlit_type_size(enum NumLitType type)
 
     case NUMLIT_LONGDOUBLE:
         return midtype_longdouble_size;
-
-    default:
-        MID_CRASH("invalid numlit type");
     }
 }
 

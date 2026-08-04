@@ -26,9 +26,6 @@ int midlit_strtype_char_size(enum midlit_StringType type)
 
     case MIDLIT_STRINGTYPE_CHAR32:
         return 4;
-
-    default:
-        MID_CRASH("invalid string type");
     }
 }
 
@@ -50,9 +47,6 @@ void midlit_String_deinit(struct midlit_String *self)
     case MIDLIT_STRINGTYPE_CHAR32:
         free(self->c32);
         break;
-
-    default:
-        MID_CRASH("invalid string type");
     }
 }
 
@@ -102,9 +96,6 @@ mid_isize midlit_strlit_len(const struct midlit_String *strlit)
 
     case MIDLIT_STRINGTYPE_CHAR32:
         return c32_str_len(strlit->c32);
-
-    default:
-        MID_CRASH("invalid string type");
     }
 }
 

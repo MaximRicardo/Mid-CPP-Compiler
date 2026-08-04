@@ -1,5 +1,4 @@
 #include "parser/expr_type.h"
-#include "macros.h"
 
 const char *midpar_exprtype_name(enum midpar_ExprType type)
 {
@@ -279,8 +278,5 @@ const char *midpar_exprtype_name(enum midpar_ExprType type)
 
     case MIDPAR_EXPRTYPE_UNARYOP_END:
         return "UNARYOP_END";
-
-    default:
-        MID_CRASH("invalid expr type");
     }
 }

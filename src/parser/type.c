@@ -1216,7 +1216,6 @@ i32 midpar_typespec_conv_rank(enum midpar_TypeSpec spec)
         return midpar_typespec_conv_rank(midpar_uint_type_of_width(32 / 8));
 
     default:
-        printf("type = %d\n", spec);
         MID_CRASH("type doesn't have a rank");
     }
 }

@@ -67,9 +67,6 @@ void midpar_ASTNode_deinit(struct midpar_ASTNode *self)
     case MIDPAR_ASTNODETYPE_TMPLT_PARAM:
         midpar_TmpltParam_deinit(&self->tmplt_param);
         break;
-
-    default:
-        MID_CRASH("invalid node type");
     }
 }
 
@@ -130,9 +127,6 @@ void midpar_copy_node(struct midpar_ASTNode *dest,
     case MIDPAR_ASTNODETYPE_TMPLT_PARAM:
         midpar_copy_tmplt_param(&dest->tmplt_param, &src->tmplt_param, allocs);
         break;
-
-    default:
-        MID_CRASH("invalid ast node type");
     }
 }
 

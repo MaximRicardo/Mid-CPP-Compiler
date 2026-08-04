@@ -42,9 +42,6 @@ struct midpar_TmpltArg midpar_copy_tmplt_arg(struct midpar_TmpltArg *src)
     case MIDPAR_TMPLTARG_TMPLT:
         ret.tmplt = src->tmplt;
         break;
-
-    default:
-        MID_CRASH("invalid tmplt arg kind");
     }
 
     return ret;
@@ -137,9 +134,6 @@ void midpar_TmpltParam_deinit(struct midpar_TmpltParam *self)
     case MIDPAR_TMPLTPARAM_TMPLT:
         midpar_TmpltTmpltParam_deinit(&self->tmplt);
         break;
-
-    default:
-        MID_CRASH("invalid template param kind");
     }
 }
 
@@ -160,9 +154,6 @@ static const char *tmplt_param_name(const struct midpar_TmpltParam *param)
 
     case MIDPAR_TMPLTPARAM_TMPLT:
         return param->tmplt.name;
-
-    default:
-        MID_CRASH("invalid tmplt param kind");
     }
 }
 
@@ -184,9 +175,6 @@ tmplt_param_ident(const struct midpar_TmpltParam *param)
     case MIDPAR_TMPLTPARAM_TMPLT:
         idx = param->tmplt.ident_idx;
         break;
-
-    default:
-        MID_CRASH("invalid tmplt param kind");
     }
 
     return &scope->idents.arr[idx];
@@ -206,9 +194,6 @@ static void set_ident_idx(struct midpar_TmpltParam *param, mid_isize ident_idx)
     case MIDPAR_TMPLTPARAM_TMPLT:
         param->tmplt.ident_idx = ident_idx;
         break;
-
-    default:
-        MID_CRASH("invalid tmplt param kind");
     }
 }
 
@@ -560,7 +545,7 @@ void midpar_TmpltArg_deinit(struct midpar_TmpltArg *self)
         midpar_Type_deinit(&self->type);
         break;
 
-    default:
+    case MIDPAR_TMPLTARG_TMPLT:
         break;
     }
 }

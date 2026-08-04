@@ -46,9 +46,6 @@ static int ieee_exp_n_bits(IEEEKind kind)
 
     case MIDFLT_IEEE_DOUBLE:
         return 11;
-
-    default:
-        MID_CRASH("ieee kind not supported");
     }
 }
 
@@ -64,9 +61,6 @@ static int ieee_mant_n_bits(IEEEKind kind)
 
     case MIDFLT_IEEE_DOUBLE:
         return 52 + 1;
-
-    default:
-        MID_CRASH("ieee kind not supported");
     }
 }
 
@@ -282,9 +276,6 @@ static bool ieee_should_inc_mant(Rounding mode, bool is_neg, bool guard,
 
     case MIDFLT_ROUND_TOWARDS_ZERO:
         return false;
-
-    default:
-        MID_CRASH("invalid rounding mode");
     }
 }
 
