@@ -2097,8 +2097,7 @@ void midint_flip_bit(struct mid_APInt *self, i32 bit)
 
 struct mid_APInt midint_get_umax(const struct mid_APInt *self)
 {
-    auto ret = midint_one(self->n_bits);
-    midint_shl_imm(&ret, self->n_bits - 1);
+    auto ret = midint_init(self->n_bits, -1, true);
     return ret;
 }
 
@@ -2108,11 +2107,14 @@ struct mid_APInt midint_get_smax(const struct mid_APInt *self)
         return midint_zero(self->n_bits);
 
     auto ret = midint_one(self->n_bits);
-    midint_shl_imm(&ret, self->n_bits - 2);
+    midint_shl_imm(&ret, self->n_bits - 1);
+    midint_sub_uimm(&ret, 1);
     return ret;
 }
 
 struct mid_APInt midint_get_smin(const struct mid_APInt *self)
 {
-    return midint_get_umax(self);
+    auto ret = midint_one(self->n_bits);
+    midint_shl_imm(&ret, self->n_bits - 1);
+    return ret;
 }
