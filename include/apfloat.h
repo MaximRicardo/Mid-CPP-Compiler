@@ -10,6 +10,9 @@
 extern "C" {
 #endif
 
+// higher nr of iterations means higher precision but lower performance
+#define MIDFLT_APPROX_LOG2_N_DEFAULT_ITERATIONS 9
+
 enum midflt_Rounding {
     MIDFLT_ROUND_NEAREST_TIES_EVEN,
     MIDFLT_ROUND_NEAREST_TIES_AWAY,
@@ -64,19 +67,29 @@ struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
                                            enum midflt_IEEEKind kind,
                                            enum midflt_Rounding rounding);
 void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out);
+struct midflt_IEEE midflt_ieee_mantissa(const struct midflt_IEEE *self);
 
+// in place operations
 void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_assign(struct midflt_IEEE *dest,
                         const struct midflt_IEEE *src);
+void midflt_ieee_approx_log2(struct midflt_IEEE *self);
+void midflt_ieee_approx_ln(struct midflt_IEEE *self);
+
+// not in place operations
+struct midflt_IEEE midflt_ieee_nip_log2(const struct midflt_IEEE *self);
 
 bool midflt_ieee_eq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
 bool midflt_ieee_gt(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
 bool midflt_ieee_gteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
 bool midflt_ieee_lt(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
 bool midflt_ieee_lteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
+bool midflt_ieee_is_zero(const struct midflt_IEEE *self);
+bool midflt_ieee_is_one(const struct midflt_IEEE *self);
+bool midflt_ieee_is_minus_one(const struct midflt_IEEE *self);
 
 double midflt_ieee_to_dbl(const struct midflt_IEEE *self);
 
@@ -103,6 +116,7 @@ struct mid_APFloat {
 void mid_APFloat_deinit(struct mid_APFloat *self);
 struct mid_APFloat midflt_init(double val, enum midflt_Kind kind,
                                enum midflt_Rounding rounding);
+struct mid_APFloat midflt_copy(const struct mid_APFloat *src);
 
 bool midflt_compatible(const struct mid_APFloat *a,
                        const struct mid_APFloat *b);
@@ -119,12 +133,17 @@ void midflt_sub(struct mid_APFloat *a, const struct mid_APFloat *b);
 void midflt_mul(struct mid_APFloat *a, const struct mid_APFloat *b);
 void midflt_div(struct mid_APFloat *a, const struct mid_APFloat *b);
 void midflt_assign(struct mid_APFloat *a, const struct mid_APFloat *b);
+void midflt_approx_log2(struct mid_APFloat *self);
+void midflt_approx_ln(struct mid_APFloat *self);
 
 bool midflt_eq(const struct mid_APFloat *a, const struct mid_APFloat *b);
 bool midflt_gt(const struct mid_APFloat *a, const struct mid_APFloat *b);
 bool midflt_gteq(const struct mid_APFloat *a, const struct mid_APFloat *b);
 bool midflt_lt(const struct mid_APFloat *a, const struct mid_APFloat *b);
 bool midflt_lteq(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_is_zero(const struct mid_APFloat *self);
+bool midflt_is_one(const struct mid_APFloat *self);
+bool midflt_is_minus_one(const struct mid_APFloat *self);
 
 double midflt_to_dbl(const struct mid_APFloat *self);
 

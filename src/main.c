@@ -8,6 +8,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/tokenize.h"
+#include "macros.h"
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
@@ -16,6 +17,7 @@
 #include "position.h"
 #include "sema/scope.h"
 #include "symbol.h"
+#include "types.h"
 #include <assert.h>
 #include <locale.h>
 #include <stddef.h>
@@ -156,10 +158,24 @@ static void test_mangling(const struct midsema_Scope *scope)
 }
 */
 
+static void test_apfloat()
+{
+    auto a = midflt_init(329547.0, midtype_double_kind, midtype_default_rmode);
+
+    midflt_approx_ln(&a);
+
+    midflt_print(stdout, "a = {}\n", &a);
+
+    mid_APFloat_deinit(&a);
+}
+
 int main(int argc, char **argv)
 {
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
+
+    test_apfloat();
+    MID_CRASH("asdf");
 
     midcmd_init_args(argc, argv);
 
