@@ -345,7 +345,7 @@ bool midint_is_all_ones(const struct mid_APInt *self)
                               n_bits_in_last_word(self->n_bits)))
             return false;
 
-        for (i32 i = 0; i < n_words - 1; ++i) {
+        for (i32 i = 0; i < n_words - 2; ++i) {
             if (self->v.words[i] != midint_word_max)
                 return false;
         }
@@ -353,6 +353,51 @@ bool midint_is_all_ones(const struct mid_APInt *self)
         return true;
     } else {
         return word_is_all_ones(self->v.val, self->n_bits);
+    }
+}
+
+bool midint_is_umax(const struct mid_APInt *self)
+{
+    return midint_is_all_ones(self);
+}
+
+bool midint_is_smax(const struct mid_APInt *self)
+{
+    if (is_bignum_used(self->n_bits)) {
+        i32 n_words = get_n_words(self->n_bits);
+        midint_Word sign_bit = 1ULL << (n_bits_in_last_word(self->n_bits) - 1);
+        if (self->v.words[n_words - 1] >= sign_bit)
+            return false;
+
+        for (i32 i = 0; i < n_words - 2; ++i) {
+            if (self->v.words[i] != midint_word_max)
+                return false;
+        }
+
+        return true;
+    } else {
+        midint_Word sign_bit = (1ULL << (self->n_bits - 1));
+        return self->v.val < sign_bit;
+    }
+}
+
+bool midint_is_smin(const struct mid_APInt *self)
+{
+    if (is_bignum_used(self->n_bits)) {
+        i32 n_words = get_n_words(self->n_bits);
+        midint_Word sign_bit = 1ULL << (n_bits_in_last_word(self->n_bits) - 1);
+        if (self->v.words[n_words - 1] == sign_bit)
+            return false;
+
+        for (i32 i = 0; i < n_words - 2; ++i) {
+            if (self->v.words[i] != 0)
+                return false;
+        }
+
+        return true;
+    } else {
+        midint_Word sign_bit = (1ULL << (self->n_bits - 1));
+        return self->v.val == sign_bit;
     }
 }
 
@@ -1519,6 +1564,45 @@ struct mid_APInt midint_nip_srem(const struct mid_APInt *a,
     }
 }
 
+// compare two unsigned bignums
+static int cmp_bignums(const midint_Word *a, const midint_Word *b, i32 a_words,
+                       i32 b_words)
+{
+    while (a_words--, b_words--) {
+        if (a_words > 0 && b_words > 0) {
+            if (a[a_words] != b[b_words])
+                return (a[a_words] > b[b_words]) ? 1 : -1;
+        } else if (a_words > 0) {
+            if (a[a_words] != 0)
+                return 1;
+        } else if (b_words > 0) {
+            if (b[b_words] != 0)
+                return -1;
+        }
+    }
+
+    return 0;
+}
+
+// a and b can be different widths
+static int unsigned_cmp_diff_sizes(const struct mid_APInt *a,
+                                   const struct mid_APInt *b)
+{
+    if (is_bignum_used(a->n_bits) && is_bignum_used(b->n_bits)) {
+        return cmp_bignums(a->v.words, b->v.words, get_n_words(a->n_bits),
+                           get_n_words(b->n_bits));
+    } else if (is_bignum_used(a->n_bits)) {
+        if (midint_unsigned_sig_bits(a) > midint_word_n_bits)
+            return 1;
+        else
+            return a->v.words[0] < b->v.val ? -1 : a->v.words[0] > b->v.val;
+    } else if (is_bignum_used(b->n_bits)) {
+        return -unsigned_cmp_diff_sizes(b, a);
+    } else {
+        return a->v.val < b->v.val ? -1 : a->v.val > b->v.val;
+    }
+}
+
 void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
                     struct mid_APInt *out_quot, struct mid_APInt *out_rem)
 {
@@ -1552,18 +1636,23 @@ void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
         midint_assign_uimm(out_rem, 0); // x % 1 = 0
         return;
     }
-    if (a_words < b_words || midint_is_ult(a, b)) {
+    if (a_words < b_words || unsigned_cmp_diff_sizes(a, b) < 0) {
         midint_assign_uimm(out_quot, 0); // x / y = 0 if x < y
         midint_assign(out_rem, a);       // x % y = x if x < y
         return;
     }
-    if (midint_is_eq(a, b)) {
+    if (unsigned_cmp_diff_sizes(a, b) == 0) {
         midint_assign_uimm(out_quot, 1); // x / x = 1
         midint_assign_uimm(out_rem, 0);  // x % x = 0
         return;
     }
 
-    bignum_div(a->v.words, a_words, b->v.words, b_words, out_quot->v.words,
+    const midint_Word *a_arr =
+        is_bignum_used(a->n_bits) ? a->v.words : &a->v.val;
+    const midint_Word *b_arr =
+        is_bignum_used(b->n_bits) ? b->v.words : &b->v.val;
+
+    bignum_div(a_arr, a_words, b_arr, b_words, out_quot->v.words,
                out_rem->v.words);
 }
 
@@ -1749,25 +1838,16 @@ bool midint_is_ulteq_imm(const struct mid_APInt *a, u64 b)
     return midint_unsigned_cmp_imm(a, b) <= 0;
 }
 
-// compare two unsigned bignums
-static int cmp_bignums(const midint_Word *a, const midint_Word *b, i32 n_words)
-{
-    while (n_words--) {
-        if (a[n_words] != b[n_words])
-            return (a[n_words] > b[n_words]) ? 1 : -1;
-    }
-
-    return 0;
-}
-
 int midint_unsigned_cmp(const struct mid_APInt *a, const struct mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
 
-    if (is_bignum_used(a->n_bits))
-        return cmp_bignums(a->v.words, b->v.words, get_n_words(a->n_bits));
-    else
+    if (is_bignum_used(a->n_bits)) {
+        i32 n_words = get_n_words(a->n_bits);
+        return cmp_bignums(a->v.words, b->v.words, n_words, n_words);
+    } else {
         return a->v.val < b->v.val ? -1 : a->v.val > b->v.val;
+    }
 }
 
 int midint_unsigned_cmp_imm(const struct mid_APInt *a, u64 b)
@@ -1799,7 +1879,8 @@ int midint_signed_cmp(const struct mid_APInt *a, const struct mid_APInt *b)
 
         // even negative numbers compare correctly if they both have the same
         // signedness
-        return cmp_bignums(a->v.words, b->v.words, get_n_words(a->n_bits));
+        i32 n_words = get_n_words(a->n_bits);
+        return cmp_bignums(a->v.words, b->v.words, n_words, n_words);
     } else {
         auto a_ext = sign_ext_word(a->v.val, a->n_bits, midint_word_n_bits);
         auto b_ext = sign_ext_word(b->v.val, b->n_bits, midint_word_n_bits);

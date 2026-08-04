@@ -160,6 +160,9 @@ void midint_ufullmul(const struct mid_APInt *a, const struct mid_APInt *b,
 bool midint_is_zero(const struct mid_APInt *self);
 bool midint_is_signed_min(const struct mid_APInt *self);
 bool midint_is_all_ones(const struct mid_APInt *self);
+bool midint_is_umax(const struct mid_APInt *self);
+bool midint_is_smax(const struct mid_APInt *self);
+bool midint_is_smin(const struct mid_APInt *self);
 bool midint_is_negative(const struct mid_APInt *self); // same as get_sign_bit
 bool midint_is_pow2(const struct mid_APInt *self);
 bool midint_is_eq(const struct mid_APInt *a, const struct mid_APInt *b);
