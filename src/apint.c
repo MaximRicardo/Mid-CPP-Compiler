@@ -1691,6 +1691,16 @@ bool midint_is_eq(const struct mid_APInt *a, const struct mid_APInt *b)
     }
 }
 
+bool midint_is_eq_uimm(const struct mid_APInt *a, u64 b)
+{
+    return midint_unsigned_cmp_imm(a, b) == 0;
+}
+
+bool midint_is_eq_simm(const struct mid_APInt *a, i64 b)
+{
+    return midint_signed_cmp_imm(a, b) == 0;
+}
+
 bool midint_is_ugt(const struct mid_APInt *a, const struct mid_APInt *b)
 {
     assert(a->n_bits == b->n_bits);
@@ -2083,4 +2093,26 @@ void midint_flip_bit(struct mid_APInt *self, i32 bit)
         midint_Word mask = 1ULL << bit;
         self->v.val ^= mask;
     }
+}
+
+struct mid_APInt midint_get_umax(const struct mid_APInt *self)
+{
+    auto ret = midint_one(self->n_bits);
+    midint_shl_imm(&ret, self->n_bits - 1);
+    return ret;
+}
+
+struct mid_APInt midint_get_smax(const struct mid_APInt *self)
+{
+    if (self->n_bits == 1)
+        return midint_zero(self->n_bits);
+
+    auto ret = midint_one(self->n_bits);
+    midint_shl_imm(&ret, self->n_bits - 2);
+    return ret;
+}
+
+struct mid_APInt midint_get_smin(const struct mid_APInt *self)
+{
+    return midint_get_umax(self);
 }

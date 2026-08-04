@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+// changing the size of midint_Word will probably require making a few changes
+// to the functions taking immediate operands
 typedef u64 midint_Word;
 constexpr u64 midint_word_max = UINT64_MAX;
 constexpr int midint_word_n_bits = 64;
@@ -62,6 +64,9 @@ void midint_flip_bit(struct mid_APInt *self, i32 bit);
 // if the bit is already high it gets flipped and a carry gets added to the
 // next bit
 void midint_inc_bit(struct mid_APInt *self, i32 bit);
+struct mid_APInt midint_get_umax(const struct mid_APInt *self);
+struct mid_APInt midint_get_smax(const struct mid_APInt *self);
+struct mid_APInt midint_get_smin(const struct mid_APInt *self);
 
 // in place operations
 void midint_assign(struct mid_APInt *dest, const struct mid_APInt *src);
@@ -158,6 +163,8 @@ bool midint_is_all_ones(const struct mid_APInt *self);
 bool midint_is_negative(const struct mid_APInt *self); // same as get_sign_bit
 bool midint_is_pow2(const struct mid_APInt *self);
 bool midint_is_eq(const struct mid_APInt *a, const struct mid_APInt *b);
+bool midint_is_eq_uimm(const struct mid_APInt *a, u64 b);
+bool midint_is_eq_simm(const struct mid_APInt *a, i64 b);
 // unsigned comparisons
 bool midint_is_ugt(const struct mid_APInt *a, const struct mid_APInt *b);
 bool midint_is_ugt_imm(const struct mid_APInt *a, u64 b);
