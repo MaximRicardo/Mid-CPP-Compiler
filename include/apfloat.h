@@ -4,6 +4,8 @@
 #include "ints.h"
 #include <stdio.h>
 
+// TODO: add support for denormals in IEEE
+
 #ifdef __cplusplus
 extern "C" {
 #endif

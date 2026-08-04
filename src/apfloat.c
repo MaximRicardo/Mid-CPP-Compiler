@@ -246,6 +246,8 @@ void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out)
         return;
     }
 
+    // TODO: make this not rely on double cuz it WILL NOT WORK if the internal
+    //       float is bigger than a double
     double val = midflt_ieee_to_dbl(self);
     fprintf(out, "%f", fabs(val));
 }
