@@ -636,7 +636,8 @@ static bool ieee_addsub_special_cases(IEEE *a, const IEEE *b, bool sub)
     } else if (sub && midflt_ieee_eq(a, b)) {
         // x - x = +0 if x is a normal value or zero
         a->val_cat = MIDFLT_IEEE_VAL_ZERO;
-        a->is_neg = false;
+        // rounding down causes x - x to be equal to -0 instead of 0
+        a->is_neg = b->rounding == MIDFLT_ROUND_DOWN;
     } else {
         return false;
     }
