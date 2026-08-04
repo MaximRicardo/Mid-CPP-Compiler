@@ -8,6 +8,7 @@
 #include "types.h"
 #include "utf8.h"
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <wchar.h>
 
@@ -320,41 +321,9 @@ static int hex_digit_to_num(char c)
     }
 }
 
-static struct mid_APInt read_intlit_hex(const char *str, mid_isize start,
-                                        mid_isize *out_end)
-{
-    auto ret = midint_zero(midtype_longlong_size * 8);
-
-    mid_isize i;
-    for (i = start; is_hex_digit(str[i]); ++i) {
-        midint_mul_uimm(&ret, 16);
-        midint_add_uimm(&ret, hex_digit_to_num(str[i]));
-    }
-
-    if (out_end)
-        *out_end = i;
-    return ret;
-}
-
 static bool is_bin_digit(char c)
 {
     return c == '0' || c == '1';
-}
-
-static struct mid_APInt read_intlit_bin(const char *str, mid_isize start,
-                                        mid_isize *out_end)
-{
-    auto ret = midint_zero(midtype_longlong_size * 8);
-
-    mid_isize i;
-    for (i = start; is_bin_digit(str[i]); ++i) {
-        midint_mul_uimm(&ret, 2);
-        midint_add_uimm(&ret, str[i] - '0');
-    }
-
-    if (out_end)
-        *out_end = i;
-    return ret;
 }
 
 static bool is_octal_digit(char c)
@@ -362,37 +331,111 @@ static bool is_octal_digit(char c)
     return c >= '0' && c <= '7';
 }
 
-static struct mid_APInt read_intlit_octal(const char *str, mid_isize start,
-                                          mid_isize *out_end)
+static bool is_dec_digit(char c)
 {
-    auto ret = midint_zero(midtype_longlong_size * 8);
+    return isdigit(c);
+}
+
+static bool is_valid_digit(char c, int base)
+{
+    if (base == 2)
+        return is_bin_digit(c);
+    else if (base == 8)
+        return is_octal_digit(c);
+    else if (base == 10)
+        return is_dec_digit(c);
+    else if (base == 16)
+        return is_hex_digit(c);
+    else
+        MID_CRASH("unsupported base");
+}
+
+static void read_intlit_overflow(struct mid_APInt *accum,
+                                 struct mid_APInt *prev,
+                                 struct mid_APInt *div_res, int base)
+{
+    midint_assign(accum, prev);
+
+    // we need to increment the width by at least enough to hold the result of
+    // the next multiplication, tho preferably more
+    i32 bits_inc = MID_MAX(midtype_longlong_size * 8, ceil(log2(base)));
+    i32 new_bits = accum->n_bits + bits_inc;
+
+    midint_ext(accum, new_bits, false);
+    midint_ext(prev, new_bits, false);
+    midint_ext(div_res, new_bits, false);
+}
+
+static struct mid_APInt read_intlit_common(const char *str, mid_isize start,
+                                           mid_isize *out_end, int base)
+{
+    auto accum = midint_zero(midtype_longlong_size * 8);
+    auto prev = midint_copy(&accum);
+
+    // cached to prevent unnecessary allocations
+    auto div_res = midint_alloc(accum.n_bits);
 
     mid_isize i;
-    for (i = start; is_octal_digit(str[i]); ++i) {
-        midint_mul_uimm(&ret, 8);
-        midint_add_uimm(&ret, str[i] - '0');
+    for (i = start; is_valid_digit(str[i], base); ++i) {
+        midint_mul_uimm(&accum, base);
+
+        // detecting mul overflow
+        // let x = a * b,
+        // if a != 0 and x / a != b then the multiplication overflowed
+        if (!midint_is_zero(&prev)) {
+            midint_assign(&div_res, &accum);
+            midint_udiv(&div_res, &prev);
+            if (!midint_is_eq_uimm(&div_res, base)) {
+                read_intlit_overflow(&accum, &prev, &div_res, base);
+                --i;
+                continue;
+            }
+        }
+
+        midint_assign(&prev, &accum);
+
+        midint_add_uimm(&accum,
+                        base == 16 ? hex_digit_to_num(str[i]) : str[i] - '0');
+
+        if (midint_is_ult(&accum, &prev)) {
+            read_intlit_overflow(&accum, &prev, &div_res, base);
+            --i;
+            continue;
+        }
+
+        midint_assign(&prev, &accum);
     }
+
+    mid_APInt_deinit(&div_res);
+    mid_APInt_deinit(&prev);
 
     if (out_end)
         *out_end = i;
-    return ret;
+    return accum;
+}
+
+static struct mid_APInt read_intlit_hex(const char *str, mid_isize start,
+                                        mid_isize *out_end)
+{
+    return read_intlit_common(str, start, out_end, 16);
+}
+
+static struct mid_APInt read_intlit_bin(const char *str, mid_isize start,
+                                        mid_isize *out_end)
+{
+    return read_intlit_common(str, start, out_end, 2);
+}
+
+static struct mid_APInt read_intlit_octal(const char *str, mid_isize start,
+                                          mid_isize *out_end)
+{
+    return read_intlit_common(str, start, out_end, 8);
 }
 
 static struct mid_APInt read_intlit_decimal(const char *str, mid_isize start,
                                             mid_isize *out_end)
 {
-    // TODO: grow ret so numbers bigger than a long long can fit
-    auto ret = midint_zero(midtype_longlong_size * 8);
-
-    mid_isize i;
-    for (i = start; isdigit(str[i]); ++i) {
-        midint_mul_uimm(&ret, 10);
-        midint_add_uimm(&ret, str[i] - '0');
-    }
-
-    if (out_end)
-        *out_end = i;
-    return ret;
+    return read_intlit_common(str, start, out_end, 10);
 }
 
 struct midlit_ReadIntLitInfo
@@ -417,10 +460,6 @@ midlit_read_intlit(const char *str, mid_isize start, mid_isize *out_end)
         ret.base = 10;
         ret.value = read_intlit_decimal(str, start, out_end);
     }
-
-    printf("parsed val = ");
-    midint_log(&ret.value, stdout, false);
-    printf("\n");
 
     return ret;
 }

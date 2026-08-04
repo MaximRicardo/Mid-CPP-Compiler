@@ -8,5 +8,5 @@ int main()
     auto b_int = 0x123;
     auto b_uint = 0xdeadbeef;
     auto b_long = 0x8deadbeef;
-    auto b_ulong = 0xdeadbeefdeadbeef;
+    auto b_ulong = 0x8deadbeefdeadbeef;
 }
