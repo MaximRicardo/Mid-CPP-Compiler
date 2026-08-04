@@ -11,19 +11,20 @@ add_dependencies(mcppc mcppc-lib)
 # add_compile_options(-Wall -Wextra -Wpedantic -std=c23 -fno-strict-aliasing)
 
 #For debugging
-target_compile_options(mcppc PRIVATE -Wall -Wextra -Wpedantic -std=c23 -ggdb3 -fsanitize=address -fno-strict-aliasing)
-target_compile_options(mcppc-lib PRIVATE -Wall -Wextra -Wpedantic -std=c23 -ggdb3 -fsanitize=address -fno-strict-aliasing)
-target_link_options(mcppc PRIVATE -fsanitize=address)
-target_link_options(mcppc-lib PRIVATE -fsanitize=address)
+target_compile_options(mcppc-lib PUBLIC -Wall -Wextra -Wpedantic -std=c23 -ggdb3 -fsanitize=address -fno-strict-aliasing)
+target_link_options(mcppc-lib PUBLIC -fsanitize=address)
 
 # Find the libraries that correspond to the LLVM components
 # that we wish to use
 llvm_map_components_to_libnames(llvm_libs core analysis target x86info x86targetmca x86disassembler x86desc x86codegen x86asmparser)
 
-target_link_libraries(mcppc PRIVATE ${llvm_libs} mcppc-lib)
-target_link_libraries(mcppc-lib PRIVATE ${llvm_libs})
-target_include_directories(mcppc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
-target_include_directories(mcppc-lib PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_link_libraries(mcppc PRIVATE mcppc-lib)
+target_link_libraries(mcppc-lib PUBLIC ${llvm_libs})
+target_include_directories(mcppc-lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 # target_include_directories(mcppc SYSTEM PRIVATE "/usr/include/llvm-c-20" "/usr/include/llvm-20")
-target_compile_definitions(mcppc PRIVATE MIDGEN_DYNARRAY_DEFAULT_SIZE_TYPE=mid_isize MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE=mid_isize)
-target_compile_definitions(mcppc-lib PRIVATE MIDGEN_DYNARRAY_DEFAULT_SIZE_TYPE=mid_isize MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE=mid_isize)
+target_compile_definitions(mcppc-lib PUBLIC
+    MIDGEN_DYNARRAY_DEFAULT_SIZE_TYPE=mid_isize
+    MIDGEN_BUMPALLOC_DEFAULT_SIZE_TYPE=mid_isize
+    #MIDPAR_DEBUG_LOG_NODES    # enable to print basic info about AST nodes
+    #MIDPAR_DEBUG_LOG_CALLS     # enable to print basic info about func calls
+)

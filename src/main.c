@@ -186,8 +186,10 @@ int main(int argc, char **argv)
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
 
+    /*
     test_apfloat();
     MID_CRASH("asdf");
+    */
 
     midcmd_init_args(argc, argv);
 

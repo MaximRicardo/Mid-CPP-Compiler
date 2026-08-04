@@ -19,8 +19,11 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "sema/scope.h"
-#include <stdio.h>
 #include <string.h>
+
+#ifdef MIDPAR_DEBUG_LOG_NODES
+#include <stdio.h>
+#endif
 
 void midpar_ASTNode_deinit(struct midpar_ASTNode *self)
 {
@@ -171,56 +174,62 @@ struct midpar_ASTNode *midpar_parse_node(const struct midlex_Token *toks,
                                          struct midpar_Allocators *allocs,
                                          struct mid_DiagVec *diags)
 {
+#ifdef MIDPAR_DEBUG_LOG_NODES
+#define LOG_NODE(x) x
+#else
+#define LOG_NODE(x)
+#endif
+
     struct midpar_ASTNode *ret;
     midgen_bumpmalloc(&allocs->ast, &ret);
     *ret = (struct midpar_ASTNode){.start = &toks[start], .parent = parent};
 
-    printf("AST START AT %d:%d\n", ret->start->pos.line,
-           ret->start->pos.column);
+    LOG_NODE(printf("AST START AT %d:%d\n", ret->start->pos.line,
+                    ret->start->pos.column));
 
     mid_isize check_type = skip_typequals(toks, start);
     mid_isize end;
     bool check_semi = true;
     if (is_class_start(toks[check_type].type)) {
-        printf("CLASS NODE\n");
+        LOG_NODE(printf("CLASS NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_CLASS;
         end = midpar_parse_class(&ret->class_, scope, toks, start,
                                  flags.skip_def, allocs, diags);
     } else if (flags.is_field && is_ctor_start(toks, check_type, parent)) {
-        printf("CTOR NODE\n");
+        LOG_NODE(printf("CTOR NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_FUNC_DECL;
         end = midpar_parse_tor(&ret->func_decl, toks, start, scope,
                                flags.skip_def, allocs, diags);
         check_semi = !ret->func_decl.has_def;
     } else if (flags.is_field && is_dtor_start(&toks[check_type])) {
-        printf("DTOR NODE\n");
+        LOG_NODE(printf("DTOR NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_FUNC_DECL;
         end = midpar_parse_tor(&ret->func_decl, toks, start, scope,
                                flags.skip_def, allocs, diags);
         check_semi = !ret->func_decl.has_def;
     } else if (toks[check_type].type == MIDLEX_TOKENTYPE_NAMESPACE) {
-        printf("NAMESPACE NODE\n");
+        LOG_NODE(printf("NAMESPACE NODE\n"));
         check_semi = false;
         ret->type = MIDPAR_ASTNODETYPE_NAMESPACE;
         end = midpar_parse_namespace(&ret->nmspace, scope, toks, start, allocs,
                                      diags);
     } else if (toks[start].type == MIDLEX_TOKENTYPE_RETURN) {
-        printf("RETURN NODE\n");
+        LOG_NODE(printf("RETURN NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_RETURN;
         end = midpar_parse_return(&ret->ret, toks, start, scope, allocs, diags);
     } else if (toks[start].type == MIDLEX_TOKENTYPE_TEMPLATE) {
-        printf("TEMPLATE NODE\n");
+        LOG_NODE(printf("TEMPLATE NODE\n"));
         check_semi = false;
         ret->type = MIDPAR_ASTNODETYPE_TMPLT;
         end =
             midpar_parse_tmplt(&ret->tmplt, scope, toks, start, allocs, diags);
     } else if (midpar_valid_type_start(toks, start, scope)) {
-        printf("DECL NODE\n");
+        LOG_NODE(printf("DECL NODE\n"));
         bool mvp;
         bool is_func =
             midpar_decl_is_func(toks, start, scope, allocs, diags, &mvp);
         if (is_func) {
-            printf("mvp = %d\n", mvp);
+            LOG_NODE(printf("mvp = %d\n", mvp));
             ret->type = MIDPAR_ASTNODETYPE_FUNC_DECL;
             end = midpar_parse_func_decl(&ret->func_decl, toks, start, scope,
                                          flags.skip_def, allocs, diags);
@@ -234,7 +243,7 @@ struct midpar_ASTNode *midpar_parse_node(const struct midlex_Token *toks,
                 scope, allocs, diags);
         }
     } else {
-        printf("EXPR NODE\n");
+        LOG_NODE(printf("EXPR NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_EXPR;
         ret->expr = midpar_parse_expr(toks, start, MIDPAR_DEFAULT_ENDTYPES,
                                       &end, scope, diags);
@@ -249,8 +258,10 @@ struct midpar_ASTNode *midpar_parse_node(const struct midlex_Token *toks,
 
     if (out_end)
         *out_end = end;
-    printf("AST END\n");
+    LOG_NODE(printf("AST END\n"));
     return ret;
+
+#undef LOG_NODE
 }
 
 bool midpar_node_is_templated(const struct midpar_ASTNode *node)

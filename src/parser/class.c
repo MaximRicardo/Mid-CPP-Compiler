@@ -358,13 +358,19 @@ static mid_isize parse_class_body(struct midpar_Class *self,
 
     mid_isize rcurly = find_rcurly(lcurly, toks, diags);
 
+#ifdef MIDPAR_DEBUG_LOG_NODES
     printf("CLASS DECLS PASS\n");
+#endif
+
     parse_decls(self, toks, lcurly, rcurly, allocs, diags);
 
+#ifdef MIDPAR_DEBUG_LOG_NODES
     printf("CLASS DEFS PASS\n");
     printf("%" PRIisz " pub childs, %" PRIisz " priv childs, %" PRIisz
            " prot childs\n",
            self->pub_childs.len, self->priv_childs.len, self->prot_childs.len);
+#endif
+
     parse_defs(self, toks, allocs, diags);
 
     return rcurly + 1;

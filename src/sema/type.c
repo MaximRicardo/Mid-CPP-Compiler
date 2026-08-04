@@ -465,8 +465,10 @@ static void set_func_call_node(struct midpar_Expr *expr,
                     lhs->ret.func.name, &expr->info.args.arr[1],
                     expr->info.args.len - 1, res, qualified, diags);
         } else {
+#ifdef MIDPAR_DEBUG_LOG_CALLS
             printf("calling func at %d:%d\n", expr->node->start->pos.line,
                    expr->node->start->pos.column);
+#endif
         }
     } else if (lhs->ret.spec == MIDPAR_TYPESPEC_FPTR) {
         MID_CRASH("calling function ptrs not implemented");
@@ -1093,10 +1095,12 @@ static void typecheck_op_expr(struct midpar_Expr *expr,
 static void typecheck_overloaded_op(struct midpar_Expr *expr,
                                     struct midpar_FuncDecl *overload)
 {
+#ifdef MIDPAR_DEBUG_LOG_CALLS
     printf("found op overload at %d:%d\n", expr->tok->pos.line,
            expr->tok->pos.column);
     printf("op overload decl at %d:%d\n", MIDPAR_GET_START(overload)->pos.line,
            MIDPAR_GET_START(overload)->pos.column);
+#endif
 
     expr->overloaded = true;
     expr->node = MIDPAR_GET_NODE(overload);
