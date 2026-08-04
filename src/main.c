@@ -19,7 +19,9 @@
 #include "symbol.h"
 #include "types.h"
 #include <assert.h>
+#include <float.h>
 #include <locale.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -160,11 +162,21 @@ static void test_mangling(const struct midsema_Scope *scope)
 
 static void test_apfloat()
 {
-    auto a = midflt_init(329547.0, midtype_double_kind, midtype_default_rmode);
+    auto a = midflt_init(329547.34, midtype_double_kind, midtype_default_rmode);
 
-    midflt_approx_ln(&a);
+    midflt_ln(&a);
 
     midflt_print(stdout, "a = {}\n", &a);
+
+    printf("mantissa = ");
+    midint_log_hex(&a.ieee.mant, stdout);
+    printf("\n");
+
+    double d = log(329547.34);
+    printf("hardware float = %.*lf\n", DECIMAL_DIG, d);
+    u64 mant = (*(unsigned long long *)&d) & ((1ULL << 53) - 1);
+    mant |= 1ULL << 52;
+    printf("mantissa = %" PRIx64 "\n", mant);
 
     mid_APFloat_deinit(&a);
 }

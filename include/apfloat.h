@@ -10,9 +10,6 @@
 extern "C" {
 #endif
 
-// higher nr of iterations means higher precision but lower performance
-#define MIDFLT_APPROX_LOG2_N_DEFAULT_ITERATIONS 9
-
 enum midflt_Rounding {
     MIDFLT_ROUND_NEAREST_TIES_EVEN,
     MIDFLT_ROUND_NEAREST_TIES_AWAY,
@@ -38,7 +35,7 @@ enum midflt_IEEEValCat {
 struct midflt_IEEE {
     struct mid_APInt mant; // mantissa (includes the implicit 1 in front of the
                            // decimal point)
-    i64 exp;               // exponent
+    i64 exp;               // unbiased exponent
 
     enum midflt_IEEEKind kind;
     enum midflt_Rounding rounding;  // current rounding mode
@@ -76,8 +73,12 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b);
 void midflt_ieee_assign(struct midflt_IEEE *dest,
                         const struct midflt_IEEE *src);
-void midflt_ieee_approx_log2(struct midflt_IEEE *self);
-void midflt_ieee_approx_ln(struct midflt_IEEE *self);
+// n_iters      - the higher the better the precision
+void midflt_ieee_approx_log2(struct midflt_IEEE *self, int n_iters);
+// n_iters      - the higher the better the precision
+void midflt_ieee_approx_ln(struct midflt_IEEE *self, int n_iters);
+void midflt_ieee_log2(struct midflt_IEEE *self);
+void midflt_ieee_ln(struct midflt_IEEE *self);
 
 // not in place operations
 struct midflt_IEEE midflt_ieee_nip_log2(const struct midflt_IEEE *self);
@@ -133,8 +134,12 @@ void midflt_sub(struct mid_APFloat *a, const struct mid_APFloat *b);
 void midflt_mul(struct mid_APFloat *a, const struct mid_APFloat *b);
 void midflt_div(struct mid_APFloat *a, const struct mid_APFloat *b);
 void midflt_assign(struct mid_APFloat *a, const struct mid_APFloat *b);
-void midflt_approx_log2(struct mid_APFloat *self);
-void midflt_approx_ln(struct mid_APFloat *self);
+// n_iters      - the higher the better the precision
+void midflt_approx_log2(struct mid_APFloat *self, int n_iters);
+// n_iters      - the higher the better the precision
+void midflt_approx_ln(struct mid_APFloat *self, int n_iters);
+void midflt_log2(struct mid_APFloat *self);
+void midflt_ln(struct mid_APFloat *self);
 
 bool midflt_eq(const struct mid_APFloat *a, const struct mid_APFloat *b);
 bool midflt_gt(const struct mid_APFloat *a, const struct mid_APFloat *b);

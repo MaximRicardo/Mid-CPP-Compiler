@@ -249,7 +249,7 @@ void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out)
     // TODO: make this not rely on double cuz it WILL NOT WORK if the internal
     //       float is bigger than a double
     double val = midflt_ieee_to_dbl(self);
-    fprintf(out, "%f", fabs(val));
+    fprintf(out, "%.*lf", DECIMAL_DIG, fabs(val));
 }
 
 static bool ieee_should_inc_mant(Rounding mode, bool is_neg, bool guard,
@@ -257,15 +257,22 @@ static bool ieee_should_inc_mant(Rounding mode, bool is_neg, bool guard,
 {
     switch (mode) {
     case MIDFLT_ROUND_NEAREST_TIES_EVEN:
-    case MIDFLT_ROUND_NEAREST_TIES_AWAY:
-        if (!guard)
+        if (!round_)
+            // round_ marks the halfway point. if it's off then we're guaranteed
+            // to be closer to the lower number than the upper one
             return false;
-        else if (round_)
-            return true;
-        else if (sticky)
-            return true;
         else
-            return mode == MIDFLT_ROUND_NEAREST_TIES_AWAY;
+            // if sticky is high we always round up as we're closer to the next
+            // number.
+            // if guard is high then we also round up cuz rounding up takes
+            // priority over rounding down
+            return guard || sticky;
+
+    case MIDFLT_ROUND_NEAREST_TIES_AWAY:
+        // since round_ marks the halfway point between the next and previous
+        // value, and rounding up always takes priority regardless of the guard
+        // bit, all we need to know is if we're at the half way point or past it
+        return round_;
 
     case MIDFLT_ROUND_UP:
         return !is_neg && (round_ || sticky);
@@ -409,6 +416,8 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 
     a->exp += b->exp;
 
+    // TODO: reuse ieee_round_extra_mant_bits here for normalizing the result
+
     // we need to be able to hold twice the width of the mantissa in case
     // the multiplication overflows
     auto unnorm = midint_alloc(a->mant.n_bits * 2);
@@ -431,6 +440,8 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 
         if (ieee_should_inc_mant(a->rounding, a->is_neg, guard_bit, round_bit,
                                  sticky_bit)) {
+            // allocate an extra bit for carry
+            midint_ext(&unnorm, unnorm.n_bits + 1, false);
             midint_inc_bit(&unnorm, norm_shift);
             // rounding might have introduced another significant bit
             bits = midint_unsigned_sig_bits(&unnorm);
@@ -513,10 +524,16 @@ static void ieee_addsub_normalize_mant(IEEE *a)
         bool sticky_bit = zeroes < shift - 1;
 
         if (ieee_should_inc_mant(a->rounding, a->is_neg, guard_bit,
-                                 rounding_bit, sticky_bit))
+                                 rounding_bit, sticky_bit)) {
+            // allocate an extra bit for carry
+            midint_ext(&a->mant, a->mant.n_bits + 1, false);
             midint_inc_bit(&a->mant, shift);
+            unnorm_bits = midint_unsigned_sig_bits(&a->mant);
+            shift = unnorm_bits - norm_bits;
+        }
 
         midint_lshr_imm(&a->mant, shift);
+        midint_ext(&a->mant, norm_bits, false);
         a->exp += shift;
     } else if (unnorm_bits < norm_bits) {
         i32 shift = norm_bits - unnorm_bits;
@@ -1147,7 +1164,7 @@ static IEEE ieee_pow_neg_two(u32 m, IEEEKind kind, Rounding rounding)
 
 // n_iters      - the higher the number of iterations the higher the precision,
 //                at the cost of lower performance
-static IEEE ieee_approx_log2_base(IEEE *self, int n_iters)
+static IEEE ieee_approx_log2_base(const IEEE *self, int n_iters)
 {
     // TODO: use an init from uint function when i make one
     auto res = midflt_ieee_init(self->exp, self->kind, self->rounding);
@@ -1169,7 +1186,56 @@ static IEEE ieee_approx_log2_base(IEEE *self, int n_iters)
     return res;
 }
 
-void midflt_ieee_approx_log2(struct midflt_IEEE *self)
+// calculates the exact log2
+static IEEE ieee_log2_base(const IEEE *self)
+{
+    // TODO: use an init from uint function when i make one
+    auto res = midflt_ieee_init(self->exp, self->kind, self->rounding);
+    auto x = midflt_ieee_mantissa(self);
+
+    bool round_bit = false;
+    bool sticky_bit = false;
+    u32 m = 0;
+    while (true) {
+        m += ieee_log2_step(&x);
+
+        if (m > (u32)res.mant.n_bits) {
+            sticky_bit = true;
+            break;
+        } else if (m == (u32)res.mant.n_bits) {
+            round_bit = true;
+        } else {
+            auto tmp = ieee_pow_neg_two(m, self->kind, self->rounding);
+            midflt_ieee_add(&res, &tmp);
+            midflt_IEEE_deinit(&tmp);
+        }
+
+        if (midflt_ieee_is_one(&x))
+            break;
+    }
+
+    bool guard_bit = midint_get_bit(&res.mant, 0);
+    printf("guard = %d, round = %d, sticky = %d\n", guard_bit, round_bit,
+           sticky_bit);
+    if (ieee_should_inc_mant(res.rounding, res.is_neg, guard_bit, round_bit,
+                             sticky_bit)) {
+        // allocate an extra bit for carry
+        midint_ext(&res.mant, res.mant.n_bits + 1, false);
+        midint_inc_bit(&res.mant, 0);
+
+        if (midint_unsigned_sig_bits(&res.mant) == res.mant.n_bits) {
+            midint_lshr_imm(&res.mant, 1);
+            res.exp += 1;
+        }
+
+        midint_ext(&res.mant, res.mant.n_bits - 1, false);
+    }
+
+    midflt_IEEE_deinit(&x);
+    return res;
+}
+
+void midflt_ieee_approx_log2(struct midflt_IEEE *self, int n_iters)
 {
     if (self->val_cat == MIDFLT_IEEE_VAL_ZERO) {
         self->val_cat = MIDFLT_IEEE_VAL_INF;
@@ -1180,17 +1246,41 @@ void midflt_ieee_approx_log2(struct midflt_IEEE *self)
     } else if (self->is_neg) {
         self->val_cat = MIDFLT_IEEE_VAL_NAN;
     } else if (self->val_cat == MIDFLT_IEEE_VAL_NORMAL) {
-        auto tmp = ieee_approx_log2_base(
-            self, MIDFLT_APPROX_LOG2_N_DEFAULT_ITERATIONS);
+        auto tmp = ieee_approx_log2_base(self, n_iters);
         midflt_IEEE_deinit(self);
         *self = tmp;
     }
 }
 
-void midflt_approx_log2(struct mid_APFloat *self)
+void midflt_ieee_log2(struct midflt_IEEE *self)
+{
+    if (self->val_cat == MIDFLT_IEEE_VAL_ZERO) {
+        self->val_cat = MIDFLT_IEEE_VAL_INF;
+        self->is_neg = true;
+    } else if (self->val_cat == MIDFLT_IEEE_VAL_INF) {
+        if (self->is_neg)
+            self->val_cat = MIDFLT_IEEE_VAL_NAN;
+    } else if (self->is_neg) {
+        self->val_cat = MIDFLT_IEEE_VAL_NAN;
+    } else if (self->val_cat == MIDFLT_IEEE_VAL_NORMAL) {
+        auto tmp = ieee_log2_base(self);
+        midflt_IEEE_deinit(self);
+        *self = tmp;
+    }
+}
+
+void midflt_approx_log2(struct mid_APFloat *self, int n_iters)
 {
     if (midflt_kind_is_ieee(self->kind))
-        midflt_ieee_approx_log2(&self->ieee);
+        midflt_ieee_approx_log2(&self->ieee, n_iters);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+void midflt_log2(struct mid_APFloat *self)
+{
+    if (midflt_kind_is_ieee(self->kind))
+        midflt_ieee_log2(&self->ieee);
     else
         MID_CRASH("unsupported APFloat kind");
 }
@@ -1260,20 +1350,38 @@ static IEEE ieee_ln2(IEEEKind kind, Rounding rounding)
     return ret;
 }
 
-void midflt_ieee_approx_ln(struct midflt_IEEE *self)
+void midflt_ieee_approx_ln(struct midflt_IEEE *self, int n_iters)
 {
     auto ln2 = ieee_ln2(self->kind, self->rounding);
 
-    midflt_ieee_approx_log2(self);
+    midflt_ieee_approx_log2(self, n_iters);
     midflt_ieee_mul(self, &ln2);
 
     midflt_IEEE_deinit(&ln2);
 }
 
-void midflt_approx_ln(struct mid_APFloat *self)
+void midflt_ieee_ln(struct midflt_IEEE *self)
+{
+    auto ln2 = ieee_ln2(self->kind, self->rounding);
+
+    midflt_ieee_log2(self);
+    midflt_ieee_mul(self, &ln2);
+
+    midflt_IEEE_deinit(&ln2);
+}
+
+void midflt_approx_ln(struct mid_APFloat *self, int n_iters)
 {
     if (midflt_kind_is_ieee(self->kind))
-        midflt_ieee_approx_ln(&self->ieee);
+        midflt_ieee_approx_ln(&self->ieee, n_iters);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
+void midflt_ln(struct mid_APFloat *self)
+{
+    if (midflt_kind_is_ieee(self->kind))
+        midflt_ieee_ln(&self->ieee);
     else
         MID_CRASH("unsupported APFloat kind");
 }
