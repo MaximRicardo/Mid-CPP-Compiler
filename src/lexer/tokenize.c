@@ -463,8 +463,10 @@ static struct NumLit read_numlit(const char *src, mid_isize start,
         break;
     }
 
+    // TODO: add support for parsing arbitrarily large floats as rn this breaks
+    //       on floats larger than the implementation's double
     case NUMLIT_FLOAT:
-        ret.val.flt = midflt_init(strtof(&src[start], NULL), midtype_float_kind,
+        ret.val.flt = midflt_init(strtod(&src[start], NULL), midtype_float_kind,
                                   midtype_default_rmode);
         break;
 

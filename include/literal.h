@@ -59,6 +59,7 @@ struct midlit_ReadIntLitInfo {
     u64 value;
     int base;
 };
+// TODO: add support for APInt
 struct midlit_ReadIntLitInfo
 midlit_read_intlit(const char *str, mid_isize start, mid_isize *out_end);
 
