@@ -21,7 +21,6 @@
 #include <assert.h>
 #include <float.h>
 #include <locale.h>
-#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -196,19 +195,11 @@ static void test_apfloat()
 
 static void test_apfloat()
 {
-    auto a =
-        midflt_init(FLT_TRUE_MIN, midtype_float_kind, midtype_default_rmode);
-    auto b = midflt_init(2.f, midtype_float_kind, midtype_default_rmode);
+    auto num = midint_init(256, -1, true);
+    auto flt =
+        midflt_init_sint(&num, midtype_float_kind, midtype_default_rmode);
 
-    midflt_print(stdout, "a = {}\nb = {}\n", &a, &b);
-
-    for (int i = 0; i < 23; ++i)
-        midflt_div(&a, &b);
-
-    midflt_print(stdout, "product = {}\n", &a);
-    printf("mant = ");
-    midint_log_hex(&a.ieee.mant, stdout);
-    printf("\n");
+    midflt_print(stdout, "flt = {}\n", &flt);
 }
 
 static void init_modules()

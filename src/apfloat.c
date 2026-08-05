@@ -213,8 +213,13 @@ struct midflt_IEEE midflt_ieee_init(double val, enum midflt_IEEEKind kind,
     }
 
     ret.exp = floor(log2(fabs(val)));
-    assert(ret.exp <= ieee_exp_max(ret.kind));
-    assert(ret.exp >= ieee_eff_exp_min(ret.kind));
+    if (ret.exp > ieee_exp_max(ret.kind)) {
+        ret.val_cat = MIDFLT_IEEE_VAL_INF;
+        return ret;
+    } else if (ret.exp < ieee_eff_exp_min(ret.kind)) {
+        ret.val_cat = MIDFLT_IEEE_VAL_ZERO;
+        return ret;
+    }
 
     double mant = fabs(val) * exp2(-ret.exp);
     assert(mant >= 1.0 && mant < 2.0);
@@ -229,6 +234,63 @@ struct midflt_IEEE midflt_ieee_init(double val, enum midflt_IEEEKind kind,
         if (digit_val < DBL_TRUE_MIN * 2.0)
             break;
     }
+
+    ieee_post_op_correct(&ret);
+    return ret;
+}
+
+struct midflt_IEEE midflt_ieee_init_uint(const struct mid_APInt *val,
+                                         enum midflt_IEEEKind kind,
+                                         enum midflt_Rounding rounding)
+{
+    if (midint_is_zero(val))
+        return midflt_ieee_zero(false, kind, rounding);
+
+    auto ret = midflt_ieee_alloc(kind, rounding);
+
+    ret.val_cat = MIDFLT_IEEE_VAL_NORMAL;
+    ret.is_neg = false;
+    ret.mant = midint_copy(val);
+
+    int32_t val_bits = midint_unsigned_sig_bits(&ret.mant);
+    ret.exp = val_bits - 1;
+
+    if (ieee_mant_n_bits(ret.kind) > val_bits)
+        midint_shl_imm(&ret.mant, ieee_mant_n_bits(ret.kind) - val_bits);
+    else if (ieee_mant_n_bits(ret.kind) < ret.exp + 1)
+        midint_lshr_imm(&ret.mant, val_bits - ieee_mant_n_bits(ret.kind));
+
+    midint_ext(&ret.mant, ieee_mant_n_bits(ret.kind), false);
+
+    ieee_post_op_correct(&ret);
+    return ret;
+}
+
+struct midflt_IEEE midflt_ieee_init_sint(const struct mid_APInt *val,
+                                         enum midflt_IEEEKind kind,
+                                         enum midflt_Rounding rounding)
+{
+    if (midint_is_zero(val))
+        return midflt_ieee_zero(false, kind, rounding);
+
+    auto ret = midflt_ieee_alloc(kind, rounding);
+    ret.val_cat = MIDFLT_IEEE_VAL_NORMAL;
+
+    ret.is_neg = midint_get_sign_bit(val);
+
+    ret.mant = midint_copy(val);
+    if (ret.is_neg)
+        midint_negate(&ret.mant);
+
+    int32_t val_bits = midint_unsigned_sig_bits(&ret.mant);
+    ret.exp = val_bits - 1;
+
+    if (ieee_mant_n_bits(ret.kind) > val_bits)
+        midint_shl_imm(&ret.mant, ieee_mant_n_bits(ret.kind) - val_bits);
+    else if (ieee_mant_n_bits(ret.kind) < ret.exp + 1)
+        midint_lshr_imm(&ret.mant, val_bits - ieee_mant_n_bits(ret.kind));
+
+    midint_ext(&ret.mant, ieee_mant_n_bits(ret.kind), false);
 
     ieee_post_op_correct(&ret);
     return ret;
@@ -883,19 +945,19 @@ double midflt_ieee_to_dbl(const struct midflt_IEEE *self)
         return self->is_neg ? -0.0 : 0.0;
 
     if (self->val_cat == MIDFLT_IEEE_VAL_NAN)
-        // 0 / 0 = -nan
-        return self->is_neg ? 0.0 / 0.0 : -(0.0 / 0.0);
+        return self->is_neg ? -nan(nullptr) : nan(nullptr);
     else if (self->val_cat == MIDFLT_IEEE_VAL_INF)
-        // 1 / 0 = inf
-        return self->is_neg ? -(1.0 / 0.0) : 1.0 / 0.0;
+        return self->is_neg ? -INFINITY : INFINITY;
     else if (self->val_cat == MIDFLT_IEEE_VAL_ZERO)
         return self->is_neg ? -0.0 : 0.0;
 
-    // these assertions rely on the radix being the same base as the internal
-    // float, which is base 2
+    // relies on the radix of DBL_MAX_EXP and DBL_MIN_EXP being the same base as
+    // the internal float, which is base 2
     static_assert(FLT_RADIX == 2);
-    assert(self->exp <= DBL_MAX_EXP);
-    assert(self->exp >= DBL_MIN_EXP);
+    if (self->exp > DBL_MAX_EXP)
+        return self->is_neg ? -INFINITY : INFINITY;
+    else if (self->exp < DBL_MIN_EXP)
+        return self->is_neg ? -0.0 : 0.0;
 
     double res = pow(2.0, self->exp);
 
@@ -1096,6 +1158,36 @@ struct mid_APFloat midflt_init(double val, enum midflt_Kind kind,
 
     if (midflt_kind_is_ieee(ret.kind))
         ret.ieee = midflt_ieee_init(val, kind_to_ieee_kind(ret.kind), rounding);
+    else
+        MID_CRASH("unsupported APFloat kind");
+
+    return ret;
+}
+
+struct mid_APFloat midflt_init_uint(const struct mid_APInt *val,
+                                    enum midflt_Kind kind,
+                                    enum midflt_Rounding rounding)
+{
+    struct mid_APFloat ret = {.kind = kind};
+
+    if (midflt_kind_is_ieee(ret.kind))
+        ret.ieee =
+            midflt_ieee_init_uint(val, kind_to_ieee_kind(ret.kind), rounding);
+    else
+        MID_CRASH("unsupported APFloat kind");
+
+    return ret;
+}
+
+struct mid_APFloat midflt_init_sint(const struct mid_APInt *val,
+                                    enum midflt_Kind kind,
+                                    enum midflt_Rounding rounding)
+{
+    struct mid_APFloat ret = {.kind = kind};
+
+    if (midflt_kind_is_ieee(ret.kind))
+        ret.ieee =
+            midflt_ieee_init_sint(val, kind_to_ieee_kind(ret.kind), rounding);
     else
         MID_CRASH("unsupported APFloat kind");
 

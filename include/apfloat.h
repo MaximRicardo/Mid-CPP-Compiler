@@ -47,6 +47,12 @@ struct midflt_IEEE {
 void midflt_IEEE_deinit(struct midflt_IEEE *self);
 struct midflt_IEEE midflt_ieee_init(double val, enum midflt_IEEEKind kind,
                                     enum midflt_Rounding rounding);
+struct midflt_IEEE midflt_ieee_init_uint(const struct mid_APInt *val,
+                                         enum midflt_IEEEKind kind,
+                                         enum midflt_Rounding rounding);
+struct midflt_IEEE midflt_ieee_init_sint(const struct mid_APInt *val,
+                                         enum midflt_IEEEKind kind,
+                                         enum midflt_Rounding rounding);
 struct midflt_IEEE midflt_ieee_copy(const struct midflt_IEEE *src);
 struct midflt_IEEE midflt_ieee_alloc(enum midflt_IEEEKind kind,
                                      enum midflt_Rounding rounding);
@@ -118,6 +124,12 @@ struct mid_APFloat {
 void mid_APFloat_deinit(struct mid_APFloat *self);
 struct mid_APFloat midflt_init(double val, enum midflt_Kind kind,
                                enum midflt_Rounding rounding);
+struct mid_APFloat midflt_init_uint(const struct mid_APInt *val,
+                                    enum midflt_Kind kind,
+                                    enum midflt_Rounding rounding);
+struct mid_APFloat midflt_init_sint(const struct mid_APInt *val,
+                                    enum midflt_Kind kind,
+                                    enum midflt_Rounding rounding);
 struct mid_APFloat midflt_copy(const struct mid_APFloat *src);
 
 bool midflt_compatible(const struct mid_APFloat *a,
