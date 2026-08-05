@@ -8,16 +8,16 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/tokenize.h"
-#include "macros.h"
+#include "literal.h"
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/ast_log.h"
 #include "parser/type.h"
 #include "position.h"
+#include "sema/expr_eval.h"
 #include "sema/scope.h"
 #include "symbol.h"
-#include "types.h"
 #include <assert.h>
 #include <float.h>
 #include <locale.h>
@@ -159,51 +159,6 @@ static void test_mangling(const struct midsema_Scope *scope)
 }
 */
 
-/*
-static void test_apfloat()
-{
-    auto a = midflt_init(329547.34, midtype_double_kind,
-                         midtype_default_rmode);
-
-    midflt_log10(&a);
-
-    midflt_print(stdout, "a = {}\n", &a);
-
-    printf("mantissa = ");
-    midint_log_hex(&a.ieee.mant, stdout);
-    printf("\n");
-
-    {
-        double d = log10(329547.34);
-        printf("hardware double = %.*lf\n", DECIMAL_DIG, d);
-        uint64_t mant = (*(uint64_t *)&d) & ((1ULL << 53) - 1);
-        mant |= 1ULL << 52;
-        printf("mantissa = %" PRIx64 "\n", mant);
-    }
-
-    {
-        float d = log10f(329547.34);
-        printf("hardware float = %.*f\n", DECIMAL_DIG, d);
-        uint32_t mant = (*(uint32_t *)&d) & ((1ULL << 24) - 1);
-        mant |= 1ULL << 23;
-        printf("mantissa = %" PRIx32 "\n", mant);
-    }
-
-    mid_APFloat_deinit(&a);
-}
-*/
-
-static void test_apfloat()
-{
-    auto flt =
-        midflt_init(10000000001.99, midtype_float_kind, midtype_default_rmode);
-    auto num = midflt_to_sint(&flt);
-
-    printf("num = ");
-    midint_log(&num, stdout, true);
-    printf("\n");
-}
-
 static void init_modules()
 {
     midflt_init_module();
@@ -215,9 +170,6 @@ int main(int argc, char **argv)
     setlocale(LC_CTYPE, "en_US.UTF-8");
 
     init_modules();
-
-    test_apfloat();
-    MID_CRASH("asdf");
 
     midcmd_init_args(argc, argv);
 
@@ -259,6 +211,14 @@ int main(int argc, char **argv)
 
     if (midcmd_get_args()->ast_out)
         log_ast(midcmd_get_args()->ast_out, &root);
+
+    struct midpar_Expr *expr = &root.root.arr[0]->expr;
+    printf("is constexpr = %d\n", midsema_expr_is_constexpr(expr));
+    auto value = midsema_eval_expr(expr, &scope);
+    printf("value kind = %d\n", value.kind);
+    printf("value = ");
+    midlit_tagged_print(&value);
+    printf("\n");
 
     /*
     test_mangling(&scope);

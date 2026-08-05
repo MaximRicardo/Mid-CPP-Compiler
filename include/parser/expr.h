@@ -28,6 +28,8 @@ bool midpar_is_comp_op(enum midpar_ExprType type);
 bool midpar_is_assignment(enum midpar_ExprType type);
 bool midpar_is_memb_sel(enum midpar_ExprType type);
 
+enum midlit_ValueKind midpar_lit_expr_value_kind(enum midpar_ExprType type);
+
 // goes from 0 to 15, where 15 is the highest precedence
 int32_t midpar_op_precedence(enum midpar_ExprType op);
 bool midpar_op_ltr_assoc(enum midpar_ExprType op);
@@ -49,8 +51,9 @@ midgen_dynarray_struct_named(midpar_ExprVec, struct midpar_Expr);
 struct midpar_Expr {
     union {
         struct midpar_ExprVec args;
-        union midlit_Value val; // NOTE: NON-OWNING! LIFETIME IS MANAGED BY
-                                //       STR_LITS TABLE
+        struct midlit_TaggedValue
+            val; // NOTE: STR LITS ARE NON-OWNING! LIFETIME IS MANAGED BY
+                 //       STR_LITS TABLE
         const char *ident;
     } info;
 

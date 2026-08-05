@@ -12,6 +12,51 @@
 #include <stdio.h>
 #include <wchar.h>
 
+void midlit_Value_deinit(union midlit_Value *self, enum midlit_ValueKind kind)
+{
+    switch (kind) {
+    case MIDLIT_VALUE_SIGNED_INT:
+    case MIDLIT_VALUE_UNSIGNED_INT:
+        mid_APInt_deinit(&self->i);
+        break;
+
+    case MIDLIT_VALUE_FLOAT:
+        mid_APFloat_deinit(&self->flt);
+        break;
+
+    case MIDLIT_VALUE_STR:
+        MID_CRASH("string literals are deinit-ed by the str lits table");
+    }
+}
+
+void midlit_TaggedValue_deinit(struct midlit_TaggedValue *self)
+{
+    midlit_Value_deinit(&self->v, self->kind);
+}
+
+struct midlit_TaggedValue
+midlit_copy_value(const struct midlit_TaggedValue *src)
+{
+    struct midlit_TaggedValue ret = {.kind = src->kind};
+
+    switch (src->kind) {
+    case MIDLIT_VALUE_SIGNED_INT:
+    case MIDLIT_VALUE_UNSIGNED_INT:
+        ret.v.i = midint_copy(&src->v.i);
+        break;
+
+    case MIDLIT_VALUE_FLOAT:
+        ret.v.flt = midflt_copy(&src->v.flt);
+        break;
+
+    case MIDLIT_VALUE_STR:
+        ret.v.str = src->v.str;
+        break;
+    }
+
+    return ret;
+}
+
 int midlit_strtype_char_size(enum midlit_StringType type)
 {
     switch (type) {
@@ -99,70 +144,113 @@ mid_isize midlit_strlit_len(const struct midlit_String *strlit)
     }
 }
 
-void midlit_fprint(FILE *out, union midlit_Value val, enum midpar_ExprType type)
+void midlit_fprint_strlit(FILE *out, const struct midlit_String *self)
+{
+    switch (self->type) {
+    case MIDLIT_STRINGTYPE_CHAR:
+        fprintf(out, "\"%s\"", self->c);
+        break;
+
+    case MIDLIT_STRINGTYPE_WCHAR:
+        fputc('"', out);
+        static_assert(midtype_wchar_size == 2 || midtype_wchar_size == 4);
+        if (midtype_wchar_size == 2)
+            midutf8_fprint_str16(out, (void *)self->wc);
+        else
+            midutf8_fprint_str32(out, (void *)self->wc);
+        fputc('"', out);
+        break;
+
+    case MIDLIT_STRINGTYPE_CHAR16:
+        fputc('"', out);
+        midutf8_fprint_str16(out, self->c16);
+        fputc('"', out);
+        break;
+
+    case MIDLIT_STRINGTYPE_CHAR32:
+        fputc('"', out);
+        midutf8_fprint_str32(out, self->c32);
+        fputc('"', out);
+        break;
+    }
+}
+
+void midlit_print_strlit(const struct midlit_String *self)
+{
+    midlit_fprint_strlit(stdout, self);
+}
+
+void midlit_tagged_fprint(FILE *out, const struct midlit_TaggedValue *val)
+{
+    switch (val->kind) {
+    case MIDLIT_VALUE_SIGNED_INT:
+        midint_log(&val->v.i, out, true);
+        break;
+
+    case MIDLIT_VALUE_UNSIGNED_INT:
+        midint_log(&val->v.i, out, false);
+        break;
+
+    case MIDLIT_VALUE_FLOAT:
+        midflt_log(&val->v.flt, out);
+        break;
+
+    case MIDLIT_VALUE_STR:
+        midlit_fprint_strlit(out, &val->v.str);
+        break;
+    }
+}
+
+void midlit_tagged_print(const struct midlit_TaggedValue *val)
+{
+    midlit_tagged_fprint(stdout, val);
+}
+
+void midlit_fprint(FILE *out, const union midlit_Value *val,
+                   enum midpar_ExprType type)
 {
     switch (type) {
     case MIDPAR_EXPRTYPE_CHAR_LIT:
-        fprintf(out, "'%c'", (char)midint_to_uint(&val.i));
+        fprintf(out, "'%c'", (char)midint_to_uint(&val->i));
         break;
 
     case MIDPAR_EXPRTYPE_WCHAR_LIT:
-        fprintf(out, "'%C'", (wchar_t)midint_to_uint(&val.i));
+        fprintf(out, "'%C'", (wchar_t)midint_to_uint(&val->i));
         break;
 
     case MIDPAR_EXPRTYPE_CHAR16_LIT:
     case MIDPAR_EXPRTYPE_CHAR32_LIT:
         fputc('\'', out);
-        midutf8_fprint_char(out, midint_to_uint(&val.i));
+        midutf8_fprint_char(out, midint_to_uint(&val->i));
         fputc('\'', out);
         break;
 
     case MIDPAR_EXPRTYPE_STRING_LIT:
-        fprintf(out, "\"%s\"", val.str.c);
-        break;
-
     case MIDPAR_EXPRTYPE_WSTRING_LIT:
-        fputc('"', out);
-        static_assert(midtype_wchar_size == 2 || midtype_wchar_size == 4);
-        if (midtype_wchar_size == 2)
-            midutf8_fprint_str16(out, (void *)val.str.wc);
-        else
-            midutf8_fprint_str32(out, (void *)val.str.wc);
-        fputc('"', out);
-        break;
-
     case MIDPAR_EXPRTYPE_STRING16_LIT:
-        fputc('"', out);
-        midutf8_fprint_str16(out, val.str.c16);
-        fputc('"', out);
-        break;
-
     case MIDPAR_EXPRTYPE_STRING32_LIT:
-        fputc('"', out);
-        midutf8_fprint_str32(out, val.str.c32);
-        fputc('"', out);
-        break;
+        midlit_fprint_strlit(out, &val->str);
 
     case MIDPAR_EXPRTYPE_INT_LIT:
     case MIDPAR_EXPRTYPE_LONG_LIT:
     case MIDPAR_EXPRTYPE_LONGLONG_LIT:
-        fprintf(out, "%" PRIi64, midint_to_sint(&val.i));
+        fprintf(out, "%" PRIi64, midint_to_sint(&val->i));
         break;
 
     case MIDPAR_EXPRTYPE_UINT_LIT:
     case MIDPAR_EXPRTYPE_ULONG_LIT:
     case MIDPAR_EXPRTYPE_ULONGLONG_LIT:
-        fprintf(out, "%" PRIu64, midint_to_uint(&val.i));
+        fprintf(out, "%" PRIu64, midint_to_uint(&val->i));
         break;
 
     case MIDPAR_EXPRTYPE_FLOAT_LIT:
     case MIDPAR_EXPRTYPE_DOUBLE_LIT:
     case MIDPAR_EXPRTYPE_LONGDOUBLE_LIT:
-        fprintf(out, "%lf", midflt_to_dbl(&val.flt));
+        fprintf(out, "%lf", midflt_to_dbl(&val->flt));
         break;
 
     case MIDPAR_EXPRTYPE_BOOL_LIT:
-        fprintf(out, "%s", midint_is_zero(&val.i) ? "false" : "true");
+        fprintf(out, "%s", midint_is_zero(&val->i) ? "false" : "true");
         break;
 
     case MIDPAR_EXPRTYPE_NULLPTR_LIT:
@@ -174,7 +262,7 @@ void midlit_fprint(FILE *out, union midlit_Value val, enum midpar_ExprType type)
     }
 }
 
-void midlit_fprint_toktype(FILE *out, union midlit_Value val,
+void midlit_fprint_toktype(FILE *out, const union midlit_Value *val,
                            enum midlex_TokenType type)
 {
     switch (type) {
@@ -259,12 +347,13 @@ void midlit_fprint_toktype(FILE *out, union midlit_Value val,
     }
 }
 
-void midlit_print(union midlit_Value val, enum midpar_ExprType type)
+void midlit_print(const union midlit_Value *val, enum midpar_ExprType type)
 {
     midlit_fprint(stdout, val, type);
 }
 
-void midlit_print_toktype(union midlit_Value val, enum midlex_TokenType type)
+void midlit_print_toktype(const union midlit_Value *val,
+                          enum midlex_TokenType type)
 {
     midlit_fprint_toktype(stdout, val, type);
 }

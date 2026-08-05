@@ -190,17 +190,17 @@ static LLVMValueRef codegen_lit_expr(const struct midpar_Expr *expr,
     if (midpar_is_signed_integral_typespec(expr->ret.spec))
         return LLVMConstInt(
             midllvm_convert_parser_type(&expr->ret, context, false),
-            midint_to_sint(&expr->info.val.i), true);
+            midint_to_sint(&expr->info.val.v.i), true);
     else if (midpar_is_unsigned_integral_typespec(expr->ret.spec))
         return LLVMConstInt(
             midllvm_convert_parser_type(&expr->ret, context, false),
-            midint_to_uint(&expr->info.val.i), false);
+            midint_to_uint(&expr->info.val.v.i), false);
     else if (midpar_is_floating_typespec(expr->ret.spec))
         return LLVMConstReal(
             midllvm_convert_parser_type(&expr->ret, context, false),
-            midflt_to_dbl(&expr->info.val.flt));
+            midflt_to_dbl(&expr->info.val.v.flt));
     else if (midpar_is_strlit(expr->type))
-        return codegen_strlit(&expr->info.val.str, context, mod);
+        return codegen_strlit(&expr->info.val.v.str, context, mod);
     else if (expr->type == MIDPAR_EXPRTYPE_NULLPTR_LIT)
         return LLVMConstPointerNull(LLVMVoidType());
     else

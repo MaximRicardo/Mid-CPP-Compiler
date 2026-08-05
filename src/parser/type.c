@@ -6,6 +6,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/token_type.h"
+#include "literal.h"
 #include "macros.h"
 #include "mid_alloc.h"
 #include "parser/find_twin.h"
@@ -1481,4 +1482,39 @@ bool midpar_type_is_ref(const struct midpar_Type *type)
 bool midpar_type_is_typecheckable(const struct midpar_Type *type)
 {
     return midpar_is_typespec_typecheckable(type->spec);
+}
+
+enum midlit_ValueKind midpar_type_lit_value_kind(const struct midpar_Type *type)
+{
+    if (midpar_n_indir(type) > 0)
+        MID_CRASH("ptrs not supported");
+
+    switch (type->spec) {
+    case MIDPAR_TYPESPEC_CHAR:
+    case MIDPAR_TYPESPEC_SCHAR:
+    case MIDPAR_TYPESPEC_UCHAR:
+    case MIDPAR_TYPESPEC_WCHAR:
+    case MIDPAR_TYPESPEC_CHAR16:
+    case MIDPAR_TYPESPEC_CHAR32:
+    case MIDPAR_TYPESPEC_SHORT:
+    case MIDPAR_TYPESPEC_INT:
+    case MIDPAR_TYPESPEC_LONG:
+    case MIDPAR_TYPESPEC_LONGLONG:
+    case MIDPAR_TYPESPEC_BOOL:
+        return MIDLIT_VALUE_SIGNED_INT;
+
+    case MIDPAR_TYPESPEC_USHORT:
+    case MIDPAR_TYPESPEC_UINT:
+    case MIDPAR_TYPESPEC_ULONG:
+    case MIDPAR_TYPESPEC_ULONGLONG:
+        return MIDLIT_VALUE_UNSIGNED_INT;
+
+    case MIDPAR_TYPESPEC_FLOAT:
+    case MIDPAR_TYPESPEC_DOUBLE:
+    case MIDPAR_TYPESPEC_LONGDOUBLE:
+        return MIDLIT_VALUE_FLOAT;
+
+    default:
+        MID_CRASH("not a literal value");
+    }
 }

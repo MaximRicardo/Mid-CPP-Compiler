@@ -38,60 +38,60 @@ static void log_lit_expr(const struct midpar_Expr *expr, FILE *out)
     switch (expr->type) {
     case MIDPAR_EXPRTYPE_CHAR_LIT:
     case MIDPAR_EXPRTYPE_STRING_LIT:
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         break;
 
     case MIDPAR_EXPRTYPE_WCHAR_LIT:
     case MIDPAR_EXPRTYPE_WSTRING_LIT:
         fputc('L', out);
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         break;
 
     case MIDPAR_EXPRTYPE_CHAR16_LIT:
     case MIDPAR_EXPRTYPE_STRING16_LIT:
         fputc('u', out);
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         break;
 
     case MIDPAR_EXPRTYPE_CHAR32_LIT:
     case MIDPAR_EXPRTYPE_STRING32_LIT:
         fputc('U', out);
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         break;
 
     case MIDPAR_EXPRTYPE_UINT_LIT:
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         fprintf(out, "u");
         break;
 
     case MIDPAR_EXPRTYPE_LONG_LIT:
     case MIDPAR_EXPRTYPE_LONGDOUBLE_LIT:
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         fprintf(out, "l");
         break;
 
     case MIDPAR_EXPRTYPE_ULONG_LIT:
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         fprintf(out, "ul");
         break;
 
     case MIDPAR_EXPRTYPE_LONGLONG_LIT:
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         fprintf(out, "ll");
         break;
 
     case MIDPAR_EXPRTYPE_ULONGLONG_LIT:
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         fprintf(out, "ull");
         break;
 
     case MIDPAR_EXPRTYPE_FLOAT_LIT:
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         fprintf(out, "f");
         break;
 
     default:
-        midlit_fprint(out, expr->info.val, expr->type);
+        midlit_fprint(out, &expr->info.val.v, expr->type);
         break;
     }
 }

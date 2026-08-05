@@ -1778,6 +1778,14 @@ struct mid_APInt midflt_to_sint(const struct mid_APFloat *self)
         MID_CRASH("unsupported APFloat kind");
 }
 
+enum midflt_Rounding midflt_get_rounding(const struct mid_APFloat *self)
+{
+    if (midflt_kind_is_ieee(self->kind))
+        return self->ieee.rounding;
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
 static void ieee_precomp_for_kind(struct IEEEPrecompForKind *vals,
                                   IEEEKind kind,
                                   IEEE (*comp)(IEEEKind, Rounding))
@@ -1801,4 +1809,17 @@ void midflt_init_module()
 {
     ieee_precomp(&ieee_ln2_values, ieee_compute_ln2);
     ieee_precomp(&ieee_log10_2_values, ieee_compute_log10_2);
+}
+
+void midflt_ieee_flip_sign(struct midflt_IEEE *self)
+{
+    self->is_neg = !self->is_neg;
+}
+
+void midflt_flip_sign(struct mid_APFloat *self)
+{
+    if (midflt_kind_is_ieee(self->kind))
+        midflt_ieee_flip_sign(&self->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
 }

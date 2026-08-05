@@ -31,8 +31,19 @@ struct midlit_String {
 
     enum midlit_StringType type;
 };
+midgen_dynarray_struct_named(midlit_StringVec, struct midlit_String);
 
+void midlit_String_deinit(struct midlit_String *self);
 mid_isize midlit_strlit_len(const struct midlit_String *strlit);
+void midlit_fprint_strlit(FILE *out, const struct midlit_String *self);
+void midlit_print_strlit(const struct midlit_String *self);
+
+enum midlit_ValueKind {
+    MIDLIT_VALUE_SIGNED_INT,
+    MIDLIT_VALUE_UNSIGNED_INT,
+    MIDLIT_VALUE_FLOAT,
+    MIDLIT_VALUE_STR,
+};
 
 union midlit_Value {
     // scalars
@@ -44,16 +55,26 @@ union midlit_Value {
 };
 midgen_dynarray_struct_named(midlit_ValueVec, union midlit_Value);
 
-void midlit_String_deinit(struct midlit_String *self);
+void midlit_Value_deinit(union midlit_Value *self, enum midlit_ValueKind kind);
 
-midgen_dynarray_struct_named(midlit_StringVec, struct midlit_String);
+struct midlit_TaggedValue {
+    union midlit_Value v;
+    enum midlit_ValueKind kind;
+};
 
-void midlit_fprint(FILE *out, union midlit_Value val,
+void midlit_TaggedValue_deinit(struct midlit_TaggedValue *self);
+struct midlit_TaggedValue
+midlit_copy_value(const struct midlit_TaggedValue *src);
+
+void midlit_tagged_fprint(FILE *out, const struct midlit_TaggedValue *val);
+void midlit_tagged_print(const struct midlit_TaggedValue *val);
+void midlit_fprint(FILE *out, const union midlit_Value *val,
                    enum midpar_ExprType type);
-void midlit_fprint_toktype(FILE *out, union midlit_Value val,
+void midlit_fprint_toktype(FILE *out, const union midlit_Value *val,
                            enum midlex_TokenType type);
-void midlit_print(union midlit_Value val, enum midpar_ExprType type);
-void midlit_print_toktype(union midlit_Value val, enum midlex_TokenType type);
+void midlit_print(const union midlit_Value *val, enum midpar_ExprType type);
+void midlit_print_toktype(const union midlit_Value *val,
+                          enum midlex_TokenType type);
 
 struct midlit_ReadIntLitInfo {
     struct mid_APInt value;

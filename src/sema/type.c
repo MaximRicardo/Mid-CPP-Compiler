@@ -109,7 +109,7 @@ static void typecheck_strlit_expr(struct midpar_Expr *expr)
 
     expr->ret.array = malloc(sizeof(*expr->ret.array));
     // account for '\0'
-    expr->ret.array->len = midlit_strlit_len(&expr->info.val.str) + 1;
+    expr->ret.array->len = midlit_strlit_len(&expr->info.val.v.str) + 1;
     expr->ret.array->elem = (struct midpar_Type){.spec = elem_spec};
     midgen_dynpush(&expr->ret.array->elem.dquals,
                    (struct midpar_TypeDataQual){.is_const = true});
@@ -225,7 +225,7 @@ static void typecheck_ident_expr(struct midpar_Expr *expr,
         midgen_dynpush(diags, middiag_ident_undeclared_err(
                                   expr->tok->ident, expr->tok,
                                   MIDDIAG_ERR_UNDECLARED_IDENTIFIER));
-        expr->ret = midpar_toktype_to_type(MIDLEX_TOKENTYPE_INT);
+        expr->ret = midpar_create_unknown_type();
         return;
     }
     assert(ident->decl);

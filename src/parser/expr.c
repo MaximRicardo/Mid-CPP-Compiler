@@ -7,6 +7,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/token_type.h"
+#include "literal.h"
 #include "macros.h"
 #include "parser/end_types.h"
 #include "parser/expr_type.h"
@@ -14,6 +15,7 @@
 #include "parser/type.h"
 #include "sema/scope.h"
 #include "sema/type.h"
+#include "types.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -120,6 +122,47 @@ bool midpar_is_memb_sel(enum midpar_ExprType type)
            type == MIDPAR_EXPRTYPE_PTR_MEMB_SEL ||
            type == MIDPAR_EXPRTYPE_PTR_TO_MEMB_SEL ||
            type == MIDPAR_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
+}
+
+enum midlit_ValueKind midpar_lit_expr_value_kind(enum midpar_ExprType type)
+{
+    switch (type) {
+    case MIDPAR_EXPRTYPE_CHAR_LIT:
+        return midtype_char_signed ? MIDLIT_VALUE_SIGNED_INT
+                                   : MIDLIT_VALUE_UNSIGNED_INT;
+
+    case MIDPAR_EXPRTYPE_WCHAR_LIT:
+        return midtype_wchar_signed ? MIDLIT_VALUE_SIGNED_INT
+                                    : MIDLIT_VALUE_UNSIGNED_INT;
+
+    case MIDPAR_EXPRTYPE_CHAR16_LIT:
+    case MIDPAR_EXPRTYPE_CHAR32_LIT:
+    case MIDPAR_EXPRTYPE_UINT_LIT:
+    case MIDPAR_EXPRTYPE_ULONG_LIT:
+    case MIDPAR_EXPRTYPE_ULONGLONG_LIT:
+    case MIDPAR_EXPRTYPE_NULLPTR_LIT:
+        return MIDLIT_VALUE_UNSIGNED_INT;
+
+    case MIDPAR_EXPRTYPE_INT_LIT:
+    case MIDPAR_EXPRTYPE_LONG_LIT:
+    case MIDPAR_EXPRTYPE_LONGLONG_LIT:
+    case MIDPAR_EXPRTYPE_BOOL_LIT:
+        return MIDLIT_VALUE_SIGNED_INT;
+
+    case MIDPAR_EXPRTYPE_FLOAT_LIT:
+    case MIDPAR_EXPRTYPE_DOUBLE_LIT:
+    case MIDPAR_EXPRTYPE_LONGDOUBLE_LIT:
+        return MIDLIT_VALUE_FLOAT;
+
+    case MIDPAR_EXPRTYPE_STRING_LIT:
+    case MIDPAR_EXPRTYPE_WSTRING_LIT:
+    case MIDPAR_EXPRTYPE_STRING16_LIT:
+    case MIDPAR_EXPRTYPE_STRING32_LIT:
+        return MIDLIT_VALUE_STR;
+
+    default:
+        MID_CRASH("expr type is not a literal");
+    }
 }
 
 int32_t midpar_op_precedence(enum midpar_ExprType op)
@@ -264,8 +307,9 @@ static struct midpar_Expr lit_tok_to_expr(const struct midlex_Token *tok)
 {
     assert(midlex_is_lit(tok->type));
 
-    struct midpar_Expr ret = {
-        .tok = tok, .info.val = tok->val, .valtype = MIDPAR_EXPRVALUE_PRVALUE};
+    struct midpar_Expr ret = {.tok = tok,
+                              .info.val.v = tok->val,
+                              .valtype = MIDPAR_EXPRVALUE_PRVALUE};
 
     switch (tok->type) {
     case MIDLEX_TOKENTYPE_CHAR_LIT:
@@ -347,6 +391,8 @@ static struct midpar_Expr lit_tok_to_expr(const struct midlex_Token *tok)
     default:
         MID_CRASH("token is not literal");
     }
+
+    ret.info.val.kind = midpar_lit_expr_value_kind(ret.type);
 
     return ret;
 }
@@ -1227,9 +1273,9 @@ void midpar_Expr_deinit(struct midpar_Expr *expr)
             midpar_Expr_deinit(&expr->info.args.arr[i]);
         midgen_dyndeinit(&expr->info.args);
     } else if (midpar_is_fltlit(expr->type)) {
-        mid_APFloat_deinit(&expr->info.val.flt);
+        mid_APFloat_deinit(&expr->info.val.v.flt);
     } else if (midpar_is_numlit(expr->type)) {
-        mid_APInt_deinit(&expr->info.val.i);
+        mid_APInt_deinit(&expr->info.val.v.i);
     }
 
     midpar_Type_deinit(&expr->ret);

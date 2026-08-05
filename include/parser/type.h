@@ -191,6 +191,9 @@ bool midpar_type_is_ref(const struct midpar_Type *type);
 // lvls of indir doesn't matter here
 bool midpar_type_is_typecheckable(const struct midpar_Type *type);
 
+enum midlit_ValueKind
+midpar_type_lit_value_kind(const struct midpar_Type *type);
+
 #ifdef __cplusplus
 }
 #endif

@@ -86,6 +86,7 @@ void midflt_ieee_approx_ln(struct midflt_IEEE *self, int n_iters);
 void midflt_ieee_log2(struct midflt_IEEE *self);
 void midflt_ieee_log10(struct midflt_IEEE *self);
 void midflt_ieee_ln(struct midflt_IEEE *self);
+void midflt_ieee_flip_sign(struct midflt_IEEE *self);
 
 // not in place operations
 struct midflt_IEEE midflt_ieee_nip_log2(const struct midflt_IEEE *self);
@@ -134,6 +135,7 @@ struct mid_APFloat midflt_init_sint(const struct mid_APInt *val,
                                     enum midflt_Kind kind,
                                     enum midflt_Rounding rounding);
 struct mid_APFloat midflt_copy(const struct mid_APFloat *src);
+enum midflt_Rounding midflt_get_rounding(const struct mid_APFloat *self);
 
 bool midflt_compatible(const struct mid_APFloat *a,
                        const struct mid_APFloat *b);
@@ -157,6 +159,7 @@ void midflt_approx_ln(struct mid_APFloat *self, int n_iters);
 void midflt_log2(struct mid_APFloat *self);
 void midflt_log10(struct mid_APFloat *self);
 void midflt_ln(struct mid_APFloat *self);
+void midflt_flip_sign(struct mid_APFloat *self);
 
 bool midflt_eq(const struct mid_APFloat *a, const struct mid_APFloat *b);
 bool midflt_gt(const struct mid_APFloat *a, const struct mid_APFloat *b);
