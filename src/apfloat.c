@@ -11,6 +11,40 @@ typedef struct midflt_IEEE IEEE;
 typedef enum midflt_IEEEKind IEEEKind;
 typedef enum midflt_Rounding Rounding;
 
+// precomputed ln(2) values for each IEEE kind and rounding mode
+// initialized by midflt_init_module
+// NOTE: DO NOT MODIFY AFTER MODULE HAS BEEN INITIALIZED
+static struct IEEELn2 {
+    struct IEEELn2ForKind {
+        IEEE nearest_even;
+        IEEE nearest_away;
+        IEEE up;
+        IEEE down;
+        IEEE zero;
+    } half, single, dbl;
+} ieee_ln2_values;
+
+static IEEE *ieee_get_ln2_for_kind(struct IEEELn2ForKind *vals,
+                                   Rounding rounding)
+{
+    switch (rounding) {
+    case MIDFLT_ROUND_NEAREST_TIES_EVEN:
+        return &vals->nearest_even;
+
+    case MIDFLT_ROUND_NEAREST_TIES_AWAY:
+        return &vals->nearest_away;
+
+    case MIDFLT_ROUND_UP:
+        return &vals->up;
+
+    case MIDFLT_ROUND_DOWN:
+        return &vals->down;
+
+    case MIDFLT_ROUND_TOWARDS_ZERO:
+        return &vals->zero;
+    }
+}
+
 void midflt_IEEE_deinit(struct midflt_IEEE *self)
 {
     mid_APInt_deinit(&self->mant);
@@ -1312,11 +1346,8 @@ static struct mid_APInt ieee_round_extra_mant_bits(const struct mid_APInt *mant,
     return ret;
 }
 
-static IEEE ieee_ln2(IEEEKind kind, Rounding rounding)
+static IEEE ieee_compute_ln2(IEEEKind kind, Rounding rounding)
 {
-    // OPTIM: you could probably make this faster by precomputing the mantissa
-    //        for every IEEEKind
-
     // mantissa of ln2 to 256 bits
     auto raw_mant_bits = midint_init_arr(256,
                                          (midint_Word[]){
@@ -1339,6 +1370,27 @@ static IEEE ieee_ln2(IEEEKind kind, Rounding rounding)
     mid_APInt_deinit(&mant_bits);
     mid_APInt_deinit(&raw_mant_bits);
     return ret;
+}
+
+static IEEE ieee_ln2(IEEEKind kind, Rounding rounding)
+{
+    const IEEE *val;
+
+    switch (kind) {
+    case MIDFLT_IEEE_HALF:
+        val = ieee_get_ln2_for_kind(&ieee_ln2_values.half, rounding);
+        break;
+
+    case MIDFLT_IEEE_SINGLE:
+        val = ieee_get_ln2_for_kind(&ieee_ln2_values.single, rounding);
+        break;
+
+    case MIDFLT_IEEE_DOUBLE:
+        val = ieee_get_ln2_for_kind(&ieee_ln2_values.dbl, rounding);
+        break;
+    }
+
+    return midflt_ieee_copy(val);
 }
 
 void midflt_ieee_approx_ln(struct midflt_IEEE *self, int n_iters)
@@ -1411,4 +1463,20 @@ struct mid_APFloat midflt_copy(const struct mid_APFloat *src)
         MID_CRASH("unsupported APFloat kind");
 
     return res;
+}
+
+static void ieee_precomp_ln2(struct IEEELn2ForKind *vals, IEEEKind kind)
+{
+    vals->nearest_even = ieee_compute_ln2(kind, MIDFLT_ROUND_NEAREST_TIES_EVEN);
+    vals->nearest_away = ieee_compute_ln2(kind, MIDFLT_ROUND_NEAREST_TIES_AWAY);
+    vals->up = ieee_compute_ln2(kind, MIDFLT_ROUND_UP);
+    vals->down = ieee_compute_ln2(kind, MIDFLT_ROUND_DOWN);
+    vals->zero = ieee_compute_ln2(kind, MIDFLT_ROUND_TOWARDS_ZERO);
+}
+
+void midflt_init_module()
+{
+    ieee_precomp_ln2(&ieee_ln2_values.half, MIDFLT_IEEE_HALF);
+    ieee_precomp_ln2(&ieee_ln2_values.single, MIDFLT_IEEE_SINGLE);
+    ieee_precomp_ln2(&ieee_ln2_values.dbl, MIDFLT_IEEE_DOUBLE);
 }

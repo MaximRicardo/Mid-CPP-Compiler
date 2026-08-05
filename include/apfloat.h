@@ -1,7 +1,6 @@
 #pragma once
 
 #include "apint.h"
-#include "ints.h"
 #include <stdio.h>
 
 // TODO: add support for denormals in IEEE
@@ -9,6 +8,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// NOTE: MUST BE CALLED BEFORE USING THIS MODULE
+void midflt_init_module();
 
 enum midflt_Rounding {
     MIDFLT_ROUND_NEAREST_TIES_EVEN,

@@ -162,7 +162,8 @@ static void test_mangling(const struct midsema_Scope *scope)
 
 static void test_apfloat()
 {
-    auto a = midflt_init(329547.34, midtype_double_kind, midtype_default_rmode);
+    auto a = midflt_init(329547.34, midtype_float_kind,
+                         MIDFLT_ROUND_NEAREST_TIES_EVEN);
 
     midflt_ln(&a);
 
@@ -172,19 +173,36 @@ static void test_apfloat()
     midint_log_hex(&a.ieee.mant, stdout);
     printf("\n");
 
-    double d = log(329547.34);
-    printf("hardware float = %.*lf\n", DECIMAL_DIG, d);
-    uint64_t mant = (*(unsigned long long *)&d) & ((1ULL << 53) - 1);
-    mant |= 1ULL << 52;
-    printf("mantissa = %" PRIx64 "\n", mant);
+    {
+        double d = log(329547.34);
+        printf("hardware double = %.*lf\n", DECIMAL_DIG, d);
+        uint64_t mant = (*(uint64_t *)&d) & ((1ULL << 53) - 1);
+        mant |= 1ULL << 52;
+        printf("mantissa = %" PRIx64 "\n", mant);
+    }
+
+    {
+        float d = logf(329547.34);
+        printf("hardware float = %.*f\n", DECIMAL_DIG, d);
+        uint32_t mant = (*(uint32_t *)&d) & ((1ULL << 24) - 1);
+        mant |= 1ULL << 23;
+        printf("mantissa = %" PRIx32 "\n", mant);
+    }
 
     mid_APFloat_deinit(&a);
+}
+
+static void init_modules()
+{
+    midflt_init_module();
 }
 
 int main(int argc, char **argv)
 {
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
+
+    init_modules();
 
     test_apfloat();
     MID_CRASH("asdf");
