@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void grow_to_fit(struct mid_Dynstr *self, u32 min_cap)
+static void grow_to_fit(struct mid_Dynstr *self, uint32_t min_cap)
 {
     if (self->cap < min_cap) {
         self->cap = min_cap;

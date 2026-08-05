@@ -79,9 +79,9 @@ char *midcmd_fmt_to_str(const char *fmt, ...)
     return str;
 }
 
-void midcmd_prt_column_arrow(i32 column)
+void midcmd_prt_column_arrow(int32_t column)
 {
-    for (i32 i = 0; i < column - 1; ++i)
+    for (int32_t i = 0; i < column - 1; ++i)
         printf(" ");
     printf("^\n");
 }

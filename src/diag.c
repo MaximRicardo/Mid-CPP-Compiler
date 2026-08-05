@@ -39,7 +39,7 @@ void middiag_print(const struct mid_Diag *diag)
     midcmd_prt_line(diag->line);
     putchar('\n');
 
-    i32 n_digits = MID_MAX(log10(diag->pos.line) + 1, 5);
+    int32_t n_digits = MID_MAX(log10(diag->pos.line) + 1, 5);
     for (mid_isize i = 0; i < n_digits; ++i)
         putchar(' ');
     printf(" | ");

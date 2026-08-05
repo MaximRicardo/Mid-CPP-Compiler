@@ -495,7 +495,7 @@ static struct midpar_Type type_name_type(const struct midlex_Token *toks,
     if (out_end)
         *out_end = r_angle + 1;
 
-    printf("n args = %" PRIisz "\n", args.len);
+    printf("n args = %" MID_PRIisz "\n", args.len);
     auto tmplt = ident->decl->parent;
     struct midpar_Type ret =
         midsema_instantiate_class_tmplt(tmplt, &args, allocs);
@@ -1100,7 +1100,7 @@ bool midpar_valid_type_start(const struct midlex_Token *toks, mid_isize idx,
     return tok_is_type_spec(res, &toks[res_end]);
 }
 
-enum midpar_TypeSpec midpar_uint_type_of_width(i32 bytes)
+enum midpar_TypeSpec midpar_uint_type_of_width(int32_t bytes)
 {
     if (midtype_char_size == bytes)
         return MIDPAR_TYPESPEC_UCHAR;
@@ -1116,7 +1116,7 @@ enum midpar_TypeSpec midpar_uint_type_of_width(i32 bytes)
         return MIDPAR_TYPESPEC_INVALID;
 }
 
-enum midpar_TypeSpec midpar_sint_type_of_width(i32 bytes)
+enum midpar_TypeSpec midpar_sint_type_of_width(int32_t bytes)
 {
     if (midtype_char_size == bytes)
         return MIDPAR_TYPESPEC_SCHAR;
@@ -1167,7 +1167,7 @@ subject to the other rules for determining the integer conversion rank.
 has greater rank than T3, then T1 shall have greater rank than T3.
  */
 
-i32 midpar_typespec_conv_rank(enum midpar_TypeSpec spec)
+int32_t midpar_typespec_conv_rank(enum midpar_TypeSpec spec)
 {
     switch (spec) {
     case MIDPAR_TYPESPEC_BOOL:
@@ -1220,7 +1220,7 @@ i32 midpar_typespec_conv_rank(enum midpar_TypeSpec spec)
     }
 }
 
-u64 midpar_integral_max(enum midpar_TypeSpec spec)
+uint64_t midpar_integral_max(enum midpar_TypeSpec spec)
 {
     switch (spec) {
     case MIDPAR_TYPESPEC_CHAR:
@@ -1270,7 +1270,7 @@ u64 midpar_integral_max(enum midpar_TypeSpec spec)
     }
 }
 
-i64 midpar_integral_min(enum midpar_TypeSpec spec)
+int64_t midpar_integral_min(enum midpar_TypeSpec spec)
 {
     switch (spec) {
     case MIDPAR_TYPESPEC_CHAR:
@@ -1326,8 +1326,8 @@ enum midpar_TypeSpec midpar_integral_prom(enum midpar_TypeSpec spec)
     if (spec == MIDPAR_TYPESPEC_BOOL)
         return MIDPAR_TYPESPEC_INT;
 
-    i32 spec_rank = midpar_typespec_conv_rank(spec);
-    i32 int_rank = midpar_typespec_conv_rank(MIDPAR_TYPESPEC_INT);
+    int32_t spec_rank = midpar_typespec_conv_rank(spec);
+    int32_t int_rank = midpar_typespec_conv_rank(MIDPAR_TYPESPEC_INT);
 
     if (spec_rank < int_rank) {
         if (midpar_integral_max(MIDPAR_TYPESPEC_INT) >=

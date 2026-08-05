@@ -35,7 +35,7 @@ enum midflt_IEEEValCat {
 struct midflt_IEEE {
     struct mid_APInt mant; // mantissa (includes the implicit 1 in front of the
                            // decimal point)
-    i64 exp;               // unbiased exponent
+    int64_t exp;           // unbiased exponent
 
     enum midflt_IEEEKind kind;
     enum midflt_Rounding rounding;  // current rounding mode
@@ -60,7 +60,7 @@ struct midflt_IEEE midflt_ieee_nan(bool is_neg, enum midflt_IEEEKind kind,
                                    enum midflt_Rounding rounding);
 // assumes the value category is MIDFLT_IEEE_VAL_NORMAL
 struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
-                                           i64 exp, bool is_neg,
+                                           int64_t exp, bool is_neg,
                                            enum midflt_IEEEKind kind,
                                            enum midflt_Rounding rounding);
 void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out);

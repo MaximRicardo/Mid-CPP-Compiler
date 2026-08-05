@@ -358,8 +358,8 @@ struct midsema_Ident *midsema_add_ident_copy(struct midsema_Scope *scope,
     return NULL;
 }
 
-i32 midsema_add_ident_def(struct midsema_Scope *scope, const char *name,
-                          struct midpar_ASTNode *def)
+int32_t midsema_add_ident_def(struct midsema_Scope *scope, const char *name,
+                              struct midpar_ASTNode *def)
 {
     auto ident = midsema_find_ident(scope, name);
     assert(ident);

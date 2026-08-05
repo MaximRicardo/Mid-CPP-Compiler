@@ -66,7 +66,7 @@ static mid_isize wc_str_len(const TypesWCharType *str)
     return i;
 }
 
-static mid_isize c16_str_len(const u16 *str)
+static mid_isize c16_str_len(const uint16_t *str)
 {
     mid_isize i;
     for (i = 0; str[i] != '\0'; ++i)
@@ -74,7 +74,7 @@ static mid_isize c16_str_len(const u16 *str)
     return i;
 }
 
-static mid_isize c32_str_len(const u32 *str)
+static mid_isize c32_str_len(const uint32_t *str)
 {
     mid_isize i;
     for (i = 0; str[i] != '\0'; ++i)
@@ -349,8 +349,8 @@ static void read_intlit_overflow(struct mid_APInt *accum,
 
     // we need to increment the width by at least enough to hold the result of
     // the next multiplication, tho preferably more
-    i32 bits_inc = MID_MAX(midtype_longlong_size * 8, ceil(log2(base)));
-    i32 new_bits = accum->n_bits + bits_inc;
+    int32_t bits_inc = MID_MAX(midtype_longlong_size * 8, ceil(log2(base)));
+    int32_t new_bits = accum->n_bits + bits_inc;
 
     midint_ext(accum, new_bits, false);
     midint_ext(prev, new_bits, false);

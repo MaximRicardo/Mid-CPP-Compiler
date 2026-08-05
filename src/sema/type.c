@@ -787,9 +787,9 @@ static void typecheck_arith_bin_op_expr(struct midpar_Expr *expr,
     } else if (rhs_ptr) {
         expr->ret = midpar_copy_type(&rhs->ret);
     } else {
-        i32 lhs_rank =
+        int32_t lhs_rank =
             midpar_typespec_conv_rank(op_prom_typespec(lhs->ret.spec));
-        i32 rhs_rank =
+        int32_t rhs_rank =
             midpar_typespec_conv_rank(op_prom_typespec(rhs->ret.spec));
         expr->ret = lhs_rank > rhs_rank ? op_prom_type(&lhs->ret)
                                         : op_prom_type(&rhs->ret);

@@ -122,10 +122,10 @@ bool midpar_is_memb_sel(enum midpar_ExprType type)
            type == MIDPAR_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
 }
 
-i32 midpar_op_precedence(enum midpar_ExprType op)
+int32_t midpar_op_precedence(enum midpar_ExprType op)
 {
     // goes from 16 to 1
-    i32 flipped;
+    int32_t flipped;
 
     switch (op) {
     case MIDPAR_EXPRTYPE_BIN_SCOPE_RES:
@@ -244,7 +244,7 @@ i32 midpar_op_precedence(enum midpar_ExprType op)
 
 bool midpar_op_ltr_assoc(enum midpar_ExprType op)
 {
-    i32 prec = midpar_op_precedence(op);
+    int32_t prec = midpar_op_precedence(op);
     return prec != 15 && prec != 13 && prec != 1;
 }
 
@@ -1000,7 +1000,7 @@ static void add_op_to_out(struct midpar_Expr *op, struct midpar_ExprVec *out,
             .pos = op->tok->pos,
             .line = op->tok->line,
             .msg = midcmd_fmt_to_str(
-                "%s operator expects %d %s, received %" PRIisz,
+                "%s operator expects %d %s, received %" MID_PRIisz,
                 midpar_is_unaryop(op->type) ? "unary"
                 : midpar_is_binop(op->type) ? "binary"
                                             : "ternary",
@@ -1049,8 +1049,8 @@ static void push_operator(const struct midlex_Token *toks, mid_isize idx,
     // remove any greater precedence operators
     struct midpar_Expr *top = &ops->arr[ops->len - 1];
     while (ops->len > 0) {
-        i32 op_prec = midpar_op_precedence(op.type);
-        i32 top_prec = midpar_op_precedence(top->type);
+        int32_t op_prec = midpar_op_precedence(op.type);
+        int32_t top_prec = midpar_op_precedence(top->type);
 
         if (top_prec > op_prec ||
             (top_prec == op_prec && midpar_op_ltr_assoc(op.type))) {
@@ -1169,7 +1169,7 @@ struct midpar_Expr midpar_parse_expr(const struct midlex_Token *toks,
         printf("expr start at %d:%d\n", toks[start].pos.line,
                toks[start].pos.column);
         printf("expr end at %d:%d\n", toks[i].pos.line, toks[i].pos.column);
-        printf("out len = %" PRIisz "\n", out.len);
+        printf("out len = %" MID_PRIisz "\n", out.len);
         MID_CRASH("mismatched operators and operands");
     }
 

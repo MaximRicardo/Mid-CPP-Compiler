@@ -64,19 +64,19 @@ static int ieee_mant_n_bits(IEEEKind kind)
     }
 }
 
-static i64 ieee_exp_max(IEEEKind kind)
+static int64_t ieee_exp_max(IEEEKind kind)
 {
     auto n_bits = ieee_exp_n_bits(kind);
     return (1ULL << (n_bits - 1)) - 1;
 }
 
-static i64 ieee_exp_min(IEEEKind kind)
+static int64_t ieee_exp_min(IEEEKind kind)
 {
     return 1 - ieee_exp_max(kind);
 }
 
 /*
-static u64 ieee_biased_exp_max(IEEEKind kind)
+static uint64_t ieee_biased_exp_max(IEEEKind kind)
 {
     auto n_bits = ieee_exp_n_bits(kind);
     if (n_bits == 64)
@@ -84,23 +84,23 @@ static u64 ieee_biased_exp_max(IEEEKind kind)
     return (1ULL << n_bits) - 1;
 }
 
-static u64 get_low_bits(u64 num, int bits)
+static uint64_t get_low_bits(uint64_t num, int bits)
 {
     if (bits == 64)
         return num;
 
-    u64 mask = (1ULL << bits) - 1;
+    uint64_t mask = (1ULL << bits) - 1;
     return num & mask;
 }
 
-static u64 ieee_bias_exp(i64 exp, IEEEKind kind)
+static uint64_t ieee_bias_exp(int64_t exp, IEEEKind kind)
 {
-    u64 bias = ieee_exp_max(kind);
+    uint64_t bias = ieee_exp_max(kind);
     int n_bits = ieee_exp_n_bits(kind);
     return get_low_bits(exp + bias, n_bits);
 }
 
-static u64 ieee_biased_exp(const IEEE *self)
+static uint64_t ieee_biased_exp(const IEEE *self)
 {
     return ieee_bias_exp(self->exp, self->kind);
 }
@@ -130,7 +130,7 @@ struct midflt_IEEE midflt_ieee_init(double val, enum midflt_IEEEKind kind,
     assert(mant >= 1.0 && mant < 2.0);
 
     double digit_val = 0.5;
-    for (i32 i = ret.mant.n_bits - 2; i >= 0; --i, digit_val /= 2.0) {
+    for (int32_t i = ret.mant.n_bits - 2; i >= 0; --i, digit_val /= 2.0) {
         if (mant - 1.0 >= digit_val) {
             midint_flip_bit(&ret.mant, i);
             mant -= digit_val;
@@ -202,7 +202,7 @@ struct midflt_IEEE midflt_ieee_nan(bool is_neg, enum midflt_IEEEKind kind,
 }
 
 struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
-                                           i64 exp, bool is_neg,
+                                           int64_t exp, bool is_neg,
                                            enum midflt_IEEEKind kind,
                                            enum midflt_Rounding rounding)
 {
@@ -417,12 +417,12 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     // by 2 ^ (mant.n_bits - 1) for integer multiplication.
     midint_lshr_imm(&unnorm, a->mant.n_bits - 1);
 
-    i32 bits = midint_unsigned_sig_bits(&unnorm);
-    i32 norm_bits = a->mant.n_bits;
+    int32_t bits = midint_unsigned_sig_bits(&unnorm);
+    int32_t norm_bits = a->mant.n_bits;
     assert(bits >= norm_bits);
 
-    i32 norm_shift = bits - norm_bits;
-    i32 zeroes = midint_count_trailing_zeroes(&unnorm);
+    int32_t norm_shift = bits - norm_bits;
+    int32_t zeroes = midint_count_trailing_zeroes(&unnorm);
 
     if (zeroes < norm_shift) {
         bool round_bit = midint_get_bit(&unnorm, norm_shift - 1);
@@ -483,8 +483,8 @@ void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
         midint_inc_bit(&unnorm, 0);
 
     // normalize
-    i32 n_bits = midint_unsigned_sig_bits(&unnorm);
-    i32 norm_bits = a->mant.n_bits;
+    int32_t n_bits = midint_unsigned_sig_bits(&unnorm);
+    int32_t norm_bits = a->mant.n_bits;
     if (n_bits > norm_bits) {
         auto shift = n_bits - norm_bits;
         a->exp += shift;
@@ -503,15 +503,15 @@ void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 
 static void ieee_addsub_normalize_mant(IEEE *a)
 {
-    i32 unnorm_bits = midint_unsigned_sig_bits(&a->mant);
-    i32 norm_bits = ieee_mant_n_bits(a->kind);
+    int32_t unnorm_bits = midint_unsigned_sig_bits(&a->mant);
+    int32_t norm_bits = ieee_mant_n_bits(a->kind);
 
     if (unnorm_bits > norm_bits) {
-        i32 shift = unnorm_bits - norm_bits;
+        int32_t shift = unnorm_bits - norm_bits;
 
         bool guard_bit = midint_get_bit(&a->mant, shift);
         bool rounding_bit = midint_get_bit(&a->mant, shift - 1);
-        i32 zeroes = midint_count_trailing_zeroes(&a->mant);
+        int32_t zeroes = midint_count_trailing_zeroes(&a->mant);
         bool sticky_bit = zeroes < shift - 1;
 
         if (ieee_should_inc_mant(a->rounding, a->is_neg, guard_bit,
@@ -527,7 +527,7 @@ static void ieee_addsub_normalize_mant(IEEE *a)
         midint_ext(&a->mant, norm_bits, false);
         a->exp += shift;
     } else if (unnorm_bits < norm_bits) {
-        i32 shift = norm_bits - unnorm_bits;
+        int32_t shift = norm_bits - unnorm_bits;
         midint_shl_imm(&a->mant, shift);
         a->exp -= shift;
     }
@@ -535,7 +535,7 @@ static void ieee_addsub_normalize_mant(IEEE *a)
 
 // automatically resizes the mantissa APInts to hold the extra bits required
 // to match the exponents as well as extra_bits
-static void ieee_match_exps(IEEE *a, IEEE *b, i32 extra_bits)
+static void ieee_match_exps(IEEE *a, IEEE *b, int32_t extra_bits)
 {
     if (a->exp > b->exp) {
         auto shift = a->exp - b->exp;
@@ -759,7 +759,7 @@ double midflt_ieee_to_dbl(const struct midflt_IEEE *self)
     double mant = 1.0;
     double inc = 0.5;
     // skip the implicit leading 1
-    for (i32 i = self->mant.n_bits - 2; i >= 0; --i) {
+    for (int32_t i = self->mant.n_bits - 2; i >= 0; --i) {
         if (midint_get_bit(&self->mant, i))
             mant += inc;
 
@@ -1131,9 +1131,9 @@ struct midflt_IEEE midflt_ieee_mantissa(const struct midflt_IEEE *self)
     return res;
 }
 
-static u32 ieee_log2_step(IEEE *self)
+static uint32_t ieee_log2_step(IEEE *self)
 {
-    u32 m = 0;
+    uint32_t m = 0;
     auto two = midflt_ieee_init(2.0, self->kind, self->rounding);
 
     while (midflt_ieee_lt(self, &two)) {
@@ -1146,7 +1146,7 @@ static u32 ieee_log2_step(IEEE *self)
     return m;
 }
 
-static IEEE ieee_pow_neg_two(u32 m, IEEEKind kind, Rounding rounding)
+static IEEE ieee_pow_neg_two(uint32_t m, IEEEKind kind, Rounding rounding)
 {
     auto ret = midflt_ieee_one(false, kind, rounding);
     ret.exp -= m;
@@ -1161,7 +1161,7 @@ static IEEE ieee_approx_log2_base(const IEEE *self, int n_iters)
     auto res = midflt_ieee_init(self->exp, self->kind, self->rounding);
     auto x = midflt_ieee_mantissa(self);
 
-    u32 m = 0;
+    uint32_t m = 0;
     for (int i = 0; i < n_iters; ++i) {
         m += ieee_log2_step(&x);
 
@@ -1186,14 +1186,14 @@ static IEEE ieee_log2_base(const IEEE *self)
 
     bool round_bit = false;
     bool sticky_bit = false;
-    u32 m = 0;
+    uint32_t m = 0;
     while (true) {
         m += ieee_log2_step(&x);
 
-        if (m > (u32)res.mant.n_bits) {
+        if (m > (uint32_t)res.mant.n_bits) {
             sticky_bit = true;
             break;
-        } else if (m == (u32)res.mant.n_bits) {
+        } else if (m == (uint32_t)res.mant.n_bits) {
             round_bit = true;
         } else {
             auto tmp = ieee_pow_neg_two(m, self->kind, self->rounding);
@@ -1281,14 +1281,14 @@ static struct mid_APInt ieee_round_extra_mant_bits(const struct mid_APInt *mant,
                                                    Rounding rounding,
                                                    bool is_neg)
 {
-    i32 mant_size = midint_unsigned_sig_bits(mant);
-    i32 norm_size = ieee_mant_n_bits(kind);
+    int32_t mant_size = midint_unsigned_sig_bits(mant);
+    int32_t norm_size = ieee_mant_n_bits(kind);
     assert(mant_size >= norm_size);
 
     if (mant_size == norm_size)
         return midint_copy(mant);
 
-    i32 shift = mant_size - norm_size;
+    int32_t shift = mant_size - norm_size;
 
     auto ret = midint_copy(mant);
 

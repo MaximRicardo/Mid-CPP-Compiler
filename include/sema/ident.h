@@ -74,7 +74,7 @@ midsema_copy_var_ident(const struct midsema_Ident *self)
 // only gets invalidated if the identifier's idx in its scope gets invalidated
 struct midsema_IdentPtr {
     struct midsema_Scope *parent; // NULL means the ptr is null
-    i32 idx;                      // -1 means the ptr is null
+    int32_t idx;                  // -1 means the ptr is null
 };
 midgen_dynarray_struct_named(midsema_IdentPtrVec, struct midsema_IdentPtr);
 

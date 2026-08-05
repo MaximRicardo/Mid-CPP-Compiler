@@ -8,7 +8,7 @@ extern "C" {
 
 struct mid_Position {
     const char *file;
-    i32 line, column;
+    int32_t line, column;
 };
 
 bool mid_position_equal(const struct mid_Position *a,

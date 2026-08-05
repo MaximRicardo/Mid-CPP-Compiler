@@ -35,8 +35,8 @@ struct midpar_FuncDecl {
     const char *name;
     struct midsema_Scope *param_scope;
     const struct midlex_Token *def_start; // points to the left curly '{'
-    i32 ident_idx; // index of the identifier holding the function overload
-                   // in the parent scope. -1 if there is no identifier
+    int32_t ident_idx; // index of the identifier holding the function overload
+                       // in the parent scope. -1 if there is no identifier
     enum midpar_ExprType op_overload; // the operator that got overloaded
     bool is_op_overload;
     struct midpar_FuncQuals quals;

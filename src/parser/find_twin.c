@@ -7,7 +7,7 @@ mid_isize midpar_find_twin_generic(const struct midlex_Token *toks,
                                    enum midlex_TokenType l_type,
                                    enum midlex_TokenType r_type)
 {
-    i32 depth = 0;
+    int32_t depth = 0;
 
     for (mid_isize i = l_idx + 1;
          i < end_idx && toks[i].type != MIDLEX_TOKENTYPE_END; ++i) {

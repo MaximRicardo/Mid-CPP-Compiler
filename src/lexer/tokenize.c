@@ -403,7 +403,7 @@ static enum NumLitType sel_numlit_type(const struct mid_APInt *val, int base,
     }
 }
 
-static i32 numlit_type_size(enum NumLitType type)
+static int32_t numlit_type_size(enum NumLitType type)
 {
     switch (type) {
     case NUMLIT_INT:
@@ -638,7 +638,7 @@ charlit_type_to_str_tok_type(enum midlit_StringType type)
     }
 }
 
-bool verify_charlit_value(u32 val, enum midlit_StringType type,
+bool verify_charlit_value(uint32_t val, enum midlit_StringType type,
                           struct mid_Position pos, const char *line,
                           struct mid_DiagVec *diags)
 {
@@ -731,7 +731,7 @@ void realloc_strlit(struct midlit_String *str, mid_isize cap)
     }
 }
 
-static void strlit_add(struct midlit_String *str, mid_isize idx, u32 c)
+static void strlit_add(struct midlit_String *str, mid_isize idx, uint32_t c)
 {
     switch (str->type) {
     case MIDLIT_STRINGTYPE_CHAR:
@@ -765,7 +765,7 @@ struct midlit_String read_strlit(const char *src, mid_isize lquote,
 
     mid_isize i;
     for (i = lquote + 1; src[i] != '"' && src[i] != '\n';) {
-        u32 c = midutf8_read_char(src, i, &i);
+        uint32_t c = midutf8_read_char(src, i, &i);
         verify_charlit_value(c, type, pos, line, diags);
 
         strlit_add(&str, len++, c);

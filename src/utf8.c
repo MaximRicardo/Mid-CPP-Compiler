@@ -79,19 +79,19 @@ static struct UnicodeChar read_char_4_byte(const char *src, mid_isize start)
     return ret;
 }
 
-static u32 uni_to_c32(struct UnicodeChar uni)
+static uint32_t uni_to_c32(struct UnicodeChar uni)
 {
-    u32 ret = 0;
-    ret |= (u32)uni.z;
-    ret |= (u32)uni.y << 4;
-    ret |= (u32)uni.x << 8;
-    ret |= (u32)uni.w << 12;
-    ret |= (u32)uni.v << 16;
-    ret |= (u32)uni.u << 20;
+    uint32_t ret = 0;
+    ret |= (uint32_t)uni.z;
+    ret |= (uint32_t)uni.y << 4;
+    ret |= (uint32_t)uni.x << 8;
+    ret |= (uint32_t)uni.w << 12;
+    ret |= (uint32_t)uni.v << 16;
+    ret |= (uint32_t)uni.u << 20;
     return ret;
 }
 
-u32 midutf8_read_char(const char *src, mid_isize start, mid_isize *out_end)
+uint32_t midutf8_read_char(const char *src, mid_isize start, mid_isize *out_end)
 {
     unsigned char b0 = src[start];
 
@@ -120,7 +120,7 @@ u32 midutf8_read_char(const char *src, mid_isize start, mid_isize *out_end)
     return uni_to_c32(ret);
 }
 
-void midutf8_fprint_char(FILE *out, u32 c)
+void midutf8_fprint_char(FILE *out, uint32_t c)
 {
     char buf[MB_LEN_MAX + 1] = {0};
     mbstate_t ps;
@@ -130,12 +130,12 @@ void midutf8_fprint_char(FILE *out, u32 c)
     fprintf(out, "%s", buf);
 }
 
-void midutf8_print_char(u32 c)
+void midutf8_print_char(uint32_t c)
 {
     midutf8_fprint_char(stdout, c);
 }
 
-char *midutf8_char_to_str(u32 c)
+char *midutf8_char_to_str(uint32_t c)
 {
     char *ret = calloc(MB_LEN_MAX + 1, 1);
     mbstate_t ps;
@@ -146,29 +146,29 @@ char *midutf8_char_to_str(u32 c)
     return ret;
 }
 
-void midutf8_fprint_str32(FILE *out, u32 *str)
+void midutf8_fprint_str32(FILE *out, uint32_t *str)
 {
     for (mid_isize i = 0; str[i] != '\0'; ++i)
         midutf8_fprint_char(out, str[i]);
 }
 
-void midutf8_print_str32(u32 *str)
+void midutf8_print_str32(uint32_t *str)
 {
     midutf8_fprint_str32(stdout, str);
 }
 
-void midutf8_fprint_str16(FILE *out, u16 *str)
+void midutf8_fprint_str16(FILE *out, uint16_t *str)
 {
     for (mid_isize i = 0; str[i] != '\0'; ++i)
         midutf8_fprint_char(out, str[i]);
 }
 
-void midutf8_print_str16(u16 *str)
+void midutf8_print_str16(uint16_t *str)
 {
     midutf8_fprint_str16(stdout, str);
 }
 
-char *midutf8_str32_to_str(u32 *str)
+char *midutf8_str32_to_str(uint32_t *str)
 {
     struct mid_Dynstr ret = {};
 
@@ -181,7 +181,7 @@ char *midutf8_str32_to_str(u32 *str)
     return ret.str;
 }
 
-char *midutf8_str16_to_str(u16 *str)
+char *midutf8_str16_to_str(uint16_t *str)
 {
     struct mid_Dynstr ret = {};
 

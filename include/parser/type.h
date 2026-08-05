@@ -125,7 +125,7 @@ struct midpar_TypeFPtr {
 
 struct midpar_TypeArray {
     struct midpar_Type elem;
-    u64 len;
+    uint64_t len;
 };
 
 struct midpar_ASTNode;
@@ -165,11 +165,11 @@ char *midpar_type_to_str(const struct midpar_Type *type);
 bool midpar_valid_type_start(const struct midlex_Token *toks, mid_isize idx,
                              const struct midsema_Scope *scope);
 // the integral type specifier able to hold exactly the given number of bytes
-enum midpar_TypeSpec midpar_uint_type_of_width(i32 bytes);
-enum midpar_TypeSpec midpar_sint_type_of_width(i32 bytes);
-i32 midpar_typespec_conv_rank(enum midpar_TypeSpec spec);
-u64 midpar_integral_max(enum midpar_TypeSpec spec);
-i64 midpar_integral_min(enum midpar_TypeSpec spec);
+enum midpar_TypeSpec midpar_uint_type_of_width(int32_t bytes);
+enum midpar_TypeSpec midpar_sint_type_of_width(int32_t bytes);
+int32_t midpar_typespec_conv_rank(enum midpar_TypeSpec spec);
+uint64_t midpar_integral_max(enum midpar_TypeSpec spec);
+int64_t midpar_integral_min(enum midpar_TypeSpec spec);
 enum midpar_TypeSpec midpar_integral_prom(enum midpar_TypeSpec spec);
 bool midpar_is_fundamental_type(const struct midpar_Type *type);
 bool midpar_dquals_same(const struct midpar_TypeDataQual *a, mid_isize n_a,

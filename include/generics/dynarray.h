@@ -73,7 +73,10 @@ extern "C" {
         assert((idx) >= 0 && (idx) < (self)->len);                             \
     } while (0)
 
-#define midgen_dyninit() {0}
+#define midgen_dyninit()                                                       \
+    {                                                                          \
+        0                                                                      \
+    }
 
 #define MIDGEN_DYNDEINIT_NO_FREE(self_arg)                                     \
     do {                                                                       \

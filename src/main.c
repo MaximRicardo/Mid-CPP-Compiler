@@ -88,7 +88,7 @@ static bool print_diags(struct mid_DiagVec *diags)
 static void log_tokens(const struct midlex_TokenVec *toks)
 {
     for (mid_isize i = 0; i < toks->len; ++i) {
-        printf("i = %" PRIisz ", pos = (%d, %d), type = %d", i,
+        printf("i = %" MID_PRIisz ", pos = (%d, %d), type = %d", i,
                toks->arr[i].pos.line, toks->arr[i].pos.column,
                toks->arr[i].type);
         if (toks->arr[i].type == MIDLEX_TOKENTYPE_INT_LIT)
@@ -124,7 +124,7 @@ static void log_tokens(const struct midlex_TokenVec *toks)
 static void log_symbols(const struct midsymb_Table *symtbl)
 {
     for (mid_isize i = 0; i < symtbl->len; ++i)
-        printf("symtbl[%" PRIisz "] = '%s'\n", i, symtbl->arr[i]);
+        printf("symtbl[%" MID_PRIisz "] = '%s'\n", i, symtbl->arr[i]);
 }
 
 static void log_ast(const char *path, const struct midpar_ASTNode *root)
@@ -174,7 +174,7 @@ static void test_apfloat()
 
     double d = log(329547.34);
     printf("hardware float = %.*lf\n", DECIMAL_DIG, d);
-    u64 mant = (*(unsigned long long *)&d) & ((1ULL << 53) - 1);
+    uint64_t mant = (*(unsigned long long *)&d) & ((1ULL << 53) - 1);
     mant |= 1ULL << 52;
     printf("mantissa = %" PRIx64 "\n", mant);
 
@@ -186,10 +186,8 @@ int main(int argc, char **argv)
     // enables unicode
     setlocale(LC_CTYPE, "en_US.UTF-8");
 
-    /*
     test_apfloat();
     MID_CRASH("asdf");
-    */
 
     midcmd_init_args(argc, argv);
 

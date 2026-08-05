@@ -71,7 +71,7 @@ struct midpar_TmpltNonTypeParam {
     struct midpar_Type type;
     const char *name;
     struct midpar_Expr *def_arg;
-    i32 ident_idx; // idx of the identifier in the tmplt scope
+    int32_t ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 
@@ -80,7 +80,7 @@ void midpar_TmpltNonTypeParam_deinit(struct midpar_TmpltNonTypeParam *self);
 struct midpar_TmpltTypeParam {
     const char *name;
     struct midpar_Type *def_arg;
-    i32 ident_idx; // idx of the identifier in the tmplt scope
+    int32_t ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 
@@ -90,7 +90,7 @@ struct midpar_TmpltTmpltParam {
     struct midpar_Tmplt *tmplt;
     const char *name;
     struct midsema_IdentPtr def_arg;
-    i32 ident_idx; // idx of the identifier in the tmplt scope
+    int32_t ident_idx; // idx of the identifier in the tmplt scope
     bool variadic;
 };
 

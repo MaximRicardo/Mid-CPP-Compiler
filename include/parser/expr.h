@@ -29,7 +29,7 @@ bool midpar_is_assignment(enum midpar_ExprType type);
 bool midpar_is_memb_sel(enum midpar_ExprType type);
 
 // goes from 0 to 15, where 15 is the highest precedence
-i32 midpar_op_precedence(enum midpar_ExprType op);
+int32_t midpar_op_precedence(enum midpar_ExprType op);
 bool midpar_op_ltr_assoc(enum midpar_ExprType op);
 
 bool midpar_expr_uses_args(enum midpar_ExprType type);

@@ -317,11 +317,11 @@ static LLVMValueRef cast_arith_expr_operand(LLVMValueRef val,
     bool src_signed = midpar_is_signed_integral_typespec(src->spec);
     bool src_int = midpar_is_integral_typespec(src->spec);
     bool src_fp = midpar_is_floating_typespec(src->spec);
-    i32 src_rank = midpar_typespec_conv_rank(src->spec);
+    int32_t src_rank = midpar_typespec_conv_rank(src->spec);
 
     bool dest_int = midpar_is_integral_typespec(dest->spec);
     bool dest_fp = midpar_is_floating_typespec(dest->spec);
-    i32 dest_rank = midpar_typespec_conv_rank(dest->spec);
+    int32_t dest_rank = midpar_typespec_conv_rank(dest->spec);
 
     LLVMTypeRef dest_type = midllvm_convert_parser_type(dest, context);
 

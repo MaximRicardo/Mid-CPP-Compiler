@@ -35,7 +35,7 @@ char *midcmd_fmt_to_str(const char *fmt, ...)
     MID_ATTRIBUTE((format(printf, 1, 2)));
 // prints a line with an arrow at the specified column
 // NOTE: doesn't account for unicode stuff
-void midcmd_prt_column_arrow(i32 column);
+void midcmd_prt_column_arrow(int32_t column);
 
 #ifdef __cplusplus
 }

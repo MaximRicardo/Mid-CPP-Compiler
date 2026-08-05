@@ -86,8 +86,8 @@ struct midsema_Ident *midsema_add_ident_copy(struct midsema_Scope *scope,
                                              bool copy_ident_scopes,
                                              struct midpar_Allocators *allocs);
 // returns 0 on success, returns 1 if the identifier already has a declaration
-i32 midsema_add_ident_def(struct midsema_Scope *scope, const char *name,
-                          struct midpar_ASTNode *def);
+int32_t midsema_add_ident_def(struct midsema_Scope *scope, const char *name,
+                              struct midpar_ASTNode *def);
 
 // finds an RNCE scope in scope
 // returns NULL if the scope name couldn't be resolved
