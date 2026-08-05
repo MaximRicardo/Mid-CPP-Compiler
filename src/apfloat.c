@@ -1739,6 +1739,45 @@ struct mid_APFloat midflt_copy(const struct mid_APFloat *src)
     return res;
 }
 
+struct mid_APInt midflt_ieee_to_sint(const struct midflt_IEEE *self)
+{
+    int32_t width = ieee_exp_max(self->kind) + 3;
+
+    if (self->val_cat == MIDFLT_IEEE_VAL_NAN)
+        MID_CRASH("can't convert nan to an integer");
+    else if (self->val_cat == MIDFLT_IEEE_VAL_INF)
+        MID_CRASH("can't convert inf to an integer");
+    else if (self->val_cat == MIDFLT_IEEE_VAL_ZERO || self->exp < 0)
+        return midint_zero(width);
+
+    auto ret = midint_copy(&self->mant);
+    midint_ext(&ret, width, false);
+
+    // the bit right infront of the decimal point in the mantissa if it were
+    // to be shifted by the exponent
+    int32_t dec_bit = self->mant.n_bits - self->exp - 1;
+
+    // the number should be shifted so dec_bit is 0, which chops off any
+    // fractional bits too
+    if (dec_bit < 0)
+        midint_shl_imm(&ret, -dec_bit);
+    else if (dec_bit > 0)
+        midint_lshr_imm(&ret, dec_bit);
+
+    if (self->is_neg)
+        midint_negate(&ret);
+
+    return ret;
+}
+
+struct mid_APInt midflt_to_sint(const struct mid_APFloat *self)
+{
+    if (midflt_kind_is_ieee(self->kind))
+        return midflt_ieee_to_sint(&self->ieee);
+    else
+        MID_CRASH("unsupported APFloat kind");
+}
+
 static void ieee_precomp_for_kind(struct IEEEPrecompForKind *vals,
                                   IEEEKind kind,
                                   IEEE (*comp)(IEEEKind, Rounding))

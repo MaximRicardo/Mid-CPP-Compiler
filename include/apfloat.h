@@ -100,6 +100,9 @@ bool midflt_ieee_is_one(const struct midflt_IEEE *self);
 bool midflt_ieee_is_minus_one(const struct midflt_IEEE *self);
 
 double midflt_ieee_to_dbl(const struct midflt_IEEE *self);
+// the width of the integer is the signed width required to represent both
+// self's minimum and maximum value
+struct mid_APInt midflt_ieee_to_sint(const struct midflt_IEEE *self);
 
 enum midflt_Kind {
     MIDFLT_KIND_IEEE_START,
@@ -165,6 +168,7 @@ bool midflt_is_one(const struct mid_APFloat *self);
 bool midflt_is_minus_one(const struct mid_APFloat *self);
 
 double midflt_to_dbl(const struct mid_APFloat *self);
+struct mid_APInt midflt_to_sint(const struct mid_APFloat *self);
 
 #ifdef __cplusplus
 }

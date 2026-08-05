@@ -195,11 +195,13 @@ static void test_apfloat()
 
 static void test_apfloat()
 {
-    auto num = midint_init(256, -1, true);
     auto flt =
-        midflt_init_sint(&num, midtype_float_kind, midtype_default_rmode);
+        midflt_init(10000000001.99, midtype_float_kind, midtype_default_rmode);
+    auto num = midflt_to_sint(&flt);
 
-    midflt_print(stdout, "flt = {}\n", &flt);
+    printf("num = ");
+    midint_log(&num, stdout, true);
+    printf("\n");
 }
 
 static void init_modules()
