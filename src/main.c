@@ -160,9 +160,11 @@ static void test_mangling(const struct midsema_Scope *scope)
 }
 */
 
+/*
 static void test_apfloat()
 {
-    auto a = midflt_init(329547.34, midtype_double_kind, midtype_default_rmode);
+    auto a = midflt_init(329547.34, midtype_double_kind,
+                         midtype_default_rmode);
 
     midflt_log10(&a);
 
@@ -189,6 +191,24 @@ static void test_apfloat()
     }
 
     mid_APFloat_deinit(&a);
+}
+*/
+
+static void test_apfloat()
+{
+    auto a =
+        midflt_init(FLT_TRUE_MIN, midtype_float_kind, midtype_default_rmode);
+    auto b = midflt_init(2.f, midtype_float_kind, midtype_default_rmode);
+
+    midflt_print(stdout, "a = {}\nb = {}\n", &a, &b);
+
+    for (int i = 0; i < 23; ++i)
+        midflt_div(&a, &b);
+
+    midflt_print(stdout, "product = {}\n", &a);
+    printf("mant = ");
+    midint_log_hex(&a.ieee.mant, stdout);
+    printf("\n");
 }
 
 static void init_modules()

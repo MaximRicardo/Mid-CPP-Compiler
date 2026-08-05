@@ -3,9 +3,6 @@
 #include "apint.h"
 #include <stdio.h>
 
-// TODO: add support for denormals in IEEE
-// TODO: account for overflow and underflow in IEEE
-
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -115,6 +115,56 @@ static int64_t ieee_exp_min(IEEEKind kind)
     return 1 - ieee_exp_max(kind);
 }
 
+// accounts for the effective exponent of denormals
+static int64_t ieee_eff_exp_min(IEEEKind kind)
+{
+    return ieee_exp_min(kind) - ieee_mant_n_bits(kind) + 1;
+}
+
+static bool ieee_is_denormal(const IEEE *self)
+{
+    bool is_denormal = !midint_get_sign_bit(&self->mant);
+    if (is_denormal)
+        assert(self->exp == ieee_exp_min(self->kind));
+
+    return is_denormal;
+}
+
+// if self is a denormal it gets normalized, otherwise does nothing
+static void ieee_normalize(IEEE *self)
+{
+    int32_t n_bits = midint_unsigned_sig_bits(&self->mant);
+
+    if (n_bits == self->mant.n_bits)
+        return;
+    assert(n_bits < self->mant.n_bits);
+
+    int32_t shift = self->mant.n_bits - n_bits;
+    midint_shl_imm(&self->mant, shift);
+    self->exp -= shift;
+}
+
+// correct self after an operation
+// converts to a denormal if necessary and converts to +/-inf if an overflow
+// or underflow occured
+static void ieee_post_op_correct(IEEE *self)
+{
+    assert(self->mant.n_bits == ieee_mant_n_bits(self->kind));
+
+    if (self->exp > ieee_exp_max(self->kind)) {
+        self->val_cat = MIDFLT_IEEE_VAL_INF;
+    } else if (self->exp < ieee_exp_min(self->kind)) {
+        int32_t shift = ieee_exp_min(self->kind) - self->exp;
+
+        if (shift >= self->mant.n_bits) {
+            self->val_cat = MIDFLT_IEEE_VAL_ZERO;
+        } else {
+            midint_lshr_imm(&self->mant, shift);
+            self->exp = ieee_exp_min(self->kind);
+        }
+    }
+}
+
 /*
 static uint64_t ieee_biased_exp_max(IEEEKind kind)
 {
@@ -164,7 +214,7 @@ struct midflt_IEEE midflt_ieee_init(double val, enum midflt_IEEEKind kind,
 
     ret.exp = floor(log2(fabs(val)));
     assert(ret.exp <= ieee_exp_max(ret.kind));
-    assert(ret.exp >= ieee_exp_min(ret.kind));
+    assert(ret.exp >= ieee_eff_exp_min(ret.kind));
 
     double mant = fabs(val) * exp2(-ret.exp);
     assert(mant >= 1.0 && mant < 2.0);
@@ -180,6 +230,7 @@ struct midflt_IEEE midflt_ieee_init(double val, enum midflt_IEEEKind kind,
             break;
     }
 
+    ieee_post_op_correct(&ret);
     return ret;
 }
 
@@ -250,8 +301,9 @@ struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
     assert(exp <= ieee_exp_max(kind));
     assert(exp >= ieee_exp_min(kind));
 
-    if (!midint_get_sign_bit(mant))
-        MID_CRASH("the MSb of the mantissa should always be active");
+    if ((!midint_get_sign_bit(mant) && exp != ieee_exp_min(kind)) ||
+        midint_is_zero(mant))
+        MID_CRASH("invalid mantissa");
 
     IEEE ret = {.mant = midint_copy(mant),
                 .exp = exp,
@@ -436,13 +488,10 @@ static bool ieee_floats_compatible(const IEEE *a, const IEEE *b)
     return a->kind == b->kind && a->rounding == b->rounding;
 }
 
-void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
+// denormals must be corrected before calling this
+// doesn't do a post op correction
+static void ieee_mul_base(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
-    assert(ieee_floats_compatible(a, b));
-
-    if (ieee_mul_special_cases(a, b))
-        return;
-
     a->is_neg = ieee_muldiv_sign_bit(a, b);
 
     a->exp += b->exp;
@@ -489,13 +538,32 @@ void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     a->exp += norm_shift;
 }
 
-void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
+void midflt_ieee_mul(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
     assert(ieee_floats_compatible(a, b));
 
-    if (ieee_div_special_cases(a, b))
+    if (ieee_mul_special_cases(a, b))
         return;
 
+    ieee_normalize(a);
+    if (!ieee_is_denormal(b)) {
+        ieee_mul_base(a, b);
+        ieee_post_op_correct(a);
+    } else {
+        auto b_norm = midflt_ieee_copy(b);
+        ieee_normalize(&b_norm);
+
+        ieee_mul_base(a, &b_norm);
+        ieee_post_op_correct(a);
+
+        midflt_IEEE_deinit(&b_norm);
+    }
+}
+
+// denormals must be corrected before calling this
+// doesn't do a post op correction
+static void ieee_div_base(struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
     a->is_neg = ieee_muldiv_sign_bit(a, b);
 
     a->exp -= b->exp;
@@ -539,6 +607,28 @@ void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     mid_APInt_deinit(&a->mant);
     a->mant = unnorm;
     midint_ext(&a->mant, norm_bits, false);
+}
+
+void midflt_ieee_div(struct midflt_IEEE *a, const struct midflt_IEEE *b)
+{
+    assert(ieee_floats_compatible(a, b));
+
+    if (ieee_div_special_cases(a, b))
+        return;
+
+    ieee_normalize(a);
+    if (!ieee_is_denormal(b)) {
+        ieee_div_base(a, b);
+        ieee_post_op_correct(a);
+    } else {
+        auto b_norm = midflt_ieee_copy(b);
+        ieee_normalize(&b_norm);
+
+        ieee_div_base(a, &b_norm);
+        ieee_post_op_correct(a);
+
+        midflt_IEEE_deinit(&b_norm);
+    }
 }
 
 static void ieee_addsub_normalize_mant(IEEE *a)
@@ -604,6 +694,9 @@ static void ieee_add_base(IEEE *a, const IEEE *og_b)
 
     auto b = midflt_ieee_copy(og_b);
 
+    ieee_normalize(a);
+    ieee_normalize(&b);
+
     // reserve an extra bit for carry information
     ieee_match_exps(a, &b, 1);
 
@@ -612,6 +705,8 @@ static void ieee_add_base(IEEE *a, const IEEE *og_b)
     ieee_addsub_normalize_mant(a);
 
     midint_ext(&a->mant, ieee_mant_n_bits(a->kind), false);
+    ieee_post_op_correct(a);
+
     midflt_IEEE_deinit(&b);
 }
 
@@ -622,12 +717,16 @@ static void ieee_sub_base(IEEE *a, const IEEE *og_b)
 
     auto b = midflt_ieee_copy(og_b);
 
+    ieee_normalize(a);
+    ieee_normalize(&b);
+
     // reserve an extra bit for borrow information
     ieee_match_exps(a, &b, 1);
 
     midint_sub(&a->mant, &b.mant);
 
     ieee_addsub_normalize_mant(a);
+    ieee_post_op_correct(a);
 
     midint_ext(&a->mant, ieee_mant_n_bits(a->kind), false);
     midflt_IEEE_deinit(&b);
@@ -779,6 +878,10 @@ void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b)
 
 double midflt_ieee_to_dbl(const struct midflt_IEEE *self)
 {
+    // TODO: add support for denormals
+    if (ieee_is_denormal(self))
+        return self->is_neg ? -0.0 : 0.0;
+
     if (self->val_cat == MIDFLT_IEEE_VAL_NAN)
         // 0 / 0 = -nan
         return self->is_neg ? 0.0 / 0.0 : -(0.0 / 0.0);
@@ -1193,6 +1296,7 @@ static IEEE ieee_pow_neg_two(uint32_t m, IEEEKind kind, Rounding rounding)
     return ret;
 }
 
+// doesn't normalize and doesn't do a post op correction
 // n_iters      - the higher the number of iterations the higher the precision,
 //                at the cost of lower performance
 static IEEE ieee_approx_log2_base(const IEEE *self, int n_iters)
@@ -1218,6 +1322,8 @@ static IEEE ieee_approx_log2_base(const IEEE *self, int n_iters)
 }
 
 // calculates the exact log2
+// denormals must be corrected before calling this
+// doesn't do a post op correction
 static IEEE ieee_log2_base(const IEEE *self)
 {
     // TODO: use an init from uint function when i make one
@@ -1246,8 +1352,6 @@ static IEEE ieee_log2_base(const IEEE *self)
     }
 
     bool guard_bit = midint_get_bit(&res.mant, 0);
-    printf("guard = %d, round = %d, sticky = %d\n", guard_bit, round_bit,
-           sticky_bit);
     if (ieee_should_inc_mant(res.rounding, res.is_neg, guard_bit, round_bit,
                              sticky_bit)) {
         // allocate an extra bit for carry
@@ -1277,7 +1381,10 @@ void midflt_ieee_approx_log2(struct midflt_IEEE *self, int n_iters)
     } else if (self->is_neg) {
         self->val_cat = MIDFLT_IEEE_VAL_NAN;
     } else if (self->val_cat == MIDFLT_IEEE_VAL_NORMAL) {
+        ieee_normalize(self);
         auto tmp = ieee_approx_log2_base(self, n_iters);
+        ieee_post_op_correct(&tmp);
+
         midflt_IEEE_deinit(self);
         *self = tmp;
     }
@@ -1294,7 +1401,10 @@ void midflt_ieee_log2(struct midflt_IEEE *self)
     } else if (self->is_neg) {
         self->val_cat = MIDFLT_IEEE_VAL_NAN;
     } else if (self->val_cat == MIDFLT_IEEE_VAL_NORMAL) {
+        ieee_normalize(self);
         auto tmp = ieee_log2_base(self);
+        ieee_post_op_correct(&tmp);
+
         midflt_IEEE_deinit(self);
         *self = tmp;
     }
