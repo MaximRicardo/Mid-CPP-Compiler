@@ -465,9 +465,8 @@ static void log_uint_bignum(const struct mid_APInt *self, FILE *out)
     auto ten = midint_init(tmp.n_bits, 10, false);
     auto d = midint_alloc(tmp.n_bits);
 
+    int i = 0;
     char *digits = mid_malloc(max_dec_digits(self->n_bits) * sizeof(*digits));
-
-    mid_isize i = 0;
     while (midint_is_ugteq(&tmp, &ten)) {
         midint_udivrem(&tmp, &ten, &tmp, &d);
 
@@ -1298,10 +1297,26 @@ static void bignum_div(const midint_Word *a, int32_t a_n_words,
     int32_t n = b_n_words * 2;
     int32_t m = a_n_words * 2 - n;
 
-    uint32_t *u = mid_malloc((m + n + 1) * sizeof(*u));
-    uint32_t *v = mid_malloc(n * sizeof(*v));
-    uint32_t *q = mid_malloc((m + n) * sizeof(*q));
-    uint32_t *r = out_rem ? mid_malloc(n * sizeof(*r)) : NULL;
+    uint32_t *u, *v, *q, *r;
+
+    uint32_t stack_space[256];
+    size_t req_space = 2 * m + 3 * n + 1;
+    if (out_rem)
+        req_space += n;
+    bool used_stack = req_space <= MID_ARRLEN(stack_space);
+
+    // avoid malloc if there's space on the stack
+    if (used_stack) {
+        u = &stack_space[0];
+        v = u + m + n + 1;
+        q = v + n;
+        r = out_rem ? q + m + n : NULL;
+    } else {
+        u = mid_malloc((m + n + 1) * sizeof(*u));
+        v = mid_malloc(n * sizeof(*v));
+        q = mid_malloc((m + n) * sizeof(*q));
+        r = out_rem ? mid_malloc(n * sizeof(*r)) : NULL;
+    }
 
     convert_to_u32_digits(a, a_n_words, u);
     u[m + n] = 0; // account for spill in the knuth algorithm
@@ -1369,10 +1384,12 @@ static void bignum_div(const midint_Word *a, int32_t a_n_words,
         }
     }
 
-    free(u);
-    free(v);
-    free(q);
-    free(r);
+    if (!used_stack) {
+        free(u);
+        free(v);
+        free(q);
+        free(r);
+    }
 }
 
 struct mid_APInt midint_nip_udiv(const struct mid_APInt *a,
@@ -1570,13 +1587,13 @@ static int cmp_bignums(const midint_Word *a, const midint_Word *b,
                        int32_t a_words, int32_t b_words)
 {
     while (a_words--, b_words--) {
-        if (a_words > 0 && b_words > 0) {
+        if (a_words >= 0 && b_words >= 0) {
             if (a[a_words] != b[b_words])
                 return (a[a_words] > b[b_words]) ? 1 : -1;
-        } else if (a_words > 0) {
+        } else if (a_words >= 0) {
             if (a[a_words] != 0)
                 return 1;
-        } else if (b_words > 0) {
+        } else if (b_words >= 0) {
             if (b[b_words] != 0)
                 return -1;
         }

@@ -160,6 +160,38 @@ static void test_mangling(const struct midsema_Scope *scope)
 }
 */
 
+static void test_apint()
+{
+    auto a = midint_init_arr(256,
+                             (midint_Word[]){
+                                 0x8A0D175B8BAAFA2B,
+                                 0x40F343267298B62D,
+                                 0xC9E3B39803F2F6AF,
+                                 0xB17217F7D1CF79AB,
+                             },
+                             4, false);
+    auto b = midint_init_arr(256,
+                             (midint_Word[]){
+                                 0x18974359743589ae,
+                                 0x9845760798237945,
+                                 0x9845672034876023,
+                                 0x3495734851043578,
+                             },
+                             4, false);
+
+    printf("a = ");
+    midint_log(&a, stdout, false);
+    printf("\nb = ");
+    midint_log(&b, stdout, false);
+    printf("\n");
+
+    midint_udiv(&a, &b);
+
+    printf("q = ");
+    midint_log(&a, stdout, false);
+    printf("\n");
+}
+
 static void test_apfloat()
 {
     auto a = midflt_init(329547.34, midtype_float_kind,
@@ -204,7 +236,8 @@ int main(int argc, char **argv)
 
     init_modules();
 
-    test_apfloat();
+    test_apint();
+    // test_apfloat();
     MID_CRASH("asdf");
 
     midcmd_init_args(argc, argv);
