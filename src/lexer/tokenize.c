@@ -1000,6 +1000,10 @@ create_identifier_tok(char *id, struct mid_Position pos, const char *line)
         return (struct midlex_Token){
             .pos = pos, .line = line, .type = MIDLEX_TOKENTYPE_TYPENAME};
 
+    else if (!strcmp(id, "sizeof"))
+        return (struct midlex_Token){
+            .pos = pos, .line = line, .type = MIDLEX_TOKENTYPE_SIZEOF};
+
     else
         return (struct midlex_Token){.pos = pos,
                                      .line = line,

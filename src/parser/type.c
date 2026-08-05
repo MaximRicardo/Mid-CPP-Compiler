@@ -1,4 +1,5 @@
 #include "parser/type.h"
+#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "dynstr.h"
@@ -1450,13 +1451,20 @@ struct midpar_Type midpar_create_templated_type(struct midsema_IdentPtr ident)
     return midpar_create_named_type(ident, MIDPAR_TYPESPEC_TEMPLATED);
 }
 
-struct midpar_Type midpar_create_unknown_type()
+struct midpar_Type midpar_create_simple_type(enum midpar_TypeSpec spec,
+                                             int n_indir)
 {
-    struct midpar_Type ret = {.spec = MIDPAR_TYPESPEC_UNKNOWN};
+    struct midpar_Type ret = {.spec = spec};
 
-    midgen_dynpush(&ret.dquals, ((struct midpar_TypeDataQual){}));
+    for (int i = 0; i < n_indir + 1; ++i)
+        midgen_dynpush(&ret.dquals, ((struct midpar_TypeDataQual){}));
 
     return ret;
+}
+
+struct midpar_Type midpar_create_unknown_type()
+{
+    return midpar_create_simple_type(MIDPAR_TYPESPEC_UNKNOWN, 0);
 }
 
 bool midpar_type_is_void(const struct midpar_Type *type)
@@ -1517,4 +1525,70 @@ enum midlit_ValueKind midpar_type_lit_value_kind(const struct midpar_Type *type)
     default:
         MID_CRASH("not a literal value");
     }
+}
+
+struct mid_APInt midpar_type_size(const struct midpar_Type *type)
+{
+    if (midpar_n_indir(type) || type->spec == MIDPAR_TYPESPEC_NULLPTR)
+        return midint_init(64, midtype_ptr_size, false);
+
+    switch (type->spec) {
+    case MIDPAR_TYPESPEC_CHAR:
+    case MIDPAR_TYPESPEC_SCHAR:
+    case MIDPAR_TYPESPEC_UCHAR:
+        return midint_init(64, midtype_char_size, false);
+
+    case MIDPAR_TYPESPEC_WCHAR:
+        return midint_init(64, midtype_wchar_size, false);
+
+    case MIDPAR_TYPESPEC_CHAR16:
+        return midint_init(64, 2, false);
+
+    case MIDPAR_TYPESPEC_CHAR32:
+        return midint_init(64, 4, false);
+
+    case MIDPAR_TYPESPEC_SHORT:
+    case MIDPAR_TYPESPEC_USHORT:
+        return midint_init(64, midtype_short_size, false);
+
+    case MIDPAR_TYPESPEC_INT:
+    case MIDPAR_TYPESPEC_UINT:
+        return midint_init(64, midtype_int_size, false);
+
+    case MIDPAR_TYPESPEC_LONG:
+    case MIDPAR_TYPESPEC_ULONG:
+        return midint_init(64, midtype_long_size, false);
+
+    case MIDPAR_TYPESPEC_LONGLONG:
+    case MIDPAR_TYPESPEC_ULONGLONG:
+        return midint_init(64, midtype_longlong_size, false);
+
+    case MIDPAR_TYPESPEC_FLOAT:
+        return midint_init(64, midtype_float_size, false);
+
+    case MIDPAR_TYPESPEC_DOUBLE:
+        return midint_init(64, midtype_double_size, false);
+
+    case MIDPAR_TYPESPEC_LONGDOUBLE:
+        return midint_init(64, midtype_longdouble_size, false);
+
+    case MIDPAR_TYPESPEC_ARRAY: {
+        struct mid_APInt elem_size = midpar_type_size(&type->array->elem);
+        midint_mul_uimm(&elem_size, type->array->len);
+        return elem_size;
+    }
+
+    default:
+        MID_CRASH("type doesn't have a size");
+    }
+}
+
+struct mid_APInt midpar_sizeof_type(const struct midpar_Type *type)
+{
+    struct mid_APInt bytes = midpar_type_size(type);
+    auto char_bytes = midint_init(64, midtype_char_size, false);
+    midint_udiv(&bytes, &char_bytes);
+
+    mid_APInt_deinit(&char_bytes);
+    return bytes;
 }

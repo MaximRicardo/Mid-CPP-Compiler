@@ -1052,6 +1052,12 @@ static void typecheck_memb_sel(struct midpar_Expr *expr,
     }
 }
 
+static void typecheck_sizeof_expr(struct midpar_Expr *expr)
+{
+    expr->ret = midpar_create_simple_type(MIDPAR_TYPEALIAS_SIZET, 0);
+    expr->valtype = MIDPAR_EXPRVALUE_PRVALUE;
+}
+
 static void typecheck_op_expr(struct midpar_Expr *expr,
                               struct midsema_Scope *scope,
                               struct mid_DiagVec *diags)
@@ -1085,6 +1091,8 @@ static void typecheck_op_expr(struct midpar_Expr *expr,
         typecheck_scope_res_expr(expr, scope, diags);
     else if (midpar_is_memb_sel(expr->type))
         typecheck_memb_sel(expr, scope, diags);
+    else if (expr->type == MIDPAR_EXPRTYPE_SIZEOF)
+        typecheck_sizeof_expr(expr);
     else {
         printf("op at %d:%d\n", expr->tok->pos.line, expr->tok->pos.column);
         printf("op type = %d\n", expr->type);

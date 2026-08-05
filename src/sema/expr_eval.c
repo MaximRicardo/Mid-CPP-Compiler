@@ -6,6 +6,7 @@
 #include "parser/ast.h"
 #include "parser/expr.h"
 #include "parser/expr_type.h"
+#include "parser/type.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "types.h"
@@ -86,7 +87,11 @@ static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,
 static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
                                               const struct midsema_Scope *scope)
 {
-    auto res = midsema_eval_expr(&expr->info.args.arr[0], scope);
+    const struct midpar_Expr *child = &expr->info.args.arr[0];
+
+    struct midlit_TaggedValue res;
+    if (expr->type != MIDPAR_EXPRTYPE_SIZEOF)
+        res = midsema_eval_expr(child, scope);
 
     bool is_integral = res.kind == MIDLIT_VALUE_SIGNED_INT ||
                        res.kind == MIDLIT_VALUE_UNSIGNED_INT;
@@ -121,6 +126,11 @@ static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
             midint_negate(&res.v.i);
         else
             midflt_flip_sign(&res.v.flt);
+        break;
+
+    case MIDPAR_EXPRTYPE_SIZEOF:
+        res.v.i = midpar_sizeof_type(&child->ret);
+        res.kind = MIDLIT_VALUE_UNSIGNED_INT;
         break;
 
     default:

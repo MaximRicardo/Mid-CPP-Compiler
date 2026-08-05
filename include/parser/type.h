@@ -1,5 +1,6 @@
 #pragma once
 
+#include "apint.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
@@ -51,6 +52,8 @@ enum midpar_TypeSpec {
     MIDPAR_TYPESPEC_UNION,
     MIDPAR_TYPESPEC_ENUM,
 };
+
+#define MIDPAR_TYPEALIAS_SIZET MIDPAR_TYPESPEC_ULONGLONG
 
 bool midpar_is_typespec_typecheckable(enum midpar_TypeSpec spec);
 bool midpar_is_typespec_named(enum midpar_TypeSpec spec);
@@ -184,12 +187,19 @@ struct midpar_Type midpar_create_named_type(struct midsema_IdentPtr ident,
                                             enum midpar_TypeSpec spec);
 struct midpar_Type midpar_create_templated_type(struct midsema_IdentPtr ident);
 struct midpar_Type midpar_create_unknown_type();
+struct midpar_Type midpar_create_simple_type(enum midpar_TypeSpec spec,
+                                             int n_indir);
 bool midpar_type_is_void(const struct midpar_Type *type);
 bool midpar_type_is_void_ptr(const struct midpar_Type *type);
 bool midpar_type_is_nullptr_t(const struct midpar_Type *type);
 bool midpar_type_is_ref(const struct midpar_Type *type);
 // lvls of indir doesn't matter here
 bool midpar_type_is_typecheckable(const struct midpar_Type *type);
+
+// in bytes
+struct mid_APInt midpar_type_size(const struct midpar_Type *type);
+// in multiples of midtype_char_size
+struct mid_APInt midpar_sizeof_type(const struct midpar_Type *type);
 
 enum midlit_ValueKind
 midpar_type_lit_value_kind(const struct midpar_Type *type);
