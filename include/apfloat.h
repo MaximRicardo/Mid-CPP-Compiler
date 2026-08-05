@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 // TODO: add support for denormals in IEEE
+// TODO: account for overflow and underflow in IEEE
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,6 +81,7 @@ void midflt_ieee_approx_log2(struct midflt_IEEE *self, int n_iters);
 // n_iters      - the higher the better the precision
 void midflt_ieee_approx_ln(struct midflt_IEEE *self, int n_iters);
 void midflt_ieee_log2(struct midflt_IEEE *self);
+void midflt_ieee_log10(struct midflt_IEEE *self);
 void midflt_ieee_ln(struct midflt_IEEE *self);
 
 // not in place operations
@@ -141,6 +143,7 @@ void midflt_approx_log2(struct mid_APFloat *self, int n_iters);
 // n_iters      - the higher the better the precision
 void midflt_approx_ln(struct mid_APFloat *self, int n_iters);
 void midflt_log2(struct mid_APFloat *self);
+void midflt_log10(struct mid_APFloat *self);
 void midflt_ln(struct mid_APFloat *self);
 
 bool midflt_eq(const struct mid_APFloat *a, const struct mid_APFloat *b);

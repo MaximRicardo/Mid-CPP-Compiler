@@ -160,44 +160,11 @@ static void test_mangling(const struct midsema_Scope *scope)
 }
 */
 
-static void test_apint()
-{
-    auto a = midint_init_arr(256,
-                             (midint_Word[]){
-                                 0x8A0D175B8BAAFA2B,
-                                 0x40F343267298B62D,
-                                 0xC9E3B39803F2F6AF,
-                                 0xB17217F7D1CF79AB,
-                             },
-                             4, false);
-    auto b = midint_init_arr(256,
-                             (midint_Word[]){
-                                 0x18974359743589ae,
-                                 0x9845760798237945,
-                                 0x9845672034876023,
-                                 0x3495734851043578,
-                             },
-                             4, false);
-
-    printf("a = ");
-    midint_log(&a, stdout, false);
-    printf("\nb = ");
-    midint_log(&b, stdout, false);
-    printf("\n");
-
-    midint_udiv(&a, &b);
-
-    printf("q = ");
-    midint_log(&a, stdout, false);
-    printf("\n");
-}
-
 static void test_apfloat()
 {
-    auto a = midflt_init(329547.34, midtype_float_kind,
-                         MIDFLT_ROUND_NEAREST_TIES_EVEN);
+    auto a = midflt_init(329547.34, midtype_double_kind, midtype_default_rmode);
 
-    midflt_ln(&a);
+    midflt_log10(&a);
 
     midflt_print(stdout, "a = {}\n", &a);
 
@@ -206,7 +173,7 @@ static void test_apfloat()
     printf("\n");
 
     {
-        double d = log(329547.34);
+        double d = log10(329547.34);
         printf("hardware double = %.*lf\n", DECIMAL_DIG, d);
         uint64_t mant = (*(uint64_t *)&d) & ((1ULL << 53) - 1);
         mant |= 1ULL << 52;
@@ -214,7 +181,7 @@ static void test_apfloat()
     }
 
     {
-        float d = logf(329547.34);
+        float d = log10f(329547.34);
         printf("hardware float = %.*f\n", DECIMAL_DIG, d);
         uint32_t mant = (*(uint32_t *)&d) & ((1ULL << 24) - 1);
         mant |= 1ULL << 23;
@@ -236,8 +203,7 @@ int main(int argc, char **argv)
 
     init_modules();
 
-    test_apint();
-    // test_apfloat();
+    test_apfloat();
     MID_CRASH("asdf");
 
     midcmd_init_args(argc, argv);
