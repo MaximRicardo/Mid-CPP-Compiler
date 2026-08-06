@@ -257,7 +257,7 @@ eval_arith_binop(const struct midpar_Expr *expr, struct midlit_TaggedValue *lhs,
         else if (res.kind == MIDLIT_VALUE_UNSIGNED_INT)
             res.v.i = midint_nip_urem(&lhs->v.i, &rhs->v.i);
         else
-            MID_CRASH("modulo of floats not implemented yet");
+            MID_CRASH("can't compute remainder of floats");
         break;
 
     case MIDPAR_EXPRTYPE_LEFT_SHIFT:
