@@ -207,28 +207,28 @@ static enum NumLitType sel_numlit_type_int(const struct mid_APInt *val,
                                            struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (midint_is_ulteq_imm(val, midtype_int_smax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_int_smax())) {
             return NUMLIT_INT;
-        } else if (midint_is_ulteq_imm(val, midtype_long_smax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_long_smax())) {
             return NUMLIT_LONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_smax())) {
             return NUMLIT_LONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_LONGLONG;
         }
     } else {
-        if (midint_is_ulteq_imm(val, midtype_int_smax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_int_smax())) {
             return NUMLIT_INT;
-        } else if (midint_is_ulteq_imm(val, midtype_int_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_int_umax())) {
             return NUMLIT_UINT;
-        } else if (midint_is_ulteq_imm(val, midtype_long_smax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_long_smax())) {
             return NUMLIT_LONG;
-        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_long_umax())) {
             return NUMLIT_ULONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_smax())) {
             return NUMLIT_LONGLONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_umax())) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -243,22 +243,22 @@ static enum NumLitType sel_numlit_type_uint(const struct mid_APInt *val,
                                             struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (midint_is_ulteq_imm(val, midtype_int_umax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_int_umax())) {
             return NUMLIT_UINT;
-        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_long_umax())) {
             return NUMLIT_ULONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_umax())) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_ULONGLONG;
         }
     } else {
-        if (midint_is_ulteq_imm(val, midtype_int_umax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_int_umax())) {
             return NUMLIT_UINT;
-        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_long_umax())) {
             return NUMLIT_ULONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_umax())) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -273,24 +273,24 @@ static enum NumLitType sel_numlit_type_long(const struct mid_APInt *val,
                                             struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (midint_is_ulteq_imm(val, midtype_long_smax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_long_smax())) {
             return NUMLIT_LONG;
-        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_long_umax())) {
             return NUMLIT_ULONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_smax())) {
             return NUMLIT_LONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_LONGLONG;
         }
     } else {
-        if (midint_is_ulteq_imm(val, midtype_long_smax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_long_smax())) {
             return NUMLIT_LONG;
-        } else if (midint_is_ulteq_imm(val, midtype_long_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_long_umax())) {
             return NUMLIT_ULONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_smax())) {
             return NUMLIT_LONGLONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_umax())) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -305,18 +305,18 @@ static enum NumLitType sel_numlit_type_ulong(const struct mid_APInt *val,
                                              struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (midint_is_ulteq_imm(val, midtype_long_umax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_long_umax())) {
             return NUMLIT_ULONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_umax())) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_ULONGLONG;
         }
     } else {
-        if (midint_is_ulteq_imm(val, midtype_long_umax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_long_umax())) {
             return NUMLIT_ULONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_umax())) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -332,16 +332,16 @@ static enum NumLitType sel_numlit_type_longlong(const struct mid_APInt *val,
                                                 struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_longlong_smax())) {
             return NUMLIT_LONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_LONGLONG;
         }
     } else {
-        if (midint_is_ulteq_imm(val, midtype_longlong_smax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_longlong_smax())) {
             return NUMLIT_LONGLONG;
-        } else if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
+        } else if (midint_is_ulteq_diff_sizes(val, midtype_longlong_umax())) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -357,14 +357,14 @@ static enum NumLitType sel_numlit_type_ulonglong(const struct mid_APInt *val,
                                                  struct mid_DiagVec *diags)
 {
     if (base == 10) {
-        if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_longlong_umax())) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
             return NUMLIT_ULONGLONG;
         }
     } else {
-        if (midint_is_ulteq_imm(val, midtype_longlong_umax)) {
+        if (midint_is_ulteq_diff_sizes(val, midtype_longlong_umax())) {
             return NUMLIT_ULONGLONG;
         } else {
             midgen_dynpush(diags, intlit_too_big_err(pos, line));
@@ -646,11 +646,11 @@ bool verify_charlit_value(uint32_t val, enum midlit_StringType type,
 
     switch (type) {
     case MIDLIT_STRINGTYPE_CHAR:
-        too_big = val > midtype_char_umax;
+        too_big = midint_is_ult_imm(midtype_char_umax(), val);
         break;
 
     case MIDLIT_STRINGTYPE_WCHAR:
-        too_big = val > midtype_wchar_umax;
+        too_big = midint_is_ult_imm(midtype_wchar_umax(), val);
         break;
 
     case MIDLIT_STRINGTYPE_CHAR16:

@@ -18,6 +18,7 @@
 #include "sema/expr_eval.h"
 #include "sema/scope.h"
 #include "symbol.h"
+#include "types.h"
 #include <assert.h>
 #include <float.h>
 #include <locale.h>
@@ -162,6 +163,7 @@ static void test_mangling(const struct midsema_Scope *scope)
 static void init_modules()
 {
     midflt_init_module();
+    midtype_init_module();
 }
 
 int main(int argc, char **argv)

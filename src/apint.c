@@ -1602,25 +1602,6 @@ static int cmp_bignums(const midint_Word *a, const midint_Word *b,
     return 0;
 }
 
-// a and b can be different widths
-static int unsigned_cmp_diff_sizes(const struct mid_APInt *a,
-                                   const struct mid_APInt *b)
-{
-    if (is_bignum_used(a->n_bits) && is_bignum_used(b->n_bits)) {
-        return cmp_bignums(a->v.words, b->v.words, get_n_words(a->n_bits),
-                           get_n_words(b->n_bits));
-    } else if (is_bignum_used(a->n_bits)) {
-        if (midint_unsigned_sig_bits(a) > midint_word_n_bits)
-            return 1;
-        else
-            return a->v.words[0] < b->v.val ? -1 : a->v.words[0] > b->v.val;
-    } else if (is_bignum_used(b->n_bits)) {
-        return -unsigned_cmp_diff_sizes(b, a);
-    } else {
-        return a->v.val < b->v.val ? -1 : a->v.val > b->v.val;
-    }
-}
-
 void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
                     struct mid_APInt *out_quot, struct mid_APInt *out_rem)
 {
@@ -1654,12 +1635,12 @@ void midint_udivrem(const struct mid_APInt *a, const struct mid_APInt *b,
         midint_assign_uimm(out_rem, 0); // x % 1 = 0
         return;
     }
-    if (a_words < b_words || unsigned_cmp_diff_sizes(a, b) < 0) {
+    if (a_words < b_words || midint_unsigned_cmp_diff_sizes(a, b) < 0) {
         midint_assign_uimm(out_quot, 0); // x / y = 0 if x < y
         midint_assign(out_rem, a);       // x % y = x if x < y
         return;
     }
-    if (unsigned_cmp_diff_sizes(a, b) == 0) {
+    if (midint_unsigned_cmp_diff_sizes(a, b) == 0) {
         midint_assign_uimm(out_quot, 1); // x / x = 1
         midint_assign_uimm(out_rem, 0);  // x % x = 0
         return;
@@ -2218,4 +2199,104 @@ struct mid_APInt midint_get_smin(const struct mid_APInt *self)
     auto ret = midint_one(self->n_bits);
     midint_shl_imm(&ret, self->n_bits - 1);
     return ret;
+}
+
+int midint_unsigned_cmp_diff_sizes(const struct mid_APInt *a,
+                                   const struct mid_APInt *b)
+{
+    if (is_bignum_used(a->n_bits) && is_bignum_used(b->n_bits)) {
+        return cmp_bignums(a->v.words, b->v.words, get_n_words(a->n_bits),
+                           get_n_words(b->n_bits));
+    } else if (is_bignum_used(a->n_bits)) {
+        if (midint_unsigned_sig_bits(a) > midint_word_n_bits)
+            return 1;
+        else
+            return a->v.words[0] < b->v.val ? -1 : a->v.words[0] > b->v.val;
+    } else if (is_bignum_used(b->n_bits)) {
+        return -midint_unsigned_cmp_diff_sizes(b, a);
+    } else {
+        return a->v.val < b->v.val ? -1 : a->v.val > b->v.val;
+    }
+}
+
+int midint_signed_cmp_diff_sizes(const struct mid_APInt *a,
+                                 const struct mid_APInt *b)
+{
+    bool a_neg = midint_is_negative(a);
+    bool b_neg = midint_is_negative(b);
+
+    if (a_neg != b_neg)
+        return a_neg ? -1 : 1;
+
+    if (is_bignum_used(a->n_bits) && is_bignum_used(b->n_bits)) {
+        // negative numbers compare correctly as long as they both have the same
+        // sign
+        return cmp_bignums(a->v.words, b->v.words, get_n_words(a->n_bits),
+                           get_n_words(b->n_bits));
+    } else if (is_bignum_used(a->n_bits)) {
+        if (midint_signed_sig_bits(a) > b->n_bits)
+            return a_neg ? -1 : 1;
+        auto b_full = sign_ext_word(b->v.val, b->n_bits, midint_word_n_bits);
+        return a->v.words[0] < b_full ? -1 : a->v.words[0] > b_full;
+    } else if (is_bignum_used(b->n_bits)) {
+        return -midint_signed_cmp_diff_sizes(b, a);
+    } else {
+        auto a_ext = sign_ext_word(a->v.val, a->n_bits, midint_word_n_bits);
+        auto b_ext = sign_ext_word(b->v.val, b->n_bits, midint_word_n_bits);
+        return a_ext < b_ext ? -1 : a_ext > b_ext;
+    }
+}
+
+bool midint_is_eq_diff_sizes(const struct mid_APInt *a,
+                             const struct mid_APInt *b)
+{
+    return midint_unsigned_cmp_diff_sizes(a, b) == 0;
+}
+
+bool midint_is_ugt_diff_sizes(const struct mid_APInt *a,
+                              const struct mid_APInt *b)
+{
+    return midint_unsigned_cmp_diff_sizes(a, b) > 0;
+}
+
+bool midint_is_ugteq_diff_sizes(const struct mid_APInt *a,
+                                const struct mid_APInt *b)
+{
+    return midint_unsigned_cmp_diff_sizes(a, b) >= 0;
+}
+
+bool midint_is_ult_diff_sizes(const struct mid_APInt *a,
+                              const struct mid_APInt *b)
+{
+    return midint_unsigned_cmp_diff_sizes(a, b) < 0;
+}
+
+bool midint_is_ulteq_diff_sizes(const struct mid_APInt *a,
+                                const struct mid_APInt *b)
+{
+    return midint_unsigned_cmp_diff_sizes(a, b) <= 0;
+}
+
+bool midint_is_sgt_diff_sizes(const struct mid_APInt *a,
+                              const struct mid_APInt *b)
+{
+    return midint_signed_cmp_diff_sizes(a, b) > 0;
+}
+
+bool midint_is_sgteq_diff_sizes(const struct mid_APInt *a,
+                                const struct mid_APInt *b)
+{
+    return midint_signed_cmp_diff_sizes(a, b) >= 0;
+}
+
+bool midint_is_slt_diff_sizes(const struct mid_APInt *a,
+                              const struct mid_APInt *b)
+{
+    return midint_signed_cmp_diff_sizes(a, b) < 0;
+}
+
+bool midint_is_slteq_diff_sizes(const struct mid_APInt *a,
+                                const struct mid_APInt *b)
+{
+    return midint_signed_cmp_diff_sizes(a, b) <= 0;
 }

@@ -11,12 +11,16 @@
 // NOTE: types larger than 8 bytes are not supported
 
 #include "apfloat.h"
-#include "ints.h"
+#include "apint.h"
 #include "limits.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// inits all the APInts
+void midtype_init_module();
 
 constexpr int32_t midtype_bool_size = 1;
 
@@ -33,46 +37,34 @@ constexpr enum midflt_Kind midtype_longdouble_kind = MIDFLT_KIND_IEEE_DOUBLE;
 typedef int8_t TypesCharType;
 constexpr int32_t midtype_char_size = 1;
 constexpr bool midtype_char_signed = true;
-constexpr int64_t midtype_char_smax = INT8_MAX;
-constexpr int64_t midtype_char_smin = INT8_MIN;
-constexpr uint64_t midtype_char_umax = UINT8_MAX;
+const struct mid_APInt *midtype_char_smax(), *midtype_char_smin(),
+    *midtype_char_umax();
 
 typedef uint32_t TypesWCharType;
 constexpr int32_t midtype_wchar_size = 4;
 constexpr bool midtype_wchar_signed = false;
-// limits if wchar_t were signed
-constexpr int64_t midtype_wchar_smax = INT32_MAX;
-constexpr int64_t midtype_wchar_smin = INT32_MIN;
-// limits if wchar_t were unsigned
-constexpr uint64_t midtype_wchar_umax = UINT32_MAX;
-// the actual limits
-constexpr int64_t midtype_wchar_max =
-    midtype_wchar_signed ? midtype_wchar_smax : midtype_wchar_umax;
-constexpr int64_t midtype_wchar_min =
-    midtype_wchar_signed ? midtype_wchar_smin : 0;
+const struct mid_APInt *midtype_wchar_smax(), *midtype_wchar_smin(),
+    *midtype_wchar_umax();
 
 constexpr int32_t midtype_short_size = 2;
-constexpr int64_t midtype_short_smax = INT16_MAX;
-constexpr int64_t midtype_short_smin = INT16_MIN;
-constexpr uint64_t midtype_short_umax = UINT16_MAX;
+const struct mid_APInt *midtype_short_smax(), *midtype_short_smin(),
+    *midtype_short_umax();
 
 constexpr int32_t midtype_int_size = 4;
-constexpr int64_t midtype_int_smax = INT32_MAX;
-constexpr int64_t midtype_int_smin = INT32_MIN;
-constexpr uint64_t midtype_int_umax = UINT32_MAX;
+const struct mid_APInt *midtype_int_smax(), *midtype_int_smin(),
+    *midtype_int_umax();
 
 constexpr int32_t midtype_long_size = 8;
-constexpr int64_t midtype_long_smax = INT64_MAX;
-constexpr int64_t midtype_long_smin = INT64_MIN;
-constexpr uint64_t midtype_long_umax = UINT64_MAX;
+const struct mid_APInt *midtype_long_smax(), *midtype_long_smin(),
+    *midtype_long_umax();
 
 constexpr int32_t midtype_longlong_size = 8;
-constexpr int64_t midtype_longlong_smax = INT64_MAX;
-constexpr int64_t midtype_longlong_smin = INT64_MIN;
-constexpr uint64_t midtype_longlong_umax = UINT64_MAX;
+const struct mid_APInt *midtype_longlong_smax(), *midtype_longlong_smin(),
+    *midtype_longlong_umax();
 
 constexpr int32_t midtype_ptr_size = 8;
-constexpr uint64_t midtype_ptr_umax = UINT64_MAX;
+const struct mid_APInt *midtype_ptr_smax(), *midtype_ptr_smin(),
+    *midtype_ptr_umax();
 
 #ifdef __cplusplus
 }

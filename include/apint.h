@@ -166,6 +166,9 @@ bool midint_is_smin(const struct mid_APInt *self);
 bool midint_is_negative(const struct mid_APInt *self); // same as get_sign_bit
 bool midint_is_pow2(const struct mid_APInt *self);
 bool midint_is_eq(const struct mid_APInt *a, const struct mid_APInt *b);
+// a and b can be different widths
+bool midint_is_eq_diff_sizes(const struct mid_APInt *a,
+                             const struct mid_APInt *b);
 bool midint_is_eq_uimm(const struct mid_APInt *a, uint64_t b);
 bool midint_is_eq_simm(const struct mid_APInt *a, int64_t b);
 // unsigned comparisons
@@ -177,9 +180,26 @@ bool midint_is_ult(const struct mid_APInt *a, const struct mid_APInt *b);
 bool midint_is_ult_imm(const struct mid_APInt *a, uint64_t b);
 bool midint_is_ulteq(const struct mid_APInt *a, const struct mid_APInt *b);
 bool midint_is_ulteq_imm(const struct mid_APInt *a, uint64_t b);
+// a and b can be different widths
+bool midint_is_ugt_diff_sizes(const struct mid_APInt *a,
+                              const struct mid_APInt *b);
+// a and b can be different widths
+bool midint_is_ugteq_diff_sizes(const struct mid_APInt *a,
+                                const struct mid_APInt *b);
+// a and b can be different widths
+bool midint_is_ult_diff_sizes(const struct mid_APInt *a,
+                              const struct mid_APInt *b);
+// a and b can be different widths
+bool midint_is_ulteq_diff_sizes(const struct mid_APInt *a,
+                                const struct mid_APInt *b);
 // returns -1 if a < b, 1 if a > b, and 0 if a == b
 int midint_unsigned_cmp(const struct mid_APInt *a, const struct mid_APInt *b);
+// returns -1 if a < b, 1 if a > b, and 0 if a == b
 int midint_unsigned_cmp_imm(const struct mid_APInt *a, uint64_t b);
+// returns -1 if a < b, 1 if a > b, and 0 if a == b
+// a and b can be different widths
+int midint_unsigned_cmp_diff_sizes(const struct mid_APInt *a,
+                                   const struct mid_APInt *b);
 // signed comparisons
 bool midint_is_sgt(const struct mid_APInt *a, const struct mid_APInt *b);
 bool midint_is_sgt_imm(const struct mid_APInt *a, int64_t b);
@@ -189,9 +209,26 @@ bool midint_is_slt(const struct mid_APInt *a, const struct mid_APInt *b);
 bool midint_is_slt_imm(const struct mid_APInt *a, int64_t b);
 bool midint_is_slteq(const struct mid_APInt *a, const struct mid_APInt *b);
 bool midint_is_slteq_imm(const struct mid_APInt *a, int64_t b);
+// a and b can be different widths
+bool midint_is_ugt_diff_sizes(const struct mid_APInt *a,
+                              const struct mid_APInt *b);
+// a and b can be different widths
+bool midint_is_ugteq_diff_sizes(const struct mid_APInt *a,
+                                const struct mid_APInt *b);
+// a and b can be different widths
+bool midint_is_ult_diff_sizes(const struct mid_APInt *a,
+                              const struct mid_APInt *b);
+// a and b can be different widths
+bool midint_is_ulteq_diff_sizes(const struct mid_APInt *a,
+                                const struct mid_APInt *b);
 // returns -1 if a < b, 1 if a > b, and 0 if a == b
 int midint_signed_cmp(const struct mid_APInt *a, const struct mid_APInt *b);
+// returns -1 if a < b, 1 if a > b, and 0 if a == b
 int midint_signed_cmp_imm(const struct mid_APInt *a, int64_t b);
+// returns -1 if a < b, 1 if a > b, and 0 if a == b
+// a and b can be different widths
+int midint_signed_cmp_diff_sizes(const struct mid_APInt *a,
+                                 const struct mid_APInt *b);
 
 #ifdef __cplusplus
 }

@@ -1222,15 +1222,16 @@ int32_t midpar_typespec_conv_rank(enum midpar_TypeSpec spec)
     }
 }
 
-uint64_t midpar_integral_max(enum midpar_TypeSpec spec)
+struct mid_APInt midpar_integral_max(enum midpar_TypeSpec spec)
 {
     switch (spec) {
     case MIDPAR_TYPESPEC_CHAR:
-        return midtype_char_signed ? midtype_char_smax : midtype_char_umax;
+        return midint_copy(midtype_char_signed ? midtype_char_smax()
+                                               : midtype_char_umax());
     case MIDPAR_TYPESPEC_SCHAR:
-        return midtype_char_smax;
+        return midint_copy(midtype_char_smax());
     case MIDPAR_TYPESPEC_UCHAR:
-        return midtype_char_umax;
+        return midint_copy(midtype_char_umax());
     case MIDPAR_TYPESPEC_WCHAR:
         if (midtype_wchar_signed)
             return midpar_integral_max(
@@ -1244,27 +1245,27 @@ uint64_t midpar_integral_max(enum midpar_TypeSpec spec)
         return midpar_integral_max(midpar_uint_type_of_width(32 / 8));
 
     case MIDPAR_TYPESPEC_SHORT:
-        return midtype_short_smax;
+        return midint_copy(midtype_short_smax());
     case MIDPAR_TYPESPEC_USHORT:
-        return midtype_short_umax;
+        return midint_copy(midtype_short_umax());
 
     case MIDPAR_TYPESPEC_INT:
-        return midtype_int_smax;
+        return midint_copy(midtype_int_smax());
     case MIDPAR_TYPESPEC_UINT:
-        return midtype_int_umax;
+        return midint_copy(midtype_int_umax());
 
     case MIDPAR_TYPESPEC_LONG:
-        return midtype_long_smax;
+        return midint_copy(midtype_long_smax());
     case MIDPAR_TYPESPEC_ULONG:
-        return midtype_long_umax;
+        return midint_copy(midtype_long_umax());
 
     case MIDPAR_TYPESPEC_LONGLONG:
-        return midtype_longlong_smax;
+        return midint_copy(midtype_longlong_smax());
     case MIDPAR_TYPESPEC_ULONGLONG:
-        return midtype_longlong_umax;
+        return midint_copy(midtype_longlong_umax());
 
     case MIDPAR_TYPESPEC_BOOL:
-        return 1;
+        return midint_one(midtype_bool_size * 8);
 
     default:
         assert(!midpar_is_integral_typespec(spec));
@@ -1272,48 +1273,51 @@ uint64_t midpar_integral_max(enum midpar_TypeSpec spec)
     }
 }
 
-int64_t midpar_integral_min(enum midpar_TypeSpec spec)
+struct mid_APInt midpar_integral_min(enum midpar_TypeSpec spec)
 {
     switch (spec) {
     case MIDPAR_TYPESPEC_CHAR:
-        return midtype_char_signed ? midtype_char_smin : 0;
+        if (midtype_char_signed)
+            return midint_copy(midtype_char_smin());
+        else
+            return midint_zero(midtype_char_size * 8);
     case MIDPAR_TYPESPEC_SCHAR:
-        return midtype_char_smin;
+        return midint_copy(midtype_char_smin());
     case MIDPAR_TYPESPEC_UCHAR:
-        return 0;
+        return midint_zero(midtype_char_size * 8);
     case MIDPAR_TYPESPEC_WCHAR:
         if (midtype_wchar_signed)
             return midpar_integral_min(
                 midpar_sint_type_of_width(midtype_wchar_size));
         else
-            return 0;
+            return midint_zero(midtype_wchar_size * 8);
     case MIDPAR_TYPESPEC_CHAR16:
-        return 0;
+        return midint_zero(16);
     case MIDPAR_TYPESPEC_CHAR32:
-        return 0;
+        return midint_zero(32);
 
     case MIDPAR_TYPESPEC_SHORT:
-        return midtype_short_smin;
+        return midint_copy(midtype_short_smin());
     case MIDPAR_TYPESPEC_USHORT:
-        return 0;
+        return midint_zero(midtype_short_size * 8);
 
     case MIDPAR_TYPESPEC_INT:
-        return midtype_int_smin;
+        return midint_copy(midtype_int_smin());
     case MIDPAR_TYPESPEC_UINT:
-        return 0;
+        return midint_zero(midtype_int_size * 8);
 
     case MIDPAR_TYPESPEC_LONG:
-        return midtype_long_smin;
+        return midint_copy(midtype_long_smin());
     case MIDPAR_TYPESPEC_ULONG:
-        return 0;
+        return midint_zero(midtype_long_size * 8);
 
     case MIDPAR_TYPESPEC_LONGLONG:
-        return midtype_longlong_smin;
+        return midint_copy(midtype_longlong_smin());
     case MIDPAR_TYPESPEC_ULONGLONG:
-        return 0;
+        return midint_zero(midtype_longlong_size * 8);
 
     case MIDPAR_TYPESPEC_BOOL:
-        return 0;
+        return midint_zero(midtype_bool_size * 8);
 
     default:
         assert(!midpar_is_integral_typespec(spec));
@@ -1332,13 +1336,20 @@ enum midpar_TypeSpec midpar_integral_prom(enum midpar_TypeSpec spec)
     int32_t int_rank = midpar_typespec_conv_rank(MIDPAR_TYPESPEC_INT);
 
     if (spec_rank < int_rank) {
-        if (midpar_integral_max(MIDPAR_TYPESPEC_INT) >=
-                midpar_integral_max(spec) &&
-            midpar_integral_min(MIDPAR_TYPESPEC_INT) <=
-                midpar_integral_min(spec))
-            return MIDPAR_TYPESPEC_INT;
+        struct mid_APInt spec_max = midpar_integral_max(spec);
+        struct mid_APInt spec_min = midpar_integral_min(spec);
+
+        enum midpar_TypeSpec new_spec;
+
+        if (midint_is_ugteq_diff_sizes(midtype_int_smax(), &spec_max) &&
+            midint_is_ulteq_diff_sizes(midtype_int_smin(), &spec_min))
+            new_spec = MIDPAR_TYPESPEC_INT;
         else
-            return MIDPAR_TYPESPEC_UINT;
+            new_spec = MIDPAR_TYPESPEC_UINT;
+
+        mid_APInt_deinit(&spec_max);
+        mid_APInt_deinit(&spec_min);
+        return new_spec;
     } else {
         return spec;
     }

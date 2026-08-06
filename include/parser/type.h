@@ -172,8 +172,8 @@ bool midpar_valid_type_start(const struct midlex_Token *toks, mid_isize idx,
 enum midpar_TypeSpec midpar_uint_type_of_width(int32_t bytes);
 enum midpar_TypeSpec midpar_sint_type_of_width(int32_t bytes);
 int32_t midpar_typespec_conv_rank(enum midpar_TypeSpec spec);
-uint64_t midpar_integral_max(enum midpar_TypeSpec spec);
-int64_t midpar_integral_min(enum midpar_TypeSpec spec);
+struct mid_APInt midpar_integral_max(enum midpar_TypeSpec spec);
+struct mid_APInt midpar_integral_min(enum midpar_TypeSpec spec);
 enum midpar_TypeSpec midpar_integral_prom(enum midpar_TypeSpec spec);
 bool midpar_is_fundamental_type(const struct midpar_Type *type);
 bool midpar_dquals_same(const struct midpar_TypeDataQual *a, mid_isize n_a,
