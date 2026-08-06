@@ -1156,7 +1156,6 @@ void midsema_typecheck_expr(struct midpar_Expr *expr,
 {
     if (expr->typechecked)
         return;
-    expr->typechecked = true;
 
     if (midpar_is_numlit(expr->type)) {
         typecheck_lit_expr(expr);
@@ -1174,6 +1173,7 @@ void midsema_typecheck_expr(struct midpar_Expr *expr,
 
             if (!has_no_untypecheckable_args(expr)) {
                 mark_expr_unknown_ret(expr);
+                expr->typechecked = true;
                 return;
             }
         }
@@ -1185,6 +1185,11 @@ void midsema_typecheck_expr(struct midpar_Expr *expr,
         else
             typecheck_overloaded_op(expr, overload);
     }
+
+    midsema_set_expr_constant_flag(expr);
+    expr->typechecked = true;
+
+    midsema_const_fold_expr(expr, scope, false);
 }
 
 static struct mid_Diag no_matching_ctor_err(const struct midpar_Type *type,
@@ -1300,7 +1305,6 @@ constexpr_var_not_literal_type_err(const char *name,
 }
 
 static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
-                                    struct midsema_Scope *scope,
                                     struct mid_DiagVec *diags)
 {
     if (!midpar_is_literal_type(&inst->type))
@@ -1312,11 +1316,10 @@ static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
         midgen_dynpush(diags, uninited_constexpr_var_err(
                                   inst->name, MIDPAR_GET_START(inst)));
 
-    if (inst->init.expr && !midsema_expr_is_constexpr(inst->init.expr))
+    if (inst->init.expr && !inst->init.expr->constant)
         midgen_dynpush(diags, constexpr_var_init_not_constexpr_err(
                                   inst->name, MIDPAR_GET_START(inst)));
     else if (inst->init.expr) {
-        midsema_const_fold_expr(inst->init.expr, scope);
         printf("constexpr var '%s' set to ", inst->name);
         assert(inst->init.expr->type == MIDPAR_EXPRTYPE_CONST_FOLD);
         midlit_tagged_print(&inst->init.expr->info.val);
@@ -1336,7 +1339,7 @@ void midsema_typecheck_var_decl_inst(struct midpar_VarDeclInst *inst,
         midsema_typecheck_expr(inst->init.expr, scope, diags);
 
     if (inst->type.squals.is_constexpr)
-        typecheck_constexpr_var(inst, scope, diags);
+        typecheck_constexpr_var(inst, diags);
 }
 
 static struct mid_Diag

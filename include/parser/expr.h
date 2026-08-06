@@ -76,6 +76,7 @@ struct midpar_Expr {
     bool overloaded;  // did this expression get overloaded by an operator
                       // overload
     bool typechecked; // has this expr been typechecked yet
+    bool constant;    // can be evaluated at compile time
 };
 
 void midpar_Expr_deinit(struct midpar_Expr *expr);

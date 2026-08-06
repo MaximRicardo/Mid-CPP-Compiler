@@ -255,12 +255,13 @@ struct midflt_IEEE midflt_ieee_init_uint(const struct mid_APInt *val,
     int32_t val_bits = midint_unsigned_sig_bits(&ret.mant);
     ret.exp = val_bits - 1;
 
-    if (ieee_mant_n_bits(ret.kind) > val_bits)
+    if (ieee_mant_n_bits(ret.kind) > val_bits) {
+        midint_ext(&ret.mant, ieee_mant_n_bits(ret.kind), false);
         midint_shl_imm(&ret.mant, ieee_mant_n_bits(ret.kind) - val_bits);
-    else if (ieee_mant_n_bits(ret.kind) < ret.exp + 1)
+    } else if (ieee_mant_n_bits(ret.kind) < val_bits) {
         midint_lshr_imm(&ret.mant, val_bits - ieee_mant_n_bits(ret.kind));
-
-    midint_ext(&ret.mant, ieee_mant_n_bits(ret.kind), false);
+        midint_ext(&ret.mant, ieee_mant_n_bits(ret.kind), false);
+    }
 
     ieee_post_op_correct(&ret);
     return ret;
@@ -285,12 +286,13 @@ struct midflt_IEEE midflt_ieee_init_sint(const struct mid_APInt *val,
     int32_t val_bits = midint_unsigned_sig_bits(&ret.mant);
     ret.exp = val_bits - 1;
 
-    if (ieee_mant_n_bits(ret.kind) > val_bits)
+    if (ieee_mant_n_bits(ret.kind) > val_bits) {
+        midint_ext(&ret.mant, ieee_mant_n_bits(ret.kind), false);
         midint_shl_imm(&ret.mant, ieee_mant_n_bits(ret.kind) - val_bits);
-    else if (ieee_mant_n_bits(ret.kind) < ret.exp + 1)
+    } else if (ieee_mant_n_bits(ret.kind) < val_bits) {
         midint_lshr_imm(&ret.mant, val_bits - ieee_mant_n_bits(ret.kind));
-
-    midint_ext(&ret.mant, ieee_mant_n_bits(ret.kind), false);
+        midint_ext(&ret.mant, ieee_mant_n_bits(ret.kind), false);
+    }
 
     ieee_post_op_correct(&ret);
     return ret;

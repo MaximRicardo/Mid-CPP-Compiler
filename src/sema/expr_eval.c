@@ -11,12 +11,12 @@
 #include "sema/scope.h"
 #include "types.h"
 
-static bool op_always_constexpr(enum midpar_ExprType type)
+static bool op_always_constant(enum midpar_ExprType type)
 {
     return type == MIDPAR_EXPRTYPE_SIZEOF;
 }
 
-static bool leaf_expr_is_constexpr(const struct midpar_Expr *expr)
+static bool leaf_expr_is_constant(const struct midpar_Expr *expr)
 {
     if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
         return expr->ret.squals.is_constexpr;
@@ -26,43 +26,49 @@ static bool leaf_expr_is_constexpr(const struct midpar_Expr *expr)
         return false;
 }
 
-bool midsema_expr_is_constexpr(struct midpar_Expr *expr)
+void midsema_set_expr_constant_flag(struct midpar_Expr *expr)
 {
-    assert(expr->typechecked);
+    if (expr->typechecked)
+        MID_CRASH("expression has already been typechecked");
 
-    if (expr->ret.squals.is_constexpr)
-        return true;
-    else if (expr->ret.spec == MIDPAR_TYPESPEC_UNKNOWN ||
-             expr->ret.spec == MIDPAR_TYPESPEC_TEMPLATED)
-        return false;
-    else if (midpar_op_has_side_effects(expr->type))
-        return false;
+    if (expr->constant) {
+        return;
+    } else if (expr->ret.spec == MIDPAR_TYPESPEC_UNKNOWN ||
+               expr->ret.spec == MIDPAR_TYPESPEC_TEMPLATED) {
+        expr->constant = false;
+        return;
+    } else if (midpar_op_has_side_effects(expr->type)) {
+        expr->constant = false;
+        return;
+    }
 
     // TODO: implement constexpr function calls
-    if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL)
-        return false;
+    if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL) {
+        expr->constant = false;
+        return;
+    }
 
-    bool is_constexpr = false;
+    bool is_constant = false;
 
-    if (op_always_constexpr(expr->type)) {
-        is_constexpr = true;
-    } else if (midpar_is_op(expr->type)) {
+    if (op_always_constant(expr->type)) {
+        is_constant = true;
+    } else if (midpar_expr_uses_args(expr->type)) {
         // TODO: add support for overloaded operators
         assert(!expr->overloaded);
 
-        is_constexpr = true;
+        is_constant = true;
         for (int i = 0; i < expr->info.args.len; ++i) {
-            if (!midsema_expr_is_constexpr(&expr->info.args.arr[i])) {
-                is_constexpr = false;
+            struct midpar_Expr *arg = &expr->info.args.arr[i];
+            if (!arg->constant) {
+                is_constant = false;
                 break;
             }
         }
     } else {
-        is_constexpr = leaf_expr_is_constexpr(expr);
+        is_constant = leaf_expr_is_constant(expr);
     }
 
-    expr->ret.squals.is_constexpr = is_constexpr;
-    return is_constexpr;
+    expr->constant = is_constant;
 }
 
 static struct midlit_TaggedValue
@@ -153,7 +159,7 @@ static void convert_value(struct midlit_TaggedValue *val,
     int_least64_t target_width = midpar_typespec_size(target->spec) * 8;
     enum midflt_Kind target_kind = midpar_is_floating_typespec(target->spec)
                                        ? midpar_get_flt_kind(target->spec)
-                                       : 0;
+                                       : -1;
 
     switch (val->kind) {
     case MIDLIT_VALUE_SIGNED_INT:
@@ -169,9 +175,9 @@ static void convert_value(struct midlit_TaggedValue *val,
 
         case MIDLIT_VALUE_FLOAT: {
             auto tmp = val->kind == MIDLIT_VALUE_SIGNED_INT
-                           ? midflt_init_sint(&val->v.i, target_width,
+                           ? midflt_init_sint(&val->v.i, target_kind,
                                               midtype_default_rmode)
-                           : midflt_init_uint(&val->v.i, target_width,
+                           : midflt_init_uint(&val->v.i, target_kind,
                                               midtype_default_rmode);
             mid_APInt_deinit(&val->v.i);
             val->v.flt = tmp;
@@ -253,7 +259,7 @@ eval_arith_binop(const struct midpar_Expr *expr, struct midlit_TaggedValue *lhs,
         else if (res.kind == MIDLIT_VALUE_UNSIGNED_INT)
             res.v.i = midint_nip_udiv(&lhs->v.i, &rhs->v.i);
         else
-            res.v.flt = midflt_nip_mul(&lhs->v.flt, &rhs->v.flt);
+            res.v.flt = midflt_nip_div(&lhs->v.flt, &rhs->v.flt);
         break;
 
     case MIDPAR_EXPRTYPE_MOD:
@@ -333,7 +339,7 @@ struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
                                             const struct midsema_Scope *scope)
 {
     assert(expr->typechecked);
-    assert(expr->ret.squals.is_constexpr);
+    assert(expr->constant);
 
     if (expr->type == MIDPAR_EXPRTYPE_CONST_FOLD)
         return midlit_copy_value(&expr->info.val);
@@ -349,11 +355,9 @@ struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
         return eval_leaf(expr, scope);
 }
 
-void midsema_const_fold_expr(struct midpar_Expr *expr,
-                             const struct midsema_Scope *scope)
+static void fold_expr(struct midpar_Expr *expr,
+                      const struct midsema_Scope *scope)
 {
-    assert(expr->typechecked);
-
     struct midlit_TaggedValue val = midsema_eval_expr(expr, scope);
 
     const struct midlex_Token *tok = expr->tok;
@@ -367,5 +371,21 @@ void midsema_const_fold_expr(struct midpar_Expr *expr,
                                  .ret = ret,
                                  .type = MIDPAR_EXPRTYPE_CONST_FOLD,
                                  .valtype = valtype,
-                                 .typechecked = true};
+                                 .typechecked = true,
+                                 .constant = true};
+}
+
+void midsema_const_fold_expr(struct midpar_Expr *expr,
+                             const struct midsema_Scope *scope, bool recursive)
+{
+    assert(expr->typechecked);
+
+    if (expr->constant) {
+        fold_expr(expr, scope);
+    } else if (recursive && midpar_expr_uses_args(expr->type)) {
+        for (int i = 0; i < expr->info.args.len; ++i) {
+            struct midpar_Expr *arg = &expr->info.args.arr[i];
+            midsema_const_fold_expr(arg, scope, true);
+        }
+    }
 }
