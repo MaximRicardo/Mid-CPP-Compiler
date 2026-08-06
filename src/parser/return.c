@@ -4,7 +4,7 @@
 #include "lexer/token_type.h"
 #include "parser/end_types.h"
 #include "parser/expr.h"
-#include "sema/type.h"
+#include "sema/typecheck.h"
 
 void midpar_copy_return(struct midpar_Return *dest,
                         const struct midpar_Return *src,

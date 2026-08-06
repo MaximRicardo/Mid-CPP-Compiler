@@ -10,7 +10,7 @@
 #include "parser/type.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
-#include "sema/type.h"
+#include "sema/typecheck.h"
 #include "sort.h"
 #include <stdio.h>
 #include <stdlib.h>

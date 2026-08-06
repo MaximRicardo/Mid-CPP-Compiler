@@ -14,7 +14,7 @@
 #include "parser/find_twin.h"
 #include "parser/type.h"
 #include "sema/scope.h"
-#include "sema/type.h"
+#include "sema/typecheck.h"
 #include "types.h"
 #include <assert.h>
 #include <stdio.h>

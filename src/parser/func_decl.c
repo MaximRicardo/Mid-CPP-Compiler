@@ -19,7 +19,7 @@
 #include "parser/var_decl.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
-#include "sema/type.h"
+#include "sema/typecheck.h"
 #include <string.h>
 
 static struct mid_Diag missing_default_arg_err(const char *func,

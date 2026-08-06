@@ -18,7 +18,7 @@
 #include "parser/var_decl.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
-#include "sema/type.h"
+#include "sema/typecheck.h"
 #include <string.h>
 
 void midpar_Class_deinit(struct midpar_Class *self)

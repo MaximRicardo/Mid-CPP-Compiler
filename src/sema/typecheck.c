@@ -1,4 +1,4 @@
-#include "sema/type.h"
+#include "sema/typecheck.h"
 #include "cmd.h"
 #include "diag.h"
 #include "dynstr.h"

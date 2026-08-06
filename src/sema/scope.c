@@ -10,7 +10,7 @@
 #include "parser/template.h"
 #include "parser/type.h"
 #include "sema/ident.h"
-#include "sema/type.h"
+#include "sema/typecheck.h"
 #include <string.h>
 
 void midsema_Scope_deinit(struct midsema_Scope *self)
