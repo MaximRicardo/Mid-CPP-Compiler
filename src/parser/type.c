@@ -1527,6 +1527,70 @@ enum midlit_ValueKind midpar_type_lit_value_kind(const struct midpar_Type *type)
     }
 }
 
+enum midflt_Kind midpar_get_flt_kind(enum midpar_TypeSpec spec)
+{
+    switch (spec) {
+    case MIDPAR_TYPESPEC_FLOAT:
+        return midtype_float_kind;
+
+    case MIDPAR_TYPESPEC_DOUBLE:
+        return midtype_double_kind;
+
+    case MIDPAR_TYPESPEC_LONGDOUBLE:
+        return midtype_longdouble_kind;
+
+    default:
+        MID_CRASH("type spec is not floating point");
+    }
+}
+
+int_least32_t midpar_typespec_size(enum midpar_TypeSpec spec)
+{
+    switch (spec) {
+    case MIDPAR_TYPESPEC_CHAR:
+    case MIDPAR_TYPESPEC_SCHAR:
+    case MIDPAR_TYPESPEC_UCHAR:
+        return midtype_char_size;
+
+    case MIDPAR_TYPESPEC_WCHAR:
+        return midtype_wchar_size;
+
+    case MIDPAR_TYPESPEC_CHAR16:
+        return 2;
+
+    case MIDPAR_TYPESPEC_CHAR32:
+        return 4;
+
+    case MIDPAR_TYPESPEC_SHORT:
+    case MIDPAR_TYPESPEC_USHORT:
+        return midtype_short_size;
+
+    case MIDPAR_TYPESPEC_INT:
+    case MIDPAR_TYPESPEC_UINT:
+        return midtype_int_size;
+
+    case MIDPAR_TYPESPEC_LONG:
+    case MIDPAR_TYPESPEC_ULONG:
+        return midtype_long_size;
+
+    case MIDPAR_TYPESPEC_LONGLONG:
+    case MIDPAR_TYPESPEC_ULONGLONG:
+        return midtype_longlong_size;
+
+    case MIDPAR_TYPESPEC_FLOAT:
+        return midtype_float_size;
+
+    case MIDPAR_TYPESPEC_DOUBLE:
+        return midtype_double_size;
+
+    case MIDPAR_TYPESPEC_LONGDOUBLE:
+        return midtype_longdouble_size;
+
+    default:
+        MID_CRASH("can't get size of type spec");
+    }
+}
+
 struct mid_APInt midpar_type_size(const struct midpar_Type *type)
 {
     if (midpar_n_indir(type) || type->spec == MIDPAR_TYPESPEC_NULLPTR)

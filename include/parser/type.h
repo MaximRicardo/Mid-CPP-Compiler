@@ -1,5 +1,6 @@
 #pragma once
 
+#include "apfloat.h"
 #include "apint.h"
 #include "diag.h"
 #include "generics/dynarray.h"
@@ -197,9 +198,13 @@ bool midpar_type_is_ref(const struct midpar_Type *type);
 bool midpar_type_is_typecheckable(const struct midpar_Type *type);
 
 // in bytes
+int_least32_t midpar_typespec_size(enum midpar_TypeSpec spec);
+// in bytes
 struct mid_APInt midpar_type_size(const struct midpar_Type *type);
 // in multiples of midtype_char_size
 struct mid_APInt midpar_sizeof_type(const struct midpar_Type *type);
+
+enum midflt_Kind midpar_get_flt_kind(enum midpar_TypeSpec spec);
 
 enum midlit_ValueKind
 midpar_type_lit_value_kind(const struct midpar_Type *type);

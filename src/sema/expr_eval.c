@@ -140,6 +140,189 @@ static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
     return res;
 }
 
+static void convert_value(struct midlit_TaggedValue *val,
+                          const struct midpar_Type *target)
+{
+    enum midlit_ValueKind new_kind = midpar_type_lit_value_kind(target);
+    int_least64_t target_width = midpar_typespec_size(target->spec) * 8;
+    enum midflt_Kind target_kind = midpar_is_floating_typespec(target->spec)
+                                       ? midpar_get_flt_kind(target->spec)
+                                       : 0;
+
+    switch (val->kind) {
+    case MIDLIT_VALUE_SIGNED_INT:
+    case MIDLIT_VALUE_UNSIGNED_INT:
+        switch (new_kind) {
+        case MIDLIT_VALUE_SIGNED_INT:
+            midint_ext(&val->v.i, target_width, true);
+            break;
+
+        case MIDLIT_VALUE_UNSIGNED_INT:
+            midint_ext(&val->v.i, target_width, false);
+            break;
+
+        case MIDLIT_VALUE_FLOAT: {
+            auto tmp = val->kind == MIDLIT_VALUE_SIGNED_INT
+                           ? midflt_init_sint(&val->v.i, target_width,
+                                              midtype_default_rmode)
+                           : midflt_init_uint(&val->v.i, target_width,
+                                              midtype_default_rmode);
+            mid_APInt_deinit(&val->v.i);
+            val->v.flt = tmp;
+        } break;
+
+        case MIDLIT_VALUE_STR:
+            MID_CRASH("can't convert integer to string");
+        }
+        break;
+
+    case MIDLIT_VALUE_FLOAT:
+        switch (new_kind) {
+        case MIDLIT_VALUE_SIGNED_INT:
+        case MIDLIT_VALUE_UNSIGNED_INT: {
+            auto tmp = midflt_to_sint(&val->v.flt);
+            mid_APFloat_deinit(&val->v.flt);
+            val->v.i = tmp;
+            midint_ext(&val->v.i, target_width,
+                       new_kind == MIDLIT_VALUE_SIGNED_INT);
+        } break;
+
+        case MIDLIT_VALUE_FLOAT:
+            midflt_change_kind(&val->v.flt, target_kind);
+            break;
+
+        case MIDLIT_VALUE_STR:
+            MID_CRASH("can't convert float to string");
+        }
+        break;
+
+    case MIDLIT_VALUE_STR:
+        MID_CRASH("can't convert strings");
+    }
+
+    val->kind = new_kind;
+}
+
+static struct midlit_TaggedValue
+eval_arith_binop(const struct midpar_Expr *expr, struct midlit_TaggedValue *lhs,
+                 struct midlit_TaggedValue *rhs)
+{
+    enum midlit_ValueKind res_kind = midpar_type_lit_value_kind(&expr->ret);
+    bool is_integral = res_kind == MIDLIT_VALUE_SIGNED_INT ||
+                       res_kind == MIDLIT_VALUE_UNSIGNED_INT;
+
+    if (res_kind == MIDLIT_VALUE_STR)
+        MID_CRASH("can't const fold arithmetic operations on strings");
+
+    convert_value(lhs, &expr->ret);
+    convert_value(rhs, &expr->ret);
+
+    struct midlit_TaggedValue res = {.kind = res_kind};
+
+    switch (expr->type) {
+    case MIDPAR_EXPRTYPE_ADD:
+        if (is_integral)
+            res.v.i = midint_nip_add(&lhs->v.i, &rhs->v.i);
+        else
+            res.v.flt = midflt_nip_add(&lhs->v.flt, &rhs->v.flt);
+        break;
+
+    case MIDPAR_EXPRTYPE_SUB:
+        if (is_integral)
+            res.v.i = midint_nip_sub(&lhs->v.i, &rhs->v.i);
+        else
+            res.v.flt = midflt_nip_sub(&lhs->v.flt, &rhs->v.flt);
+        break;
+
+    case MIDPAR_EXPRTYPE_MUL:
+        if (is_integral)
+            res.v.i = midint_nip_mul(&lhs->v.i, &rhs->v.i);
+        else
+            res.v.flt = midflt_nip_mul(&lhs->v.flt, &rhs->v.flt);
+        break;
+
+    case MIDPAR_EXPRTYPE_DIV:
+        if (res.kind == MIDLIT_VALUE_SIGNED_INT)
+            res.v.i = midint_nip_sdiv(&lhs->v.i, &rhs->v.i);
+        else if (res.kind == MIDLIT_VALUE_UNSIGNED_INT)
+            res.v.i = midint_nip_udiv(&lhs->v.i, &rhs->v.i);
+        else
+            res.v.flt = midflt_nip_mul(&lhs->v.flt, &rhs->v.flt);
+        break;
+
+    case MIDPAR_EXPRTYPE_MOD:
+        if (res.kind == MIDLIT_VALUE_SIGNED_INT)
+            res.v.i = midint_nip_srem(&lhs->v.i, &rhs->v.i);
+        else if (res.kind == MIDLIT_VALUE_UNSIGNED_INT)
+            res.v.i = midint_nip_urem(&lhs->v.i, &rhs->v.i);
+        else
+            MID_CRASH("modulo of floats not implemented yet");
+        break;
+
+    case MIDPAR_EXPRTYPE_LEFT_SHIFT:
+        if (is_integral)
+            res.v.i = midint_nip_shl(&lhs->v.i, &rhs->v.i);
+        else
+            MID_CRASH("can't left shift a float");
+
+    case MIDPAR_EXPRTYPE_RIGHT_SHIFT:
+        if (res.kind == MIDLIT_VALUE_SIGNED_INT)
+            res.v.i = midint_nip_ashr(&lhs->v.i, &rhs->v.i);
+        else if (res.kind == MIDLIT_VALUE_UNSIGNED_INT)
+            res.v.i = midint_nip_lshr(&lhs->v.i, &rhs->v.i);
+        else
+            MID_CRASH("can't right shift a float");
+        break;
+
+    case MIDPAR_EXPRTYPE_BITWISE_AND:
+        if (is_integral)
+            res.v.i = midint_nip_and(&lhs->v.i, &rhs->v.i);
+        else
+            MID_CRASH("can't bitwise AND a float");
+        break;
+
+    case MIDPAR_EXPRTYPE_BITWISE_XOR:
+        if (is_integral)
+            res.v.i = midint_nip_xor(&lhs->v.i, &rhs->v.i);
+        else
+            MID_CRASH("can't bitwise XOR a float");
+        break;
+
+    case MIDPAR_EXPRTYPE_BITWISE_OR:
+        if (is_integral)
+            res.v.i = midint_nip_or(&lhs->v.i, &rhs->v.i);
+        else
+            MID_CRASH("can't bitwise OR a float");
+        break;
+
+    default:
+        MID_CRASH("expr type is not a binary arithmetic operator");
+    }
+
+    return res;
+}
+
+static struct midlit_TaggedValue eval_binop(const struct midpar_Expr *expr,
+                                            const struct midsema_Scope *scope)
+{
+    const struct midpar_Expr *lhs = &expr->info.args.arr[0];
+    const struct midpar_Expr *rhs = &expr->info.args.arr[1];
+
+    struct midlit_TaggedValue res_lhs = midsema_eval_expr(lhs, scope);
+    struct midlit_TaggedValue res_rhs = midsema_eval_expr(rhs, scope);
+
+    struct midlit_TaggedValue res;
+
+    if (midpar_is_arith_op(expr->type))
+        res = eval_arith_binop(expr, &res_lhs, &res_rhs);
+    else
+        MID_CRASH("constant folding expr type not supported");
+
+    midlit_TaggedValue_deinit(&res_lhs);
+    midlit_TaggedValue_deinit(&res_rhs);
+    return res;
+}
+
 struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
                                             const struct midsema_Scope *scope)
 {
@@ -148,6 +331,8 @@ struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
 
     if (midpar_is_unaryop(expr->type))
         return eval_unaryop(expr, scope);
+    else if (midpar_is_binop(expr->type))
+        return eval_binop(expr, scope);
     else
         return eval_leaf(expr, scope);
 }

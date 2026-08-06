@@ -89,7 +89,24 @@ void midflt_ieee_ln(struct midflt_IEEE *self);
 void midflt_ieee_flip_sign(struct midflt_IEEE *self);
 
 // not in place operations
+struct midflt_IEEE midflt_ieee_nip_add(const struct midflt_IEEE *a,
+                                       const struct midflt_IEEE *b);
+struct midflt_IEEE midflt_ieee_nip_sub(const struct midflt_IEEE *a,
+                                       const struct midflt_IEEE *b);
+struct midflt_IEEE midflt_ieee_nip_mul(const struct midflt_IEEE *a,
+                                       const struct midflt_IEEE *b);
+struct midflt_IEEE midflt_ieee_nip_div(const struct midflt_IEEE *a,
+                                       const struct midflt_IEEE *b);
+// n_iters      - the higher the better the precision
+struct midflt_IEEE midflt_ieee_nip_approx_log2(const struct midflt_IEEE *self,
+                                               int n_iters);
+// n_iters      - the higher the better the precision
+struct midflt_IEEE midflt_ieee_nip_approx_ln(const struct midflt_IEEE *self,
+                                             int n_iters);
 struct midflt_IEEE midflt_ieee_nip_log2(const struct midflt_IEEE *self);
+struct midflt_IEEE midflt_ieee_nip_log10(const struct midflt_IEEE *self);
+struct midflt_IEEE midflt_ieee_nip_ln(const struct midflt_IEEE *self);
+struct midflt_IEEE midflt_ieee_nip_flip_sign(const struct midflt_IEEE *self);
 
 bool midflt_ieee_eq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
 bool midflt_ieee_gt(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
@@ -104,6 +121,9 @@ double midflt_ieee_to_dbl(const struct midflt_IEEE *self);
 // the width of the integer is the signed width required to represent both
 // self's minimum and maximum value
 struct mid_APInt midflt_ieee_to_sint(const struct midflt_IEEE *self);
+
+void midflt_ieee_change_kind(struct midflt_IEEE *self,
+                             enum midflt_IEEEKind new_kind);
 
 enum midflt_Kind {
     MIDFLT_KIND_IEEE_START,
@@ -147,6 +167,7 @@ void midflt_log(const struct mid_APFloat *self, FILE *out);
 // doesn't parse printf's '%' formats
 void midflt_print(FILE *out, const char *restrict fmt, ...);
 
+// in place operations
 void midflt_add(struct mid_APFloat *a, const struct mid_APFloat *b);
 void midflt_sub(struct mid_APFloat *a, const struct mid_APFloat *b);
 void midflt_mul(struct mid_APFloat *a, const struct mid_APFloat *b);
@@ -161,6 +182,26 @@ void midflt_log10(struct mid_APFloat *self);
 void midflt_ln(struct mid_APFloat *self);
 void midflt_flip_sign(struct mid_APFloat *self);
 
+// not in place operations
+struct mid_APFloat midflt_nip_add(const struct mid_APFloat *a,
+                                  const struct mid_APFloat *b);
+struct mid_APFloat midflt_nip_sub(const struct mid_APFloat *a,
+                                  const struct mid_APFloat *b);
+struct mid_APFloat midflt_nip_mul(const struct mid_APFloat *a,
+                                  const struct mid_APFloat *b);
+struct mid_APFloat midflt_nip_div(const struct mid_APFloat *a,
+                                  const struct mid_APFloat *b);
+// n_iters      - the higher the better the precision
+struct mid_APFloat midflt_nip_approx_log2(const struct mid_APFloat *self,
+                                          int n_iters);
+// n_iters      - the higher the better the precision
+struct mid_APFloat midflt_nip_approx_ln(const struct mid_APFloat *self,
+                                        int n_iters);
+struct mid_APFloat midflt_nip_log2(const struct mid_APFloat *self);
+struct mid_APFloat midflt_nip_log10(const struct mid_APFloat *self);
+struct mid_APFloat midflt_nip_ln(const struct mid_APFloat *self);
+struct mid_APFloat midflt_nip_flip_sign(const struct mid_APFloat *self);
+
 bool midflt_eq(const struct mid_APFloat *a, const struct mid_APFloat *b);
 bool midflt_gt(const struct mid_APFloat *a, const struct mid_APFloat *b);
 bool midflt_gteq(const struct mid_APFloat *a, const struct mid_APFloat *b);
@@ -172,6 +213,8 @@ bool midflt_is_minus_one(const struct mid_APFloat *self);
 
 double midflt_to_dbl(const struct mid_APFloat *self);
 struct mid_APInt midflt_to_sint(const struct mid_APFloat *self);
+
+void midflt_change_kind(struct mid_APFloat *self, enum midflt_Kind new_kind);
 
 #ifdef __cplusplus
 }

@@ -1823,3 +1823,211 @@ void midflt_flip_sign(struct mid_APFloat *self)
     else
         MID_CRASH("unsupported APFloat kind");
 }
+
+void midflt_ieee_change_kind(struct midflt_IEEE *self,
+                             enum midflt_IEEEKind new_kind)
+{
+    if (self->kind == new_kind)
+        return;
+
+    int32_t new_mant_bits = ieee_mant_n_bits(new_kind);
+
+    if (new_mant_bits > self->mant.n_bits) {
+        int32_t shift = new_mant_bits - self->mant.n_bits;
+        midint_ext(&self->mant, new_mant_bits, false);
+        midint_shl_imm(&self->mant, shift);
+    } else if (new_mant_bits < self->mant.n_bits) {
+        int32_t shift = self->mant.n_bits - new_mant_bits;
+
+        bool guard_bit = midint_get_bit(&self->mant, shift);
+        bool round_bit = midint_get_bit(&self->mant, shift - 1);
+        bool sticky_bit = midint_count_trailing_zeroes(&self->mant) < shift - 1;
+
+        if (ieee_should_inc_mant(self->rounding, self->is_neg, guard_bit,
+                                 round_bit, sticky_bit)) {
+            // allocate an extra bit for carry
+            midint_ext(&self->mant, self->mant.n_bits + 1, false);
+            midint_inc_bit(&self->mant, shift);
+            // rounding might have introduced another significant bit
+            if (midint_unsigned_sig_bits(&self->mant) == self->mant.n_bits) {
+                ++shift;
+                ++self->exp;
+            }
+        }
+
+        midint_lshr_imm(&self->mant, shift);
+    }
+
+    self->kind = new_kind;
+    ieee_post_op_correct(self);
+}
+
+void midflt_change_kind(struct mid_APFloat *self, enum midflt_Kind new_kind)
+{
+    if (midflt_kind_is_ieee(self->kind))
+        midflt_ieee_change_kind(&self->ieee, kind_to_ieee_kind(new_kind));
+    else
+        MID_CRASH("unsupported APFloat kind");
+
+    self->kind = new_kind;
+}
+
+struct midflt_IEEE midflt_ieee_nip_add(const struct midflt_IEEE *a,
+                                       const struct midflt_IEEE *b)
+{
+    auto res = midflt_ieee_copy(a);
+    midflt_ieee_add(&res, b);
+    return res;
+}
+
+struct midflt_IEEE midflt_ieee_nip_sub(const struct midflt_IEEE *a,
+                                       const struct midflt_IEEE *b)
+{
+    auto res = midflt_ieee_copy(a);
+    midflt_ieee_sub(&res, b);
+    return res;
+}
+
+struct midflt_IEEE midflt_ieee_nip_mul(const struct midflt_IEEE *a,
+                                       const struct midflt_IEEE *b)
+{
+    auto res = midflt_ieee_copy(a);
+    midflt_ieee_mul(&res, b);
+    return res;
+}
+
+struct midflt_IEEE midflt_ieee_nip_div(const struct midflt_IEEE *a,
+                                       const struct midflt_IEEE *b)
+{
+    auto res = midflt_ieee_copy(a);
+    midflt_ieee_div(&res, b);
+    return res;
+}
+
+struct midflt_IEEE midflt_ieee_nip_approx_log2(const struct midflt_IEEE *self,
+                                               int n_iters)
+{
+    auto res = midflt_ieee_copy(self);
+    midflt_ieee_approx_log2(&res, n_iters);
+    return res;
+}
+
+struct midflt_IEEE midflt_ieee_nip_approx_ln(const struct midflt_IEEE *self,
+                                             int n_iters)
+{
+    auto res = midflt_ieee_copy(self);
+    midflt_ieee_approx_ln(&res, n_iters);
+    return res;
+}
+
+struct midflt_IEEE midflt_ieee_nip_log2(const struct midflt_IEEE *self)
+{
+    auto res = midflt_ieee_copy(self);
+    midflt_ieee_log2(&res);
+    return res;
+}
+
+struct midflt_IEEE midflt_ieee_nip_log10(const struct midflt_IEEE *self)
+{
+    auto res = midflt_ieee_copy(self);
+    midflt_ieee_log10(&res);
+    return res;
+}
+
+struct midflt_IEEE midflt_ieee_nip_ln(const struct midflt_IEEE *self)
+{
+    auto res = midflt_ieee_copy(self);
+    midflt_ieee_ln(&res);
+    return res;
+}
+
+struct midflt_IEEE midflt_ieee_nip_flip_sign(const struct midflt_IEEE *self)
+{
+    auto res = midflt_ieee_copy(self);
+    midflt_ieee_flip_sign(&res);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_add(const struct mid_APFloat *a,
+                                  const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    auto res = midflt_copy(a);
+    midflt_add(&res, b);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_sub(const struct mid_APFloat *a,
+                                  const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    auto res = midflt_copy(a);
+    midflt_sub(&res, b);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_mul(const struct mid_APFloat *a,
+                                  const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    auto res = midflt_copy(a);
+    midflt_mul(&res, b);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_div(const struct mid_APFloat *a,
+                                  const struct mid_APFloat *b)
+{
+    assert(midflt_compatible(a, b));
+
+    auto res = midflt_copy(a);
+    midflt_div(&res, b);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_approx_log2(const struct mid_APFloat *self,
+                                          int n_iters)
+{
+    auto res = midflt_copy(self);
+    midflt_approx_log2(&res, n_iters);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_approx_ln(const struct mid_APFloat *self,
+                                        int n_iters)
+{
+    auto res = midflt_copy(self);
+    midflt_approx_ln(&res, n_iters);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_log2(const struct mid_APFloat *self)
+{
+    auto res = midflt_copy(self);
+    midflt_log2(&res);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_log10(const struct mid_APFloat *self)
+{
+    auto res = midflt_copy(self);
+    midflt_log10(&res);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_ln(const struct mid_APFloat *self)
+{
+    auto res = midflt_copy(self);
+    midflt_ln(&res);
+    return res;
+}
+
+struct mid_APFloat midflt_nip_flip_sign(const struct mid_APFloat *self)
+{
+    auto res = midflt_copy(self);
+    midflt_flip_sign(&res);
+    return res;
+}
