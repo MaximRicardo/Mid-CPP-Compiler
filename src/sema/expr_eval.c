@@ -112,9 +112,10 @@ static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
             mid_APFloat_deinit(&res.v.flt);
             res.v.flt = midflt_init(!is_zero, kind, rounding);
         } else {
+            // !"asdf" is always false
             midlit_TaggedValue_deinit(&res);
             res.kind = MIDLIT_VALUE_SIGNED_INT;
-            res.v.i = midint_init(midtype_bool_size * 8, 1, true);
+            res.v.i = midint_init(midtype_bool_size * 8, 0, true);
         }
         break;
 
