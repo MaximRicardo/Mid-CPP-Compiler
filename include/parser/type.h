@@ -175,7 +175,9 @@ int32_t midpar_typespec_conv_rank(enum midpar_TypeSpec spec);
 struct mid_APInt midpar_integral_max(enum midpar_TypeSpec spec);
 struct mid_APInt midpar_integral_min(enum midpar_TypeSpec spec);
 enum midpar_TypeSpec midpar_integral_prom(enum midpar_TypeSpec spec);
-bool midpar_is_fundamental_type(const struct midpar_Type *type);
+bool midpar_is_scalar_type(const struct midpar_Type *type);
+bool midpar_is_ref_type(const struct midpar_Type *type);
+bool midpar_is_literal_type(const struct midpar_Type *type);
 bool midpar_dquals_same(const struct midpar_TypeDataQual *a, mid_isize n_a,
                         const struct midpar_TypeDataQual *b, mid_isize n_b);
 bool midpar_squals_same(const struct midpar_TypeStorQual *a,
@@ -194,8 +196,14 @@ bool midpar_type_is_void(const struct midpar_Type *type);
 bool midpar_type_is_void_ptr(const struct midpar_Type *type);
 bool midpar_type_is_nullptr_t(const struct midpar_Type *type);
 bool midpar_type_is_ref(const struct midpar_Type *type);
+bool midpar_type_is_class_or_union(const struct midpar_Type *type);
+bool midpar_type_is_array(const struct midpar_Type *type);
 // lvls of indir doesn't matter here
 bool midpar_type_is_typecheckable(const struct midpar_Type *type);
+bool midpar_type_is_trivially_constructible(const struct midpar_Type *type);
+bool midpar_type_has_trivial_default_ctor(const struct midpar_Type *type);
+
+bool midpar_type_has_trivial_dtor(const struct midpar_Type *type);
 
 // in bytes
 int_least32_t midpar_typespec_size(enum midpar_TypeSpec spec);

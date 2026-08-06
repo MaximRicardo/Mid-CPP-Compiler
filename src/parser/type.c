@@ -10,6 +10,8 @@
 #include "literal.h"
 #include "macros.h"
 #include "mid_alloc.h"
+#include "parser/ast.h"
+#include "parser/class.h"
 #include "parser/find_twin.h"
 #include "parser/scope.h"
 #include "parser/template.h"
@@ -1355,11 +1357,35 @@ enum midpar_TypeSpec midpar_integral_prom(enum midpar_TypeSpec spec)
     }
 }
 
-bool midpar_is_fundamental_type(const struct midpar_Type *type)
+bool midpar_is_scalar_type(const struct midpar_Type *type)
 {
-    return midpar_n_indir(type) == 0 &&
-           (midpar_is_integral_typespec(type->spec) ||
-            midpar_is_floating_typespec(type->spec));
+    return midpar_n_indir(type) > 0 ||
+           midpar_is_integral_typespec(type->spec) ||
+           midpar_is_floating_typespec(type->spec);
+}
+
+bool midpar_is_ref_type(const struct midpar_Type *type)
+{
+    return type->lv_ref || type->rv_ref;
+}
+
+bool midpar_is_literal_type(const struct midpar_Type *type)
+{
+    if (midpar_is_scalar_type(type) || midpar_is_ref_type(type)) {
+        return true;
+
+    } else if (midpar_type_is_array(type)) {
+        return midpar_is_literal_type(&type->array->elem);
+
+    } else if (midpar_type_is_class_or_union(type)) {
+        const struct midsema_Ident *ident =
+            midsema_deref_identptr(&type->named);
+        assert(ident->def);
+        assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
+        return midpar_class_is_literal(&ident->def->class_);
+    } else {
+        return false;
+    }
 }
 
 static bool are_fptrs_same(const struct midpar_TypeFPtr *a,
@@ -1666,4 +1692,76 @@ struct mid_APInt midpar_sizeof_type(const struct midpar_Type *type)
 
     mid_APInt_deinit(&char_bytes);
     return bytes;
+}
+
+bool midpar_type_is_class_or_union(const struct midpar_Type *type)
+{
+    return midpar_n_indir(type) == 0 && (type->spec == MIDPAR_TYPESPEC_CLASS ||
+                                         type->spec == MIDPAR_TYPESPEC_UNION);
+}
+
+bool midpar_type_is_array(const struct midpar_Type *type)
+{
+    return midpar_n_indir(type) == 0 && type->spec == MIDPAR_TYPESPEC_ARRAY;
+}
+
+static bool class_type_has_trivial_dtor(const struct midpar_Type *type)
+{
+    const struct midsema_Ident *ident = midsema_deref_identptr(&type->named);
+    assert(ident->def);
+    assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
+
+    return midpar_has_trivial_dtor(&ident->def->class_);
+}
+
+bool midpar_type_has_trivial_dtor(const struct midpar_Type *type)
+{
+    if (midpar_type_is_class_or_union(type))
+        return class_type_has_trivial_dtor(type);
+    else if (midpar_type_is_array(type))
+        return class_type_has_trivial_dtor(&type->array->elem);
+    else
+        return true;
+}
+
+static bool class_type_trivially_constructible(const struct midpar_Type *type)
+{
+    const struct midsema_Ident *ident = midsema_deref_identptr(&type->named);
+    assert(ident->def);
+    assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
+
+    return midpar_class_is_trivially_constructible(&ident->def->class_);
+}
+
+bool midpar_type_is_trivially_constructible(const struct midpar_Type *type)
+{
+    if (midpar_type_is_class_or_union(type))
+        return class_type_trivially_constructible(type);
+    else if (midpar_type_is_array(type) &&
+             midpar_type_is_class_or_union(&type->array->elem))
+        return class_type_trivially_constructible(&type->array->elem);
+    else
+        return true;
+}
+
+static bool class_type_has_trivial_default_ctor(const struct midpar_Type *type)
+{
+    const struct midsema_Ident *ident = midsema_deref_identptr(&type->named);
+    assert(ident->def);
+    assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
+
+    return midpar_has_trivial_default_ctor(&ident->def->class_);
+}
+
+bool midpar_type_has_trivial_default_ctor(const struct midpar_Type *type)
+{
+    if (midpar_type_is_class_or_union(type))
+        return class_type_has_trivial_default_ctor(type);
+    else if (midpar_type_is_array(type) &&
+             midpar_type_is_class_or_union(&type->array->elem))
+        return class_type_has_trivial_default_ctor(&type->array->elem);
+    else if (midpar_type_is_ref(type))
+        return false;
+    else
+        return true;
 }

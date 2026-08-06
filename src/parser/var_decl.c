@@ -271,7 +271,7 @@ mid_isize midpar_parse_var_decl_inst(
             diags, uninited_deduced_type_err(self->name, "auto", &toks[start]));
     }
 
-    midsema_typecheck_var_decl_inst(self, diags);
+    midsema_typecheck_var_decl_inst(self, parent_scope, diags);
 
     return ret;
 }

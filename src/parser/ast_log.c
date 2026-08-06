@@ -181,9 +181,16 @@ static void log_generic_expr(const struct midpar_Expr *expr, FILE *out)
     fprintf(out, ")");
 }
 
+static void log_const_folded_expr(const struct midpar_Expr *expr, FILE *out)
+{
+    midlit_tagged_fprint(out, &expr->info.val);
+}
+
 static void log_expr(const struct midpar_Expr *expr, FILE *out)
 {
-    if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
+    if (expr->type == MIDPAR_EXPRTYPE_CONST_FOLD)
+        log_const_folded_expr(expr, out);
+    else if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
         log_ident_expr(expr, out);
     else if (expr->type == MIDPAR_EXPRTYPE_THIS)
         log_this_expr(expr, out);

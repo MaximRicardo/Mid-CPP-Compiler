@@ -205,9 +205,9 @@ static void set_quals_flag(const struct midlex_Token *tok,
 mid_isize midpar_parse_func_quals(const struct midlex_Token *toks,
                                   mid_isize start,
                                   struct midpar_FuncQuals *quals,
-                                  struct mid_DiagVec *diags)
+                                  bool is_constexpr, struct mid_DiagVec *diags)
 {
-    *quals = (struct midpar_FuncQuals){};
+    *quals = (struct midpar_FuncQuals){.is_constexpr = is_constexpr};
 
     mid_isize i;
     for (i = start; !is_func_quals_end(toks[i].type); ++i) {
@@ -714,8 +714,8 @@ mid_isize midpar_parse_func_decl(
     self->params = midpar_parse_func_params(
         toks, lparen, &rparen, MIDPAR_GET_NODE(self), self->param_scope, true,
         &self->variadic, allocs, diags);
-    mid_isize lcurly =
-        midpar_parse_func_quals(toks, rparen + 1, &self->quals, diags);
+    mid_isize lcurly = midpar_parse_func_quals(
+        toks, rparen + 1, &self->quals, self->ret.squals.is_constexpr, diags);
     if (self->is_op_overload)
         disambig_operator_overload(self);
     if (self->name)
@@ -759,8 +759,8 @@ mid_isize midpar_parse_tor(struct midpar_FuncDecl *self,
     self->params = midpar_parse_func_params(
         toks, lparen, &rparen, MIDPAR_GET_NODE(self), self->param_scope, true,
         &self->variadic, allocs, diags);
-    mid_isize lcurly =
-        midpar_parse_func_quals(toks, rparen + 1, &self->quals, diags);
+    mid_isize lcurly = midpar_parse_func_quals(
+        toks, rparen + 1, &self->quals, self->ret.squals.is_constexpr, diags);
     add_func_to_scope(c_scope, self);
     register_default_args(self, diags);
 
@@ -789,6 +789,66 @@ bool midpar_func_is_ctor(const struct midpar_FuncDecl *self)
     return self->is_tor && !self->is_dtor;
 }
 
+bool midpar_func_is_default_ctor(const struct midpar_FuncDecl *self)
+{
+    if (!midpar_func_is_ctor(self))
+        return false;
+
+    return self->params.len == 0;
+}
+
+bool midpar_func_is_copy_ctor(const struct midpar_FuncDecl *self)
+{
+    if (!midpar_func_is_ctor(self))
+        return false;
+    if (self->params.len != 1)
+        return false;
+
+    const struct midpar_ASTNode *class_node = MIDPAR_GET_PARENT(self);
+    assert(class_node->type == MIDPAR_ASTNODETYPE_CLASS);
+    const struct midpar_Class *class = &class_node->class_;
+
+    // copy constructors have the signature
+    // ClassName(const ClassName &)
+
+    const struct midpar_Type *param = &self->params.arr[0]->insts.arr[0]->type;
+    if (!midpar_type_is_class_or_union(param))
+        return false;
+    if (!param->lv_ref || !param->dquals.arr[0].is_const)
+        return false;
+
+    const struct midsema_Ident *ident = midsema_deref_identptr(&param->named);
+    // class is guaranteed to be the definition of the class cuz there's a
+    // function inside it
+    return ident->def == MIDPAR_GET_NODE(class);
+}
+
+bool midpar_func_is_move_ctor(const struct midpar_FuncDecl *self)
+{
+    if (!midpar_func_is_ctor(self))
+        return false;
+    if (self->params.len != 1)
+        return false;
+
+    const struct midpar_ASTNode *class_node = MIDPAR_GET_PARENT(self);
+    assert(class_node->type == MIDPAR_ASTNODETYPE_CLASS);
+    const struct midpar_Class *class = &class_node->class_;
+
+    // move constructors have the signature
+    // ClassName(ClassName &&)
+
+    const struct midpar_Type *param = &self->params.arr[0]->insts.arr[0]->type;
+    if (!midpar_type_is_class_or_union(param))
+        return false;
+    if (!param->rv_ref)
+        return false;
+
+    const struct midsema_Ident *ident = midsema_deref_identptr(&param->named);
+    // class is guaranteed to be the definition of the class cuz there's a
+    // function inside it
+    return ident->def == MIDPAR_GET_NODE(class);
+}
+
 bool midpar_func_takes_implicit_this(const struct midpar_FuncDecl *self,
                                      bool cnt_ctors)
 {
@@ -808,4 +868,9 @@ bool midpar_func_is_main(const struct midpar_FuncDecl *self)
 {
     return self->param_scope->parent->type == MIDSEMA_SCOPETYPE_ROOT &&
            !strcmp(self->name, "main");
+}
+
+bool midpar_is_user_provided(const struct midpar_FuncDecl *self)
+{
+    return !self->quals.is_default && !self->quals.is_delete;
 }

@@ -30,6 +30,8 @@ enum midpar_ExprType {
     MIDPAR_EXPRTYPE_NULLPTR_LIT,
     MIDPAR_EXPRTYPE_NUMLIT_END,
 
+    MIDPAR_EXPRTYPE_CONST_FOLD, // a constant folded expressio node
+
     MIDPAR_EXPRTYPE_IDENTIFIER,
     MIDPAR_EXPRTYPE_THIS,
 

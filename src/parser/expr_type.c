@@ -72,6 +72,9 @@ const char *midpar_exprtype_name(enum midpar_ExprType type)
     case MIDPAR_EXPRTYPE_NUMLIT_END:
         return "NUMLIT_END";
 
+    case MIDPAR_EXPRTYPE_CONST_FOLD:
+        return "CONST_FOLD";
+
     case MIDPAR_EXPRTYPE_IDENTIFIER:
         return "IDENTIFIER";
 

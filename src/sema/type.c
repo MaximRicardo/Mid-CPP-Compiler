@@ -16,6 +16,7 @@
 #include "parser/template.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/expr_eval.h"
 #include "sema/ident.h"
 #include "sema/lookup.h"
 #include "sema/scope.h"
@@ -1228,13 +1229,9 @@ static bool typecheck_vdecl_generic_type_ctor(struct midpar_VarDeclInst *inst)
     return midsema_can_convert(&arg->ret, arg->valtype, &inst->type);
 }
 
-void midsema_typecheck_var_decl_inst(struct midpar_VarDeclInst *inst,
-                                     struct mid_DiagVec *diags)
+static void typecheck_ctor_call(struct midpar_VarDeclInst *inst,
+                                struct mid_DiagVec *diags)
 {
-    inst->typechecked = true;
-    if (!inst->has_ctor)
-        return;
-
     bool bad;
     if ((inst->type.spec == MIDPAR_TYPESPEC_CLASS ||
          inst->type.spec == MIDPAR_TYPESPEC_UNION) &&
@@ -1248,6 +1245,98 @@ void midsema_typecheck_var_decl_inst(struct midpar_VarDeclInst *inst,
     if (bad)
         midgen_dynpush(
             diags, no_matching_ctor_err(&inst->type, MIDPAR_GET_START(inst)));
+}
+
+static struct mid_Diag
+uninited_constexpr_var_err(const char *name, const struct midlex_Token *tok)
+{
+    struct mid_Diag ret = {
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = midcmd_fmt_to_str("constexpr variable '%s' must be initialized",
+                                 name),
+        .err = MIDDIAG_ERR_NO_MATCHING_CTOR,
+        .type = MIDDIAG_TYPE_ERROR,
+    };
+
+    return ret;
+}
+
+static struct mid_Diag
+constexpr_var_init_not_constexpr_err(const char *name,
+                                     const struct midlex_Token *tok)
+{
+    struct mid_Diag ret = {
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = midcmd_fmt_to_str(
+            "constexpr variable '%s' must have a constexpr initializer", name),
+        .err = MIDDIAG_ERR_NO_MATCHING_CTOR,
+        .type = MIDDIAG_TYPE_ERROR,
+    };
+
+    return ret;
+}
+
+static struct mid_Diag
+constexpr_var_not_literal_type_err(const char *name,
+                                   const struct midpar_Type *type,
+                                   const struct midlex_Token *tok)
+{
+    char *type_str = midpar_type_to_str(type);
+
+    struct mid_Diag ret = {
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = midcmd_fmt_to_str("constexpr variable '%s' is of type '%s' "
+                                 "which is not a literal type",
+                                 name, type_str),
+        .err = MIDDIAG_ERR_NO_MATCHING_CTOR,
+        .type = MIDDIAG_TYPE_ERROR,
+    };
+
+    free(type_str);
+    return ret;
+}
+
+static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
+                                    struct midsema_Scope *scope,
+                                    struct mid_DiagVec *diags)
+{
+    if (!midpar_is_literal_type(&inst->type))
+        midgen_dynpush(
+            diags, constexpr_var_not_literal_type_err(inst->name, &inst->type,
+                                                      MIDPAR_GET_START(inst)));
+
+    if (!inst->init.start && !inst->has_ctor)
+        midgen_dynpush(diags, uninited_constexpr_var_err(
+                                  inst->name, MIDPAR_GET_START(inst)));
+
+    if (inst->init.expr && !midsema_expr_is_constexpr(inst->init.expr))
+        midgen_dynpush(diags, constexpr_var_init_not_constexpr_err(
+                                  inst->name, MIDPAR_GET_START(inst)));
+    else if (inst->init.expr) {
+        midsema_const_fold_expr(inst->init.expr, scope);
+        printf("constexpr var '%s' set to ", inst->name);
+        assert(inst->init.expr->type == MIDPAR_EXPRTYPE_CONST_FOLD);
+        midlit_tagged_print(&inst->init.expr->info.val);
+        printf("\n");
+    }
+}
+
+void midsema_typecheck_var_decl_inst(struct midpar_VarDeclInst *inst,
+                                     struct midsema_Scope *scope,
+                                     struct mid_DiagVec *diags)
+{
+    inst->typechecked = true;
+
+    if (inst->has_ctor)
+        typecheck_ctor_call(inst, diags);
+    else if (inst->init.expr)
+        midsema_typecheck_expr(inst->init.expr, scope, diags);
+
+    if (inst->type.squals.is_constexpr)
+        typecheck_constexpr_var(inst, scope, diags);
 }
 
 static struct mid_Diag
@@ -1370,14 +1459,18 @@ bool midsema_can_convert(const struct midpar_Type *src,
          midpar_is_rvalue(src_valtype)))
         return false;
 
-    if (midpar_is_fundamental_type(src) && midpar_is_fundamental_type(dest))
+    bool src_ptr = midpar_n_indir(src) > 0;
+    bool dest_ptr = midpar_n_indir(dest) > 0;
+
+    if (!src_ptr && !dest_ptr && midpar_is_scalar_type(src) &&
+        midpar_is_scalar_type(dest))
         return true;
     else if (midpar_n_indir(src) == midpar_n_indir(dest) &&
              src->spec == dest->spec)
         return true;
-    else if (midpar_n_indir(src) > 0 && midpar_type_is_void_ptr(dest))
+    else if (src_ptr && midpar_type_is_void_ptr(dest))
         return true;
-    else if (midpar_type_is_nullptr_t(src) && midpar_n_indir(dest) > 0)
+    else if (midpar_type_is_nullptr_t(src) && dest_ptr)
         return true;
     else if (is_valid_array_to_ptr(src, dest))
         return true;

@@ -39,7 +39,8 @@ struct midpar_Class {
                                            // tf not i guess.
                                            // class A {...} x, *y, *const z;
     const char *name;
-    struct midpar_ClassPVec supers;       // classes this class inherits from
+    struct midpar_ClassPVec supers; // classes this class inherits from
+                                    // sepcifically points to their definitions
     const struct midlex_Token *def_start; // the left curly '{'
     struct midsema_IdentPtr ident;
     enum midpar_ClassType type;
@@ -73,7 +74,28 @@ enum midpar_ClassAccess midpar_field_access(const struct midpar_Class *self,
                                             const struct midpar_ASTNode *child);
 // returns the idx of the field in self->childs
 mid_isize midpar_find_field(const struct midpar_Class *self, const char *name);
+struct midpar_FuncDecl *
+midpar_class_default_ctor(const struct midpar_Class *self);
 struct midpar_FuncDeclPVec midpar_class_ctors(const struct midpar_Class *self);
+struct midpar_FuncDecl *midpar_class_dtor(const struct midpar_Class *self);
+bool midpar_has_explicit_ctors(const struct midpar_Class *self);
+bool midpar_has_user_provided_ctors(const struct midpar_Class *self);
+bool midpar_has_user_provided_dtor(const struct midpar_Class *self);
+bool midpar_has_trivial_dtor(const struct midpar_Class *self);
+// is the class a valid literal type?
+bool midpar_class_is_literal(const struct midpar_Class *self);
+bool midpar_class_is_aggregate(const struct midpar_Class *self);
+bool midpar_has_inherited_ctors(const struct midpar_Class *self);
+bool midpar_has_virt_methods(const struct midpar_Class *self);
+// ignores non-static members
+bool midpar_has_default_memb_initializers(const struct midpar_Class *self);
+// a union has a variant member if it has a non-static member with a trivial
+// default ctor
+bool midpar_union_has_variant_member(const struct midpar_Class *self);
+bool midpar_has_default_ctor(const struct midpar_Class *self);
+bool midpar_class_is_trivially_constructible(const struct midpar_Class *self);
+bool midpar_is_ctor_trivial(const struct midpar_FuncDecl *ctor);
+bool midpar_has_trivial_default_ctor(const struct midpar_Class *self);
 
 #ifdef __cplusplus
 }

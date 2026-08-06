@@ -335,6 +335,9 @@ struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
     assert(expr->typechecked);
     assert(expr->ret.squals.is_constexpr);
 
+    if (expr->type == MIDPAR_EXPRTYPE_CONST_FOLD)
+        return midlit_copy_value(&expr->info.val);
+
     // TODO: add support for operator overloading
     assert(!expr->overloaded);
 
@@ -344,4 +347,25 @@ struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
         return eval_binop(expr, scope);
     else
         return eval_leaf(expr, scope);
+}
+
+void midsema_const_fold_expr(struct midpar_Expr *expr,
+                             const struct midsema_Scope *scope)
+{
+    assert(expr->typechecked);
+
+    struct midlit_TaggedValue val = midsema_eval_expr(expr, scope);
+
+    const struct midlex_Token *tok = expr->tok;
+    struct midpar_Type ret = midpar_copy_type(&expr->ret);
+    enum midpar_ExprValueType valtype = expr->valtype;
+
+    midpar_Expr_deinit(expr);
+
+    *expr = (struct midpar_Expr){.info.val = val,
+                                 .tok = tok,
+                                 .ret = ret,
+                                 .type = MIDPAR_EXPRTYPE_CONST_FOLD,
+                                 .valtype = valtype,
+                                 .typechecked = true};
 }

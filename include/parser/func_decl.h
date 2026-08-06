@@ -13,8 +13,8 @@
 extern "C" {
 #endif
 
-constexpr char midpar_ctor_name[] = "__constructor";
-constexpr char midpar_dtor_name[] = "__destructor";
+constexpr char midpar_ctor_name[] = "$__constructor";
+constexpr char midpar_dtor_name[] = "$__destructor";
 
 struct midpar_FuncQuals {
     bool is_const;
@@ -22,7 +22,10 @@ struct midpar_FuncQuals {
     bool lv_ref;
     bool rv_ref;
     bool is_final;
+    bool is_virtual;
     bool is_override;
+    bool is_explicit;
+    bool is_constexpr;
 
     bool is_delete;  // void f() = delete;
     bool is_default; // void f() = default;
@@ -63,7 +66,7 @@ midpar_parse_func_params(const struct midlex_Token *toks, mid_isize lparen,
 mid_isize midpar_parse_func_quals(const struct midlex_Token *toks,
                                   mid_isize start,
                                   struct midpar_FuncQuals *out_quals,
-                                  struct mid_DiagVec *diags);
+                                  bool is_constexpr, struct mid_DiagVec *diags);
 // skip_def -  if true, the func definition won't be parsed, but def_start will
 //             still be set to the first token of the definition and has_def
 //             will still be set to true if there is a definition. used by
@@ -89,12 +92,16 @@ mid_isize midpar_parse_func_body(struct midpar_FuncDecl *self,
 
 bool midpar_func_is_method(const struct midpar_FuncDecl *self);
 bool midpar_func_is_ctor(const struct midpar_FuncDecl *self);
+bool midpar_func_is_default_ctor(const struct midpar_FuncDecl *self);
+bool midpar_func_is_copy_ctor(const struct midpar_FuncDecl *self);
+bool midpar_func_is_move_ctor(const struct midpar_FuncDecl *self);
 // cnt_ctors    - do constructors also count?
 bool midpar_func_takes_implicit_this(const struct midpar_FuncDecl *self,
                                      bool cnt_ctors);
 struct midpar_Type
 midpar_implicit_this_type(const struct midpar_FuncDecl *self);
 bool midpar_func_is_main(const struct midpar_FuncDecl *self);
+bool midpar_is_user_provided(const struct midpar_FuncDecl *self);
 
 #ifdef __cplusplus
 }
