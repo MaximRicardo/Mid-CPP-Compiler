@@ -19,6 +19,14 @@
 #include <assert.h>
 #include <stdio.h>
 
+bool midpar_op_has_side_effects(enum midpar_ExprType type)
+{
+    return midpar_is_assignment(type) || type == MIDPAR_EXPRTYPE_POSTFIX_INC ||
+           type == MIDPAR_EXPRTYPE_POSTFIX_DEC ||
+           type == MIDPAR_EXPRTYPE_PREFIX_INC ||
+           type == MIDPAR_EXPRTYPE_PREFIX_DEC;
+}
+
 bool midpar_is_strlit(enum midpar_ExprType type)
 {
     return type == MIDPAR_EXPRTYPE_STRING_LIT ||

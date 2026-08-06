@@ -28,6 +28,8 @@ bool midpar_is_comp_op(enum midpar_ExprType type);
 bool midpar_is_assignment(enum midpar_ExprType type);
 bool midpar_is_memb_sel(enum midpar_ExprType type);
 
+bool midpar_op_has_side_effects(enum midpar_ExprType type);
+
 enum midlit_ValueKind midpar_lit_expr_value_kind(enum midpar_ExprType type);
 
 // goes from 0 to 15, where 15 is the highest precedence

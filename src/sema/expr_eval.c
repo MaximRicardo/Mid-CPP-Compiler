@@ -30,11 +30,13 @@ bool midsema_expr_is_constexpr(struct midpar_Expr *expr)
 {
     assert(expr->typechecked);
 
-    if (expr->ret.spec == MIDPAR_TYPESPEC_UNKNOWN ||
-        expr->ret.spec == MIDPAR_TYPESPEC_TEMPLATED)
-        return false;
-    else if (expr->ret.squals.is_constexpr)
+    if (expr->ret.squals.is_constexpr)
         return true;
+    else if (expr->ret.spec == MIDPAR_TYPESPEC_UNKNOWN ||
+             expr->ret.spec == MIDPAR_TYPESPEC_TEMPLATED)
+        return false;
+    else if (midpar_op_has_side_effects(expr->type))
+        return false;
 
     // TODO: implement constexpr function calls
     if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL)
