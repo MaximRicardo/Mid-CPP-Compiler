@@ -49,6 +49,7 @@ enum middiag_ErrT {
     MIDDIAG_ERR_NO_MATCHING_CTOR,
     MIDDIAG_ERR_BAD_TYPE,
     MIDDIAG_ERR_BAD_TEMPLATE,
+    MIDDIAG_ERR_BAD_CONSTEXPR,
 };
 
 enum middiag_WarnT {

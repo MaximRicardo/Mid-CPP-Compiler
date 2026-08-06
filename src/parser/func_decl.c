@@ -17,6 +17,7 @@
 #include "parser/scope.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/typecheck.h"
@@ -287,6 +288,71 @@ static struct midsema_Scope *setup_def_scope(struct midpar_FuncDecl *self,
     return *def;
 }
 
+static struct mid_Diag constexpr_unsuitable_err(const char *name,
+                                                const char *reason,
+                                                const struct midlex_Token *tok)
+{
+    const char *fmt = reason
+                          ? "function '%s' is not constexpr suitable because %s"
+                          : "function '%s' is not constexpr suitable";
+
+    return (struct mid_Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = midcmd_fmt_to_str(fmt, name, reason),
+        .err = MIDDIAG_ERR_BAD_CONSTEXPR,
+        .type = MIDDIAG_TYPE_ERROR,
+    };
+}
+
+static void verify_constexpr_suitability(const struct midpar_FuncDecl *self,
+                                         struct mid_DiagVec *diags)
+{
+    auto suitability = midsema_func_constexpr_suitability(self);
+
+    switch (suitability) {
+    case MIDSEMA_FUNCCONSTEXPR_SUITABLE:
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_NONLITERAL_RET:
+        midgen_dynpush(diags, constexpr_unsuitable_err(
+                                  self->name, "its return type is non-literal",
+                                  MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_NONLITERAL_PARAM:
+        midgen_dynpush(diags,
+                       constexpr_unsuitable_err(
+                           self->name, "it has a non-literal parameter type",
+                           MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_VIRTUAL:
+        midgen_dynpush(diags,
+                       constexpr_unsuitable_err(self->name, "it's virtual",
+                                                MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_RET_IN_CTOR:
+        midgen_dynpush(diags, constexpr_unsuitable_err(
+                                  self->name, "it has a return statement",
+                                  MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_MULTIPLE_RET:
+        midgen_dynpush(
+            diags, constexpr_unsuitable_err(self->name,
+                                            "it has multiple return statements",
+                                            MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_BAD_BODY:
+        midgen_dynpush(diags, constexpr_unsuitable_err(self->name, nullptr,
+                                                       MIDPAR_GET_START(self)));
+        break;
+    }
+}
+
 mid_isize midpar_parse_func_body(struct midpar_FuncDecl *self,
                                  const struct midlex_Token *toks,
                                  mid_isize lcurly,
@@ -311,6 +377,9 @@ mid_isize midpar_parse_func_body(struct midpar_FuncDecl *self,
             (struct midpar_ParseNodeFlags){.skip_def = false}, allocs, diags);
         midgen_dynpush(&self->nodes, child);
     }
+
+    if (self->quals.is_constexpr)
+        verify_constexpr_suitability(self, diags);
 
     return rcurly;
 }
