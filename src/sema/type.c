@@ -755,6 +755,14 @@ static bool is_ptr_arith_op(enum midpar_ExprType op)
     return op == MIDPAR_EXPRTYPE_ADD || op == MIDPAR_EXPRTYPE_SUB;
 }
 
+static bool is_flt_arith_op(enum midpar_ExprType op)
+{
+    return op == MIDPAR_EXPRTYPE_ADD || op == MIDPAR_EXPRTYPE_SUB ||
+           op == MIDPAR_EXPRTYPE_MUL || op == MIDPAR_EXPRTYPE_DIV ||
+           op == MIDPAR_EXPRTYPE_UNARY_PLUS ||
+           op == MIDPAR_EXPRTYPE_UNARY_MINUS;
+}
+
 static void typecheck_arith_bin_op_expr(struct midpar_Expr *expr,
                                         struct mid_DiagVec *diags)
 {
@@ -778,14 +786,23 @@ static void typecheck_arith_bin_op_expr(struct midpar_Expr *expr,
         bad_op_types = lhs_ptr || rhs_ptr;
     }
 
+    bool lhs_flt = !lhs_ptr && midpar_is_floating_typespec(lhs->ret.spec);
+    bool rhs_flt = !rhs_ptr && midpar_is_floating_typespec(rhs->ret.spec);
+
     if (bad_op_types) {
         midgen_dynpush(diags, bad_operands(expr, "arithmetic",
                                            MIDDIAG_ERR_BAD_ARITHMETIC_OP));
-        expr->ret = midpar_copy_type(&lhs->ret);
+        expr->ret = midpar_create_unknown_type();
     } else if (lhs_ptr) {
         expr->ret = midpar_copy_type(&lhs->ret);
     } else if (rhs_ptr) {
         expr->ret = midpar_copy_type(&rhs->ret);
+    } else if ((lhs_flt || rhs_flt) && !is_flt_arith_op(expr->type)) {
+        const char *name =
+            expr->type == MIDPAR_EXPRTYPE_MOD ? "module" : "bitwise";
+        midgen_dynpush(diags,
+                       bad_operands(expr, name, MIDDIAG_ERR_BAD_ARITHMETIC_OP));
+        expr->ret = midpar_create_unknown_type();
     } else {
         int32_t lhs_rank =
             midpar_typespec_conv_rank(op_prom_typespec(lhs->ret.spec));

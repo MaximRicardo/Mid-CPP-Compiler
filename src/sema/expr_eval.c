@@ -30,7 +30,10 @@ bool midsema_expr_is_constexpr(struct midpar_Expr *expr)
 {
     assert(expr->typechecked);
 
-    if (expr->ret.squals.is_constexpr)
+    if (expr->ret.spec == MIDPAR_TYPESPEC_UNKNOWN ||
+        expr->ret.spec == MIDPAR_TYPESPEC_TEMPLATED)
+        return false;
+    else if (expr->ret.squals.is_constexpr)
         return true;
 
     // TODO: implement constexpr function calls
@@ -329,6 +332,9 @@ struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
 {
     assert(expr->typechecked);
     assert(expr->ret.squals.is_constexpr);
+
+    // TODO: add support for operator overloading
+    assert(!expr->overloaded);
 
     if (midpar_is_unaryop(expr->type))
         return eval_unaryop(expr, scope);
