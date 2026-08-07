@@ -475,18 +475,18 @@ static struct NumLit read_numlit(const char *src, mid_isize start,
     //       on floats larger than the implementation's double
     case NUMLIT_FLOAT:
         ret.val.flt = midflt_init(strtod(&src[start], NULL), midtype_float_kind,
-                                  midtype_default_rmode);
+                                  midcmd_get_fpu()->rmode);
         break;
 
     case NUMLIT_DOUBLE:
         ret.val.flt = midflt_init(strtod(&src[start], NULL),
-                                  midtype_double_kind, midtype_default_rmode);
+                                  midtype_double_kind, midcmd_get_fpu()->rmode);
         break;
 
     case NUMLIT_LONGDOUBLE:
         ret.val.flt =
             midflt_init(strtod(&src[start], NULL), midtype_longdouble_kind,
-                        midtype_default_rmode);
+                        midcmd_get_fpu()->rmode);
         break;
     }
 

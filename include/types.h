@@ -28,8 +28,6 @@ constexpr int32_t midtype_float_size = 4;
 constexpr int32_t midtype_double_size = 8;
 constexpr int32_t midtype_longdouble_size = 8;
 
-constexpr enum midflt_Rounding midtype_default_rmode =
-    MIDFLT_ROUND_NEAREST_TIES_EVEN;
 constexpr enum midflt_Kind midtype_float_kind = MIDFLT_KIND_IEEE_SINGLE;
 constexpr enum midflt_Kind midtype_double_kind = MIDFLT_KIND_IEEE_DOUBLE;
 constexpr enum midflt_Kind midtype_longdouble_kind = MIDFLT_KIND_IEEE_DOUBLE;

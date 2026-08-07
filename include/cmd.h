@@ -1,7 +1,7 @@
 #pragma once
 
+#include "apfloat.h"
 #include "attribute.h"
-#include "ints.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,7 +15,12 @@ constexpr char midcmd_ansi_blue[] = "\x1b[34m";
 constexpr char midcmd_ansi_magenta[] = "\x1b[35m";
 constexpr char midcmd_ansi_cyan[] = "\x1b[36m";
 
+struct midcmd_FPUArgs {
+    enum midflt_Rounding rmode;
+};
+
 struct midcmd_Args {
+    struct midcmd_FPUArgs fpu;
     const char *src;
     const char *ast_out;
     const char *asm_out;
@@ -23,8 +28,10 @@ struct midcmd_Args {
     bool log_symbols;
 };
 
-void midcmd_init_args(int argc, char **argv);
-const struct midcmd_Args *midcmd_get_args(void);
+void midcmd_init_args(int argc, const char *const *argv);
+
+const struct midcmd_Args *midcmd_get_args();
+const struct midcmd_FPUArgs *midcmd_get_fpu();
 
 // prints until a '\n' character
 void midcmd_prt_line(const char *line);

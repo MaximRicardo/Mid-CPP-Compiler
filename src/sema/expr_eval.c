@@ -1,6 +1,7 @@
 #include "sema/expr_eval.h"
 #include "apfloat.h"
 #include "apint.h"
+#include "cmd.h"
 #include "literal.h"
 #include "macros.h"
 #include "parser/ast.h"
@@ -178,9 +179,9 @@ static void convert_value(struct midlit_TaggedValue *val,
         case MIDLIT_VALUE_FLOAT: {
             auto tmp = val->kind == MIDLIT_VALUE_SIGNED_INT
                            ? midflt_init_sint(&val->v.i, target_kind,
-                                              midtype_default_rmode)
+                                              midcmd_get_fpu()->rmode)
                            : midflt_init_uint(&val->v.i, target_kind,
-                                              midtype_default_rmode);
+                                              midcmd_get_fpu()->rmode);
             mid_APInt_deinit(&val->v.i);
             val->v.flt = tmp;
         } break;

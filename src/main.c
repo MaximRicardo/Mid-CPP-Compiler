@@ -172,7 +172,7 @@ int main(int argc, char **argv)
 
     init_modules();
 
-    midcmd_init_args(argc, argv);
+    midcmd_init_args(argc, (const char *const *)argv);
 
     int ret = 0;
 
