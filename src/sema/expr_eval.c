@@ -7,6 +7,7 @@
 #include "parser/expr.h"
 #include "parser/expr_type.h"
 #include "parser/type.h"
+#include "sema/expr.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/type.h"
@@ -21,7 +22,7 @@ static bool leaf_expr_is_constant(const struct midpar_Expr *expr)
 {
     if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
         return expr->ret.squals.is_constexpr;
-    else if (midpar_is_numlit(expr->type) || midpar_is_strlit(expr->type))
+    else if (midsema_is_numlit(expr->type) || midsema_is_strlit(expr->type))
         return true;
     else
         return false;
@@ -38,7 +39,7 @@ void midsema_set_expr_constant_flag(struct midpar_Expr *expr)
                expr->ret.spec == MIDPAR_TYPESPEC_TEMPLATED) {
         expr->constant = false;
         return;
-    } else if (midpar_op_has_side_effects(expr->type)) {
+    } else if (midsema_op_has_side_effects(expr->type)) {
         expr->constant = false;
         return;
     }
@@ -53,7 +54,7 @@ void midsema_set_expr_constant_flag(struct midpar_Expr *expr)
 
     if (op_always_constant(expr->type)) {
         is_constant = true;
-    } else if (midpar_expr_uses_args(expr->type)) {
+    } else if (midsema_expr_uses_args(expr->type)) {
         // TODO: add support for overloaded operators
         assert(!expr->overloaded);
 
@@ -88,7 +89,7 @@ get_ident_value(const struct midpar_Expr *expr,
 static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,
                                            const struct midsema_Scope *scope)
 {
-    if (midpar_is_numlit(expr->type) || midpar_is_strlit(expr->type))
+    if (midsema_is_numlit(expr->type) || midsema_is_strlit(expr->type))
         return midlit_copy_value(&expr->info.val);
     else if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
         return get_ident_value(expr, scope);
@@ -326,7 +327,7 @@ static struct midlit_TaggedValue eval_binop(const struct midpar_Expr *expr,
 
     struct midlit_TaggedValue res;
 
-    if (midpar_is_arith_op(expr->type))
+    if (midsema_is_arith_op(expr->type))
         res = eval_arith_binop(expr, &res_lhs, &res_rhs);
     else
         MID_CRASH("constant folding expr type not supported");
@@ -348,9 +349,9 @@ struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
     // TODO: add support for operator overloading
     assert(!expr->overloaded);
 
-    if (midpar_is_unaryop(expr->type))
+    if (midsema_is_unaryop(expr->type))
         return eval_unaryop(expr, scope);
-    else if (midpar_is_binop(expr->type))
+    else if (midsema_is_binop(expr->type))
         return eval_binop(expr, scope);
     else
         return eval_leaf(expr, scope);
@@ -383,7 +384,7 @@ void midsema_const_fold_expr(struct midpar_Expr *expr,
 
     if (expr->constant) {
         fold_expr(expr, scope);
-    } else if (recursive && midpar_expr_uses_args(expr->type)) {
+    } else if (recursive && midsema_expr_uses_args(expr->type)) {
         for (int i = 0; i < expr->info.args.len; ++i) {
             struct midpar_Expr *arg = &expr->info.args.arr[i];
             midsema_const_fold_expr(arg, scope, true);

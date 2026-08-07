@@ -12,40 +12,11 @@
 extern "C" {
 #endif
 
-bool midpar_is_strlit(enum midpar_ExprType type);
-bool midpar_is_fltlit(enum midpar_ExprType type);
-bool midpar_is_intlit(enum midpar_ExprType type); // any integral type
-bool midpar_is_numlit(enum midpar_ExprType type);
-bool midpar_is_ternaryop(enum midpar_ExprType type);
-bool midpar_is_binop(enum midpar_ExprType type);
-bool midpar_is_unaryop(enum midpar_ExprType type);
-bool midpar_is_scope_res(enum midpar_ExprType type);
-bool midpar_is_op(enum midpar_ExprType type);
-bool midpar_is_arith_op(enum midpar_ExprType type);
-bool midpar_is_logical_op(enum midpar_ExprType type);
-bool midpar_is_comp_op(enum midpar_ExprType type);
-// checks for both regular and compound assignment
-bool midpar_is_assignment(enum midpar_ExprType type);
-bool midpar_is_memb_sel(enum midpar_ExprType type);
-
-bool midpar_op_has_side_effects(enum midpar_ExprType type);
-
-enum midlit_ValueKind midpar_lit_expr_value_kind(enum midpar_ExprType type);
-
-// goes from 0 to 15, where 15 is the highest precedence
-int32_t midpar_op_precedence(enum midpar_ExprType op);
-bool midpar_op_ltr_assoc(enum midpar_ExprType op);
-
-bool midpar_expr_uses_args(enum midpar_ExprType type);
-
 enum midpar_ExprValueType {
     MIDPAR_EXPRVALUE_LVALUE,
     MIDPAR_EXPRVALUE_PRVALUE,
     MIDPAR_EXPRVALUE_XVALUE,
 };
-
-bool midpar_is_glvalue(enum midpar_ExprValueType type);
-bool midpar_is_rvalue(enum midpar_ExprValueType type);
 
 struct midpar_Expr;
 midgen_dynarray_struct_named(midpar_ExprVec, struct midpar_Expr);

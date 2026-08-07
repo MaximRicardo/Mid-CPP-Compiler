@@ -18,6 +18,7 @@
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/expr.h"
 #include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
@@ -201,7 +202,7 @@ static LLVMValueRef codegen_lit_expr(const struct midpar_Expr *expr,
         return LLVMConstReal(
             midllvm_convert_parser_type(&expr->ret, context, false),
             midflt_to_dbl(&expr->info.val.v.flt));
-    else if (midpar_is_strlit(expr->type))
+    else if (midsema_is_strlit(expr->type))
         return codegen_strlit(&expr->info.val.v.str, context, mod);
     else if (expr->type == MIDPAR_EXPRTYPE_NULLPTR_LIT)
         return LLVMConstPointerNull(LLVMVoidType());
@@ -350,7 +351,7 @@ static void cast_arith_expr_operands(const struct midpar_Expr *expr,
                                      LLVMContextRef context,
                                      LLVMBuilderRef builder)
 {
-    if (!midpar_is_binop(expr->type))
+    if (!midsema_is_binop(expr->type))
         return;
     if (LLVMGetTypeKind(LLVMTypeOf(*lhs)) == LLVMPointerTypeKind)
         return;
@@ -397,7 +398,7 @@ static LLVMValueRef codegen_arith_expr(const struct midpar_Expr *expr,
     auto lhs =
         codegen_expr(&expr->info.args.arr[0], scope, context, mod, builder);
     LLVMValueRef rhs;
-    if (midpar_is_binop(expr->type))
+    if (midsema_is_binop(expr->type))
         rhs =
             codegen_expr(&expr->info.args.arr[1], scope, context, mod, builder);
 
@@ -507,7 +508,7 @@ static LLVMValueRef *get_call_args(const struct midpar_Expr *expr,
     } else if (implicit_this) {
         // jank
         auto lhs = &expr->info.args.arr[0];
-        assert(midpar_is_memb_sel(lhs->type));
+        assert(midsema_is_memb_sel(lhs->type));
         ret[0] = codegen_expr_ref(&lhs->info.args.arr[0], scope, context, mod,
                                   builder);
     }
@@ -690,9 +691,9 @@ static LLVMValueRef codegen_expr_ref(const struct midpar_Expr *expr,
         return get_implicit_this(scope);
     else if (expr->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
         return codegen_subscr_expr(expr, scope, true, context, mod, builder);
-    else if (midpar_is_memb_sel(expr->type))
+    else if (midsema_is_memb_sel(expr->type))
         return codegen_memb_sel(expr, scope, true, context, mod, builder);
-    else if (midpar_is_assignment(expr->type))
+    else if (midsema_is_assignment(expr->type))
         return codegen_assign_expr(expr, scope, false, context, mod, builder);
     else
         MID_CRASH("can't get ref of expr type");
@@ -706,7 +707,7 @@ static LLVMValueRef codegen_expr(const struct midpar_Expr *expr,
     assert(!expr->overloaded &&
            "codegen of overloaded exprs not implemented yet");
 
-    if (midpar_is_numlit(expr->type))
+    if (midsema_is_numlit(expr->type))
         return codegen_lit_expr(expr, context, mod);
     else if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
         return codegen_ident_expr(expr, scope, false, builder);
@@ -714,13 +715,13 @@ static LLVMValueRef codegen_expr(const struct midpar_Expr *expr,
         return get_implicit_this(scope);
     else if (expr->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
         return codegen_subscr_expr(expr, scope, false, context, mod, builder);
-    else if (midpar_is_arith_op(expr->type))
+    else if (midsema_is_arith_op(expr->type))
         return codegen_arith_expr(expr, scope, context, mod, builder);
     else if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL)
         return codegen_call_expr(expr, scope, context, mod, builder);
-    else if (midpar_is_memb_sel(expr->type))
+    else if (midsema_is_memb_sel(expr->type))
         return codegen_memb_sel(expr, scope, false, context, mod, builder);
-    else if (midpar_is_assignment(expr->type))
+    else if (midsema_is_assignment(expr->type))
         return codegen_assign_expr(expr, scope, false, context, mod, builder);
     else {
         printf("expr at %" PRIi32 ":%" PRIi32 "\n", expr->tok->pos.line,

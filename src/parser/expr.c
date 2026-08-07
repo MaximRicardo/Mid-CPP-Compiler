@@ -13,301 +13,11 @@
 #include "parser/expr_type.h"
 #include "parser/find_twin.h"
 #include "parser/type.h"
+#include "sema/expr.h"
 #include "sema/scope.h"
 #include "sema/typecheck.h"
-#include "types.h"
 #include <assert.h>
 #include <stdio.h>
-
-bool midpar_op_has_side_effects(enum midpar_ExprType type)
-{
-    return midpar_is_assignment(type) || type == MIDPAR_EXPRTYPE_POSTFIX_INC ||
-           type == MIDPAR_EXPRTYPE_POSTFIX_DEC ||
-           type == MIDPAR_EXPRTYPE_PREFIX_INC ||
-           type == MIDPAR_EXPRTYPE_PREFIX_DEC;
-}
-
-bool midpar_is_strlit(enum midpar_ExprType type)
-{
-    return type == MIDPAR_EXPRTYPE_STRING_LIT ||
-           type == MIDPAR_EXPRTYPE_WSTRING_LIT ||
-           type == MIDPAR_EXPRTYPE_STRING16_LIT ||
-           type == MIDPAR_EXPRTYPE_STRING32_LIT;
-}
-
-bool midpar_is_fltlit(enum midpar_ExprType type)
-{
-    return type > MIDPAR_EXPRTYPE_FLTLIT_START &&
-           type < MIDPAR_EXPRTYPE_FLTLIT_END;
-}
-
-bool midpar_is_intlit(enum midpar_ExprType type)
-{
-    return midpar_is_numlit(type) && !midpar_is_fltlit(type);
-}
-
-bool midpar_is_numlit(enum midpar_ExprType type)
-{
-    return type > MIDPAR_EXPRTYPE_NUMLIT_START &&
-           type < MIDPAR_EXPRTYPE_NUMLIT_END;
-}
-
-bool midpar_is_ternaryop(enum midpar_ExprType type)
-{
-    return type > MIDPAR_EXPRTYPE_TERNARYOP_START &&
-           type < MIDPAR_EXPRTYPE_TERNARYOP_END;
-}
-
-bool midpar_is_binop(enum midpar_ExprType type)
-{
-    return type > MIDPAR_EXPRTYPE_BINOP_START &&
-           type < MIDPAR_EXPRTYPE_BINOP_END;
-}
-
-bool midpar_is_unaryop(enum midpar_ExprType type)
-{
-    return type > MIDPAR_EXPRTYPE_UNARYOP_START &&
-           type < MIDPAR_EXPRTYPE_UNARYOP_END;
-}
-
-bool midpar_is_scope_res(enum midpar_ExprType type)
-{
-    return type == MIDPAR_EXPRTYPE_BIN_SCOPE_RES ||
-           type == MIDPAR_EXPRTYPE_UNARY_SCOPE_RES;
-}
-
-bool midpar_is_op(enum midpar_ExprType type)
-{
-    return midpar_is_binop(type) || midpar_is_unaryop(type);
-}
-
-bool midpar_is_arith_op(enum midpar_ExprType type)
-{
-    return type == MIDPAR_EXPRTYPE_MUL || type == MIDPAR_EXPRTYPE_DIV ||
-           type == MIDPAR_EXPRTYPE_MOD || type == MIDPAR_EXPRTYPE_ADD ||
-           type == MIDPAR_EXPRTYPE_SUB || type == MIDPAR_EXPRTYPE_LEFT_SHIFT ||
-           type == MIDPAR_EXPRTYPE_RIGHT_SHIFT ||
-           type == MIDPAR_EXPRTYPE_BITWISE_AND ||
-           type == MIDPAR_EXPRTYPE_BITWISE_XOR ||
-           type == MIDPAR_EXPRTYPE_BITWISE_OR ||
-           type == MIDPAR_EXPRTYPE_BITWISE_NOT ||
-           type == MIDPAR_EXPRTYPE_UNARY_PLUS ||
-           type == MIDPAR_EXPRTYPE_UNARY_MINUS;
-}
-
-bool midpar_is_logical_op(enum midpar_ExprType type)
-{
-    return type == MIDPAR_EXPRTYPE_LOGICAL_AND ||
-           type == MIDPAR_EXPRTYPE_LOGICAL_OR ||
-           type == MIDPAR_EXPRTYPE_LOGICAL_NOT;
-}
-
-bool midpar_is_comp_op(enum midpar_ExprType type)
-{
-    return type == MIDPAR_EXPRTYPE_LT || type == MIDPAR_EXPRTYPE_GT ||
-           type == MIDPAR_EXPRTYPE_LTEQ || type == MIDPAR_EXPRTYPE_GTEQ ||
-           type == MIDPAR_EXPRTYPE_EQ || type == MIDPAR_EXPRTYPE_NEQ;
-}
-
-bool midpar_is_assignment(enum midpar_ExprType type)
-{
-    return type == MIDPAR_EXPRTYPE_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_MUL_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_DIV_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_MOD_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_SUB_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_ADD_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_LEFT_SHIFT_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_RIGHT_SHIFT_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_AND_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_OR_ASSIGN ||
-           type == MIDPAR_EXPRTYPE_XOR_ASSIGN;
-}
-
-bool midpar_is_memb_sel(enum midpar_ExprType type)
-{
-    return type == MIDPAR_EXPRTYPE_MEMB_SEL ||
-           type == MIDPAR_EXPRTYPE_PTR_MEMB_SEL ||
-           type == MIDPAR_EXPRTYPE_PTR_TO_MEMB_SEL ||
-           type == MIDPAR_EXPRTYPE_PTR_TO_PTR_MEMB_SEL;
-}
-
-enum midlit_ValueKind midpar_lit_expr_value_kind(enum midpar_ExprType type)
-{
-    switch (type) {
-    case MIDPAR_EXPRTYPE_CHAR_LIT:
-        return midtype_char_signed ? MIDLIT_VALUE_SIGNED_INT
-                                   : MIDLIT_VALUE_UNSIGNED_INT;
-
-    case MIDPAR_EXPRTYPE_WCHAR_LIT:
-        return midtype_wchar_signed ? MIDLIT_VALUE_SIGNED_INT
-                                    : MIDLIT_VALUE_UNSIGNED_INT;
-
-    case MIDPAR_EXPRTYPE_CHAR16_LIT:
-    case MIDPAR_EXPRTYPE_CHAR32_LIT:
-    case MIDPAR_EXPRTYPE_UINT_LIT:
-    case MIDPAR_EXPRTYPE_ULONG_LIT:
-    case MIDPAR_EXPRTYPE_ULONGLONG_LIT:
-    case MIDPAR_EXPRTYPE_NULLPTR_LIT:
-        return MIDLIT_VALUE_UNSIGNED_INT;
-
-    case MIDPAR_EXPRTYPE_INT_LIT:
-    case MIDPAR_EXPRTYPE_LONG_LIT:
-    case MIDPAR_EXPRTYPE_LONGLONG_LIT:
-    case MIDPAR_EXPRTYPE_BOOL_LIT:
-        return MIDLIT_VALUE_SIGNED_INT;
-
-    case MIDPAR_EXPRTYPE_FLOAT_LIT:
-    case MIDPAR_EXPRTYPE_DOUBLE_LIT:
-    case MIDPAR_EXPRTYPE_LONGDOUBLE_LIT:
-        return MIDLIT_VALUE_FLOAT;
-
-    case MIDPAR_EXPRTYPE_STRING_LIT:
-    case MIDPAR_EXPRTYPE_WSTRING_LIT:
-    case MIDPAR_EXPRTYPE_STRING16_LIT:
-    case MIDPAR_EXPRTYPE_STRING32_LIT:
-        return MIDLIT_VALUE_STR;
-
-    default:
-        MID_CRASH("expr type is not a literal");
-    }
-}
-
-int32_t midpar_op_precedence(enum midpar_ExprType op)
-{
-    // goes from 16 to 1
-    int32_t flipped;
-
-    switch (op) {
-    case MIDPAR_EXPRTYPE_BIN_SCOPE_RES:
-    case MIDPAR_EXPRTYPE_UNARY_SCOPE_RES:
-        flipped = 1;
-        break;
-
-    case MIDPAR_EXPRTYPE_MEMB_SEL:
-    case MIDPAR_EXPRTYPE_PTR_MEMB_SEL:
-    case MIDPAR_EXPRTYPE_ARRAY_SUBSCR:
-    case MIDPAR_EXPRTYPE_FUNC_CALL:
-    case MIDPAR_EXPRTYPE_POSTFIX_INC:
-    case MIDPAR_EXPRTYPE_POSTFIX_DEC:
-    case MIDPAR_EXPRTYPE_TYPEID:
-    case MIDPAR_EXPRTYPE_CONSTCAST:
-    case MIDPAR_EXPRTYPE_DYNAMICCAST:
-    case MIDPAR_EXPRTYPE_REINTERPRETCAST:
-    case MIDPAR_EXPRTYPE_STATICCAST:
-        flipped = 2;
-        break;
-
-    case MIDPAR_EXPRTYPE_SIZEOF:
-    case MIDPAR_EXPRTYPE_PREFIX_INC:
-    case MIDPAR_EXPRTYPE_PREFIX_DEC:
-    case MIDPAR_EXPRTYPE_BITWISE_NOT:
-    case MIDPAR_EXPRTYPE_LOGICAL_NOT:
-    case MIDPAR_EXPRTYPE_UNARY_MINUS:
-    case MIDPAR_EXPRTYPE_UNARY_PLUS:
-    case MIDPAR_EXPRTYPE_REF:
-    case MIDPAR_EXPRTYPE_DEREF:
-    case MIDPAR_EXPRTYPE_NEW:
-    case MIDPAR_EXPRTYPE_DELETE:
-    case MIDPAR_EXPRTYPE_CAST:
-        flipped = 3;
-        break;
-
-    case MIDPAR_EXPRTYPE_PTR_TO_MEMB_SEL:
-    case MIDPAR_EXPRTYPE_PTR_TO_PTR_MEMB_SEL:
-        flipped = 4;
-        break;
-
-    case MIDPAR_EXPRTYPE_MUL:
-    case MIDPAR_EXPRTYPE_DIV:
-    case MIDPAR_EXPRTYPE_MOD:
-        flipped = 5;
-        break;
-
-    case MIDPAR_EXPRTYPE_ADD:
-    case MIDPAR_EXPRTYPE_SUB:
-        flipped = 6;
-        break;
-
-    case MIDPAR_EXPRTYPE_LEFT_SHIFT:
-    case MIDPAR_EXPRTYPE_RIGHT_SHIFT:
-        flipped = 7;
-        break;
-
-    case MIDPAR_EXPRTYPE_LT:
-    case MIDPAR_EXPRTYPE_GT:
-    case MIDPAR_EXPRTYPE_LTEQ:
-    case MIDPAR_EXPRTYPE_GTEQ:
-        flipped = 8;
-        break;
-
-    case MIDPAR_EXPRTYPE_EQ:
-    case MIDPAR_EXPRTYPE_NEQ:
-        flipped = 9;
-        break;
-
-    case MIDPAR_EXPRTYPE_BITWISE_AND:
-        flipped = 10;
-        break;
-
-    case MIDPAR_EXPRTYPE_BITWISE_XOR:
-        flipped = 11;
-        break;
-
-    case MIDPAR_EXPRTYPE_BITWISE_OR:
-        flipped = 12;
-        break;
-
-    case MIDPAR_EXPRTYPE_LOGICAL_AND:
-        flipped = 13;
-        break;
-
-    case MIDPAR_EXPRTYPE_LOGICAL_OR:
-        flipped = 14;
-        break;
-
-    case MIDPAR_EXPRTYPE_CONDITIONAL:
-    case MIDPAR_EXPRTYPE_ASSIGN:
-    case MIDPAR_EXPRTYPE_MUL_ASSIGN:
-    case MIDPAR_EXPRTYPE_DIV_ASSIGN:
-    case MIDPAR_EXPRTYPE_MOD_ASSIGN:
-    case MIDPAR_EXPRTYPE_ADD_ASSIGN:
-    case MIDPAR_EXPRTYPE_SUB_ASSIGN:
-    case MIDPAR_EXPRTYPE_LEFT_SHIFT_ASSIGN:
-    case MIDPAR_EXPRTYPE_RIGHT_SHIFT_ASSIGN:
-    case MIDPAR_EXPRTYPE_AND_ASSIGN:
-    case MIDPAR_EXPRTYPE_XOR_ASSIGN:
-    case MIDPAR_EXPRTYPE_OR_ASSIGN:
-    case MIDPAR_EXPRTYPE_THROW:
-        flipped = 15;
-        break;
-
-    case MIDPAR_EXPRTYPE_COMMA:
-        flipped = 16;
-        break;
-
-    default:
-        MID_CRASH("expr isn't an operator");
-    }
-
-    return 16 - flipped;
-}
-
-bool midpar_op_ltr_assoc(enum midpar_ExprType op)
-{
-    int32_t prec = midpar_op_precedence(op);
-    return prec != 15 && prec != 13 && prec != 1;
-}
-
-bool midpar_is_glvalue(enum midpar_ExprValueType type)
-{
-    return type == MIDPAR_EXPRVALUE_LVALUE || type == MIDPAR_EXPRVALUE_XVALUE;
-}
-
-bool midpar_is_rvalue(enum midpar_ExprValueType type)
-{
-    return type == MIDPAR_EXPRVALUE_PRVALUE || type == MIDPAR_EXPRVALUE_XVALUE;
-}
 
 bool midpar_is_rvalue(enum midpar_ExprValueType type);
 
@@ -400,7 +110,7 @@ static struct midpar_Expr lit_tok_to_expr(const struct midlex_Token *tok)
         MID_CRASH("token is not literal");
     }
 
-    ret.info.val.kind = midpar_lit_expr_value_kind(ret.type);
+    ret.info.val.kind = midsema_lit_expr_value_kind(ret.type);
 
     return ret;
 }
@@ -1036,11 +746,11 @@ static struct midpar_Expr op_tok_to_expr(const struct midlex_Token *toks,
 
 static bool has_enough_operands(enum midpar_ExprType op, int n)
 {
-    if (midpar_is_unaryop(op))
+    if (midsema_is_unaryop(op))
         return n >= 1;
-    else if (midpar_is_binop(op))
+    else if (midsema_is_binop(op))
         return n >= 2;
-    else if (midpar_is_ternaryop(op))
+    else if (midsema_is_ternaryop(op))
         return n >= 3;
     else
         MID_CRASH("bad expression type");
@@ -1055,13 +765,14 @@ static void add_op_to_out(struct midpar_Expr *op, struct midpar_ExprVec *out,
             .line = op->tok->line,
             .msg = midcmd_fmt_to_str(
                 "%s operator expects %d %s, received %" MID_PRIisz,
-                midpar_is_unaryop(op->type) ? "unary"
-                : midpar_is_binop(op->type) ? "binary"
-                                            : "ternary",
-                midpar_is_unaryop(op->type) ? 1
-                : midpar_is_binop(op->type) ? 2
-                                            : 3,
-                midpar_is_unaryop(op->type) ? "operand" : "operands", out->len),
+                midsema_is_unaryop(op->type) ? "unary"
+                : midsema_is_binop(op->type) ? "binary"
+                                             : "ternary",
+                midsema_is_unaryop(op->type) ? 1
+                : midsema_is_binop(op->type) ? 2
+                                             : 3,
+                midsema_is_unaryop(op->type) ? "operand" : "operands",
+                out->len),
             .err = MIDDIAG_ERR_INSUFFICIENT_OPERANDS,
             .type = MIDDIAG_TYPE_ERROR};
         midgen_dynpush(diags, err);
@@ -1069,9 +780,9 @@ static void add_op_to_out(struct midpar_Expr *op, struct midpar_ExprVec *out,
     }
 
     // the exprs at the top act as operands for the new op
-    if (midpar_is_ternaryop(op->type))
+    if (midsema_is_ternaryop(op->type))
         midgen_dynpush(&op->info.args, out->arr[out->len - 3]);
-    if (midpar_is_ternaryop(op->type) || midpar_is_binop(op->type))
+    if (midsema_is_ternaryop(op->type) || midsema_is_binop(op->type))
         midgen_dynpush(&op->info.args, out->arr[out->len - 2]);
     if (op->type == MIDPAR_EXPRTYPE_FUNC_CALL && op->info.args.len > 0)
         // func calls already have the arguments pushed into args, so we gotta
@@ -1081,9 +792,9 @@ static void add_op_to_out(struct midpar_Expr *op, struct midpar_ExprVec *out,
         midgen_dynpush(&op->info.args, out->arr[out->len - 1]);
 
     // the expressions are now encoded in op
-    if (midpar_is_ternaryop(op->type))
+    if (midsema_is_ternaryop(op->type))
         midgen_dynpop(out);
-    if (midpar_is_ternaryop(op->type) || midpar_is_binop(op->type))
+    if (midsema_is_ternaryop(op->type) || midsema_is_binop(op->type))
         midgen_dynpop(out);
     midgen_dynpop(out);
 
@@ -1103,11 +814,11 @@ static void push_operator(const struct midlex_Token *toks, mid_isize idx,
     // remove any greater precedence operators
     struct midpar_Expr *top = &ops->arr[ops->len - 1];
     while (ops->len > 0) {
-        int32_t op_prec = midpar_op_precedence(op.type);
-        int32_t top_prec = midpar_op_precedence(top->type);
+        int32_t op_prec = midsema_op_precedence(op.type);
+        int32_t top_prec = midsema_op_precedence(top->type);
 
         if (top_prec > op_prec ||
-            (top_prec == op_prec && midpar_op_ltr_assoc(op.type))) {
+            (top_prec == op_prec && midsema_op_ltr_assoc(op.type))) {
             add_op_to_out(top, out, diags);
             midgen_dynpop(ops);
             top = &ops->arr[ops->len - 1];
@@ -1276,13 +987,13 @@ mid_isize midpar_skip_expr(const struct midlex_Token *toks, mid_isize start,
 
 void midpar_Expr_deinit(struct midpar_Expr *expr)
 {
-    if (midpar_expr_uses_args(expr->type)) {
+    if (midsema_expr_uses_args(expr->type)) {
         for (mid_isize i = 0; i < expr->info.args.len; ++i)
             midpar_Expr_deinit(&expr->info.args.arr[i]);
         midgen_dyndeinit(&expr->info.args);
-    } else if (midpar_is_fltlit(expr->type)) {
+    } else if (midsema_is_fltlit(expr->type)) {
         mid_APFloat_deinit(&expr->info.val.v.flt);
-    } else if (midpar_is_numlit(expr->type)) {
+    } else if (midsema_is_numlit(expr->type)) {
         mid_APInt_deinit(&expr->info.val.v.i);
     }
 
@@ -1295,7 +1006,7 @@ struct midpar_Expr midpar_copy_expr(const struct midpar_Expr *expr)
 
     ret.ret = midpar_copy_type(&expr->ret);
 
-    if (midpar_expr_uses_args(expr->type)) {
+    if (midsema_expr_uses_args(expr->type)) {
         ret.info.args = (struct midpar_ExprVec){};
         midgen_dynreserve(&ret.info.args, expr->info.args.len);
         for (mid_isize i = 0; i < expr->info.args.len; ++i)
@@ -1304,9 +1015,4 @@ struct midpar_Expr midpar_copy_expr(const struct midpar_Expr *expr)
     }
 
     return ret;
-}
-
-bool midpar_expr_uses_args(enum midpar_ExprType type)
-{
-    return midpar_is_op(type);
 }

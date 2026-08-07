@@ -17,6 +17,7 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "sema/class.h"
+#include "sema/expr.h"
 #include "sema/expr_eval.h"
 #include "sema/func.h"
 #include "sema/ident.h"
@@ -441,7 +442,7 @@ static void set_func_call_node(struct midpar_Expr *expr,
     const struct midpar_Expr *lhs = &expr->info.args.arr[0];
 
     bool qualified =
-        midpar_is_scope_res(lhs->type) || midpar_is_memb_sel(lhs->type);
+        midsema_is_scope_res(lhs->type) || midsema_is_memb_sel(lhs->type);
     char *qual_name = scope_res_name(lhs);
 
     struct midsema_Scope *res =
@@ -449,7 +450,7 @@ static void set_func_call_node(struct midpar_Expr *expr,
 
     if (lhs->ret.spec == MIDPAR_TYPESPEC_FUNC) {
         // bum ass code
-        bool is_method = midpar_is_memb_sel(lhs->type);
+        bool is_method = midsema_is_memb_sel(lhs->type);
 
         if (is_method)
             expr->node = MIDPAR_GET_NODE(midsema_find_method(
@@ -839,7 +840,7 @@ static void typecheck_arith_op_expr(struct midpar_Expr *expr,
 {
     expr->valtype = MIDPAR_EXPRVALUE_PRVALUE;
 
-    if (midpar_is_unaryop(expr->type))
+    if (midsema_is_unaryop(expr->type))
         typecheck_arith_unary_op_expr(expr, diags);
     else
         typecheck_arith_bin_op_expr(expr, diags);
@@ -868,7 +869,7 @@ static void typecheck_logical_op_expr(struct midpar_Expr *expr,
     expr->valtype = MIDPAR_EXPRVALUE_PRVALUE;
     expr->ret = midpar_toktype_to_type(MIDLEX_TOKENTYPE_BOOL);
 
-    if (midpar_is_unaryop(expr->type))
+    if (midsema_is_unaryop(expr->type))
         typecheck_logical_unary_op_expr(expr, diags);
     else
         typecheck_logical_bin_op_expr(expr, diags);
@@ -945,7 +946,7 @@ static void typecheck_scope_res_expr(struct midpar_Expr *expr,
 
     expr->ret = midpar_copy_type(&arg->ret);
     expr->valtype = arg->valtype;
-    expr->res_scope = midpar_is_scope_res(arg->type) ? arg->res_scope : res;
+    expr->res_scope = midsema_is_scope_res(arg->type) ? arg->res_scope : res;
 }
 
 static struct mid_Diag
@@ -1086,7 +1087,7 @@ static void typecheck_op_expr(struct midpar_Expr *expr,
 {
     if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL)
         typecheck_call_expr(expr, scope, diags);
-    else if (midpar_is_assignment(expr->type))
+    else if (midsema_is_assignment(expr->type))
         typecheck_assignment_expr(expr, diags);
     else if (expr->type == MIDPAR_EXPRTYPE_PREFIX_INC ||
              expr->type == MIDPAR_EXPRTYPE_PREFIX_DEC ||
@@ -1103,15 +1104,15 @@ static void typecheck_op_expr(struct midpar_Expr *expr,
         typecheck_comma_expr(expr);
     else if (expr->type == MIDPAR_EXPRTYPE_CONDITIONAL)
         typecheck_conditional_expr(expr, diags);
-    else if (midpar_is_arith_op(expr->type))
+    else if (midsema_is_arith_op(expr->type))
         typecheck_arith_op_expr(expr, diags);
-    else if (midpar_is_logical_op(expr->type))
+    else if (midsema_is_logical_op(expr->type))
         typecheck_logical_op_expr(expr, diags);
-    else if (midpar_is_comp_op(expr->type))
+    else if (midsema_is_comp_op(expr->type))
         typecheck_comp_op_expr(expr, diags);
-    else if (midpar_is_scope_res(expr->type))
+    else if (midsema_is_scope_res(expr->type))
         typecheck_scope_res_expr(expr, scope, diags);
-    else if (midpar_is_memb_sel(expr->type))
+    else if (midsema_is_memb_sel(expr->type))
         typecheck_memb_sel(expr, scope, diags);
     else if (expr->type == MIDPAR_EXPRTYPE_SIZEOF)
         typecheck_sizeof_expr(expr);
@@ -1161,7 +1162,7 @@ void midsema_typecheck_expr(struct midpar_Expr *expr,
     if (expr->typechecked)
         return;
 
-    if (midpar_is_numlit(expr->type)) {
+    if (midsema_is_numlit(expr->type)) {
         typecheck_lit_expr(expr);
     } else if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER) {
         typecheck_ident_expr(expr, scope, diags);
@@ -1169,8 +1170,8 @@ void midsema_typecheck_expr(struct midpar_Expr *expr,
         typecheck_this_expr(expr, scope, diags);
     } else {
         // some operators are weird
-        bool typecheck_args =
-            !midpar_is_scope_res(expr->type) && !midpar_is_memb_sel(expr->type);
+        bool typecheck_args = !midsema_is_scope_res(expr->type) &&
+                              !midsema_is_memb_sel(expr->type);
         if (typecheck_args) {
             for (mid_isize i = 0; i < expr->info.args.len; ++i)
                 midsema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
@@ -1461,9 +1462,9 @@ bool midsema_can_convert(const struct midpar_Type *src,
 {
     // rv references cannot take lvalues and non-const lv rereferences
     // cannot take rvalues
-    if ((dest->rv_ref && !midpar_is_rvalue(src_valtype)) ||
+    if ((dest->rv_ref && !midsema_is_rvalue(src_valtype)) ||
         (dest->lv_ref && !dest->dquals.arr[0].is_const &&
-         midpar_is_rvalue(src_valtype)))
+         midsema_is_rvalue(src_valtype)))
         return false;
 
     bool src_ptr = midsema_n_indir(src) > 0;

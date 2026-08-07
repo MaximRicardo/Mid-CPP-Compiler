@@ -9,6 +9,7 @@
 #include "parser/expr_type.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/expr.h"
 #include "sema/type.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -146,9 +147,9 @@ static void log_func_call_args(const struct midpar_Expr *args, mid_isize n,
 static void log_func_call_expr(const struct midpar_Expr *expr, FILE *out)
 {
     const struct midpar_Expr *dest = &expr->info.args.arr[0];
-    if (midpar_is_scope_res(dest->type))
+    if (midsema_is_scope_res(dest->type))
         log_scope_res_expr(dest, out);
-    else if (midpar_is_memb_sel(dest->type))
+    else if (midsema_is_memb_sel(dest->type))
         log_expr(dest, out);
     else if (dest->ret.spec == MIDPAR_TYPESPEC_FUNC)
         fprintf(out, "%s", dest->ret.func.name);
@@ -195,9 +196,9 @@ static void log_expr(const struct midpar_Expr *expr, FILE *out)
         log_ident_expr(expr, out);
     else if (expr->type == MIDPAR_EXPRTYPE_THIS)
         log_this_expr(expr, out);
-    else if (midpar_is_numlit(expr->type))
+    else if (midsema_is_numlit(expr->type))
         log_lit_expr(expr, out);
-    else if (midpar_is_scope_res(expr->type))
+    else if (midsema_is_scope_res(expr->type))
         log_scope_res_expr(expr, out);
     else if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL)
         log_func_call_expr(expr, out);
