@@ -9,6 +9,7 @@
 #include "parser/expr_type.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/type.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -210,7 +211,7 @@ static void log_func_params(const struct midpar_ASTNode *node, FILE *out)
     for (mid_isize i = 0; i < end; ++i) {
         auto param = node->func_decl.params.arr[i]->insts.arr[0];
 
-        char *type = midpar_type_to_str(&param->type);
+        char *type = midsema_type_to_str(&param->type);
         fprintf(out, "%s", type);
         free(type);
         type = NULL;
@@ -240,7 +241,7 @@ static void log_tor_entry(const struct midpar_ASTNode *node, FILE *out,
 static void log_generic_func_entry(const struct midpar_ASTNode *node, FILE *out,
                                    int indent)
 {
-    char *type = midpar_type_to_str(&node->func_decl.ret);
+    char *type = midsema_type_to_str(&node->func_decl.ret);
     log_w_indent(out, indent, "%s %s", type, node->func_decl.name);
     free(type);
     type = NULL;
@@ -377,7 +378,7 @@ static void log_namespace_node(const struct midpar_ASTNode *node, FILE *out,
 
 static void log_var_inst(const struct midpar_VarDeclInst *inst, FILE *out)
 {
-    char *type = midpar_type_to_str(&inst->type);
+    char *type = midsema_type_to_str(&inst->type);
     fprintf(out, "%s %s", type, inst->name);
     free(type);
     type = NULL;

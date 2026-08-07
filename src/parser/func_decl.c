@@ -20,6 +20,7 @@
 #include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include "sema/typecheck.h"
 #include <string.h>
 
@@ -102,7 +103,7 @@ struct midsema_Ident *midpar_func_ident(const struct midpar_FuncDecl *func)
 static void account_for_void_param(struct midpar_VarDeclPVec *params)
 {
     if (params->len == 1 &&
-        midpar_type_is_void(&params->arr[0]->insts.arr[0]->type)) {
+        midsema_type_is_void(&params->arr[0]->insts.arr[0]->type)) {
         midgen_dyndeinit(params);
     }
 }

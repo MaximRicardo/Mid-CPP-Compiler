@@ -13,6 +13,7 @@
 #include "parser/var_decl.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include <stdio.h>
 
 static void transf_type(struct midpar_Type *type,
@@ -45,7 +46,7 @@ static void transf_type(struct midpar_Type *type,
     } else if (arg->type.spec == MIDPAR_TYPESPEC_ARRAY) {
         type->array = mid_malloc(sizeof(*type->array));
         *type->array = midpar_copy_array_type(arg->type.array);
-    } else if (midpar_is_typespec_named(arg->type.spec)) {
+    } else if (midsema_is_typespec_named(arg->type.spec)) {
         type->named = arg->type.named;
     }
 }

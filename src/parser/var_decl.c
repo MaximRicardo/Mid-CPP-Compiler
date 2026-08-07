@@ -17,6 +17,7 @@
 #include "parser/type.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include "sema/typecheck.h"
 #include <stddef.h>
 #include <stdio.h>
@@ -93,7 +94,7 @@ static void resolve_auto(struct midpar_VarDeclInst *inst)
 {
     assert(inst->init.expr);
     assert(inst->type.spec == MIDPAR_TYPESPEC_AUTO);
-    assert(midpar_n_indir(&inst->type) == 0); // "auto *" not supported yet
+    assert(midsema_n_indir(&inst->type) == 0); // "auto *" not supported yet
 
     auto init_type = &inst->init.expr->ret;
 
@@ -104,12 +105,12 @@ static void resolve_auto(struct midpar_VarDeclInst *inst)
     } else if (init_type->spec == MIDPAR_TYPESPEC_ARRAY) {
         inst->type.array = mid_malloc(sizeof(*inst->type.array));
         *inst->type.array = midpar_copy_array_type(init_type->array);
-    } else if (midpar_is_typespec_named(init_type->spec)) {
+    } else if (midsema_is_typespec_named(init_type->spec)) {
         inst->type.named = init_type->named;
     }
 
     // the top most CV qualifier is discarded
-    for (mid_isize i = 1; i <= midpar_n_indir(init_type); ++i) {
+    for (mid_isize i = 1; i <= midsema_n_indir(init_type); ++i) {
         midgen_dynpush(&inst->type.dquals, init_type->dquals.arr[i]);
     }
 }
@@ -247,7 +248,7 @@ mid_isize midpar_parse_var_decl_inst(
                           : midpar_parse_scope_res(toks, name, &name,
                                                    parent_scope, diags);
     self->name = valid_name_idx(name, toks) ? toks[name].ident : NULL;
-    if (midpar_type_is_void(&self->type) && self->name)
+    if (midsema_type_is_void(&self->type) && self->name)
         midgen_dynpush(diags, void_var_err(self->name, &toks[start],
                                            MIDDIAG_ERR_BAD_VAR_DECLARATION));
 

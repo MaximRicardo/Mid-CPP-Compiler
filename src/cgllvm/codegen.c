@@ -21,6 +21,7 @@
 #include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include "types.h"
 #include <assert.h>
 #include <llvm-c/Analysis.h>
@@ -188,15 +189,15 @@ static LLVMValueRef codegen_lit_expr(const struct midpar_Expr *expr,
                                      LLVMContextRef context, LLVMModuleRef mod)
 {
     // TODO: add proper support for arbitrarily sized ints and floats
-    if (midpar_is_signed_integral_typespec(expr->ret.spec))
+    if (midsema_is_signed_integral_typespec(expr->ret.spec))
         return LLVMConstInt(
             midllvm_convert_parser_type(&expr->ret, context, false),
             midint_to_sint(&expr->info.val.v.i), true);
-    else if (midpar_is_unsigned_integral_typespec(expr->ret.spec))
+    else if (midsema_is_unsigned_integral_typespec(expr->ret.spec))
         return LLVMConstInt(
             midllvm_convert_parser_type(&expr->ret, context, false),
             midint_to_uint(&expr->info.val.v.i), false);
-    else if (midpar_is_floating_typespec(expr->ret.spec))
+    else if (midsema_is_floating_typespec(expr->ret.spec))
         return LLVMConstReal(
             midllvm_convert_parser_type(&expr->ret, context, false),
             midflt_to_dbl(&expr->info.val.v.flt));
@@ -230,7 +231,7 @@ static LLVMValueRef get_implicit_this(const struct midllvm_Scope *scope)
 
 static bool is_valid_array_subscr_ptr(const struct midpar_Type *type)
 {
-    return type->spec == MIDPAR_TYPESPEC_ARRAY || midpar_n_indir(type) > 0;
+    return type->spec == MIDPAR_TYPESPEC_ARRAY || midsema_n_indir(type) > 0;
 }
 
 static LLVMValueRef codegen_subscr_expr(const struct midpar_Expr *expr,
@@ -264,22 +265,22 @@ static LLVMValueRef cast_value(LLVMValueRef val, const struct midpar_Type *src,
                                const struct midpar_Type *dest,
                                LLVMContextRef context, LLVMBuilderRef builder)
 {
-    if (midpar_are_types_same(src, dest))
+    if (midsema_are_types_same(src, dest))
         return val;
 
-    mid_isize src_indir = midpar_n_indir(src);
-    mid_isize dest_indir = midpar_n_indir(dest);
+    mid_isize src_indir = midsema_n_indir(src);
+    mid_isize dest_indir = midsema_n_indir(dest);
 
     // opaque ptrs are used so ptrs of different types shouldn't be an issue
     if (src_indir > 0 && dest_indir > 0)
         return val;
 
-    bool src_signed = midpar_is_signed_integral_typespec(src->spec);
-    bool src_int = midpar_is_integral_typespec(src->spec);
-    bool src_fp = midpar_is_floating_typespec(src->spec);
+    bool src_signed = midsema_is_signed_integral_typespec(src->spec);
+    bool src_int = midsema_is_integral_typespec(src->spec);
+    bool src_fp = midsema_is_floating_typespec(src->spec);
 
-    bool dest_int = midpar_is_integral_typespec(dest->spec);
-    bool dest_fp = midpar_is_floating_typespec(dest->spec);
+    bool dest_int = midsema_is_integral_typespec(dest->spec);
+    bool dest_fp = midsema_is_floating_typespec(dest->spec);
 
     LLVMTypeRef dest_type = midllvm_convert_parser_type(dest, context, false);
 
@@ -369,16 +370,16 @@ static LLVMValueRef codegen_ptr_arith_expr(const struct midpar_Expr *expr,
                                            bool add, LLVMContextRef context,
                                            LLVMBuilderRef builder)
 {
-    assert(midpar_n_indir(&expr->ret) > 0);
+    assert(midsema_n_indir(&expr->ret) > 0);
 
-    bool lhs_ptr = midpar_n_indir(&expr->info.args.arr[0].ret) > 0;
+    bool lhs_ptr = midsema_n_indir(&expr->info.args.arr[0].ret) > 0;
     LLVMValueRef ptr = lhs_ptr ? lhs : rhs;
     LLVMValueRef off = lhs_ptr ? rhs : lhs;
 
     if (!add)
         off = LLVMBuildNeg(builder, off, "");
 
-    auto deref = midpar_deref_type(&expr->ret, NULL);
+    auto deref = midsema_deref_type(&expr->ret, NULL);
     auto ret = LLVMBuildGEP2(
         builder, midllvm_convert_parser_type(&deref, context, false), ptr, &off,
         1, "");
@@ -407,30 +408,30 @@ static LLVMValueRef codegen_arith_expr(const struct midpar_Expr *expr,
         return LLVMBuildMul(builder, lhs, rhs, "");
 
     case MIDPAR_EXPRTYPE_DIV:
-        if (midpar_is_floating_typespec(expr->ret.spec))
+        if (midsema_is_floating_typespec(expr->ret.spec))
             return LLVMBuildFDiv(builder, lhs, rhs, "");
-        else if (midpar_is_signed_integral_typespec(expr->ret.spec))
+        else if (midsema_is_signed_integral_typespec(expr->ret.spec))
             return LLVMBuildSDiv(builder, lhs, rhs, "");
         else
             return LLVMBuildUDiv(builder, lhs, rhs, "");
 
     case MIDPAR_EXPRTYPE_MOD:
-        if (midpar_is_floating_typespec(expr->ret.spec))
+        if (midsema_is_floating_typespec(expr->ret.spec))
             return LLVMBuildFRem(builder, lhs, rhs, "");
-        else if (midpar_is_signed_integral_typespec(expr->ret.spec))
+        else if (midsema_is_signed_integral_typespec(expr->ret.spec))
             return LLVMBuildSRem(builder, lhs, rhs, "");
         else
             return LLVMBuildURem(builder, lhs, rhs, "");
 
     case MIDPAR_EXPRTYPE_ADD:
-        if (midpar_n_indir(&expr->ret) == 0)
+        if (midsema_n_indir(&expr->ret) == 0)
             return LLVMBuildAdd(builder, lhs, rhs, "");
         else
             return codegen_ptr_arith_expr(expr, lhs, rhs, true, context,
                                           builder);
 
     case MIDPAR_EXPRTYPE_SUB:
-        if (midpar_n_indir(&expr->ret) == 0)
+        if (midsema_n_indir(&expr->ret) == 0)
             return LLVMBuildSub(builder, lhs, rhs, "");
         else
             return codegen_ptr_arith_expr(expr, lhs, rhs, false, context,
@@ -440,7 +441,7 @@ static LLVMValueRef codegen_arith_expr(const struct midpar_Expr *expr,
         return LLVMBuildShl(builder, lhs, rhs, "");
 
     case MIDPAR_EXPRTYPE_RIGHT_SHIFT:
-        if (midpar_is_signed_integral_typespec(expr->ret.spec))
+        if (midsema_is_signed_integral_typespec(expr->ret.spec))
             return LLVMBuildAShr(builder, lhs, rhs, "");
         else
             return LLVMBuildLShr(builder, lhs, rhs, "");
@@ -488,7 +489,7 @@ static LLVMValueRef *get_call_args(const struct midpar_Expr *expr,
         auto param = expr->node->func_decl.params.arr[i]->insts.arr[0];
 
         LLVMValueRef val;
-        if (midpar_type_is_ref(&param->type)) {
+        if (midsema_type_is_ref(&param->type)) {
             val = codegen_expr_ref(arg, scope, context, mod, builder);
         } else {
             val = codegen_expr(arg, scope, context, mod, builder);
@@ -610,25 +611,25 @@ static LLVMValueRef codegen_assign_expr(const struct midpar_Expr *expr,
         break;
 
     case MIDPAR_EXPRTYPE_DIV_ASSIGN:
-        if (midpar_is_floating_typespec(expr->ret.spec))
+        if (midsema_is_floating_typespec(expr->ret.spec))
             res = LLVMBuildFDiv(builder, deref_lhs, rhs, "");
-        else if (midpar_is_signed_integral_typespec(expr->ret.spec))
+        else if (midsema_is_signed_integral_typespec(expr->ret.spec))
             res = LLVMBuildSDiv(builder, deref_lhs, rhs, "");
         else
             res = LLVMBuildUDiv(builder, deref_lhs, rhs, "");
         break;
 
     case MIDPAR_EXPRTYPE_MOD_ASSIGN:
-        if (midpar_is_floating_typespec(expr->ret.spec))
+        if (midsema_is_floating_typespec(expr->ret.spec))
             res = LLVMBuildFRem(builder, deref_lhs, rhs, "");
-        else if (midpar_is_signed_integral_typespec(expr->ret.spec))
+        else if (midsema_is_signed_integral_typespec(expr->ret.spec))
             res = LLVMBuildSRem(builder, deref_lhs, rhs, "");
         else
             res = LLVMBuildURem(builder, deref_lhs, rhs, "");
         break;
 
     case MIDPAR_EXPRTYPE_ADD_ASSIGN:
-        if (midpar_n_indir(&expr->ret) == 0)
+        if (midsema_n_indir(&expr->ret) == 0)
             res = LLVMBuildAdd(builder, deref_lhs, rhs, "");
         else
             res = codegen_ptr_arith_expr(expr, deref_lhs, rhs, true, context,
@@ -636,7 +637,7 @@ static LLVMValueRef codegen_assign_expr(const struct midpar_Expr *expr,
         break;
 
     case MIDPAR_EXPRTYPE_SUB_ASSIGN:
-        if (midpar_n_indir(&expr->ret) == 0)
+        if (midsema_n_indir(&expr->ret) == 0)
             res = LLVMBuildSub(builder, deref_lhs, rhs, "");
         else
             res = codegen_ptr_arith_expr(expr, deref_lhs, rhs, false, context,
@@ -648,7 +649,7 @@ static LLVMValueRef codegen_assign_expr(const struct midpar_Expr *expr,
         break;
 
     case MIDPAR_EXPRTYPE_RIGHT_SHIFT_ASSIGN:
-        if (midpar_is_signed_integral_typespec(expr->ret.spec))
+        if (midsema_is_signed_integral_typespec(expr->ret.spec))
             res = LLVMBuildAShr(builder, deref_lhs, rhs, "");
         else
             res = LLVMBuildLShr(builder, deref_lhs, rhs, "");
@@ -759,7 +760,7 @@ static void add_params_to_func(const struct midpar_FuncDecl *func,
         ident.type = midllvm_convert_parser_type(&param->type, context, false);
 
         auto val = LLVMGetParam(func_val, i);
-        if (midpar_type_is_ref(&param->type)) {
+        if (midsema_type_is_ref(&param->type)) {
             ident.val = val;
         } else {
             ident.val = LLVMBuildAlloca(builder, ident.type, "");

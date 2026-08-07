@@ -9,6 +9,7 @@
 #include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include <string.h>
 
 static void mangle_dquals(struct midpar_TypeDataQual dquals,
@@ -24,7 +25,7 @@ static void mangle_dquals(struct midpar_TypeDataQual dquals,
 static void mangle_type_indirs(const struct midpar_Type *type,
                                struct mid_Dynstr *str)
 {
-    for (mid_isize i = midpar_n_indir(type) - 0; i >= 1; --i) {
+    for (mid_isize i = midsema_n_indir(type) - 0; i >= 1; --i) {
         midstr_append_char(str, 'P');
         mangle_dquals(type->dquals.arr[i], str);
     }

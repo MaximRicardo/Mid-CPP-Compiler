@@ -22,6 +22,7 @@
 #include "sema/ident.h"
 #include "sema/lookup.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -203,7 +204,7 @@ static void typecheck_lit_expr(struct midpar_Expr *expr)
 static struct mid_Diag bad_ctor_call_type(const struct midpar_Type *type,
                                           const struct midlex_Token *tok)
 {
-    char *str = midpar_type_to_str(type);
+    char *str = midsema_type_to_str(type);
 
     struct mid_Diag ret = {
         .pos = tok->pos,
@@ -558,8 +559,8 @@ static void typecheck_deref_expr(struct midpar_Expr *expr,
 
     auto arg = &expr->info.args.arr[0];
 
-    if (midpar_n_indir(&arg->ret) == 0) {
-        char *tname = midpar_type_to_str(&arg->ret);
+    if (midsema_n_indir(&arg->ret) == 0) {
+        char *tname = midsema_type_to_str(&arg->ret);
         midgen_dynpush(
             diags,
             ((struct mid_Diag){
@@ -573,7 +574,7 @@ static void typecheck_deref_expr(struct midpar_Expr *expr,
         expr->ret = midpar_copy_type(&arg->ret);
     } else {
         bool failed;
-        expr->ret = midpar_deref_type(&arg->ret, &failed);
+        expr->ret = midsema_deref_type(&arg->ret, &failed);
         assert(!failed);
     }
 }
@@ -594,7 +595,7 @@ static void typecheck_ref_expr(struct midpar_Expr *expr,
                        }));
 
     bool failed;
-    expr->ret = midpar_ref_type(&expr->info.args.arr[0].ret, &failed);
+    expr->ret = midsema_ref_type(&expr->info.args.arr[0].ret, &failed);
     assert(!failed);
 }
 
@@ -604,19 +605,19 @@ static void typecheck_arr_subscr_expr(struct midpar_Expr *expr,
     auto lhs = &expr->info.args.arr[0];
     auto rhs = &expr->info.args.arr[1];
 
-    bool lhs_valid =
-        lhs->ret.spec == MIDPAR_TYPESPEC_ARRAY || midpar_n_indir(&lhs->ret) > 0;
-    bool rhs_valid =
-        rhs->ret.spec == MIDPAR_TYPESPEC_ARRAY || midpar_n_indir(&rhs->ret) > 0;
+    bool lhs_valid = lhs->ret.spec == MIDPAR_TYPESPEC_ARRAY ||
+                     midsema_n_indir(&lhs->ret) > 0;
+    bool rhs_valid = rhs->ret.spec == MIDPAR_TYPESPEC_ARRAY ||
+                     midsema_n_indir(&rhs->ret) > 0;
 
-    bool lhs_int = midpar_is_integral_typespec(lhs->ret.spec) &&
-                   midpar_n_indir(&lhs->ret) == 0;
-    bool rhs_int = midpar_is_integral_typespec(rhs->ret.spec) &&
-                   midpar_n_indir(&rhs->ret) == 0;
+    bool lhs_int = midsema_is_integral_typespec(lhs->ret.spec) &&
+                   midsema_n_indir(&lhs->ret) == 0;
+    bool rhs_int = midsema_is_integral_typespec(rhs->ret.spec) &&
+                   midsema_n_indir(&rhs->ret) == 0;
 
     if (!(lhs_valid && lhs_int) && !(rhs_valid && rhs_int)) {
-        char *lhs_tname = midpar_type_to_str(&lhs->ret);
-        char *rhs_tname = midpar_type_to_str(&lhs->ret);
+        char *lhs_tname = midsema_type_to_str(&lhs->ret);
+        char *rhs_tname = midsema_type_to_str(&lhs->ret);
         midgen_dynpush(
             diags,
             ((struct mid_Diag){
@@ -631,7 +632,8 @@ static void typecheck_arr_subscr_expr(struct midpar_Expr *expr,
         free(rhs_tname);
     } else if ((lhs_valid && lhs->valtype == MIDPAR_EXPRVALUE_LVALUE) ||
                (rhs_valid && rhs->valtype == MIDPAR_EXPRVALUE_LVALUE) ||
-               midpar_n_indir(&lhs->ret) > 0 || midpar_n_indir(&rhs->ret) > 0) {
+               midsema_n_indir(&lhs->ret) > 0 ||
+               midsema_n_indir(&rhs->ret) > 0) {
         expr->valtype = MIDPAR_EXPRVALUE_LVALUE;
     } else {
         expr->valtype = MIDPAR_EXPRVALUE_XVALUE;
@@ -672,9 +674,9 @@ static void typecheck_conditional_expr(struct midpar_Expr *expr,
     auto e3 = &expr->info.args.arr[2];
 
     bool e2_void =
-        e2->ret.spec == MIDPAR_TYPESPEC_VOID && midpar_n_indir(&e2->ret) == 0;
+        e2->ret.spec == MIDPAR_TYPESPEC_VOID && midsema_n_indir(&e2->ret) == 0;
     bool e3_void =
-        e3->ret.spec == MIDPAR_TYPESPEC_VOID && midpar_n_indir(&e3->ret) == 0;
+        e3->ret.spec == MIDPAR_TYPESPEC_VOID && midsema_n_indir(&e3->ret) == 0;
 
     if (e2_void && e3_void) {
         expr->valtype = MIDPAR_EXPRVALUE_PRVALUE;
@@ -702,8 +704,8 @@ static struct mid_Diag bad_operands(const struct midpar_Expr *expr,
     auto lhs = &expr->info.args.arr[0];
     auto rhs = &expr->info.args.arr[1];
 
-    char *lhs_tname = midpar_type_to_str(&lhs->ret);
-    char *rhs_tname = unary ? NULL : midpar_type_to_str(&rhs->ret);
+    char *lhs_tname = midsema_type_to_str(&lhs->ret);
+    char *rhs_tname = unary ? NULL : midsema_type_to_str(&rhs->ret);
     struct mid_Diag ret;
     if (unary) {
         ret = (struct mid_Diag){
@@ -733,9 +735,9 @@ static struct mid_Diag bad_operands(const struct midpar_Expr *expr,
 
 static enum midpar_TypeSpec op_prom_typespec(enum midpar_TypeSpec spec)
 {
-    if (midpar_is_integral_typespec(spec))
-        return midpar_integral_prom(spec);
-    else if (midpar_is_floating_typespec(spec))
+    if (midsema_is_integral_typespec(spec))
+        return midsema_integral_prom(spec);
+    else if (midsema_is_floating_typespec(spec))
         return spec;
     else {
         /*
@@ -772,25 +774,25 @@ static void typecheck_arith_bin_op_expr(struct midpar_Expr *expr,
     auto lhs = &expr->info.args.arr[0];
     auto rhs = &expr->info.args.arr[1];
 
-    bool lhs_ptr = midpar_n_indir(&lhs->ret) > 0;
-    bool rhs_ptr = midpar_n_indir(&rhs->ret) > 0;
+    bool lhs_ptr = midsema_n_indir(&lhs->ret) > 0;
+    bool rhs_ptr = midsema_n_indir(&rhs->ret) > 0;
 
     bool bad_op_types;
     if (is_ptr_arith_op(expr->type)) {
         if (lhs_ptr && rhs_ptr)
             bad_op_types = true;
         else if (lhs_ptr)
-            bad_op_types = !midpar_is_integral_typespec(rhs->ret.spec);
+            bad_op_types = !midsema_is_integral_typespec(rhs->ret.spec);
         else if (rhs_ptr)
-            bad_op_types = midpar_is_integral_typespec(lhs->ret.spec);
+            bad_op_types = midsema_is_integral_typespec(lhs->ret.spec);
         else
             bad_op_types = false;
     } else {
         bad_op_types = lhs_ptr || rhs_ptr;
     }
 
-    bool lhs_flt = !lhs_ptr && midpar_is_floating_typespec(lhs->ret.spec);
-    bool rhs_flt = !rhs_ptr && midpar_is_floating_typespec(rhs->ret.spec);
+    bool lhs_flt = !lhs_ptr && midsema_is_floating_typespec(lhs->ret.spec);
+    bool rhs_flt = !rhs_ptr && midsema_is_floating_typespec(rhs->ret.spec);
 
     if (bad_op_types) {
         midgen_dynpush(diags, bad_operands(expr, "arithmetic",
@@ -808,9 +810,9 @@ static void typecheck_arith_bin_op_expr(struct midpar_Expr *expr,
         expr->ret = midpar_create_unknown_type();
     } else {
         int32_t lhs_rank =
-            midpar_typespec_conv_rank(op_prom_typespec(lhs->ret.spec));
+            midsema_typespec_conv_rank(op_prom_typespec(lhs->ret.spec));
         int32_t rhs_rank =
-            midpar_typespec_conv_rank(op_prom_typespec(rhs->ret.spec));
+            midsema_typespec_conv_rank(op_prom_typespec(rhs->ret.spec));
         expr->ret = lhs_rank > rhs_rank ? op_prom_type(&lhs->ret)
                                         : op_prom_type(&rhs->ret);
     }
@@ -822,7 +824,7 @@ static void typecheck_arith_unary_op_expr(struct midpar_Expr *expr,
     auto arg = &expr->info.args.arr[0];
     expr->ret = op_prom_type(&arg->ret);
 
-    bool arg_ptr = midpar_n_indir(&arg->ret) > 0;
+    bool arg_ptr = midsema_n_indir(&arg->ret) > 0;
 
     bool bad_op_types = arg_ptr;
 
@@ -881,15 +883,15 @@ static void typecheck_comp_op_expr(struct midpar_Expr *expr,
     auto lhs = &expr->info.args.arr[0];
     auto rhs = &expr->info.args.arr[1];
 
-    bool lhs_ptr = midpar_n_indir(&lhs->ret) > 0;
+    bool lhs_ptr = midsema_n_indir(&lhs->ret) > 0;
     bool lhs_void_ptr =
-        lhs->ret.spec == MIDPAR_TYPESPEC_VOID && midpar_n_indir(&lhs->ret);
-    bool rhs_ptr = midpar_n_indir(&rhs->ret) > 0;
+        lhs->ret.spec == MIDPAR_TYPESPEC_VOID && midsema_n_indir(&lhs->ret);
+    bool rhs_ptr = midsema_n_indir(&rhs->ret) > 0;
     bool rhs_void_ptr =
-        rhs->ret.spec == MIDPAR_TYPESPEC_VOID && midpar_n_indir(&rhs->ret);
+        rhs->ret.spec == MIDPAR_TYPESPEC_VOID && midsema_n_indir(&rhs->ret);
 
-    bool eq = lhs->ret.spec == rhs->ret.spec && midpar_n_indir(&lhs->ret) &&
-              midpar_n_indir(&rhs->ret);
+    bool eq = lhs->ret.spec == rhs->ret.spec && midsema_n_indir(&lhs->ret) &&
+              midsema_n_indir(&rhs->ret);
 
     // an arithmetic operator can operate on primitives, ptrs of the same type,
     // or a ptr and a void ptr
@@ -949,7 +951,7 @@ static void typecheck_scope_res_expr(struct midpar_Expr *expr,
 static struct mid_Diag
 memb_sel_lhs_not_class_err(const struct midpar_Expr *memb_sel)
 {
-    char *lhs_type = midpar_type_to_str(&memb_sel->info.args.arr[0].ret);
+    char *lhs_type = midsema_type_to_str(&memb_sel->info.args.arr[0].ret);
 
     struct mid_Diag ret = {
         .pos = memb_sel->tok->pos,
@@ -966,7 +968,7 @@ memb_sel_lhs_not_class_err(const struct midpar_Expr *memb_sel)
 static struct mid_Diag
 memb_sel_expects_ptr_err(const struct midpar_Expr *memb_sel)
 {
-    char *lhs_type = midpar_type_to_str(&memb_sel->info.args.arr[0].ret);
+    char *lhs_type = midsema_type_to_str(&memb_sel->info.args.arr[0].ret);
 
     struct mid_Diag ret = {
         .pos = memb_sel->tok->pos,
@@ -983,7 +985,7 @@ memb_sel_expects_ptr_err(const struct midpar_Expr *memb_sel)
 static struct mid_Diag
 memb_sel_expects_non_ptr_err(const struct midpar_Expr *memb_sel)
 {
-    char *lhs_type = midpar_type_to_str(&memb_sel->info.args.arr[0].ret);
+    char *lhs_type = midsema_type_to_str(&memb_sel->info.args.arr[0].ret);
 
     struct mid_Diag ret = {.pos = memb_sel->tok->pos,
                            .line = memb_sel->tok->line,
@@ -1024,7 +1026,7 @@ static void typecheck_memb_sel(struct midpar_Expr *expr,
     auto rhs = &expr->info.args.arr[1];
 
     midsema_typecheck_expr(lhs, scope, diags);
-    if (!midpar_type_is_typecheckable(&lhs->ret)) {
+    if (!midsema_type_is_typecheckable(&lhs->ret)) {
         mark_expr_unknown_ret(expr);
         return;
     }
@@ -1034,10 +1036,10 @@ static void typecheck_memb_sel(struct midpar_Expr *expr,
         midgen_dynpush(diags, memb_sel_lhs_not_class_err(expr));
         return;
     } else if (memb_sel_expects_ptr(expr->type) &&
-               midpar_n_indir(&lhs->ret) != 1) {
+               midsema_n_indir(&lhs->ret) != 1) {
         midgen_dynpush(diags, memb_sel_expects_ptr_err(expr));
     } else if (!memb_sel_expects_ptr(expr->type) &&
-               midpar_n_indir(&lhs->ret) != 0) {
+               midsema_n_indir(&lhs->ret) != 0) {
         midgen_dynpush(diags, memb_sel_expects_non_ptr_err(expr));
     } else if (rhs->type != MIDPAR_EXPRTYPE_IDENTIFIER) {
         midgen_dynpush(
@@ -1145,7 +1147,7 @@ static void typecheck_overloaded_op(struct midpar_Expr *expr,
 static bool has_no_untypecheckable_args(struct midpar_Expr *expr)
 {
     for (mid_isize i = 0; i < expr->info.args.len; ++i) {
-        if (!midpar_type_is_typecheckable(&expr->info.args.arr[i].ret))
+        if (!midsema_type_is_typecheckable(&expr->info.args.arr[i].ret))
             return false;
     }
 
@@ -1197,7 +1199,7 @@ void midsema_typecheck_expr(struct midpar_Expr *expr,
 static struct mid_Diag no_matching_ctor_err(const struct midpar_Type *type,
                                             const struct midlex_Token *tok)
 {
-    char *str = midpar_type_to_str(type);
+    char *str = midsema_type_to_str(type);
 
     struct mid_Diag ret = {
         .pos = tok->pos,
@@ -1242,7 +1244,7 @@ static void typecheck_ctor_call(struct midpar_VarDeclInst *inst,
     bool bad;
     if ((inst->type.spec == MIDPAR_TYPESPEC_CLASS ||
          inst->type.spec == MIDPAR_TYPESPEC_UNION) &&
-        midpar_n_indir(&inst->type) == 0) {
+        midsema_n_indir(&inst->type) == 0) {
 
         bad = !typecheck_vdecl_class_type_ctor(inst);
     } else {
@@ -1290,7 +1292,7 @@ constexpr_var_not_literal_type_err(const char *name,
                                    const struct midpar_Type *type,
                                    const struct midlex_Token *tok)
 {
-    char *type_str = midpar_type_to_str(type);
+    char *type_str = midsema_type_to_str(type);
 
     struct mid_Diag ret = {
         .pos = tok->pos,
@@ -1309,7 +1311,7 @@ constexpr_var_not_literal_type_err(const char *name,
 static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
                                     struct mid_DiagVec *diags)
 {
-    if (!midpar_is_literal_type(&inst->type))
+    if (!midsema_is_literal_type(&inst->type))
         midgen_dynpush(
             diags, constexpr_var_not_literal_type_err(inst->name, &inst->type,
                                                       MIDPAR_GET_START(inst)));
@@ -1349,12 +1351,12 @@ invalid_return_stmt_type_err(const struct midpar_Type *func_type,
                              const struct midpar_Type *ret_type,
                              const struct midlex_Token *tok)
 {
-    char *func_type_str = midpar_type_to_str(func_type);
+    char *func_type_str = midsema_type_to_str(func_type);
 
     struct mid_Diag ret;
 
     if (ret_type) {
-        char *ret_type_str = midpar_type_to_str(ret_type);
+        char *ret_type_str = midsema_type_to_str(ret_type);
 
         ret = (struct mid_Diag){
             .pos = tok->pos,
@@ -1406,14 +1408,14 @@ void midsema_typecheck_return(struct midpar_Return *self,
     }
 
     const struct midpar_Type *func_type = &func_scope->node->func_decl.ret;
-    if (!midpar_type_is_typecheckable(func_type))
+    if (!midsema_type_is_typecheckable(func_type))
         return;
 
     bool is_void = func_type->spec == MIDPAR_TYPESPEC_VOID &&
-                   midpar_n_indir(func_type) == 0;
+                   midsema_n_indir(func_type) == 0;
 
     if (self->expr) {
-        if (!midpar_type_is_typecheckable(&self->expr->ret))
+        if (!midsema_type_is_typecheckable(&self->expr->ret))
             return;
         if (!midsema_can_convert(&self->expr->ret, self->expr->valtype,
                                  func_type))
@@ -1437,17 +1439,17 @@ static bool is_valid_array_to_ptr(const struct midpar_Type *src,
     if (dest->lv_ref && !dest->dquals.arr[0].is_const)
         return false;
 
-    mid_isize src_indir = midpar_n_indir(src);
-    mid_isize elem_indir = midpar_n_indir(&src->array->elem);
-    mid_isize dest_indir = midpar_n_indir(dest);
+    mid_isize src_indir = midsema_n_indir(src);
+    mid_isize elem_indir = midsema_n_indir(&src->array->elem);
+    mid_isize dest_indir = midsema_n_indir(dest);
 
     if (src_indir != 0 || elem_indir + 1 != dest_indir)
         return false;
     else if (src->array->elem.spec != dest->spec)
         return false;
-    else if (!midpar_dquals_same(src->array->elem.dquals.arr,
-                                 src->array->elem.dquals.len,
-                                 &dest->dquals.arr[1], dest->dquals.len - 1))
+    else if (!midsema_dquals_same(src->array->elem.dquals.arr,
+                                  src->array->elem.dquals.len,
+                                  &dest->dquals.arr[1], dest->dquals.len - 1))
         return false;
 
     return true;
@@ -1464,18 +1466,18 @@ bool midsema_can_convert(const struct midpar_Type *src,
          midpar_is_rvalue(src_valtype)))
         return false;
 
-    bool src_ptr = midpar_n_indir(src) > 0;
-    bool dest_ptr = midpar_n_indir(dest) > 0;
+    bool src_ptr = midsema_n_indir(src) > 0;
+    bool dest_ptr = midsema_n_indir(dest) > 0;
 
-    if (!src_ptr && !dest_ptr && midpar_is_scalar_type(src) &&
-        midpar_is_scalar_type(dest))
+    if (!src_ptr && !dest_ptr && midsema_is_scalar_type(src) &&
+        midsema_is_scalar_type(dest))
         return true;
-    else if (midpar_n_indir(src) == midpar_n_indir(dest) &&
+    else if (midsema_n_indir(src) == midsema_n_indir(dest) &&
              src->spec == dest->spec)
         return true;
-    else if (src_ptr && midpar_type_is_void_ptr(dest))
+    else if (src_ptr && midsema_type_is_void_ptr(dest))
         return true;
-    else if (midpar_type_is_nullptr_t(src) && dest_ptr)
+    else if (midsema_type_is_nullptr_t(src) && dest_ptr)
         return true;
     else if (is_valid_array_to_ptr(src, dest))
         return true;
@@ -1486,13 +1488,13 @@ bool midsema_can_convert(const struct midpar_Type *src,
 int midsema_conversion_rank(const struct midpar_Type *src,
                             const struct midpar_Type *dest)
 {
-    bool same_indir = midpar_n_indir(src) == midpar_n_indir(dest);
-    bool no_indir = midpar_n_indir(src) == 0 && midpar_n_indir(dest) == 0;
+    bool same_indir = midsema_n_indir(src) == midsema_n_indir(dest);
+    bool no_indir = midsema_n_indir(src) == 0 && midsema_n_indir(dest) == 0;
 
-    bool src_int = midpar_is_integral_typespec(src->spec);
-    bool dest_int = midpar_is_integral_typespec(dest->spec);
-    bool src_flt = midpar_is_floating_typespec(src->spec);
-    bool dest_flt = midpar_is_floating_typespec(dest->spec);
+    bool src_int = midsema_is_integral_typespec(src->spec);
+    bool dest_int = midsema_is_integral_typespec(dest->spec);
+    bool src_flt = midsema_is_floating_typespec(src->spec);
+    bool dest_flt = midsema_is_floating_typespec(dest->spec);
 
     if (same_indir && src->spec == dest->spec)
         return 1;

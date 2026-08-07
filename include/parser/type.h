@@ -56,15 +56,6 @@ enum midpar_TypeSpec {
 
 #define MIDPAR_TYPEALIAS_SIZET MIDPAR_TYPESPEC_ULONGLONG
 
-bool midpar_is_typespec_typecheckable(enum midpar_TypeSpec spec);
-bool midpar_is_typespec_named(enum midpar_TypeSpec spec);
-enum midpar_TypeSpec midpar_toktype_to_typespec(enum midlex_TokenType type);
-const char *midpar_typespec_to_str(enum midpar_TypeSpec spec);
-bool midpar_is_integral_typespec(enum midpar_TypeSpec spec);
-bool midpar_is_signed_integral_typespec(enum midpar_TypeSpec spec);
-bool midpar_is_unsigned_integral_typespec(enum midpar_TypeSpec spec);
-bool midpar_is_floating_typespec(enum midpar_TypeSpec spec);
-
 struct midpar_TypeStorQual {
     bool is_static;
     bool is_constexpr;
@@ -154,36 +145,17 @@ midpar_parse_type_no_base(const struct midlex_Token *toks, mid_isize start,
                           struct midsema_Scope *scope, mid_isize *out_declname,
                           bool is_type_id, struct midpar_Allocators *allocs,
                           struct mid_DiagVec *diags);
-mid_isize midpar_n_indir(const struct midpar_Type *type);
 struct midpar_Type midpar_copy_type(const struct midpar_Type *type);
 struct midpar_TypeFPtr
 midpar_copy_fptr_type(const struct midpar_TypeFPtr *fptr);
 struct midpar_TypeArray
 midpar_copy_array_type(const struct midpar_TypeArray *array);
-struct midpar_Type midpar_ref_type(const struct midpar_Type *type,
-                                   bool *out_failed);
-struct midpar_Type midpar_deref_type(const struct midpar_Type *type,
-                                     bool *out_failed);
-char *midpar_type_to_str(const struct midpar_Type *type);
 // can the token be the start of a type?
 bool midpar_valid_type_start(const struct midlex_Token *toks, mid_isize idx,
                              const struct midsema_Scope *scope);
 // the integral type specifier able to hold exactly the given number of bytes
 enum midpar_TypeSpec midpar_uint_type_of_width(int32_t bytes);
 enum midpar_TypeSpec midpar_sint_type_of_width(int32_t bytes);
-int32_t midpar_typespec_conv_rank(enum midpar_TypeSpec spec);
-struct mid_APInt midpar_integral_max(enum midpar_TypeSpec spec);
-struct mid_APInt midpar_integral_min(enum midpar_TypeSpec spec);
-enum midpar_TypeSpec midpar_integral_prom(enum midpar_TypeSpec spec);
-bool midpar_is_scalar_type(const struct midpar_Type *type);
-bool midpar_is_ref_type(const struct midpar_Type *type);
-bool midpar_is_literal_type(const struct midpar_Type *type);
-bool midpar_dquals_same(const struct midpar_TypeDataQual *a, mid_isize n_a,
-                        const struct midpar_TypeDataQual *b, mid_isize n_b);
-bool midpar_squals_same(const struct midpar_TypeStorQual *a,
-                        const struct midpar_TypeStorQual *b);
-bool midpar_are_types_same(const struct midpar_Type *a,
-                           const struct midpar_Type *b);
 struct midpar_Type midpar_create_func_type(struct midsema_Scope *scope,
                                            const char *name);
 struct midpar_Type midpar_create_named_type(struct midsema_IdentPtr ident,
@@ -192,31 +164,6 @@ struct midpar_Type midpar_create_templated_type(struct midsema_IdentPtr ident);
 struct midpar_Type midpar_create_unknown_type();
 struct midpar_Type midpar_create_simple_type(enum midpar_TypeSpec spec,
                                              int n_indir);
-bool midpar_type_is_void(const struct midpar_Type *type);
-bool midpar_type_is_void_ptr(const struct midpar_Type *type);
-bool midpar_type_is_nullptr_t(const struct midpar_Type *type);
-bool midpar_type_is_ref(const struct midpar_Type *type);
-bool midpar_type_is_class_or_union(const struct midpar_Type *type);
-bool midpar_type_is_array(const struct midpar_Type *type);
-// lvls of indir doesn't matter here
-bool midpar_type_is_typecheckable(const struct midpar_Type *type);
-bool midpar_type_is_trivially_constructible(const struct midpar_Type *type);
-bool midpar_type_has_trivial_default_ctor(const struct midpar_Type *type);
-
-bool midpar_type_has_trivial_dtor(const struct midpar_Type *type);
-
-// in bytes
-int_least32_t midpar_typespec_size(enum midpar_TypeSpec spec);
-// in bytes
-struct mid_APInt midpar_type_size(const struct midpar_Type *type);
-// in multiples of midtype_char_size
-struct mid_APInt midpar_sizeof_type(const struct midpar_Type *type);
-
-enum midflt_Kind midpar_get_flt_kind(enum midpar_TypeSpec spec);
-
-enum midlit_ValueKind
-midpar_type_lit_value_kind(const struct midpar_Type *type);
-
 #ifdef __cplusplus
 }
 #endif

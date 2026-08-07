@@ -10,6 +10,7 @@
 #include "parser/template.h"
 #include "parser/type.h"
 #include "sema/ident.h"
+#include "sema/type.h"
 #include "sema/typecheck.h"
 #include <string.h>
 
@@ -258,8 +259,8 @@ static bool are_params_same(const struct midpar_FuncDecl *a,
         return false;
 
     for (mid_isize i = 0; i < a->params.len; ++i) {
-        if (!midpar_are_types_same(&a->params.arr[i]->insts.arr[0]->type,
-                                   &b->params.arr[i]->insts.arr[0]->type))
+        if (!midsema_are_types_same(&a->params.arr[i]->insts.arr[0]->type,
+                                    &b->params.arr[i]->insts.arr[0]->type))
             return false;
     }
 

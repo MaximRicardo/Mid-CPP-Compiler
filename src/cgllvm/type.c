@@ -10,6 +10,7 @@
 #include "parser/var_decl.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include "types.h"
 #include <llvm-c-20/llvm-c/Core.h>
 #include <llvm-c-20/llvm-c/Types.h>
@@ -17,7 +18,7 @@
 
 static bool is_ptr(const struct midpar_Type *type, bool ref_is_ptr)
 {
-    return midpar_n_indir(type) > 0 ||
+    return midsema_n_indir(type) > 0 ||
            (ref_is_ptr && (type->lv_ref || type->rv_ref)) ||
            type->spec == MIDPAR_TYPESPEC_FPTR ||
            type->spec == MIDPAR_TYPESPEC_NULLPTR;

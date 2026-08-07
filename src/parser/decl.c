@@ -10,6 +10,7 @@
 #include "parser/type.h"
 #include "parser/var_decl.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include <assert.h>
 #include <string.h>
 
@@ -45,8 +46,8 @@ static bool is_ambig_param(const struct midlex_Token *toks, mid_isize start,
         memcmp(&inst->type.dquals.arr[0], &(struct midpar_TypeDataQual){},
                sizeof(inst->type.dquals.arr[0])) != 0;
 
-    bool ret = !has_init && midpar_is_typespec_named(inst->type.spec) &&
-               midpar_n_indir(&inst->type) == 0 && !inst->type.lv_ref &&
+    bool ret = !has_init && midsema_is_typespec_named(inst->type.spec) &&
+               midsema_n_indir(&inst->type) == 0 && !inst->type.lv_ref &&
                !inst->type.rv_ref && !has_dquals;
 
     midpar_ASTNode_deinit(&decl);

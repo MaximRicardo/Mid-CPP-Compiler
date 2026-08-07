@@ -2,6 +2,7 @@
 #include "macros.h"
 #include "parser/ast.h"
 #include "sema/func.h"
+#include "sema/type.h"
 
 bool midsema_is_field_pub(const struct midpar_Class *self,
                           const struct midpar_ASTNode *child)
@@ -193,7 +194,7 @@ bool midsema_has_trivial_dtor(const struct midpar_Class *self)
         for (mid_isize inst_i = 0; inst_i < decl->insts.len; ++inst_i) {
             const struct midpar_VarDeclInst *inst = decl->insts.arr[inst_i];
 
-            if (!midpar_type_has_trivial_dtor(&inst->type))
+            if (!midsema_type_has_trivial_dtor(&inst->type))
                 return false;
         }
     }
@@ -217,7 +218,7 @@ union_has_nonvolatile_literal_variant(const struct midpar_Class *self)
             if (inst->type.dquals.arr[0].is_volatile)
                 continue;
 
-            if (midpar_is_literal_type(&inst->type))
+            if (midsema_is_literal_type(&inst->type))
                 return true;
         }
     }
@@ -296,7 +297,7 @@ bool midsema_class_is_literal(const struct midpar_Class *self)
             const struct midpar_VarDeclInst *inst = decl->insts.arr[inst_i];
             if (inst->type.dquals.arr[0].is_volatile)
                 return false;
-            else if (!midpar_is_literal_type(&inst->type))
+            else if (!midsema_is_literal_type(&inst->type))
                 return false;
         }
     }
@@ -451,7 +452,7 @@ bool midsema_union_has_variant_member(const struct midpar_Class *self)
         for (mid_isize inst_i = 0; inst_i < decl->insts.len; ++inst_i) {
             const struct midpar_VarDeclInst *inst = decl->insts.arr[inst_i];
 
-            if (midpar_type_has_trivial_default_ctor(&inst->type))
+            if (midsema_type_has_trivial_default_ctor(&inst->type))
                 return true;
         }
     }
@@ -467,7 +468,7 @@ bool midsema_has_default_ctor(const struct midpar_Class *self)
 
 static bool class_type_has_trivial_default_ctor(const struct midpar_Type *type)
 {
-    assert(midpar_type_is_class_or_union(type));
+    assert(midsema_type_is_class_or_union(type));
 
     const struct midsema_Ident *ident = midsema_deref_identptr(&type->named);
     assert(ident->def);
@@ -506,10 +507,10 @@ bool midsema_class_is_trivially_constructible(const struct midpar_Class *self)
         for (mid_isize inst_i = 0; inst_i < self->childs.len; ++inst_i) {
             const struct midpar_VarDeclInst *inst = decl->insts.arr[inst_i];
 
-            if (midpar_type_is_class_or_union(&inst->type) &&
+            if (midsema_type_is_class_or_union(&inst->type) &&
                 !class_type_has_trivial_default_ctor(&inst->type))
                 return false;
-            else if (midpar_type_is_array(&inst->type) &&
+            else if (midsema_type_is_array(&inst->type) &&
                      !class_type_has_trivial_default_ctor(
                          &inst->type.array->elem))
                 return false;

@@ -9,6 +9,7 @@
 #include "parser/type.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include "types.h"
 
 static bool op_always_constant(enum midpar_ExprType type)
@@ -141,7 +142,7 @@ static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
         break;
 
     case MIDPAR_EXPRTYPE_SIZEOF:
-        res.v.i = midpar_sizeof_type(&child->ret);
+        res.v.i = midsema_sizeof_type(&child->ret);
         res.kind = MIDLIT_VALUE_UNSIGNED_INT;
         break;
 
@@ -155,10 +156,10 @@ static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
 static void convert_value(struct midlit_TaggedValue *val,
                           const struct midpar_Type *target)
 {
-    enum midlit_ValueKind new_kind = midpar_type_lit_value_kind(target);
-    int_least64_t target_width = midpar_typespec_size(target->spec) * 8;
-    enum midflt_Kind target_kind = midpar_is_floating_typespec(target->spec)
-                                       ? midpar_get_flt_kind(target->spec)
+    enum midlit_ValueKind new_kind = midsema_type_lit_value_kind(target);
+    int_least64_t target_width = midsema_typespec_size(target->spec) * 8;
+    enum midflt_Kind target_kind = midsema_is_floating_typespec(target->spec)
+                                       ? midsema_get_flt_kind(target->spec)
                                        : -1;
 
     switch (val->kind) {
@@ -219,7 +220,7 @@ static struct midlit_TaggedValue
 eval_arith_binop(const struct midpar_Expr *expr, struct midlit_TaggedValue *lhs,
                  struct midlit_TaggedValue *rhs)
 {
-    enum midlit_ValueKind res_kind = midpar_type_lit_value_kind(&expr->ret);
+    enum midlit_ValueKind res_kind = midsema_type_lit_value_kind(&expr->ret);
     bool is_integral = res_kind == MIDLIT_VALUE_SIGNED_INT ||
                        res_kind == MIDLIT_VALUE_UNSIGNED_INT;
 

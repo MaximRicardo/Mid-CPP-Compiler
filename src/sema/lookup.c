@@ -12,6 +12,7 @@
 #include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
+#include "sema/type.h"
 #include "sema/typecheck.h"
 #include "sort.h"
 #include <stdio.h>
@@ -67,7 +68,7 @@ static void add_super_classes(const struct midpar_Class *self,
 static void get_assoc_scopes_class(const struct midpar_Expr *arg,
                                    struct midsema_ScopePVec *scopes)
 {
-    assert(midpar_is_typespec_named(arg->ret.spec));
+    assert(midsema_is_typespec_named(arg->ret.spec));
 
     auto ident = midsema_deref_identptr(&arg->ret.named);
     auto node = ident->decl;
@@ -249,7 +250,7 @@ static bool valid_this_arg(const struct midpar_FuncDecl *func,
     if (arg->ret.spec != MIDPAR_TYPESPEC_CLASS &&
         arg->ret.spec != MIDPAR_TYPESPEC_UNION)
         return false;
-    if (midpar_n_indir(&arg->ret) > 0)
+    if (midsema_n_indir(&arg->ret) > 0)
         return false;
     if (midsema_deref_identptr(&func->ret.named)->class_info.def_scope !=
         midpar_func_parent(func))
