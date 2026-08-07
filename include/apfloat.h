@@ -69,7 +69,7 @@ struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
                                            int64_t exp, bool is_neg,
                                            enum midflt_IEEEKind kind,
                                            enum midflt_Rounding rounding);
-void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out);
+void midflt_ieee_print(const struct midflt_IEEE *self, FILE *out);
 struct midflt_IEEE midflt_ieee_mantissa(const struct midflt_IEEE *self);
 
 // in place operations
@@ -108,11 +108,16 @@ struct midflt_IEEE midflt_ieee_nip_log10(const struct midflt_IEEE *self);
 struct midflt_IEEE midflt_ieee_nip_ln(const struct midflt_IEEE *self);
 struct midflt_IEEE midflt_ieee_nip_flip_sign(const struct midflt_IEEE *self);
 
-bool midflt_ieee_eq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
-bool midflt_ieee_gt(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
-bool midflt_ieee_gteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
-bool midflt_ieee_lt(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
-bool midflt_ieee_lteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b);
+bool midflt_ieee_is_eq(const struct midflt_IEEE *a,
+                       const struct midflt_IEEE *b);
+bool midflt_ieee_is_gt(const struct midflt_IEEE *a,
+                       const struct midflt_IEEE *b);
+bool midflt_ieee_is_gteq(const struct midflt_IEEE *a,
+                         const struct midflt_IEEE *b);
+bool midflt_ieee_is_lt(const struct midflt_IEEE *a,
+                       const struct midflt_IEEE *b);
+bool midflt_ieee_is_lteq(const struct midflt_IEEE *a,
+                         const struct midflt_IEEE *b);
 bool midflt_ieee_is_zero(const struct midflt_IEEE *self);
 bool midflt_ieee_is_one(const struct midflt_IEEE *self);
 bool midflt_ieee_is_minus_one(const struct midflt_IEEE *self);
@@ -160,12 +165,7 @@ enum midflt_Rounding midflt_get_rounding(const struct mid_APFloat *self);
 bool midflt_compatible(const struct mid_APFloat *a,
                        const struct mid_APFloat *b);
 
-void midflt_log(const struct mid_APFloat *self, FILE *out);
-// prints a format string with APFloat arguments.
-// example: midflt_print(stdout, "{} + {} is equal to {}\n", &a, &b, &sum);
-// to print a curly bracket, use the "{{" and "}}" escape sequences.
-// doesn't parse printf's '%' formats
-void midflt_print(FILE *out, const char *restrict fmt, ...);
+void midflt_print(const struct mid_APFloat *self, FILE *out);
 
 // in place operations
 void midflt_add(struct mid_APFloat *a, const struct mid_APFloat *b);
@@ -202,11 +202,11 @@ struct mid_APFloat midflt_nip_log10(const struct mid_APFloat *self);
 struct mid_APFloat midflt_nip_ln(const struct mid_APFloat *self);
 struct mid_APFloat midflt_nip_flip_sign(const struct mid_APFloat *self);
 
-bool midflt_eq(const struct mid_APFloat *a, const struct mid_APFloat *b);
-bool midflt_gt(const struct mid_APFloat *a, const struct mid_APFloat *b);
-bool midflt_gteq(const struct mid_APFloat *a, const struct mid_APFloat *b);
-bool midflt_lt(const struct mid_APFloat *a, const struct mid_APFloat *b);
-bool midflt_lteq(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_is_eq(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_is_gt(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_is_gteq(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_is_lt(const struct mid_APFloat *a, const struct mid_APFloat *b);
+bool midflt_is_lteq(const struct mid_APFloat *a, const struct mid_APFloat *b);
 bool midflt_is_zero(const struct mid_APFloat *self);
 bool midflt_is_one(const struct mid_APFloat *self);
 bool midflt_is_minus_one(const struct mid_APFloat *self);

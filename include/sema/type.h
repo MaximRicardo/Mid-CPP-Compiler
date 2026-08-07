@@ -23,10 +23,8 @@ struct midpar_Type midsema_deref_type(const struct midpar_Type *type,
 
 char *midsema_type_to_str(const struct midpar_Type *type);
 
-// FIXME: make naming more consistent
-bool midsema_is_scalar_type(const struct midpar_Type *type);
-bool midsema_is_ref_type(const struct midpar_Type *type);
-bool midsema_is_literal_type(const struct midpar_Type *type);
+bool midsema_type_is_scalar(const struct midpar_Type *type);
+bool midsema_type_is_literal(const struct midpar_Type *type);
 bool midsema_type_is_void(const struct midpar_Type *type);
 bool midsema_type_is_void_ptr(const struct midpar_Type *type);
 bool midsema_type_is_nullptr_t(const struct midpar_Type *type);

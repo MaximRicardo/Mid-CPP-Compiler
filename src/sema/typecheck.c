@@ -1312,7 +1312,7 @@ constexpr_var_not_literal_type_err(const char *name,
 static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
                                     struct mid_DiagVec *diags)
 {
-    if (!midsema_is_literal_type(&inst->type))
+    if (!midsema_type_is_literal(&inst->type))
         midgen_dynpush(
             diags, constexpr_var_not_literal_type_err(inst->name, &inst->type,
                                                       MIDPAR_GET_START(inst)));
@@ -1470,8 +1470,8 @@ bool midsema_can_convert(const struct midpar_Type *src,
     bool src_ptr = midsema_n_indir(src) > 0;
     bool dest_ptr = midsema_n_indir(dest) > 0;
 
-    if (!src_ptr && !dest_ptr && midsema_is_scalar_type(src) &&
-        midsema_is_scalar_type(dest))
+    if (!src_ptr && !dest_ptr && midsema_type_is_scalar(src) &&
+        midsema_type_is_scalar(dest))
         return true;
     else if (midsema_n_indir(src) == midsema_n_indir(dest) &&
              src->spec == dest->spec)

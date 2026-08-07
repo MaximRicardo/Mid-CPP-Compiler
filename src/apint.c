@@ -459,7 +459,7 @@ bool midint_get_sign_bit(const struct mid_APInt *self)
     return midint_get_bit(self, self->n_bits - 1);
 }
 
-static void log_uint_bignum(const struct mid_APInt *self, FILE *out)
+static void print_uint_bignum(const struct mid_APInt *self, FILE *out)
 {
     auto tmp = midint_copy(self);
     auto ten = midint_init(tmp.n_bits, 10, false);
@@ -491,42 +491,28 @@ static void log_uint_bignum(const struct mid_APInt *self, FILE *out)
     mid_APInt_deinit(&tmp);
 }
 
-static void log_uint(const struct mid_APInt *self, FILE *out)
+static void print_uint(const struct mid_APInt *self, FILE *out)
 {
     if (is_bignum_used(self->n_bits)) {
-        log_uint_bignum(self, out);
+        print_uint_bignum(self, out);
     } else {
         fprintf(out, "%" MIDINT_WORD_UNSIGNED_FORMAT, self->v.val);
     }
 }
 
-static void log_sint(const struct mid_APInt *self, FILE *out)
+static void print_sint(const struct mid_APInt *self, FILE *out)
 {
     if (is_bignum_used(self->n_bits)) {
         bool is_negative = midint_get_sign_bit(self);
         if (!is_negative) {
-            log_uint_bignum(self, out);
-        } else if (midint_is_signed_min(self)) {
-            // we can't negate self without overflowing so we need to
-            // allocate an extra bit
-            assert(self->n_bits < INT32_MAX);
-
-            fputc('-', out);
-
-            auto tmp = midint_copy(self);
-            midint_ext(&tmp, self->n_bits + 1, true);
-
-            midint_negate(&tmp);
-            log_uint_bignum(&tmp, out);
-
-            mid_APInt_deinit(&tmp);
+            print_uint_bignum(self, out);
         } else {
             // negate the number and print its unsigned version
             fputc('-', out);
 
             auto tmp = midint_copy(self);
             midint_negate(&tmp);
-            log_uint_bignum(&tmp, out);
+            print_uint_bignum(&tmp, out);
             mid_APInt_deinit(&tmp);
         }
     } else {
@@ -535,12 +521,12 @@ static void log_sint(const struct mid_APInt *self, FILE *out)
     }
 }
 
-void midint_log(const struct mid_APInt *self, FILE *out, bool is_signed)
+void midint_print(const struct mid_APInt *self, FILE *out, bool is_signed)
 {
     if (is_signed)
-        log_sint(self, out);
+        print_sint(self, out);
     else
-        log_uint(self, out);
+        print_uint(self, out);
 }
 
 void midint_log_hex(const struct mid_APInt *self, FILE *out)

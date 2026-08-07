@@ -48,8 +48,8 @@ void midint_ext(struct mid_APInt *self, int32_t new_n_bits, bool sign_ext);
 // returns the value of the nth bit
 bool midint_get_bit(const struct mid_APInt *self, int32_t n);
 bool midint_get_sign_bit(const struct mid_APInt *self);
-void midint_log(const struct mid_APInt *self, FILE *out, bool is_signed);
-void midint_log_hex(const struct mid_APInt *self, FILE *out);
+void midint_print(const struct mid_APInt *self, FILE *out, bool is_signed);
+void midint_print_hex(const struct mid_APInt *self, FILE *out);
 // nr of bits required to represent the unsigned number in self
 int32_t midint_unsigned_sig_bits(const struct mid_APInt *self);
 // nr of bits required to represent the signed number in self

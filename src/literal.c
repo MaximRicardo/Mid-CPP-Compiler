@@ -184,15 +184,15 @@ void midlit_tagged_fprint(FILE *out, const struct midlit_TaggedValue *val)
 {
     switch (val->kind) {
     case MIDLIT_VALUE_SIGNED_INT:
-        midint_log(&val->v.i, out, true);
+        midint_print(&val->v.i, out, true);
         break;
 
     case MIDLIT_VALUE_UNSIGNED_INT:
-        midint_log(&val->v.i, out, false);
+        midint_print(&val->v.i, out, false);
         break;
 
     case MIDLIT_VALUE_FLOAT:
-        midflt_log(&val->v.flt, out);
+        midflt_print(&val->v.flt, out);
         break;
 
     case MIDLIT_VALUE_STR:

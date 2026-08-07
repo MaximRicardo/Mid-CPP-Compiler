@@ -47,13 +47,13 @@ midsema_func_constexpr_suitability(const struct midpar_FuncDecl *self)
     if (self->quals.is_virtual)
         return MIDSEMA_FUNCCONSTEXPR_VIRTUAL;
 
-    if (!midsema_is_literal_type(&self->ret))
+    if (!midsema_type_is_literal(&self->ret))
         return MIDSEMA_FUNCCONSTEXPR_NONLITERAL_RET;
 
     for (int i = 0; i < self->params.len; ++i) {
         const struct midpar_VarDeclInst *param =
             self->params.arr[i]->insts.arr[0];
-        if (!midsema_is_literal_type(&param->type))
+        if (!midsema_type_is_literal(&param->type))
             return MIDSEMA_FUNCCONSTEXPR_NONLITERAL_PARAM;
     }
 

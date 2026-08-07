@@ -501,25 +501,25 @@ enum midpar_TypeSpec midsema_integral_prom(enum midpar_TypeSpec spec)
     }
 }
 
-bool midsema_is_scalar_type(const struct midpar_Type *type)
+bool midsema_type_is_scalar(const struct midpar_Type *type)
 {
     return midsema_n_indir(type) > 0 ||
            midsema_is_integral_typespec(type->spec) ||
            midsema_is_floating_typespec(type->spec);
 }
 
-bool midsema_is_ref_type(const struct midpar_Type *type)
+bool midsema_type_is_ref(const struct midpar_Type *type)
 {
     return type->lv_ref || type->rv_ref;
 }
 
-bool midsema_is_literal_type(const struct midpar_Type *type)
+bool midsema_type_is_literal(const struct midpar_Type *type)
 {
-    if (midsema_is_scalar_type(type) || midsema_is_ref_type(type)) {
+    if (midsema_type_is_scalar(type) || midsema_type_is_ref(type)) {
         return true;
 
     } else if (midsema_type_is_array(type)) {
-        return midsema_is_literal_type(&type->array->elem);
+        return midsema_type_is_literal(&type->array->elem);
 
     } else if (midsema_type_is_class_or_union(type)) {
         const struct midsema_Ident *ident =
@@ -616,11 +616,6 @@ bool midsema_type_is_void_ptr(const struct midpar_Type *type)
 bool midsema_type_is_nullptr_t(const struct midpar_Type *type)
 {
     return midsema_n_indir(type) == 0 && type->spec == MIDPAR_TYPESPEC_NULLPTR;
-}
-
-bool midsema_type_is_ref(const struct midpar_Type *type)
-{
-    return type->lv_ref || type->rv_ref;
 }
 
 bool midsema_type_is_typecheckable(const struct midpar_Type *type)

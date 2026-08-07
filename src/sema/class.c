@@ -218,7 +218,7 @@ union_has_nonvolatile_literal_variant(const struct midpar_Class *self)
             if (inst->type.dquals.arr[0].is_volatile)
                 continue;
 
-            if (midsema_is_literal_type(&inst->type))
+            if (midsema_type_is_literal(&inst->type))
                 return true;
         }
     }
@@ -297,7 +297,7 @@ bool midsema_class_is_literal(const struct midpar_Class *self)
             const struct midpar_VarDeclInst *inst = decl->insts.arr[inst_i];
             if (inst->type.dquals.arr[0].is_volatile)
                 return false;
-            else if (!midsema_is_literal_type(&inst->type))
+            else if (!midsema_type_is_literal(&inst->type))
                 return false;
         }
     }

@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <float.h>
 #include <math.h>
-#include <stdarg.h>
 #include <stdio.h>
 
 typedef struct midflt_IEEE IEEE;
@@ -379,7 +378,7 @@ struct midflt_IEEE midflt_ieee_init_manual(const struct mid_APInt *mant,
     return ret;
 }
 
-void midflt_ieee_log(const struct midflt_IEEE *self, FILE *out)
+void midflt_ieee_print(const struct midflt_IEEE *self, FILE *out)
 {
     if (self->is_neg)
         fputc('-', out);
@@ -844,7 +843,7 @@ static bool ieee_addsub_special_cases(IEEE *a, const IEEE *b, bool sub)
             midflt_ieee_assign(a, b);
             a->is_neg = b_neg;
         }
-    } else if (sub && midflt_ieee_eq(a, b)) {
+    } else if (sub && midflt_ieee_is_eq(a, b)) {
         // x - x = +0 if x is a normal value or zero
         a->val_cat = MIDFLT_IEEE_VAL_ZERO;
         // rounding down causes x - x to be equal to -0 instead of 0
@@ -871,7 +870,7 @@ void midflt_ieee_add(struct midflt_IEEE *a, const struct midflt_IEEE *b)
     // account for going above or below zero
     if (a->is_neg && !b->is_neg) {
         a->is_neg = false; // temporarily flip the sign of a to cmp magnitudes
-        if (midflt_ieee_lt(a, b)) {
+        if (midflt_ieee_is_lt(a, b)) {
             // -a + +b == +b - +a
             auto tmp_b = midflt_ieee_copy(b);
             ieee_sub_base(&tmp_b, a);
@@ -909,7 +908,7 @@ void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b)
         return;
 
     // account for going above or below zero
-    if (!a->is_neg && !b->is_neg && midflt_ieee_lt(a, b)) {
+    if (!a->is_neg && !b->is_neg && midflt_ieee_is_lt(a, b)) {
         // +a - +b == -(+b - +a)
         auto tmp_b = midflt_ieee_copy(b);
         ieee_sub_base(&tmp_b, a);
@@ -917,7 +916,7 @@ void midflt_ieee_sub(struct midflt_IEEE *a, const struct midflt_IEEE *b)
         midflt_IEEE_deinit(a);
         *a = tmp_b;
         a->is_neg = true;
-    } else if (a->is_neg && b->is_neg && midflt_ieee_gt(a, b)) {
+    } else if (a->is_neg && b->is_neg && midflt_ieee_is_gt(a, b)) {
         // -a - -b == +b - +a
         auto tmp_b = midflt_ieee_copy(b);
         tmp_b.is_neg = false;
@@ -989,7 +988,7 @@ void midflt_ieee_assign(struct midflt_IEEE *dest, const struct midflt_IEEE *src)
     midint_assign(&dest->mant, &src->mant);
 }
 
-bool midflt_ieee_eq(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+bool midflt_ieee_is_eq(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
     assert(ieee_floats_compatible(a, b));
 
@@ -1012,7 +1011,7 @@ bool midflt_ieee_eq(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
     return true;
 }
 
-bool midflt_ieee_gt(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+bool midflt_ieee_is_gt(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
     assert(ieee_floats_compatible(a, b));
 
@@ -1049,17 +1048,18 @@ bool midflt_ieee_gt(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
         return a->is_neg;
 }
 
-bool midflt_ieee_gteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+bool midflt_ieee_is_gteq(const struct midflt_IEEE *a,
+                         const struct midflt_IEEE *b)
 {
     assert(ieee_floats_compatible(a, b));
 
     if (a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN)
         return false;
 
-    return !midflt_ieee_lt(a, b);
+    return !midflt_ieee_is_lt(a, b);
 }
 
-bool midflt_ieee_lt(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+bool midflt_ieee_is_lt(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
 {
     assert(ieee_floats_compatible(a, b));
 
@@ -1096,14 +1096,15 @@ bool midflt_ieee_lt(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
         return a->is_neg;
 }
 
-bool midflt_ieee_lteq(const struct midflt_IEEE *a, const struct midflt_IEEE *b)
+bool midflt_ieee_is_lteq(const struct midflt_IEEE *a,
+                         const struct midflt_IEEE *b)
 {
     assert(ieee_floats_compatible(a, b));
 
     if (a->val_cat == MIDFLT_IEEE_VAL_NAN || b->val_cat == MIDFLT_IEEE_VAL_NAN)
         return false;
 
-    return !midflt_ieee_gt(a, b);
+    return !midflt_ieee_is_gt(a, b);
 }
 
 bool midflt_ieee_is_zero(const struct midflt_IEEE *self)
@@ -1257,52 +1258,52 @@ void midflt_assign(struct mid_APFloat *a, const struct mid_APFloat *b)
         MID_CRASH("unsupported APFloat kind");
 }
 
-bool midflt_eq(const struct mid_APFloat *a, const struct mid_APFloat *b)
+bool midflt_is_eq(const struct mid_APFloat *a, const struct mid_APFloat *b)
 {
     assert(midflt_compatible(a, b));
 
     if (midflt_kind_is_ieee(a->kind))
-        return midflt_ieee_eq(&a->ieee, &b->ieee);
+        return midflt_ieee_is_eq(&a->ieee, &b->ieee);
     else
         MID_CRASH("unsupported APFloat kind");
 }
 
-bool midflt_gt(const struct mid_APFloat *a, const struct mid_APFloat *b)
+bool midflt_is_gt(const struct mid_APFloat *a, const struct mid_APFloat *b)
 {
     assert(midflt_compatible(a, b));
 
     if (midflt_kind_is_ieee(a->kind))
-        return midflt_ieee_gt(&a->ieee, &b->ieee);
+        return midflt_ieee_is_gt(&a->ieee, &b->ieee);
     else
         MID_CRASH("unsupported APFloat kind");
 }
 
-bool midflt_gteq(const struct mid_APFloat *a, const struct mid_APFloat *b)
+bool midflt_is_gteq(const struct mid_APFloat *a, const struct mid_APFloat *b)
 {
     assert(midflt_compatible(a, b));
 
     if (midflt_kind_is_ieee(a->kind))
-        return midflt_ieee_gteq(&a->ieee, &b->ieee);
+        return midflt_ieee_is_gteq(&a->ieee, &b->ieee);
     else
         MID_CRASH("unsupported APFloat kind");
 }
 
-bool midflt_lt(const struct mid_APFloat *a, const struct mid_APFloat *b)
+bool midflt_is_lt(const struct mid_APFloat *a, const struct mid_APFloat *b)
 {
     assert(midflt_compatible(a, b));
 
     if (midflt_kind_is_ieee(a->kind))
-        return midflt_ieee_lt(&a->ieee, &b->ieee);
+        return midflt_ieee_is_lt(&a->ieee, &b->ieee);
     else
         MID_CRASH("unsupported APFloat kind");
 }
 
-bool midflt_lteq(const struct mid_APFloat *a, const struct mid_APFloat *b)
+bool midflt_is_lteq(const struct mid_APFloat *a, const struct mid_APFloat *b)
 {
     assert(midflt_compatible(a, b));
 
     if (midflt_kind_is_ieee(a->kind))
-        return midflt_ieee_lteq(&a->ieee, &b->ieee);
+        return midflt_ieee_is_lteq(&a->ieee, &b->ieee);
     else
         MID_CRASH("unsupported APFloat kind");
 }
@@ -1315,45 +1316,12 @@ double midflt_to_dbl(const struct mid_APFloat *self)
         MID_CRASH("unsupported APFloat kind");
 }
 
-void midflt_log(const struct mid_APFloat *self, FILE *out)
+void midflt_print(const struct mid_APFloat *self, FILE *out)
 {
     if (midflt_kind_is_ieee(self->kind))
-        midflt_ieee_log(&self->ieee, out);
+        midflt_ieee_print(&self->ieee, out);
     else
         MID_CRASH("unsupported APFloat kind");
-}
-
-void midflt_print(FILE *out, const char *restrict fmt, ...)
-{
-    va_list args;
-    va_start(args);
-
-    char c;
-    while ((c = *(fmt++)) != '\0') {
-        if (c == '{') {
-            c = *(fmt++);
-            if (c == '{') {
-                fputc('{', out);
-            } else if (c == '}') {
-                auto val = va_arg(args, const struct mid_APFloat *);
-                midflt_log(val, out);
-            } else {
-                MID_CRASH(
-                    "expected a closing curly bracket in the format string");
-            }
-        } else if (c == '}') {
-            c = *(fmt++);
-            if (c == '}')
-                fputc('}', out);
-            else
-                MID_CRASH(
-                    "extraneous closing curly bracket in the format string");
-        } else {
-            fputc(c, out);
-        }
-    }
-
-    va_end(args);
 }
 
 struct midflt_IEEE midflt_ieee_mantissa(const struct midflt_IEEE *self)
@@ -1373,7 +1341,7 @@ static uint32_t ieee_log2_step(IEEE *self)
     uint32_t m = 0;
     auto two = midflt_ieee_init(2.0, self->kind, self->rounding);
 
-    while (midflt_ieee_lt(self, &two)) {
+    while (midflt_ieee_is_lt(self, &two)) {
         midflt_ieee_mul(self, self);
         ++m;
     }

@@ -90,32 +90,39 @@ static void log_tokens(const struct midlex_TokenVec *toks)
         printf("i = %" MID_PRIisz ", pos = (%d, %d), type = %d", i,
                toks->arr[i].pos.line, toks->arr[i].pos.column,
                toks->arr[i].type);
-        if (toks->arr[i].type == MIDLEX_TOKENTYPE_INT_LIT)
+        if (toks->arr[i].type == MIDLEX_TOKENTYPE_INT_LIT) {
             printf(", value int = %" PRId64,
                    midint_to_sint(&toks->arr[i].val.i));
-        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONG_LIT)
+        } else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONG_LIT) {
             printf(", value long = %" PRId64,
                    midint_to_sint(&toks->arr[i].val.i));
-        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONGLONG_LIT)
+        } else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONGLONG_LIT) {
             printf(", value long long = %" PRId64,
                    midint_to_sint(&toks->arr[i].val.i));
-        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_UINT_LIT)
+        } else if (toks->arr[i].type == MIDLEX_TOKENTYPE_UINT_LIT) {
             printf(", value u int = %" PRId64,
                    midint_to_uint(&toks->arr[i].val.i));
-        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_ULONG_LIT)
+        } else if (toks->arr[i].type == MIDLEX_TOKENTYPE_ULONG_LIT) {
             printf(", value u long = %" PRId64,
                    midint_to_uint(&toks->arr[i].val.i));
-        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_ULONGLONG_LIT)
+        } else if (toks->arr[i].type == MIDLEX_TOKENTYPE_ULONGLONG_LIT) {
             printf(", value u long long = %" PRId64,
                    midint_to_uint(&toks->arr[i].val.i));
-        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_FLOAT_LIT)
-            midflt_print(stdout, ", value f = {}", &toks->arr[i].val.flt);
-        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_DOUBLE_LIT)
-            midflt_print(stdout, ", value d = {}", &toks->arr[i].val.flt);
-        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONGDOUBLE_LIT)
-            midflt_print(stdout, ", value ld = {}", &toks->arr[i].val.flt);
-        else if (toks->arr[i].type == MIDLEX_TOKENTYPE_STRING_LIT)
+        } else if (toks->arr[i].type == MIDLEX_TOKENTYPE_FLOAT_LIT) {
+            printf(", value f = ");
+            midflt_print(&toks->arr[i].val.flt, stdout);
+            printf("\n");
+        } else if (toks->arr[i].type == MIDLEX_TOKENTYPE_DOUBLE_LIT) {
+            printf(", value d = ");
+            midflt_print(&toks->arr[i].val.flt, stdout);
+            printf("\n");
+        } else if (toks->arr[i].type == MIDLEX_TOKENTYPE_LONGDOUBLE_LIT) {
+            printf(", value ld = ");
+            midflt_print(&toks->arr[i].val.flt, stdout);
+            printf("\n");
+        } else if (toks->arr[i].type == MIDLEX_TOKENTYPE_STRING_LIT) {
             printf(", value str = '%s'", toks->arr[i].val.str.c);
+        }
         printf("\n");
     }
 }
