@@ -16,6 +16,39 @@
 #include "sema/type.h"
 #include <stdio.h>
 
+struct midsema_Ident *midsema_tmplt_ident(const struct midpar_Tmplt *self)
+{
+    assert(self->scope->idents.len > 0);
+    // the last ident is always the templated identifier
+    return &self->scope->idents.arr[self->scope->idents.len - 1];
+}
+
+static const char *tmplt_param_name(const struct midpar_TmpltParam *param)
+{
+    switch (param->kind) {
+    case MIDPAR_TMPLTPARAM_NONTYPE:
+        return param->non_type.name;
+
+    case MIDPAR_TMPLTPARAM_TYPE:
+        return param->type.name;
+
+    case MIDPAR_TMPLTPARAM_TMPLT:
+        return param->tmplt.name;
+    }
+}
+
+mid_isize midsema_tmplt_param_idx(const struct midpar_Tmplt *tmplt,
+                                  const char *name)
+{
+    for (mid_isize i = 0; i < tmplt->params.len; ++i) {
+        const char *p_name = tmplt_param_name(tmplt->params.arr[i]);
+        if (!strcmp(name, p_name))
+            return i;
+    }
+
+    return -1;
+}
+
 static void transf_type(struct midpar_Type *type,
                         const struct midpar_ASTNode *tmplt_node,
                         const struct midpar_TmpltArgVec *args)
@@ -26,7 +59,7 @@ static void transf_type(struct midpar_Type *type,
     auto tmplt = &tmplt_node->tmplt;
 
     const char *name = midsema_deref_identptr(&type->named)->name;
-    mid_isize idx = midpar_tmplt_param_idx(tmplt, name);
+    mid_isize idx = midsema_tmplt_param_idx(tmplt, name);
 
     auto param = tmplt->params.arr[idx];
     assert(param->kind == MIDPAR_TMPLTPARAM_TYPE);

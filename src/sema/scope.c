@@ -10,6 +10,7 @@
 #include "parser/template.h"
 #include "parser/type.h"
 #include "sema/ident.h"
+#include "sema/template.h"
 #include "sema/type.h"
 #include "sema/typecheck.h"
 #include <string.h>
@@ -124,7 +125,7 @@ search_child_tmplt_scopes(const char *name, const struct midsema_Scope *scope)
             continue;
 
         const struct midsema_Ident *ident =
-            midpar_tmplt_ident(&child->node->tmplt);
+            midsema_tmplt_ident(&child->node->tmplt);
         if (!strcmp(ident->name, name))
             return ident;
     }
@@ -305,7 +306,7 @@ find_ident_in_child_tmplt_scopes(const struct midsema_Scope *scope,
         if (child->type != MIDSEMA_SCOPETYPE_TEMPLATE)
             continue;
 
-        auto ident = midpar_tmplt_ident(&child->node->tmplt);
+        auto ident = midsema_tmplt_ident(&child->node->tmplt);
         if (are_idents_equiv(ident, search))
             return ident;
     }

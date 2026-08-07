@@ -116,15 +116,11 @@ mid_isize midpar_parse_tmplt(struct midpar_Tmplt *self,
                              const struct midlex_Token *toks, mid_isize start,
                              struct midpar_Allocators *allocs,
                              struct mid_DiagVec *diags);
-struct midsema_Ident *midpar_tmplt_ident(const struct midpar_Tmplt *self);
 struct midpar_TmpltArgVec
 midpar_parse_tmplt_args(const struct midlex_Token *toks, mid_isize l_angle,
                         mid_isize *out_r_angle, struct midsema_Scope *scope,
                         struct midpar_Allocators *allocs,
                         struct mid_DiagVec *diags);
-
-mid_isize midpar_tmplt_param_idx(const struct midpar_Tmplt *tmplt,
-                                 const char *name);
 
 #ifdef __cplusplus
 }

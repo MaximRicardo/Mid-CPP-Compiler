@@ -95,13 +95,6 @@ void midpar_copy_tmplt(struct midpar_Tmplt *dest,
                      dest->scope, allocs);
 }
 
-struct midsema_Ident *midpar_tmplt_ident(const struct midpar_Tmplt *self)
-{
-    assert(self->scope->idents.len > 0);
-    // the last ident is always the templated identifier
-    return &self->scope->idents.arr[self->scope->idents.len - 1];
-}
-
 void midpar_TmpltNonTypeParam_deinit(struct midpar_TmpltNonTypeParam *self)
 {
     midpar_Type_deinit(&self->type);
@@ -141,20 +134,6 @@ static struct midsema_Scope *
 get_tmplt_scope(const struct midpar_TmpltParam *param)
 {
     return MIDPAR_GET_PARENT(param)->tmplt.scope;
-}
-
-static const char *tmplt_param_name(const struct midpar_TmpltParam *param)
-{
-    switch (param->kind) {
-    case MIDPAR_TMPLTPARAM_NONTYPE:
-        return param->non_type.name;
-
-    case MIDPAR_TMPLTPARAM_TYPE:
-        return param->type.name;
-
-    case MIDPAR_TMPLTPARAM_TMPLT:
-        return param->tmplt.name;
-    }
 }
 
 static const struct midsema_Ident *
@@ -631,16 +610,4 @@ midpar_parse_tmplt_args(const struct midlex_Token *toks, mid_isize l_angle,
     }
 
     return args;
-}
-
-mid_isize midpar_tmplt_param_idx(const struct midpar_Tmplt *tmplt,
-                                 const char *name)
-{
-    for (mid_isize i = 0; i < tmplt->params.len; ++i) {
-        const char *p_name = tmplt_param_name(tmplt->params.arr[i]);
-        if (!strcmp(name, p_name))
-            return i;
-    }
-
-    return -1;
 }
