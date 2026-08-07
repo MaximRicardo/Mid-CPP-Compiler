@@ -16,6 +16,7 @@
 #include "parser/template.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/class.h"
 #include "sema/expr_eval.h"
 #include "sema/ident.h"
 #include "sema/lookup.h"
@@ -1047,7 +1048,7 @@ static void typecheck_memb_sel(struct midpar_Expr *expr,
     const struct midpar_Class *class_ =
         &midsema_deref_identptr(&lhs->ret.named)->decl->class_;
     const char *field_name = rhs->info.ident;
-    mid_isize field_idx = midpar_find_field(class_, field_name);
+    mid_isize field_idx = midsema_find_field(class_, field_name);
     if (field_idx == -1) {
         midgen_dynpush(diags,
                        unknown_field_err(field_name, class_->name,

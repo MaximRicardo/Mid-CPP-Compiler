@@ -8,6 +8,7 @@
 #include "parser/expr.h"
 #include "parser/func_decl.h"
 #include "parser/type.h"
+#include "sema/class.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/typecheck.h"
@@ -94,7 +95,7 @@ static void get_assoc_scopes(const struct midpar_Expr *args, mid_isize n_args,
 static void add_class_ctors(const struct midpar_Class *class_,
                             struct midpar_FuncDeclPVec *funcs)
 {
-    auto ctors = midpar_class_ctors(class_);
+    auto ctors = midsema_class_ctors(class_);
     for (mid_isize j = 0; j < ctors.len; ++j)
         midgen_dynpush(funcs, ctors.arr[j]);
     midgen_dyndeinit(&ctors);

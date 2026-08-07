@@ -11,10 +11,10 @@
 #include "macros.h"
 #include "mid_alloc.h"
 #include "parser/ast.h"
-#include "parser/class.h"
 #include "parser/find_twin.h"
 #include "parser/scope.h"
 #include "parser/template.h"
+#include "sema/class.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/template.h"
@@ -1382,7 +1382,7 @@ bool midpar_is_literal_type(const struct midpar_Type *type)
             midsema_deref_identptr(&type->named);
         assert(ident->def);
         assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
-        return midpar_class_is_literal(&ident->def->class_);
+        return midsema_class_is_literal(&ident->def->class_);
     } else {
         return false;
     }
@@ -1711,7 +1711,7 @@ static bool class_type_has_trivial_dtor(const struct midpar_Type *type)
     assert(ident->def);
     assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
 
-    return midpar_has_trivial_dtor(&ident->def->class_);
+    return midsema_has_trivial_dtor(&ident->def->class_);
 }
 
 bool midpar_type_has_trivial_dtor(const struct midpar_Type *type)
@@ -1730,7 +1730,7 @@ static bool class_type_trivially_constructible(const struct midpar_Type *type)
     assert(ident->def);
     assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
 
-    return midpar_class_is_trivially_constructible(&ident->def->class_);
+    return midsema_class_is_trivially_constructible(&ident->def->class_);
 }
 
 bool midpar_type_is_trivially_constructible(const struct midpar_Type *type)
@@ -1750,7 +1750,7 @@ static bool class_type_has_trivial_default_ctor(const struct midpar_Type *type)
     assert(ident->def);
     assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
 
-    return midpar_has_trivial_default_ctor(&ident->def->class_);
+    return midsema_has_trivial_default_ctor(&ident->def->class_);
 }
 
 bool midpar_type_has_trivial_default_ctor(const struct midpar_Type *type)
