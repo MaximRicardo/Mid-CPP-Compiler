@@ -18,6 +18,7 @@
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "types.h"
@@ -474,7 +475,7 @@ static LLVMValueRef *get_call_args(const struct midpar_Expr *expr,
                                    mid_isize *out_n_args)
 {
     bool implicit_this =
-        midpar_func_takes_implicit_this(&expr->node->func_decl, true);
+        midsema_func_takes_implicit_this(&expr->node->func_decl, true);
 
     mid_isize n_args = expr->info.args.len - 1 + implicit_this;
     if (out_n_args)
@@ -497,8 +498,8 @@ static LLVMValueRef *get_call_args(const struct midpar_Expr *expr,
         ret[i + implicit_this] = val;
     }
 
-    if (midpar_func_is_ctor(&expr->node->func_decl)) {
-        auto type = midpar_implicit_this_type(&expr->node->func_decl);
+    if (midsema_func_is_ctor(&expr->node->func_decl)) {
+        auto type = midsema_implicit_this_type(&expr->node->func_decl);
         ret[0] = LLVMBuildAlloca(
             builder, midllvm_convert_parser_type(&type, context, false), "");
         midpar_Type_deinit(&type);
@@ -529,8 +530,8 @@ static LLVMValueRef codegen_call_expr(const struct midpar_Expr *expr,
 
     auto ret = LLVMBuildCall2(builder, func->type, func->val, args, n_args, "");
     // ctors return the resulting value
-    if (midpar_func_is_ctor(&expr->node->func_decl)) {
-        auto type = midpar_implicit_this_type(&expr->node->func_decl);
+    if (midsema_func_is_ctor(&expr->node->func_decl)) {
+        auto type = midsema_implicit_this_type(&expr->node->func_decl);
         ret = LLVMBuildLoad2(builder,
                              midllvm_convert_parser_type(&type, context, true),
                              args[0], "");
@@ -822,7 +823,7 @@ static LLVMTypeRef *get_func_params(const struct midpar_ASTNode *node,
                                     mid_isize *out_n_params)
 {
     bool implicit_this =
-        midpar_func_takes_implicit_this(&node->func_decl, true);
+        midsema_func_takes_implicit_this(&node->func_decl, true);
     mid_isize n_params = node->func_decl.params.len + implicit_this;
     if (out_n_params)
         *out_n_params = n_params;

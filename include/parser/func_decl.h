@@ -90,19 +90,6 @@ mid_isize midpar_parse_func_body(struct midpar_FuncDecl *self,
                                  struct midpar_Allocators *allocs,
                                  struct mid_DiagVec *diags);
 
-bool midpar_func_is_method(const struct midpar_FuncDecl *self);
-bool midpar_func_is_ctor(const struct midpar_FuncDecl *self);
-bool midpar_func_is_default_ctor(const struct midpar_FuncDecl *self);
-bool midpar_func_is_copy_ctor(const struct midpar_FuncDecl *self);
-bool midpar_func_is_move_ctor(const struct midpar_FuncDecl *self);
-// cnt_ctors    - do constructors also count?
-bool midpar_func_takes_implicit_this(const struct midpar_FuncDecl *self,
-                                     bool cnt_ctors);
-struct midpar_Type
-midpar_implicit_this_type(const struct midpar_FuncDecl *self);
-bool midpar_func_is_main(const struct midpar_FuncDecl *self);
-bool midpar_is_user_provided(const struct midpar_FuncDecl *self);
-
 #ifdef __cplusplus
 }
 #endif

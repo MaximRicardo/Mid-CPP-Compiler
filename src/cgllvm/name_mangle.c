@@ -6,6 +6,7 @@
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include <string.h>
@@ -403,9 +404,9 @@ char *midllvm_mangle_func(const struct midpar_FuncDecl *func)
 {
     struct mid_Dynstr str = {};
 
-    if (midpar_func_is_method(func))
+    if (midsema_func_is_method(func))
         mangle_member_func(func, &str);
-    else if (midpar_func_is_main(func))
+    else if (midsema_func_is_main(func))
         // the main function doesn't get mangled
         midstr_append(&str, "main");
     else

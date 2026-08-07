@@ -1,6 +1,7 @@
 #include "sema/class.h"
 #include "macros.h"
 #include "parser/ast.h"
+#include "sema/func.h"
 
 bool midsema_is_field_pub(const struct midpar_Class *self,
                           const struct midpar_ASTNode *child)
@@ -78,7 +79,7 @@ midsema_class_default_ctor(const struct midpar_Class *self)
             continue;
         struct midpar_FuncDecl *func = &child->func_decl;
 
-        if (midpar_func_is_default_ctor(func))
+        if (midsema_func_is_default_ctor(func))
             return func;
     }
 
@@ -140,7 +141,7 @@ bool midsema_has_user_provided_ctors(const struct midpar_Class *self)
 
     bool ret = false;
     for (mid_isize i = 0; i < ctors.len; ++i) {
-        if (midpar_is_user_provided(ctors.arr[i])) {
+        if (midsema_is_user_provided(ctors.arr[i])) {
             ret = true;
             break;
         }
@@ -156,7 +157,7 @@ bool midsema_has_user_provided_dtor(const struct midpar_Class *self)
     if (!dtor)
         return false;
     else
-        return midpar_is_user_provided(dtor);
+        return midsema_is_user_provided(dtor);
 }
 
 static bool decl_is_nonstatic(const struct midpar_VarDecl *decl)
@@ -170,7 +171,7 @@ bool midsema_has_trivial_dtor(const struct midpar_Class *self)
     if (!dtor)
         return true;
 
-    if (midpar_is_user_provided(dtor))
+    if (midsema_is_user_provided(dtor))
         return false;
     if (dtor->quals.is_virtual)
         return false;
@@ -264,8 +265,8 @@ static bool is_literal_default_case(const struct midpar_Class *self)
         if (!ctor->quals.is_constexpr)
             continue;
 
-        if (!midpar_func_is_copy_ctor(ctor) &&
-            !midpar_func_is_move_ctor(ctor)) {
+        if (!midsema_func_is_copy_ctor(ctor) &&
+            !midsema_func_is_move_ctor(ctor)) {
             res = true;
             break;
         }
@@ -520,7 +521,7 @@ bool midsema_class_is_trivially_constructible(const struct midpar_Class *self)
 
 bool midsema_is_ctor_trivial(const struct midpar_FuncDecl *ctor)
 {
-    assert(midpar_func_is_ctor(ctor));
+    assert(midsema_func_is_ctor(ctor));
 
     if (!ctor->quals.is_default)
         return false;

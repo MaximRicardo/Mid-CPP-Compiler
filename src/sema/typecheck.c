@@ -18,6 +18,7 @@
 #include "parser/var_decl.h"
 #include "sema/class.h"
 #include "sema/expr_eval.h"
+#include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/lookup.h"
 #include "sema/scope.h"
@@ -290,7 +291,7 @@ static void typecheck_this_expr(struct midpar_Expr *expr,
     }
 
     const struct midpar_FuncDecl *func = &func_scope->node->func_decl;
-    if (!midpar_func_is_method(func) || func->ret.squals.is_static) {
+    if (!midsema_func_is_method(func) || func->ret.squals.is_static) {
         midgen_dynpush(diags, this_outside_nonstatic_method_err(expr->tok));
         goto invalid_this;
     }
