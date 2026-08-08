@@ -268,7 +268,7 @@ void midlit_tagged_fprint(FILE *out, const struct midlit_TaggedValue *val)
         break;
 
     case MIDLIT_VALUE_STRUCT:
-        MID_CRASH("printing structs not implemented yet");
+        midsema_fprint_structlit(out, &val->v.struct_);
         break;
 
     case MIDLIT_VALUE_UNION:

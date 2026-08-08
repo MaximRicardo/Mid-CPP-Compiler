@@ -105,7 +105,7 @@ struct midpar_ASTNode *midsema_find_field(const struct midpar_Class *self,
         } else if (child->type == MIDPAR_ASTNODETYPE_CLASS &&
                    child->class_.var) {
             struct midpar_VarDeclInst *inst =
-                midpar_decl_inst_of_name(&child->var_decl, name);
+                midpar_decl_inst_of_name(child->class_.var, name);
             if (inst)
                 return MIDPAR_GET_NODE(inst);
         } else if (child->type == MIDPAR_ASTNODETYPE_FUNC_DECL) {
@@ -630,15 +630,11 @@ static bool default_init_class_inst(const struct midpar_VarDeclInst *inst,
 {
     struct midpar_Class *inst_class =
         &midsema_deref_identptr(&inst->type.named)->def->class_;
-    if (!midsema_class_has_constexpr_default_ctor(inst_class))
-        return false;
 
     assert(inst_class->type != MIDPAR_CLASSTYPE_UNION);
     out_val->kind = MIDLIT_VALUE_STRUCT;
-    assert(
-        midsema_constexpr_default_init_struct(inst_class, &out_val->v.struct_));
-
-    return true;
+    return midsema_constexpr_default_init_struct(inst_class,
+                                                 &out_val->v.struct_);
 }
 
 static bool get_default_memb_init_value(const struct midpar_Class *self,

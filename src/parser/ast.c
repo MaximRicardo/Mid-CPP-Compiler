@@ -49,6 +49,7 @@ void midpar_ASTNode_deinit(struct midpar_ASTNode *self)
         break;
 
     case MIDPAR_ASTNODETYPE_FUNC_MEMB_INIT:
+        midpar_FuncMemberInit_deinit(&self->memb_init);
         break;
 
     case MIDPAR_ASTNODETYPE_ENUM:

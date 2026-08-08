@@ -21,6 +21,10 @@ void midsema_StructLit_deinit(struct midsema_StructLit *self);
 // out_val        - can not be NULL
 bool midsema_constexpr_default_init_struct(struct midpar_Class *struct_,
                                            struct midsema_StructLit *out_val);
+// indent is measured in spaces
+void midsema_fprint_struclit_w_indent(FILE *out,
+                                      const struct midsema_StructLit *self,
+                                      int indent);
 void midsema_fprint_structlit(FILE *out, const struct midsema_StructLit *self);
 void midsema_print_structlit(const struct midsema_StructLit *self);
 

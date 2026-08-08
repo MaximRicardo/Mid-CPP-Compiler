@@ -40,6 +40,7 @@ struct midpar_FuncMemberInit {
 midgen_dynarray_struct_named(midpar_FuncMemberInitPVec,
                              struct midpar_FuncMemberInit *);
 
+void midpar_FuncMemberInit_deinit(struct midpar_FuncMemberInit *self);
 void midpar_copy_func_memb_init(struct midpar_FuncMemberInit *dest,
                                 const struct midpar_FuncMemberInit *src);
 
@@ -76,10 +77,6 @@ midpar_parse_func_params(const struct midlex_Token *toks, mid_isize lparen,
                          struct midsema_Scope *scope, bool add_to_scope,
                          bool *out_variadic, struct midpar_Allocators *allocs,
                          struct mid_DiagVec *diags);
-mid_isize midpar_parse_func_quals(const struct midlex_Token *toks,
-                                  mid_isize start,
-                                  struct midpar_FuncQuals *out_quals,
-                                  bool is_constexpr, struct mid_DiagVec *diags);
 // skip_def -  if true, the func definition won't be parsed, but def_start will
 //             still be set to the first token of the definition and has_def
 //             will still be set to true if there is a definition. used by
@@ -96,10 +93,11 @@ mid_isize midpar_parse_tor(struct midpar_FuncDecl *self,
                            struct midpar_Allocators *allocs,
                            struct mid_DiagVec *diags);
 
-// returns the idx of the closing curly bracket
+// returns the idx of the closing curly bracket or semicolon marking the end
+// of the function
 mid_isize midpar_parse_func_body(struct midpar_FuncDecl *self,
                                  const struct midlex_Token *toks,
-                                 mid_isize lcurly,
+                                 mid_isize start,
                                  struct midpar_Allocators *allocs,
                                  struct mid_DiagVec *diags);
 
