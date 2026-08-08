@@ -53,6 +53,7 @@ void midpar_copy_class(struct midpar_Class *dest,
                        struct midsema_Scope *dest_scope,
                        struct midpar_Allocators *allocs);
 struct midsema_Scope *midpar_class_parent(const struct midpar_Class *self);
+struct midsema_Scope *midpar_class_scope(const struct midpar_Class *self);
 // returns the end of the class
 mid_isize midpar_parse_class(struct midpar_Class *self,
                              struct midsema_Scope *scope,

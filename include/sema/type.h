@@ -62,6 +62,12 @@ struct mid_APInt midsema_integral_min(enum midpar_TypeSpec spec);
 int32_t midsema_typespec_conv_rank(enum midpar_TypeSpec spec);
 enum midpar_TypeSpec midsema_integral_prom(enum midpar_TypeSpec spec);
 
+// returns true on success, returns false if the type isn't constexpr default
+// constructible.
+// out_val        - must not be NULL.
+bool midsema_constexpr_default_init_type(const struct midpar_Type *type,
+                                         struct midlit_TaggedValue *out_val);
+
 #ifdef __cplusplus
 }
 #endif

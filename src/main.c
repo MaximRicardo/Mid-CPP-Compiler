@@ -13,8 +13,10 @@
 #include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/ast_log.h"
+#include "parser/class.h"
 #include "parser/type.h"
 #include "position.h"
+#include "sema/class_lit.h"
 #include "sema/scope.h"
 #include "symbol.h"
 #include "types.h"
@@ -172,6 +174,17 @@ static void init_modules()
     midtype_init_module();
 }
 
+static void test_struct_lits(struct midpar_ASTNode *root)
+{
+    assert(root->root.arr[0]->type == MIDPAR_ASTNODETYPE_CLASS);
+    struct midpar_Class *class = &root->root.arr[0]->class_;
+
+    struct midsema_StructLit lit;
+    assert(midsema_constexpr_default_init_struct(class, &lit));
+
+    midsema_StructLit_deinit(&lit);
+}
+
 int main(int argc, char **argv)
 {
     // enables unicode
@@ -220,15 +233,7 @@ int main(int argc, char **argv)
     if (midcmd_get_args()->ast_out)
         log_ast(midcmd_get_args()->ast_out, &root);
 
-    /*
-    struct midpar_Expr *expr = &root.root.arr[0]->expr;
-    printf("is constexpr = %d\n", midsema_expr_is_constexpr(expr));
-    auto value = midsema_eval_expr(expr, &scope);
-    printf("value kind = %d\n", value.kind);
-    printf("value = ");
-    midlit_tagged_print(&value);
-    printf("\n");
-    */
+    test_struct_lits(&root);
 
     /*
     test_mangling(&scope);

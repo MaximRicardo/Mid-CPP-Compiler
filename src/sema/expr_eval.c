@@ -188,6 +188,15 @@ static void convert_value(struct midlit_TaggedValue *val,
 
         case MIDLIT_VALUE_STR:
             MID_CRASH("can't convert integer to string");
+
+        case MIDLIT_VALUE_ARRAY:
+            MID_CRASH("can't convert float to array");
+
+        case MIDLIT_VALUE_STRUCT:
+            MID_CRASH("can't convert float to struct");
+
+        case MIDLIT_VALUE_UNION:
+            MID_CRASH("can't convert float to union");
         }
         break;
 
@@ -208,11 +217,37 @@ static void convert_value(struct midlit_TaggedValue *val,
 
         case MIDLIT_VALUE_STR:
             MID_CRASH("can't convert float to string");
+
+        case MIDLIT_VALUE_ARRAY:
+            MID_CRASH("can't convert float to array");
+
+        case MIDLIT_VALUE_STRUCT:
+            MID_CRASH("can't convert float to struct");
+
+        case MIDLIT_VALUE_UNION:
+            MID_CRASH("can't convert float to union");
         }
         break;
 
     case MIDLIT_VALUE_STR:
-        MID_CRASH("can't convert strings");
+        if (new_kind != MIDLIT_VALUE_STR)
+            MID_CRASH("can't convert strings");
+        break;
+
+    case MIDLIT_VALUE_ARRAY:
+        if (new_kind != MIDLIT_VALUE_ARRAY)
+            MID_CRASH("can't convert structs");
+        break;
+
+    case MIDLIT_VALUE_STRUCT:
+        if (new_kind != MIDLIT_VALUE_STRUCT)
+            MID_CRASH("can't convert structs");
+        break;
+
+    case MIDLIT_VALUE_UNION:
+        if (new_kind != MIDLIT_VALUE_UNION)
+            MID_CRASH("can't convert unions");
+        break;
     }
 
     val->kind = new_kind;

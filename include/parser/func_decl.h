@@ -31,10 +31,23 @@ struct midpar_FuncQuals {
     bool is_default; // void f() = default;
 };
 
+// represents a member intializer in a ctor
+struct midpar_FuncMemberInit {
+    const char *name;
+    struct midpar_Expr *inits;
+    mid_isize n_inits;
+};
+midgen_dynarray_struct_named(midpar_FuncMemberInitPVec,
+                             struct midpar_FuncMemberInit *);
+
+void midpar_copy_func_memb_init(struct midpar_FuncMemberInit *dest,
+                                const struct midpar_FuncMemberInit *src);
+
 struct midpar_FuncDecl {
     struct midpar_Type ret;
     struct midpar_VarDeclPVec params;
     struct midpar_ASTNodePVec nodes;
+    struct midpar_FuncMemberInitPVec memb_inits; // only used by ctors
     const char *name;
     struct midsema_Scope *param_scope;
     const struct midlex_Token *def_start; // points to the left curly '{'

@@ -1,12 +1,49 @@
 #include "sema/class.h"
+#include "generics/dynarray.h"
+#include "ints.h"
+#include "literal.h"
 #include "macros.h"
 #include "parser/ast.h"
+#include "parser/class.h"
+#include "parser/func_decl.h"
+#include "parser/var_decl.h"
+#include "sema/class_lit.h"
+#include "sema/expr_eval.h"
 #include "sema/func.h"
+#include "sema/ident.h"
 #include "sema/type.h"
+#include <string.h>
+
+static const struct midpar_ASTNode *
+get_base_child_const(const struct midpar_Class *parent,
+                     const struct midpar_ASTNode *child)
+{
+    if (child->type == MIDPAR_ASTNODETYPE_VAR_DECL_INST) {
+        child = child->parent;
+        assert(child->type == MIDPAR_ASTNODETYPE_VAR_DECL);
+        assert(child->parent->type == MIDPAR_ASTNODETYPE_CLASS);
+
+        if (child->parent != MIDPAR_GET_NODE(parent)) {
+            // child is part of a nested class with a built in var decl like
+            // this:
+            // class Parent {
+            //     class Nested {
+            //         ...
+            //     } child;
+            // };
+            child = child->parent;
+            assert(child->parent == MIDPAR_GET_NODE(parent));
+        }
+    }
+
+    return child;
+}
 
 bool midsema_is_field_pub(const struct midpar_Class *self,
                           const struct midpar_ASTNode *child)
 {
+    child = get_base_child_const(self, child);
+
     for (mid_isize i = 0; i < self->pub_childs.len; ++i) {
         if (child == self->pub_childs.arr[i])
             return true;
@@ -18,6 +55,8 @@ bool midsema_is_field_pub(const struct midpar_Class *self,
 bool midsema_is_field_priv(const struct midpar_Class *self,
                            const struct midpar_ASTNode *child)
 {
+    child = get_base_child_const(self, child);
+
     for (mid_isize i = 0; i < self->priv_childs.len; ++i) {
         if (child == self->priv_childs.arr[i])
             return true;
@@ -29,6 +68,8 @@ bool midsema_is_field_priv(const struct midpar_Class *self,
 bool midsema_is_field_prot(const struct midpar_Class *self,
                            const struct midpar_ASTNode *child)
 {
+    child = get_base_child_const(self, child);
+
     for (mid_isize i = 0; i < self->prot_childs.len; ++i) {
         if (child == self->prot_childs.arr[i])
             return true;
@@ -50,25 +91,58 @@ enum midpar_ClassAccess midsema_field_access(const struct midpar_Class *self,
         MID_CRASH("child isn't in class");
 }
 
-mid_isize midsema_find_field(const struct midpar_Class *self, const char *name)
+struct midpar_ASTNode *midsema_find_field(const struct midpar_Class *self,
+                                          const char *name)
 {
     for (mid_isize i = 0; i < self->childs.len; ++i) {
         auto child = self->childs.arr[i];
 
-        if (child->type != MIDPAR_ASTNODETYPE_VAR_DECL &&
-            child->type != MIDPAR_ASTNODETYPE_FUNC_DECL)
-            continue;
-
         if (child->type == MIDPAR_ASTNODETYPE_VAR_DECL) {
-            if (midpar_decl_inst_of_name(&child->var_decl, name))
-                return i;
-        } else {
+            struct midpar_VarDeclInst *inst =
+                midpar_decl_inst_of_name(&child->var_decl, name);
+            if (inst)
+                return MIDPAR_GET_NODE(inst);
+        } else if (child->type == MIDPAR_ASTNODETYPE_CLASS &&
+                   child->class_.var) {
+            struct midpar_VarDeclInst *inst =
+                midpar_decl_inst_of_name(&child->var_decl, name);
+            if (inst)
+                return MIDPAR_GET_NODE(inst);
+        } else if (child->type == MIDPAR_ASTNODETYPE_FUNC_DECL) {
             if (!strcmp(child->func_decl.name, name))
-                return i;
+                return child;
         }
     }
 
-    return -1;
+    return nullptr;
+}
+
+static void add_if_nonstatic_dfield(struct midpar_VarDeclInstPVec *dfields,
+                                    struct midpar_ASTNode *field)
+{
+    struct midpar_VarDecl *decl = nullptr;
+    if (field->type == MIDPAR_ASTNODETYPE_VAR_DECL)
+        decl = &field->var_decl;
+    else if (field->type == MIDPAR_ASTNODETYPE_CLASS)
+        decl = field->class_.var;
+
+    if (!decl || decl->insts.arr[0]->type.squals.is_static)
+        return;
+
+    for (mid_isize i = 0; i < decl->insts.len; ++i)
+        midgen_dynpush(dfields, decl->insts.arr[i]);
+}
+
+struct midpar_VarDeclInstPVec
+midsema_nonstatic_dfields(const struct midpar_Class *self)
+{
+    struct midpar_VarDeclInstPVec dfields = {};
+
+    for (mid_isize i = 0; i < self->childs.len; ++i) {
+        add_if_nonstatic_dfield(&dfields, self->childs.arr[i]);
+    }
+
+    return dfields;
 }
 
 struct midpar_FuncDecl *
@@ -414,9 +488,19 @@ bool decl_has_initializer(const struct midpar_VarDecl *decl)
     return false;
 }
 
+static bool default_ctor_has_memb_inits(const struct midpar_Class *self)
+{
+    const struct midpar_FuncDecl *ctor = midsema_class_default_ctor(self);
+    if (!ctor)
+        return false;
+
+    return ctor->memb_inits.len > 0;
+}
+
 bool midsema_has_default_memb_initializers(const struct midpar_Class *self)
 {
-    // TODO: check the default constructor's initializer list when i add those
+    if (default_ctor_has_memb_inits(self))
+        return true;
 
     for (mid_isize i = 0; i < self->childs.len; ++i) {
         const struct midpar_ASTNode *child = self->childs.arr[i];
@@ -539,4 +623,99 @@ bool midsema_has_trivial_default_ctor(const struct midpar_Class *self)
         return false;
 
     return midsema_class_is_trivially_constructible(self);
+}
+
+static bool default_init_class_inst(const struct midpar_VarDeclInst *inst,
+                                    struct midlit_TaggedValue *out_val)
+{
+    struct midpar_Class *inst_class =
+        &midsema_deref_identptr(&inst->type.named)->def->class_;
+    if (!midsema_class_has_constexpr_default_ctor(inst_class))
+        return false;
+
+    assert(inst_class->type != MIDPAR_CLASSTYPE_UNION);
+    out_val->kind = MIDLIT_VALUE_STRUCT;
+    assert(
+        midsema_constexpr_default_init_struct(inst_class, &out_val->v.struct_));
+
+    return true;
+}
+
+static bool get_default_memb_init_value(const struct midpar_Class *self,
+                                        const char *name,
+                                        struct midlit_TaggedValue *out_val)
+{
+    const struct midpar_ASTNode *field = midsema_find_field(self, name);
+    assert(field);
+
+    if (field->type != MIDPAR_ASTNODETYPE_VAR_DECL_INST)
+        return false;
+
+    const struct midpar_VarDeclInst *inst = &field->var_inst;
+
+    // TODO: add support for calling constructors for a field's default value
+    if (inst->has_ctor) {
+        MID_CRASH("calling constructors for a field's default value isn't "
+                  "supported yet");
+    } else if (inst->init.expr) {
+        if (!inst->init.expr->constant)
+            return false;
+        *out_val = midsema_eval_expr(inst->init.expr, midpar_class_scope(self));
+    } else {
+        // primitive types without an explicit initalizer are undefined
+        if (!midsema_type_is_class_or_union(&inst->type))
+            return false;
+
+        return default_init_class_inst(inst, out_val);
+    }
+
+    return true;
+}
+
+static bool get_ctor_init_value(const struct midpar_Class *self,
+                                const struct midpar_FuncMemberInit *init,
+                                struct midlit_TaggedValue *out_val)
+{
+    const struct midpar_ASTNode *field = midsema_find_field(self, init->name);
+    const struct midpar_VarDeclInst *inst = &field->var_inst;
+
+    if (init->n_inits == 0)
+        return midsema_constexpr_default_init_type(&inst->type, out_val);
+
+    MID_CRASH(
+        "calling constructors for a field's default value isn't supported yet");
+}
+
+static bool get_default_ctor_init_list_value(const struct midpar_Class *self,
+                                             const char *name,
+                                             struct midlit_TaggedValue *out_val)
+{
+    const struct midpar_FuncDecl *ctor = midsema_class_default_ctor(self);
+    if (!ctor || !ctor->quals.is_constexpr)
+        return false;
+
+    for (mid_isize i = 0; i < ctor->memb_inits.len; ++i) {
+        const struct midpar_FuncMemberInit *init = ctor->memb_inits.arr[i];
+
+        if (!strcmp(init->name, name))
+            return get_ctor_init_value(self, init, out_val);
+    }
+
+    return false;
+}
+
+bool midsema_field_default_value(const struct midpar_Class *self,
+                                 const char *name,
+                                 struct midlit_TaggedValue *out_val)
+{
+    if (get_default_ctor_init_list_value(self, name, out_val))
+        return true;
+
+    return get_default_memb_init_value(self, name, out_val);
+}
+
+bool midsema_class_has_constexpr_default_ctor(const struct midpar_Class *self)
+{
+    const struct midpar_FuncDecl *ctor = midsema_class_default_ctor(self);
+    return ctor && ctor->quals.is_constexpr;
 }

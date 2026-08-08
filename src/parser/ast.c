@@ -48,6 +48,9 @@ void midpar_ASTNode_deinit(struct midpar_ASTNode *self)
         midpar_FuncDecl_deinit(&self->func_decl);
         break;
 
+    case MIDPAR_ASTNODETYPE_FUNC_MEMB_INIT:
+        break;
+
     case MIDPAR_ASTNODETYPE_ENUM:
         midpar_Enum_deinit(&self->enum_);
         break;
@@ -104,6 +107,10 @@ void midpar_copy_node(struct midpar_ASTNode *dest,
     case MIDPAR_ASTNODETYPE_FUNC_DECL:
         midpar_copy_func_decl(&dest->func_decl, &src->func_decl, dest_scope,
                               allocs);
+        break;
+
+    case MIDPAR_ASTNODETYPE_FUNC_MEMB_INIT:
+        midpar_copy_func_memb_init(&dest->memb_init, &src->memb_init);
         break;
 
     case MIDPAR_ASTNODETYPE_CLASS:

@@ -42,7 +42,18 @@ void midpar_FuncDecl_deinit(struct midpar_FuncDecl *self)
 {
     midgen_dyndeinit(&self->nodes);
     midgen_dyndeinit(&self->params);
+    midgen_dyndeinit(&self->memb_inits);
     midpar_Type_deinit(&self->ret);
+}
+
+void midpar_copy_func_memb_init(struct midpar_FuncMemberInit *dest,
+                                const struct midpar_FuncMemberInit *src)
+{
+    *dest = *src;
+
+    dest->inits = mid_malloc(src->n_inits * sizeof(*dest->inits));
+    for (mid_isize i = 0; i < src->n_inits; ++i)
+        dest->inits[i] = midpar_copy_expr(&src->inits[i]);
 }
 
 void midpar_copy_func_decl(struct midpar_FuncDecl *dest,

@@ -1,11 +1,14 @@
 #pragma once
 
+// TODO: move this into the sema module
+
 #include "apfloat.h"
 #include "apint.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token_type.h"
 #include "parser/expr_type.h"
+#include "sema/class_lit.h"
 #include "types.h"
 #include <uchar.h>
 
@@ -38,11 +41,24 @@ mid_isize midlit_strlit_len(const struct midlit_String *strlit);
 void midlit_fprint_strlit(FILE *out, const struct midlit_String *self);
 void midlit_print_strlit(const struct midlit_String *self);
 
+struct midlit_Array {
+    struct midlit_TaggedValue *elems;
+    uint_least64_t len;
+};
+
+void midlit_Array_deinit(struct midlit_Array *self);
+struct midlit_Array midlit_copy_array(const struct midlit_Array *src);
+void midlit_fprint_array(FILE *out, const struct midlit_Array *self);
+void midlit_print_array(const struct midlit_Array *self);
+
 enum midlit_ValueKind {
     MIDLIT_VALUE_SIGNED_INT,
     MIDLIT_VALUE_UNSIGNED_INT,
     MIDLIT_VALUE_FLOAT,
     MIDLIT_VALUE_STR,
+    MIDLIT_VALUE_ARRAY,
+    MIDLIT_VALUE_STRUCT,
+    MIDLIT_VALUE_UNION,
 };
 
 union midlit_Value {
@@ -50,8 +66,13 @@ union midlit_Value {
     struct mid_APInt i;
     struct mid_APFloat flt;
 
-    // strings
     struct midlit_String str;
+
+    struct midlit_Array arr;
+
+    // classes
+    struct midsema_StructLit struct_;
+    struct midsema_UnionLit union_;
 };
 midgen_dynarray_struct_named(midlit_ValueVec, union midlit_Value);
 

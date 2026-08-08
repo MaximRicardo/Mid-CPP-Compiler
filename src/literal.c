@@ -4,13 +4,23 @@
 #include "ints.h"
 #include "lexer/token_type.h"
 #include "macros.h"
+#include "mid_alloc.h"
 #include "parser/expr_type.h"
+#include "sema/class_lit.h"
 #include "types.h"
 #include "utf8.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <wchar.h>
+
+void midlit_Array_deinit(struct midlit_Array *self)
+{
+    for (uint_least64_t i = 0; i < self->len; ++i) {
+        midlit_TaggedValue_deinit(&self->elems[i]);
+    }
+    free(self->elems);
+}
 
 void midlit_Value_deinit(union midlit_Value *self, enum midlit_ValueKind kind)
 {
@@ -26,12 +36,36 @@ void midlit_Value_deinit(union midlit_Value *self, enum midlit_ValueKind kind)
 
     case MIDLIT_VALUE_STR:
         MID_CRASH("string literals are deinit-ed by the str lits table");
+        break;
+
+    case MIDLIT_VALUE_ARRAY:
+        midlit_Array_deinit(&self->arr);
+        break;
+
+    case MIDLIT_VALUE_STRUCT:
+        midsema_StructLit_deinit(&self->struct_);
+        break;
+
+    case MIDLIT_VALUE_UNION:
+        midsema_UnionLit_deinit(&self->union_);
+        break;
     }
 }
 
 void midlit_TaggedValue_deinit(struct midlit_TaggedValue *self)
 {
     midlit_Value_deinit(&self->v, self->kind);
+}
+
+struct midlit_Array midlit_copy_array(const struct midlit_Array *src)
+{
+    struct midlit_Array dest = *src;
+    dest.elems = mid_malloc(src->len * sizeof(*dest.elems));
+
+    for (uint_least64_t i = 0; i < src->len; ++i)
+        dest.elems[i] = midlit_copy_value(&src->elems[i]);
+
+    return dest;
 }
 
 struct midlit_TaggedValue
@@ -51,6 +85,18 @@ midlit_copy_value(const struct midlit_TaggedValue *src)
 
     case MIDLIT_VALUE_STR:
         ret.v.str = src->v.str;
+        break;
+
+    case MIDLIT_VALUE_ARRAY:
+        ret.v.arr = midlit_copy_array(&src->v.arr);
+        break;
+
+    case MIDLIT_VALUE_STRUCT:
+        MID_CRASH("copying struct values not implemented yet");
+        break;
+
+    case MIDLIT_VALUE_UNION:
+        MID_CRASH("copying union values not implemented yet");
         break;
     }
 
@@ -180,6 +226,24 @@ void midlit_print_strlit(const struct midlit_String *self)
     midlit_fprint_strlit(stdout, self);
 }
 
+void midlit_fprint_array(FILE *out, const struct midlit_Array *self)
+{
+    fprintf(out, "{");
+
+    for (uint_least64_t i = 0; i < self->len; ++i) {
+        if (i > 0)
+            fprintf(out, ", ");
+        midlit_tagged_fprint(out, &self->elems[i]);
+    }
+
+    fprintf(out, "}");
+}
+
+void midlit_print_array(const struct midlit_Array *self)
+{
+    midlit_fprint_array(stdout, self);
+}
+
 void midlit_tagged_fprint(FILE *out, const struct midlit_TaggedValue *val)
 {
     switch (val->kind) {
@@ -197,6 +261,18 @@ void midlit_tagged_fprint(FILE *out, const struct midlit_TaggedValue *val)
 
     case MIDLIT_VALUE_STR:
         midlit_fprint_strlit(out, &val->v.str);
+        break;
+
+    case MIDLIT_VALUE_ARRAY:
+        midlit_fprint_array(out, &val->v.arr);
+        break;
+
+    case MIDLIT_VALUE_STRUCT:
+        MID_CRASH("printing structs not implemented yet");
+        break;
+
+    case MIDLIT_VALUE_UNION:
+        MID_CRASH("printing unions not implemented yet");
         break;
     }
 }

@@ -25,6 +25,7 @@ enum midpar_ASTNodeType {
     MIDPAR_ASTNODETYPE_VAR_DECL,
     MIDPAR_ASTNODETYPE_VAR_DECL_INST,
     MIDPAR_ASTNODETYPE_FUNC_DECL,
+    MIDPAR_ASTNODETYPE_FUNC_MEMB_INIT,
     MIDPAR_ASTNODETYPE_CLASS,
     MIDPAR_ASTNODETYPE_ENUM,
     MIDPAR_ASTNODETYPE_NAMESPACE,
@@ -41,6 +42,7 @@ struct midpar_ASTNode {
         struct midpar_VarDecl var_decl;
         struct midpar_VarDeclInst var_inst;
         struct midpar_FuncDecl func_decl;
+        struct midpar_FuncMemberInit memb_init;
         struct midpar_Class class_;
         struct midpar_Enum enum_;
         struct midpar_Namespace nmspace;

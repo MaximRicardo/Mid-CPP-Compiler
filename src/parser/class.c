@@ -103,6 +103,13 @@ struct midsema_Scope *midpar_class_parent(const struct midpar_Class *self)
     return self->ident.parent;
 }
 
+struct midsema_Scope *midpar_class_scope(const struct midpar_Class *self)
+{
+    const struct midsema_Ident *ident = midsema_deref_identptr(&self->ident);
+    assert(ident->class_info.def_scope);
+    return ident->class_info.def_scope;
+}
+
 // parses the inheritance part of a class
 // class SuperHuman : Human { ... };
 //                  ^       ^

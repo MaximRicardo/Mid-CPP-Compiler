@@ -1052,8 +1052,8 @@ static void typecheck_memb_sel(struct midpar_Expr *expr,
     const struct midpar_Class *class_ =
         &midsema_deref_identptr(&lhs->ret.named)->decl->class_;
     const char *field_name = rhs->info.ident;
-    mid_isize field_idx = midsema_find_field(class_, field_name);
-    if (field_idx == -1) {
+    const struct midpar_ASTNode *field = midsema_find_field(class_, field_name);
+    if (!field) {
         midgen_dynpush(diags,
                        unknown_field_err(field_name, class_->name,
                                          class_->type == MIDPAR_CLASSTYPE_UNION,
@@ -1061,13 +1061,12 @@ static void typecheck_memb_sel(struct midpar_Expr *expr,
         return;
     }
 
-    auto field = class_->childs.arr[field_idx];
-
     if (field->type == MIDPAR_ASTNODETYPE_VAR_DECL) {
         expr->ret = midpar_copy_type(
             &midpar_decl_inst_of_name(&field->var_decl, field_name)->type);
         expr->valtype = MIDPAR_EXPRVALUE_LVALUE;
     } else {
+        assert(field->type == MIDPAR_ASTNODETYPE_FUNC_DECL);
         expr->ret = midpar_create_func_type(
             midsema_deref_identptr(&class_->ident)->class_info.def_scope,
             field->func_decl.name);

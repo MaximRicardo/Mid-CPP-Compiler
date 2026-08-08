@@ -1,9 +1,18 @@
 #include "sema/type.h"
+#include "apint.h"
+#include "cmd.h"
 #include "dynstr.h"
+#include "ints.h"
+#include "literal.h"
 #include "macros.h"
+#include "mid_alloc.h"
 #include "parser/ast.h"
+#include "parser/class.h"
+#include "parser/type.h"
 #include "sema/class.h"
+#include "sema/ident.h"
 #include "sema/scope.h"
+#include "types.h"
 
 bool midsema_is_typespec_typecheckable(enum midpar_TypeSpec spec)
 {
@@ -859,4 +868,110 @@ bool midsema_type_has_trivial_default_ctor(const struct midpar_Type *type)
         return false;
     else
         return true;
+}
+
+bool constexpr_default_init_arr(const struct midpar_Type *type,
+                                struct midlit_Array *out_val)
+{
+    out_val->len = type->array->len;
+    out_val->elems = mid_malloc(out_val->len * sizeof(*out_val->elems));
+
+    if (out_val->len == 0)
+        return true;
+
+    if (!midsema_constexpr_default_init_type(&type->array->elem,
+                                             &out_val->elems[0])) {
+        free(out_val->elems);
+        return false;
+    }
+
+    for (uint_least64_t i = 1; i < out_val->len; ++i) {
+        out_val->elems[i] = midlit_copy_value(&out_val->elems[0]);
+    }
+
+    return true;
+}
+
+bool midsema_constexpr_default_init_type(const struct midpar_Type *type,
+                                         struct midlit_TaggedValue *out_val)
+{
+    if (midsema_type_is_ref(type)) {
+        return false;
+    } else if (midsema_n_indir(type) > 0) {
+        out_val->kind = MIDLIT_VALUE_UNSIGNED_INT;
+        out_val->v.i = midint_zero(midtype_ptr_size * 8);
+        return true;
+    }
+
+    out_val->kind = midsema_type_lit_value_kind(type);
+
+    switch (type->spec) {
+    case MIDPAR_TYPESPEC_CHAR:
+    case MIDPAR_TYPESPEC_SCHAR:
+    case MIDPAR_TYPESPEC_UCHAR:
+        out_val->v.i = midint_zero(midtype_char_size * 8);
+        break;
+
+    case MIDPAR_TYPESPEC_WCHAR:
+        out_val->v.i = midint_zero(midtype_wchar_size * 8);
+        break;
+
+    case MIDPAR_TYPESPEC_CHAR16:
+        out_val->v.i = midint_zero(16);
+        break;
+
+    case MIDPAR_TYPESPEC_CHAR32:
+        out_val->v.i = midint_zero(32);
+        break;
+
+    case MIDPAR_TYPESPEC_SHORT:
+    case MIDPAR_TYPESPEC_USHORT:
+        out_val->v.i = midint_zero(midtype_short_size);
+        break;
+
+    case MIDPAR_TYPESPEC_INT:
+    case MIDPAR_TYPESPEC_UINT:
+        out_val->v.i = midint_zero(midtype_int_size);
+        break;
+
+    case MIDPAR_TYPESPEC_LONG:
+    case MIDPAR_TYPESPEC_ULONG:
+        out_val->v.i = midint_zero(midtype_long_size);
+        break;
+
+    case MIDPAR_TYPESPEC_LONGLONG:
+    case MIDPAR_TYPESPEC_ULONGLONG:
+        out_val->v.i = midint_zero(midtype_longlong_size);
+        break;
+
+    case MIDPAR_TYPESPEC_FLOAT:
+        out_val->v.flt =
+            midflt_init(0.0, midtype_float_kind, midcmd_get_fpu()->rmode);
+        break;
+
+    case MIDPAR_TYPESPEC_DOUBLE:
+        out_val->v.flt =
+            midflt_init(0.0, midtype_double_kind, midcmd_get_fpu()->rmode);
+        break;
+
+    case MIDPAR_TYPESPEC_LONGDOUBLE:
+        out_val->v.flt =
+            midflt_init(0.0, midtype_longdouble_kind, midcmd_get_fpu()->rmode);
+        break;
+
+    case MIDPAR_TYPESPEC_ARRAY:
+        return constexpr_default_init_arr(type, &out_val->v.arr);
+
+    case MIDPAR_TYPESPEC_CLASS: {
+        struct midpar_Class *class =
+            &midsema_deref_identptr(&type->named)->def->class_;
+        return midsema_constexpr_default_init_struct(class,
+                                                     &out_val->v.struct_);
+    }
+
+    default:
+        MID_CRASH("can't default initialize type");
+    }
+
+    return true;
 }
