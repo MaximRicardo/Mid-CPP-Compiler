@@ -44,6 +44,30 @@ bool midsema_constexpr_default_init_struct(struct midpar_Class *struct_,
     return !failed;
 }
 
+void midsema_fprint_structlit(FILE *out, const struct midsema_StructLit *self)
+{
+    struct midpar_VarDeclInstPVec dfields =
+        midsema_nonstatic_dfields(self->class_);
+
+    fprintf(out, "struct '%s' {\n",
+            self->class_->name ? self->class_->name : "(anonymous)");
+
+    for (mid_isize i = 0; i < dfields.len; ++i) {
+        fprintf(out, "\t'%s' = ", dfields.arr[i]->name);
+        midlit_tagged_fprint(out, &self->dfields[i]);
+        fprintf(out, "\n");
+    }
+
+    fprintf(out, "}");
+
+    midgen_dyndeinit(&dfields);
+}
+
+void midsema_print_structlit(const struct midsema_StructLit *self)
+{
+    midsema_fprint_structlit(stdout, self);
+}
+
 struct midlit_TaggedValue *
 midsema_structlit_find_field(const struct midsema_StructLit *self,
                              const char *name)

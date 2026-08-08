@@ -182,6 +182,9 @@ static void test_struct_lits(struct midpar_ASTNode *root)
     struct midsema_StructLit lit;
     assert(midsema_constexpr_default_init_struct(class, &lit));
 
+    midsema_print_structlit(&lit);
+    printf("\n");
+
     midsema_StructLit_deinit(&lit);
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ints.h"
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,6 +21,8 @@ void midsema_StructLit_deinit(struct midsema_StructLit *self);
 // out_val        - can not be NULL
 bool midsema_constexpr_default_init_struct(struct midpar_Class *struct_,
                                            struct midsema_StructLit *out_val);
+void midsema_fprint_structlit(FILE *out, const struct midsema_StructLit *self);
+void midsema_print_structlit(const struct midsema_StructLit *self);
 
 // returns NULL if the field couldn't be found
 struct midlit_TaggedValue *

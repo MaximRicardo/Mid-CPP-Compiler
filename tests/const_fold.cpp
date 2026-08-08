@@ -1,6 +1,7 @@
 class Class {
 public:
     int x = 10;
+    float *y = nullptr;
 };
 
 /*
