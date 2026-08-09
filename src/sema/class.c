@@ -675,7 +675,7 @@ static bool get_default_memb_init_value(const struct midpar_Class *self,
 }
 
 static bool get_ctor_init_value(const struct midpar_Class *self,
-                                const struct midpar_FuncMemberInit *init,
+                                const struct midpar_CtorMemberInit *init,
                                 struct midlit_TaggedValue *out_val)
 {
     const struct midpar_ASTNode *field = midsema_find_field(self, init->name);
@@ -697,7 +697,7 @@ static bool get_default_ctor_init_list_value(const struct midpar_Class *self,
         return false;
 
     for (mid_isize i = 0; i < ctor->memb_inits.len; ++i) {
-        const struct midpar_FuncMemberInit *init = ctor->memb_inits.arr[i];
+        const struct midpar_CtorMemberInit *init = ctor->memb_inits.arr[i];
 
         if (!strcmp(init->name, name))
             return get_ctor_init_value(self, init, out_val);

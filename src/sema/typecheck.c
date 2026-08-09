@@ -1384,7 +1384,7 @@ ctor_field_isnt_nonstatic_dmemb_err(const char *name,
     };
 }
 
-static void typecheck_ctor_memb_init(const struct midpar_FuncMemberInit *init,
+static void typecheck_ctor_memb_init(const struct midpar_CtorMemberInit *init,
                                      const struct midpar_Class *class,
                                      struct mid_DiagVec *diags)
 {

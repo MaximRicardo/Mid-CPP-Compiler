@@ -38,7 +38,7 @@ static struct mid_Diag missing_default_arg_err(const char *func,
     };
 }
 
-void midpar_FuncMemberInit_deinit(struct midpar_FuncMemberInit *self)
+void midpar_CtorMemberInit_deinit(struct midpar_CtorMemberInit *self)
 {
     for (mid_isize i = 0; i < self->n_args; ++i) {
         midpar_Expr_deinit(&self->args[i]);
@@ -54,8 +54,8 @@ void midpar_FuncDecl_deinit(struct midpar_FuncDecl *self)
     midpar_Type_deinit(&self->ret);
 }
 
-void midpar_copy_func_memb_init(struct midpar_FuncMemberInit *dest,
-                                const struct midpar_FuncMemberInit *src)
+void midpar_copy_ctor_memb_init(struct midpar_CtorMemberInit *dest,
+                                const struct midpar_CtorMemberInit *src)
 {
     *dest = *src;
 
@@ -225,7 +225,7 @@ static void set_quals_flag(const struct midlex_Token *tok,
 
 // if init is NULL then the initializer is skipped
 static midlex_TokenIter
-parse_ctor_init_exprs(struct midpar_FuncMemberInit *init,
+parse_ctor_init_exprs(struct midpar_CtorMemberInit *init,
                       struct midsema_Scope *scope, midlex_TokenIter lparen,
                       struct mid_DiagVec *diags)
 {
@@ -282,9 +282,9 @@ static midlex_TokenIter parse_ctor_init(struct midpar_FuncDecl *self,
         midgen_bumpmalloc(&allocs->ast, &node);
         node->parent = MIDPAR_GET_NODE(self);
         node->start = start;
-        node->type = MIDPAR_ASTNODETYPE_FUNC_MEMB_INIT;
+        node->type = MIDPAR_ASTNODETYPE_CTOR_MEMB_INIT;
 
-        struct midpar_FuncMemberInit *init = &node->memb_init;
+        struct midpar_CtorMemberInit *init = &node->memb_init;
         init->name = start->ident;
         end = parse_ctor_init_exprs(init, scope, lparen, diags);
 
