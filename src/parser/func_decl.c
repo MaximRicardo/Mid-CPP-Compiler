@@ -18,7 +18,6 @@
 #include "parser/scope.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
-#include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/type.h"
@@ -41,10 +40,10 @@ static struct mid_Diag missing_default_arg_err(const char *func,
 
 void midpar_FuncMemberInit_deinit(struct midpar_FuncMemberInit *self)
 {
-    for (mid_isize i = 0; i < self->n_inits; ++i) {
-        midpar_Expr_deinit(&self->inits[i]);
+    for (mid_isize i = 0; i < self->n_args; ++i) {
+        midpar_Expr_deinit(&self->args[i]);
     }
-    free(self->inits);
+    free(self->args);
 }
 
 void midpar_FuncDecl_deinit(struct midpar_FuncDecl *self)
@@ -60,9 +59,9 @@ void midpar_copy_func_memb_init(struct midpar_FuncMemberInit *dest,
 {
     *dest = *src;
 
-    dest->inits = mid_malloc(src->n_inits * sizeof(*dest->inits));
-    for (mid_isize i = 0; i < src->n_inits; ++i)
-        dest->inits[i] = midpar_copy_expr(&src->inits[i]);
+    dest->args = mid_malloc(src->n_args * sizeof(*dest->args));
+    for (mid_isize i = 0; i < src->n_args; ++i)
+        dest->args[i] = midpar_copy_expr(&src->args[i]);
 }
 
 void midpar_copy_func_decl(struct midpar_FuncDecl *dest,
@@ -224,43 +223,6 @@ static void set_quals_flag(const struct midlex_Token *tok,
     }
 }
 
-/*
-static struct mid_Diag
-ctor_init_field_doesnt_exist_err(const char *name,
-                                 const struct midlex_Token *tok)
-{
-    return (struct mid_Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = midcmd_fmt_to_str(
-            "field '%s' in constructor initializer list doesn't exist", name),
-        .err = MIDDIAG_ERR_UNKNOWN_SYMBOL,
-        .type = MIDDIAG_TYPE_ERROR,
-    };
-}
-
-static struct mid_Diag
-ctor_init_field_isnt_nonstatic_data_memb_err(const char *name,
-                                             const struct midlex_Token *tok)
-{
-    return (struct mid_Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = midcmd_fmt_to_str("field '%s' in constructor initializer list "
-                                 "isn't a non-static data member",
-                                 name),
-        .err = MIDDIAG_ERR_UNKNOWN_SYMBOL,
-        .type = MIDDIAG_TYPE_ERROR,
-    };
-}
-
-static bool field_is_nonstatic_data_memb(const struct midpar_ASTNode *field)
-{
-    return field->type == MIDPAR_ASTNODETYPE_VAR_DECL_INST &&
-           !field->var_decl.insts.arr[0]->type.squals.is_static;
-}
-*/
-
 // if init is NULL then the initializer is skipped
 static midlex_TokenIter
 parse_ctor_init_exprs(struct midpar_FuncMemberInit *init,
@@ -286,8 +248,8 @@ parse_ctor_init_exprs(struct midpar_FuncMemberInit *init,
     }
 
     if (init) {
-        init->inits = exprs.arr;
-        init->n_inits = exprs.len;
+        init->args = exprs.arr;
+        init->n_args = exprs.len;
     }
 
     if (i->type == MIDLEX_TOKENTYPE_R_PAREN)
@@ -447,71 +409,6 @@ static struct midsema_Scope *setup_def_scope(struct midpar_FuncDecl *self,
     return *def;
 }
 
-static struct mid_Diag constexpr_unsuitable_err(const char *name,
-                                                const char *reason,
-                                                const struct midlex_Token *tok)
-{
-    const char *fmt = reason
-                          ? "function '%s' is not constexpr suitable because %s"
-                          : "function '%s' is not constexpr suitable";
-
-    return (struct mid_Diag){
-        .pos = tok->pos,
-        .line = tok->line,
-        .msg = midcmd_fmt_to_str(fmt, name, reason),
-        .err = MIDDIAG_ERR_BAD_CONSTEXPR,
-        .type = MIDDIAG_TYPE_ERROR,
-    };
-}
-
-static void verify_constexpr_suitability(const struct midpar_FuncDecl *self,
-                                         struct mid_DiagVec *diags)
-{
-    auto suitability = midsema_func_constexpr_suitability(self);
-
-    switch (suitability) {
-    case MIDSEMA_FUNCCONSTEXPR_SUITABLE:
-        break;
-
-    case MIDSEMA_FUNCCONSTEXPR_NONLITERAL_RET:
-        midgen_dynpush(diags, constexpr_unsuitable_err(
-                                  self->name, "its return type is non-literal",
-                                  MIDPAR_GET_START(self)));
-        break;
-
-    case MIDSEMA_FUNCCONSTEXPR_NONLITERAL_PARAM:
-        midgen_dynpush(diags,
-                       constexpr_unsuitable_err(
-                           self->name, "it has a non-literal parameter type",
-                           MIDPAR_GET_START(self)));
-        break;
-
-    case MIDSEMA_FUNCCONSTEXPR_VIRTUAL:
-        midgen_dynpush(diags,
-                       constexpr_unsuitable_err(self->name, "it's virtual",
-                                                MIDPAR_GET_START(self)));
-        break;
-
-    case MIDSEMA_FUNCCONSTEXPR_RET_IN_CTOR:
-        midgen_dynpush(diags, constexpr_unsuitable_err(
-                                  self->name, "it has a return statement",
-                                  MIDPAR_GET_START(self)));
-        break;
-
-    case MIDSEMA_FUNCCONSTEXPR_MULTIPLE_RET:
-        midgen_dynpush(
-            diags, constexpr_unsuitable_err(self->name,
-                                            "it has multiple return statements",
-                                            MIDPAR_GET_START(self)));
-        break;
-
-    case MIDSEMA_FUNCCONSTEXPR_BAD_BODY:
-        midgen_dynpush(diags, constexpr_unsuitable_err(self->name, nullptr,
-                                                       MIDPAR_GET_START(self)));
-        break;
-    }
-}
-
 static midlex_TokenIter parse_default_or_delete(struct midpar_FuncDecl *self,
                                                 midlex_TokenIter start,
                                                 struct mid_DiagVec *diags)
@@ -560,8 +457,7 @@ midlex_TokenIter midpar_parse_func_body(struct midpar_FuncDecl *self,
         midgen_dynpush(&self->nodes, child);
     }
 
-    if (self->quals.is_constexpr)
-        verify_constexpr_suitability(self, diags);
+    midsema_typecheck_func_body(self, diags);
 
     return rcurly;
 }
@@ -1002,6 +898,9 @@ midlex_TokenIter midpar_parse_func_decl(struct midpar_FuncDecl *self,
         add_func_to_scope(res, self);
     register_default_args(self, diags);
 
+    if (!skip_def)
+        midsema_typecheck_func_decl(self, diags);
+
     if (!valid_body_start(body_start))
         return body_start;
     self->def_start = body_start;
@@ -1041,6 +940,9 @@ midpar_parse_tor(struct midpar_FuncDecl *self, midlex_TokenIter start,
         rparen + 1, &self->quals, self->quals.is_constexpr, diags);
     add_func_to_scope(c_scope, self);
     register_default_args(self, diags);
+
+    if (!skip_def)
+        midsema_typecheck_func_decl(self, diags);
 
     if (!valid_body_start(body_start))
         return body_start;

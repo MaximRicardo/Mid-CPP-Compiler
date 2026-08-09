@@ -358,11 +358,17 @@ bool midsema_class_is_literal(const struct midpar_Class *self)
 
     bool is_union = self->type == MIDPAR_CLASSTYPE_UNION;
 
-    // every non-static non-variant data members must be of non-volailte
-    // literal types
+    // every non-static non-variant data member must be of non-volatile
+    // literal type
     for (mid_isize child_i = 0; !is_union && child_i < self->childs.len;
          ++child_i) {
         const struct midpar_ASTNode *child = self->childs.arr[child_i];
+        if (child->type == MIDPAR_ASTNODETYPE_CLASS) {
+            if (!child->class_.var)
+                continue;
+            child = MIDPAR_GET_NODE(child->class_.var);
+        }
+
         if (child->type != MIDPAR_ASTNODETYPE_VAR_DECL)
             continue;
         const struct midpar_VarDecl *decl = &child->var_decl;
@@ -675,7 +681,7 @@ static bool get_ctor_init_value(const struct midpar_Class *self,
     const struct midpar_ASTNode *field = midsema_find_field(self, init->name);
     const struct midpar_VarDeclInst *inst = &field->var_inst;
 
-    if (init->n_inits == 0)
+    if (init->n_args == 0)
         return midsema_constexpr_default_init_type(&inst->type, out_val);
 
     MID_CRASH(
@@ -714,4 +720,14 @@ bool midsema_class_has_constexpr_default_ctor(const struct midpar_Class *self)
 {
     const struct midpar_FuncDecl *ctor = midsema_class_default_ctor(self);
     return ctor && ctor->quals.is_constexpr;
+}
+
+bool midsema_field_is_nonstatic_data_memb(const struct midpar_Class *self,
+                                          const char *name)
+{
+    const struct midpar_ASTNode *node = midsema_find_field(self, name);
+    if (!node || node->type != MIDPAR_ASTNODETYPE_VAR_DECL_INST)
+        return false;
+
+    return !node->var_inst.type.squals.is_static;
 }

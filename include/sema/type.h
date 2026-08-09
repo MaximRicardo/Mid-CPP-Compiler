@@ -35,6 +35,9 @@ bool midsema_type_is_array(const struct midpar_Type *type);
 bool midsema_type_is_typecheckable(const struct midpar_Type *type);
 bool midsema_type_is_trivially_constructible(const struct midpar_Type *type);
 bool midsema_type_has_trivial_default_ctor(const struct midpar_Type *type);
+bool midsema_type_is_default_constructible(const struct midpar_Type *type);
+bool midsema_type_is_constexpr_default_constructible(
+    const struct midpar_Type *type);
 bool midsema_dquals_same(const struct midpar_TypeDataQual *a, mid_isize n_a,
                          const struct midpar_TypeDataQual *b, mid_isize n_b);
 bool midsema_squals_same(const struct midpar_TypeStorQual *a,

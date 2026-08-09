@@ -23,6 +23,8 @@ midsema_field_access(const struct midpar_Class *self,
 // midpar_FuncDecl if the field is a method
 struct midpar_ASTNode *midsema_find_field(const struct midpar_Class *self,
                                           const char *name);
+bool midsema_field_is_nonstatic_data_memb(const struct midpar_Class *self,
+                                          const char *name);
 // returns an array of every non-static data field in self
 struct midpar_VarDeclInstPVec
 midsema_nonstatic_dfields(const struct midpar_Class *self);

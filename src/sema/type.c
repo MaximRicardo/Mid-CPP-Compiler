@@ -823,7 +823,7 @@ bool midsema_type_has_trivial_dtor(const struct midpar_Type *type)
     if (midsema_type_is_class_or_union(type))
         return class_type_has_trivial_dtor(type);
     else if (midsema_type_is_array(type))
-        return class_type_has_trivial_dtor(&type->array->elem);
+        return midsema_type_has_trivial_dtor(&type->array->elem);
     else
         return true;
 }
@@ -841,9 +841,8 @@ bool midsema_type_is_trivially_constructible(const struct midpar_Type *type)
 {
     if (midsema_type_is_class_or_union(type))
         return class_type_trivially_constructible(type);
-    else if (midsema_type_is_array(type) &&
-             midsema_type_is_class_or_union(&type->array->elem))
-        return class_type_trivially_constructible(&type->array->elem);
+    else if (midsema_type_is_array(type))
+        return midsema_type_is_trivially_constructible(&type->array->elem);
     else
         return true;
 }
@@ -857,13 +856,57 @@ static bool class_type_has_trivial_default_ctor(const struct midpar_Type *type)
     return midsema_has_trivial_default_ctor(&ident->def->class_);
 }
 
+static bool class_type_has_default_ctor(const struct midpar_Type *type)
+{
+    const struct midsema_Ident *ident = midsema_deref_identptr(&type->named);
+    assert(ident->def);
+    assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
+
+    return midsema_has_default_ctor(&ident->def->class_);
+}
+
+static bool
+class_type_has_constexpr_default_ctor(const struct midpar_Type *type)
+{
+    const struct midsema_Ident *ident = midsema_deref_identptr(&type->named);
+    assert(ident->def);
+    assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
+
+    return midsema_class_has_constexpr_default_ctor(&ident->def->class_);
+}
+
 bool midsema_type_has_trivial_default_ctor(const struct midpar_Type *type)
 {
     if (midsema_type_is_class_or_union(type))
         return class_type_has_trivial_default_ctor(type);
-    else if (midsema_type_is_array(type) &&
-             midsema_type_is_class_or_union(&type->array->elem))
-        return class_type_has_trivial_default_ctor(&type->array->elem);
+    else if (midsema_type_is_array(type))
+        return midsema_type_has_trivial_default_ctor(&type->array->elem);
+    else if (midsema_type_is_ref(type))
+        return false;
+    else
+        return true;
+}
+
+bool midsema_type_is_default_constructible(const struct midpar_Type *type)
+{
+    if (midsema_type_is_class_or_union(type))
+        return class_type_has_default_ctor(type);
+    else if (midsema_type_is_array(type))
+        return midsema_type_is_default_constructible(&type->array->elem);
+    else if (midsema_type_is_ref(type))
+        return false;
+    else
+        return true;
+}
+
+bool midsema_type_is_constexpr_default_constructible(
+    const struct midpar_Type *type)
+{
+    if (midsema_type_is_class_or_union(type))
+        return class_type_has_constexpr_default_ctor(type);
+    else if (midsema_type_is_array(type))
+        return midsema_type_is_constexpr_default_constructible(
+            &type->array->elem);
     else if (midsema_type_is_ref(type))
         return false;
     else

@@ -75,6 +75,7 @@ void midpar_copy_node(struct midpar_ASTNode *dest,
         struct midpar_VarDecl *: MIDPAR_GET_NODE_IMPL_MUT(node),               \
         struct midpar_VarDeclInst *: MIDPAR_GET_NODE_IMPL_MUT(node),           \
         struct midpar_FuncDecl *: MIDPAR_GET_NODE_IMPL_MUT(node),              \
+        struct midpar_FuncMemberInit *: MIDPAR_GET_NODE_IMPL_MUT(node),        \
         struct midpar_Class *: MIDPAR_GET_NODE_IMPL_MUT(node),                 \
         struct midpar_Enum *: MIDPAR_GET_NODE_IMPL_MUT(node),                  \
         struct midpar_Namespace *: MIDPAR_GET_NODE_IMPL_MUT(node),             \
@@ -87,6 +88,8 @@ void midpar_copy_node(struct midpar_ASTNode *dest,
         const struct midpar_VarDecl *: MIDPAR_GET_NODE_IMPL_CONST(node),       \
         const struct midpar_VarDeclInst *: MIDPAR_GET_NODE_IMPL_CONST(node),   \
         const struct midpar_FuncDecl *: MIDPAR_GET_NODE_IMPL_CONST(node),      \
+        const struct midpar_FuncMemberInit *: MIDPAR_GET_NODE_IMPL_CONST(      \
+                 node),                                                        \
         const struct midpar_Class *: MIDPAR_GET_NODE_IMPL_CONST(node),         \
         const struct midpar_Enum *: MIDPAR_GET_NODE_IMPL_CONST(node),          \
         const struct midpar_Namespace *: MIDPAR_GET_NODE_IMPL_CONST(node),     \
@@ -113,6 +116,11 @@ static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_VarDeclInst *p)
 }
 
 static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_FuncDecl *p)
+{
+    return (midpar_ASTNode *)(p);
+}
+
+static inline midpar_ASTNode *MIDPAR_GET_NODE(midpar_FuncMemberInit *p)
 {
     return (midpar_ASTNode *)(p);
 }
@@ -173,6 +181,12 @@ static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_VarDeclInst *p)
 }
 
 static inline const midpar_ASTNode *MIDPAR_GET_NODE(const midpar_FuncDecl *p)
+{
+    return (midpar_ASTNode *)(p);
+}
+
+static inline const midpar_ASTNode *
+MIDPAR_GET_NODE(const midpar_FuncMemberInit *p)
 {
     return (midpar_ASTNode *)(p);
 }

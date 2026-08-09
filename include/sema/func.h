@@ -10,6 +10,8 @@ enum midsema_FuncConstexprSuitability {
     MIDSEMA_FUNCCONSTEXPR_SUITABLE,
     MIDSEMA_FUNCCONSTEXPR_NONLITERAL_RET,
     MIDSEMA_FUNCCONSTEXPR_NONLITERAL_PARAM,
+    MIDSEMA_FUNCCONSTEXPR_NONLITERAL_CTOR, // is the ctor's parent class
+                                           // non-literal?
     MIDSEMA_FUNCCONSTEXPR_VIRTUAL,
     MIDSEMA_FUNCCONSTEXPR_RET_IN_CTOR,
     MIDSEMA_FUNCCONSTEXPR_MULTIPLE_RET,
@@ -17,7 +19,9 @@ enum midsema_FuncConstexprSuitability {
 };
 
 enum midsema_FuncConstexprSuitability
-midsema_func_constexpr_suitability(const struct midpar_FuncDecl *self);
+midsema_func_decl_constexpr_suitability(const struct midpar_FuncDecl *self);
+enum midsema_FuncConstexprSuitability
+midsema_func_body_constexpr_suitability(const struct midpar_FuncDecl *self);
 
 bool midsema_func_is_method(const struct midpar_FuncDecl *self);
 bool midsema_func_is_ctor(const struct midpar_FuncDecl *self);

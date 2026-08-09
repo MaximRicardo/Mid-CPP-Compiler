@@ -50,6 +50,7 @@ enum middiag_ErrT {
     MIDDIAG_ERR_BAD_TYPE,
     MIDDIAG_ERR_BAD_TEMPLATE,
     MIDDIAG_ERR_BAD_CONSTEXPR,
+    MIDDIAG_ERR_BAD_CTOR_MEMB_INIT_LIST,
 };
 
 enum middiag_WarnT {

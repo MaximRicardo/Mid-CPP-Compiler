@@ -34,8 +34,8 @@ struct midpar_FuncQuals {
 // represents a member intializer in a ctor
 struct midpar_FuncMemberInit {
     const char *name;
-    struct midpar_Expr *inits;
-    mid_isize n_inits;
+    struct midpar_Expr *args;
+    mid_isize n_args;
 };
 midgen_dynarray_struct_named(midpar_FuncMemberInitPVec,
                              struct midpar_FuncMemberInit *);
@@ -80,7 +80,9 @@ midpar_parse_func_params(midlex_TokenIter lparen, midlex_TokenIter *out_rparen,
 // skip_def -  if true, the func definition won't be parsed, but def_start will
 //             still be set to the first token of the definition and has_def
 //             will still be set to true if there is a definition. used by
-//             classes, which parse declarations first then definitions
+//             classes, which parse declarations first then definitions.
+//             NOTE: if skip_def is true, midsema_typecheck_func_decl is not
+//                   called
 midlex_TokenIter midpar_parse_func_decl(struct midpar_FuncDecl *self,
                                         midlex_TokenIter start,
                                         struct midsema_Scope *scope,

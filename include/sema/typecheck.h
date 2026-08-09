@@ -29,6 +29,10 @@ void midsema_typecheck_return(struct midpar_Return *self,
 void midsema_typecheck_var_decl_inst(struct midpar_VarDeclInst *inst,
                                      struct midsema_Scope *scope,
                                      struct mid_DiagVec *diags);
+void midsema_typecheck_func_decl(struct midpar_FuncDecl *func,
+                                 struct mid_DiagVec *diags);
+void midsema_typecheck_func_body(struct midpar_FuncDecl *func,
+                                 struct mid_DiagVec *diags);
 
 bool midsema_can_convert(const struct midpar_Type *src,
                          enum midpar_ExprValueType src_valtype,

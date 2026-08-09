@@ -1213,44 +1213,51 @@ static struct mid_Diag no_matching_ctor_err(const struct midpar_Type *type,
 }
 
 // returns whether or not the ctor is correct
-static bool typecheck_vdecl_class_type_ctor(struct midpar_VarDeclInst *inst)
+static struct midpar_FuncDecl *
+typecheck_class_type_ctor_call(const struct midpar_Type *type,
+                               const struct midpar_Expr *args, mid_isize n_args)
 {
-    assert(inst->has_ctor);
-
-    auto ident = midsema_deref_identptr(&inst->type.named);
-    inst->ctor.ctor =
-        midsema_find_func(ident->name, inst->ctor.args.arr, inst->ctor.args.len,
-                          ident->class_info.def_scope, true);
-
-    return inst->ctor.ctor != NULL;
+    auto ident = midsema_deref_identptr(&type->named);
+    return midsema_find_func(ident->name, args, n_args,
+                             ident->class_info.def_scope, true);
 }
 
 // returns whether or not the ctor is correct
-static bool typecheck_vdecl_generic_type_ctor(struct midpar_VarDeclInst *inst)
+static bool typecheck_generic_type_ctor_call(const struct midpar_Type *type,
+                                             const struct midpar_Expr *args,
+                                             mid_isize n_args)
 {
-    assert(inst->has_ctor);
-
-    if (inst->ctor.args.len > 1)
+    if (n_args > 1)
         return false;
+    else if (n_args == 0)
+        return midsema_type_is_default_constructible(type);
 
-    auto arg = &inst->ctor.args.arr[0];
-    return midsema_can_convert(&arg->ret, arg->valtype, &inst->type);
+    return midsema_can_convert(&args[0].ret, args[0].valtype, type);
 }
 
-static void typecheck_ctor_call(struct midpar_VarDeclInst *inst,
-                                struct mid_DiagVec *diags)
+// returns true if a ctor was found, false otherwise.
+// out_ctor       - can not be NULL. set to NULL if there isn't a ctor, tho
+//                  that doesn't necessarily mean the function failed.
+bool typecheck_ctor_call(const struct midpar_Type *type,
+                         const struct midpar_Expr *args, mid_isize n_args,
+                         struct midpar_FuncDecl **out_ctor)
 {
-    bool bad;
-    if ((inst->type.spec == MIDPAR_TYPESPEC_CLASS ||
-         inst->type.spec == MIDPAR_TYPESPEC_UNION) &&
-        midsema_n_indir(&inst->type) == 0) {
-
-        bad = !typecheck_vdecl_class_type_ctor(inst);
+    if (midsema_type_is_class_or_union(type)) {
+        *out_ctor = typecheck_class_type_ctor_call(type, args, n_args);
+        return *out_ctor != nullptr;
     } else {
-        bad = !typecheck_vdecl_generic_type_ctor(inst);
+        *out_ctor = nullptr;
+        return typecheck_generic_type_ctor_call(type, args, n_args);
     }
+}
 
-    if (bad)
+static void typecheck_vdecl_ctor_call(struct midpar_VarDeclInst *inst,
+                                      struct mid_DiagVec *diags)
+{
+    bool failed = typecheck_ctor_call(&inst->type, inst->ctor.args.arr,
+                                      inst->ctor.args.len, &inst->ctor.ctor);
+
+    if (failed)
         midgen_dynpush(
             diags, no_matching_ctor_err(&inst->type, MIDPAR_GET_START(inst)));
 }
@@ -1307,6 +1314,16 @@ constexpr_var_not_literal_type_err(const char *name,
     return ret;
 }
 
+static bool constexpr_of_type_needs_init(const struct midpar_Type *type)
+{
+    if (midsema_type_is_class_or_union(type))
+        return !midsema_type_is_constexpr_default_constructible(type);
+    else if (midsema_type_is_array(type))
+        return constexpr_of_type_needs_init(&type->array->elem);
+    else
+        return false;
+}
+
 static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
                                     struct mid_DiagVec *diags)
 {
@@ -1315,19 +1332,14 @@ static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
             diags, constexpr_var_not_literal_type_err(inst->name, &inst->type,
                                                       MIDPAR_GET_START(inst)));
 
-    if (!inst->init.start && !inst->has_ctor)
+    if (!inst->init.start && !inst->has_ctor &&
+        constexpr_of_type_needs_init(&inst->type))
         midgen_dynpush(diags, uninited_constexpr_var_err(
                                   inst->name, MIDPAR_GET_START(inst)));
 
     if (inst->init.expr && !inst->init.expr->constant)
         midgen_dynpush(diags, constexpr_var_init_not_constexpr_err(
                                   inst->name, MIDPAR_GET_START(inst)));
-    else if (inst->init.expr) {
-        printf("constexpr var '%s' set to ", inst->name);
-        assert(inst->init.expr->type == MIDPAR_EXPRTYPE_CONST_FOLD);
-        midlit_tagged_print(&inst->init.expr->info.val);
-        printf("\n");
-    }
 }
 
 void midsema_typecheck_var_decl_inst(struct midpar_VarDeclInst *inst,
@@ -1337,12 +1349,170 @@ void midsema_typecheck_var_decl_inst(struct midpar_VarDeclInst *inst,
     inst->typechecked = true;
 
     if (inst->has_ctor)
-        typecheck_ctor_call(inst, diags);
+        typecheck_vdecl_ctor_call(inst, diags);
     else if (inst->init.expr)
         midsema_typecheck_expr(inst->init.expr, scope, diags);
 
     if (inst->type.squals.is_constexpr)
         typecheck_constexpr_var(inst, diags);
+}
+
+static struct mid_Diag
+ctor_memb_init_not_in_ctor_err(const struct midlex_Token *tok)
+{
+    return (struct mid_Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = midcmd_fmt_to_str("constructor member initializer lists can "
+                                 "only appear in constructors"),
+        .err = MIDDIAG_ERR_BAD_CTOR_MEMB_INIT_LIST,
+        .type = MIDDIAG_TYPE_ERROR,
+    };
+}
+
+static struct mid_Diag
+ctor_field_isnt_nonstatic_dmemb_err(const char *name,
+                                    const struct midlex_Token *tok)
+{
+    return (struct mid_Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = midcmd_fmt_to_str("field '%s' is not a non-static data member",
+                                 name),
+        .err = MIDDIAG_ERR_BAD_CTOR_MEMB_INIT_LIST,
+        .type = MIDDIAG_TYPE_ERROR,
+    };
+}
+
+static void typecheck_ctor_memb_init(const struct midpar_FuncMemberInit *init,
+                                     const struct midpar_Class *class,
+                                     struct mid_DiagVec *diags)
+{
+    if (!midsema_field_is_nonstatic_data_memb(class, init->name)) {
+        midgen_dynpush(diags, ctor_field_isnt_nonstatic_dmemb_err(
+                                  init->name, MIDPAR_GET_START(init)));
+        return;
+    }
+
+    const struct midpar_VarDeclInst *field =
+        &midsema_find_field(class, init->name)->var_inst;
+
+    struct midpar_FuncDecl *ctor;
+    if (!typecheck_ctor_call(&field->type, init->args, init->n_args, &ctor))
+        midgen_dynpush(
+            diags, no_matching_ctor_err(&field->type, MIDPAR_GET_START(init)));
+}
+
+static void typecheck_ctor_memb_init_list(const struct midpar_FuncDecl *func,
+                                          struct mid_DiagVec *diags)
+{
+    if (!midsema_func_is_ctor(func)) {
+        midgen_dynpush(diags, ctor_memb_init_not_in_ctor_err(
+                                  MIDPAR_GET_START(func->memb_inits.arr[0])));
+        return;
+    }
+
+    const struct midpar_ASTNode *class = MIDPAR_GET_PARENT(func);
+    assert(class->type == MIDPAR_ASTNODETYPE_CLASS);
+
+    for (mid_isize i = 0; i < func->memb_inits.len; ++i) {
+        typecheck_ctor_memb_init(func->memb_inits.arr[i], &class->class_,
+                                 diags);
+    }
+}
+
+static struct mid_Diag constexpr_unsuitable_err(const char *name,
+                                                const char *reason,
+                                                const struct midlex_Token *tok)
+{
+    const char *fmt = reason
+                          ? "function '%s' is not constexpr suitable because %s"
+                          : "function '%s' is not constexpr suitable";
+
+    return (struct mid_Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = midcmd_fmt_to_str(fmt, name, reason),
+        .err = MIDDIAG_ERR_BAD_CONSTEXPR,
+        .type = MIDDIAG_TYPE_ERROR,
+    };
+}
+
+// check_body       - if false, only the declaration is checked for constexpr
+//                    suitability, otherwise only the body is checked
+static void verify_constexpr_suitability(const struct midpar_FuncDecl *self,
+                                         bool check_body,
+                                         struct mid_DiagVec *diags)
+{
+    auto suitability = check_body
+                           ? midsema_func_body_constexpr_suitability(self)
+                           : midsema_func_decl_constexpr_suitability(self);
+
+    switch (suitability) {
+    case MIDSEMA_FUNCCONSTEXPR_SUITABLE:
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_NONLITERAL_RET:
+        midgen_dynpush(diags, constexpr_unsuitable_err(
+                                  self->name, "its return type is non-literal",
+                                  MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_NONLITERAL_PARAM:
+        midgen_dynpush(diags,
+                       constexpr_unsuitable_err(
+                           self->name, "it has a non-literal parameter type",
+                           MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_VIRTUAL:
+        midgen_dynpush(diags,
+                       constexpr_unsuitable_err(self->name, "it's virtual",
+                                                MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_NONLITERAL_CTOR:
+        midgen_dynpush(diags, constexpr_unsuitable_err(
+                                  self->name,
+                                  "it's a constructor of a non-literal class",
+                                  MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_RET_IN_CTOR:
+        midgen_dynpush(diags, constexpr_unsuitable_err(
+                                  self->name, "it has a return statement",
+                                  MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_MULTIPLE_RET:
+        midgen_dynpush(
+            diags, constexpr_unsuitable_err(self->name,
+                                            "it has multiple return statements",
+                                            MIDPAR_GET_START(self)));
+        break;
+
+    case MIDSEMA_FUNCCONSTEXPR_BAD_BODY:
+        midgen_dynpush(diags, constexpr_unsuitable_err(self->name, nullptr,
+                                                       MIDPAR_GET_START(self)));
+        break;
+    }
+}
+
+void midsema_typecheck_func_decl(struct midpar_FuncDecl *func,
+                                 struct mid_DiagVec *diags)
+{
+    if (func->quals.is_constexpr)
+        verify_constexpr_suitability(func, false, diags);
+}
+
+void midsema_typecheck_func_body(struct midpar_FuncDecl *func,
+                                 struct mid_DiagVec *diags)
+{
+    if (func->memb_inits.len > 0)
+        typecheck_ctor_memb_init_list(func, diags);
+
+    if (func->quals.is_constexpr)
+        verify_constexpr_suitability(func, true, diags);
 }
 
 static struct mid_Diag

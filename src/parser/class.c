@@ -204,6 +204,9 @@ static void parse_node_def(struct midpar_ASTNode *node,
         midpar_parse_var_decl_def(MIDPAR_VARDECL_ENDTYPES, &node->var_decl,
                                   false, scope, allocs, diags);
     } else if (node->type == MIDPAR_ASTNODETYPE_FUNC_DECL) {
+        // we need to typecheck here so the typechecker can have full knowledge
+        // of the class
+        midsema_typecheck_func_decl(&node->func_decl, diags);
         if (node->func_decl.def_start) {
             midpar_parse_func_body(&node->func_decl, node->func_decl.def_start,
                                    allocs, diags);

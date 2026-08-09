@@ -1,9 +1,11 @@
 #include "sema/func.h"
 #include "ints.h"
 #include "parser/ast.h"
+#include "parser/class.h"
 #include "parser/func_decl.h"
 #include "parser/type.h"
 #include "parser/var_decl.h"
+#include "sema/class.h"
 #include "sema/type.h"
 #include "sema/typecheck.h"
 
@@ -12,8 +14,8 @@ static bool decl_is_typedef(const struct midpar_VarDecl *decl)
     return decl->insts.arr[0]->type.squals.is_typedef;
 }
 
-static enum midsema_FuncConstexprSuitability
-func_body_is_constexpr_suitable(const struct midpar_FuncDecl *self)
+enum midsema_FuncConstexprSuitability
+midsema_func_body_constexpr_suitability(const struct midpar_FuncDecl *self)
 {
     if (self->quals.is_delete || self->quals.is_default)
         return MIDSEMA_FUNCCONSTEXPR_SUITABLE;
@@ -42,13 +44,19 @@ func_body_is_constexpr_suitable(const struct midpar_FuncDecl *self)
 }
 
 enum midsema_FuncConstexprSuitability
-midsema_func_constexpr_suitability(const struct midpar_FuncDecl *self)
+midsema_func_decl_constexpr_suitability(const struct midpar_FuncDecl *self)
 {
     if (self->quals.is_virtual)
         return MIDSEMA_FUNCCONSTEXPR_VIRTUAL;
 
-    if (!midsema_type_is_literal(&self->ret))
+    if (midsema_func_is_ctor(self)) {
+        const struct midpar_ASTNode *parent = MIDPAR_GET_PARENT(self);
+        assert(parent->type == MIDPAR_ASTNODETYPE_CLASS);
+        if (!midsema_class_is_literal(&parent->class_))
+            return MIDSEMA_FUNCCONSTEXPR_NONLITERAL_CTOR;
+    } else if (!midsema_type_is_literal(&self->ret)) {
         return MIDSEMA_FUNCCONSTEXPR_NONLITERAL_RET;
+    }
 
     for (int i = 0; i < self->params.len; ++i) {
         const struct midpar_VarDeclInst *param =
@@ -57,7 +65,7 @@ midsema_func_constexpr_suitability(const struct midpar_FuncDecl *self)
             return MIDSEMA_FUNCCONSTEXPR_NONLITERAL_PARAM;
     }
 
-    return func_body_is_constexpr_suitable(self);
+    return MIDSEMA_FUNCCONSTEXPR_SUITABLE;
 }
 
 bool midsema_func_is_method(const struct midpar_FuncDecl *self)
