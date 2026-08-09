@@ -5,7 +5,6 @@
 #include "diag.h"
 #include "enum.h"
 #include "expr.h"
-#include "ints.h"
 #include "lexer/token.h"
 #include "namespace.h"
 #include "parser/astvec.h"
@@ -51,7 +50,7 @@ struct midpar_ASTNode {
         struct midpar_TmpltParam tmplt_param;
     };
     struct midpar_ASTNode *parent;
-    const struct midlex_Token *start;
+    midlex_TokenIter start;
     enum midpar_ASTNodeType type;
 };
 
@@ -238,13 +237,11 @@ struct midpar_ParseNodeFlags {
 };
 // skip_def - if true and the node has a definition / initializer, then it
 //            won't be parsed and rather be skipped
-struct midpar_ASTNode *midpar_parse_node(const struct midlex_Token *toks,
-                                         mid_isize start, mid_isize *out_end,
-                                         struct midpar_ASTNode *parent,
-                                         struct midsema_Scope *scope,
-                                         struct midpar_ParseNodeFlags flags,
-                                         struct midpar_Allocators *allocs,
-                                         struct mid_DiagVec *diags);
+struct midpar_ASTNode *
+midpar_parse_node(midlex_TokenIter start, midlex_TokenIter *out_end,
+                  struct midpar_ASTNode *parent, struct midsema_Scope *scope,
+                  struct midpar_ParseNodeFlags flags,
+                  struct midpar_Allocators *allocs, struct mid_DiagVec *diags);
 // is the node a template, example:
 //    template <typename T> void func(T arg);
 //                          ^

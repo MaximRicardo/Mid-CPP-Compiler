@@ -53,16 +53,17 @@ struct midpar_Expr {
 void midpar_Expr_deinit(struct midpar_Expr *expr);
 struct midpar_Expr midpar_copy_expr(const struct midpar_Expr *expr);
 // stops when reaching end_type
-struct midpar_Expr midpar_parse_expr(const struct midlex_Token *toks,
-                                     mid_isize start,
+struct midpar_Expr midpar_parse_expr(midlex_TokenIter start,
                                      const enum midlex_TokenType *end_types,
-                                     mid_isize n_end_types, mid_isize *out_end,
+                                     mid_isize n_end_types,
+                                     midlex_TokenIter *out_end,
                                      struct midsema_Scope *scope,
                                      struct mid_DiagVec *diags);
 // diags - can be NULL if you don't wanna log any errors
-mid_isize midpar_skip_expr(const struct midlex_Token *toks, mid_isize start,
-                           const enum midlex_TokenType *end_types,
-                           mid_isize n_end_types, struct mid_DiagVec *diags);
+midlex_TokenIter midpar_skip_expr(midlex_TokenIter start,
+                                  const enum midlex_TokenType *end_types,
+                                  mid_isize n_end_types,
+                                  struct mid_DiagVec *diags);
 
 #ifdef __cplusplus
 }

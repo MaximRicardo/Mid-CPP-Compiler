@@ -115,22 +115,21 @@ static void resolve_auto(struct midpar_VarDeclInst *inst)
     }
 }
 
-mid_isize midpar_parse_var_decl_inst_def(
-    const struct midlex_Token *toks, const enum midlex_TokenType *end_types,
-    mid_isize n_end_types, struct midpar_VarDeclInst *inst,
-    bool expr_prealloced, struct midsema_Scope *scope,
-    struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
+midlex_TokenIter midpar_parse_var_decl_inst_def(
+    const enum midlex_TokenType *end_types, mid_isize n_end_types,
+    struct midpar_VarDeclInst *inst, bool expr_prealloced,
+    struct midsema_Scope *scope, struct midpar_Allocators *allocs,
+    struct mid_DiagVec *diags)
 {
     if (!inst->init.start)
-        return -1;
+        return nullptr;
 
     if (!expr_prealloced)
         midgen_bumpmalloc(&allocs->expr, &inst->init.expr);
 
-    mid_isize start = inst->init.start - toks;
-    mid_isize end;
-    *inst->init.expr = midpar_parse_expr(toks, start, end_types, n_end_types,
-                                         &end, scope, diags);
+    midlex_TokenIter end;
+    *inst->init.expr = midpar_parse_expr(inst->init.start, end_types,
+                                         n_end_types, &end, scope, diags);
 
     if (inst->type.spec == MIDPAR_TYPESPEC_AUTO)
         resolve_auto(inst);
@@ -138,22 +137,24 @@ mid_isize midpar_parse_var_decl_inst_def(
     return end;
 }
 
-void midpar_parse_var_decl_def(
-    const struct midlex_Token *toks, const enum midlex_TokenType *end_types,
-    mid_isize n_end_types, struct midpar_VarDecl *decl, bool exprs_prealloced,
-    struct midsema_Scope *scope, struct midpar_Allocators *allocs,
-    struct mid_DiagVec *diags)
+void midpar_parse_var_decl_def(const enum midlex_TokenType *end_types,
+                               mid_isize n_end_types,
+                               struct midpar_VarDecl *decl,
+                               bool exprs_prealloced,
+                               struct midsema_Scope *scope,
+                               struct midpar_Allocators *allocs,
+                               struct mid_DiagVec *diags)
 {
     for (mid_isize i = 0; i < decl->insts.len; ++i) {
         auto inst = decl->insts.arr[i];
-        midpar_parse_var_decl_inst_def(toks, end_types, n_end_types, inst,
+        midpar_parse_var_decl_inst_def(end_types, n_end_types, inst,
                                        exprs_prealloced, scope, allocs, diags);
     }
 }
 
 static struct mid_Diag uninited_deduced_type_err(const char *name,
                                                  const char *type,
-                                                 const struct midlex_Token *tok)
+                                                 midlex_TokenIter tok)
 {
     return (struct mid_Diag){
         .pos = tok->pos,
@@ -166,34 +167,31 @@ static struct mid_Diag uninited_deduced_type_err(const char *name,
     };
 }
 
-static bool valid_name_idx(mid_isize idx, const struct midlex_Token *toks)
+static bool valid_name_tok(const struct midlex_Token *tok)
 {
-    return idx != -1 && toks[idx].type == MIDLEX_TOKENTYPE_IDENTIFIER;
+    return tok && tok->type == MIDLEX_TOKENTYPE_IDENTIFIER;
 }
 
-static mid_isize parse_inst_ctor(const struct midlex_Token *toks,
-                                 mid_isize lparen,
-                                 struct midpar_VarDeclInst *inst,
-                                 struct midsema_Scope *scope,
-                                 struct mid_DiagVec *diags)
+static midlex_TokenIter parse_inst_ctor(midlex_TokenIter lparen,
+                                        struct midpar_VarDeclInst *inst,
+                                        struct midsema_Scope *scope,
+                                        struct mid_DiagVec *diags)
 {
-    mid_isize rparen = midpar_find_twin_paren(toks, lparen, MID_ISIZE_MAX);
-    if (rparen == -1) {
-        midgen_dynpush(diags,
-                       middiag_expected_token_err("')'", &toks[lparen],
-                                                  MIDDIAG_ERR_MISSING_PAREN));
+    midlex_TokenIter rparen = midpar_find_twin_paren(lparen, nullptr);
+    if (!rparen) {
+        midgen_dynpush(diags, middiag_expected_token_err(
+                                  "')'", lparen, MIDDIAG_ERR_MISSING_PAREN));
         rparen = lparen;
     }
 
-    for (mid_isize i = lparen + 1; i < rparen; ++i) {
-        auto arg =
-            midpar_parse_expr(toks, i, MIDPAR_ARG_ENDTYPES, &i, scope, diags);
+    for (midlex_TokenIter i = lparen + 1; i < rparen; ++i) {
+        auto arg = midpar_parse_expr(i, MIDPAR_ARG_ENDTYPES, &i, scope, diags);
         midgen_dynpush(&inst->ctor.args, arg);
 
-        if (toks[i].type != MIDLEX_TOKENTYPE_R_PAREN &&
-            toks[i].type != MIDLEX_TOKENTYPE_COMMA) {
+        if (i->type != MIDLEX_TOKENTYPE_R_PAREN &&
+            i->type != MIDLEX_TOKENTYPE_COMMA) {
             midgen_dynpush(
-                diags, middiag_expected_token_err("','", &toks[lparen],
+                diags, middiag_expected_token_err("','", lparen,
                                                   MIDDIAG_ERR_MISSING_PAREN));
         }
     }
@@ -201,23 +199,21 @@ static mid_isize parse_inst_ctor(const struct midlex_Token *toks,
     return rparen + 1;
 }
 
-static mid_isize
-parse_inst_init(const struct midlex_Token *toks, mid_isize start,
-                const enum midlex_TokenType *end_types, mid_isize n_end_types,
-                struct midpar_VarDeclInst *inst, bool skip_init,
-                struct midsema_Scope *scope, struct midpar_Allocators *allocs,
-                struct mid_DiagVec *diags)
+static midlex_TokenIter
+parse_inst_init(midlex_TokenIter start, const enum midlex_TokenType *end_types,
+                mid_isize n_end_types, struct midpar_VarDeclInst *inst,
+                bool skip_init, struct midsema_Scope *scope,
+                struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
 {
-    inst->init.start = &toks[start];
+    inst->init.start = start;
     if (skip_init) {
-        return midpar_skip_expr(toks, start, end_types, n_end_types, NULL);
+        return midpar_skip_expr(start, end_types, n_end_types, NULL);
     }
-    return midpar_parse_var_decl_inst_def(toks, end_types, n_end_types, inst,
-                                          false, scope, allocs, diags);
+    return midpar_parse_var_decl_inst_def(end_types, n_end_types, inst, false,
+                                          scope, allocs, diags);
 }
 
-static struct mid_Diag void_var_err(const char *name,
-                                    const struct midlex_Token *tok,
+static struct mid_Diag void_var_err(const char *name, midlex_TokenIter tok,
                                     enum middiag_ErrT type)
 {
     return (struct mid_Diag){
@@ -229,47 +225,45 @@ static struct mid_Diag void_var_err(const char *name,
     };
 }
 
-mid_isize midpar_parse_var_decl_inst(
-    struct midpar_VarDeclInst *self, const struct midlex_Token *toks,
-    mid_isize start, const enum midlex_TokenType *end_types,
-    mid_isize n_end_types, const struct midpar_Type *base,
-    struct midsema_Scope *parent_scope, struct midpar_ParseVarDeclFlags flags,
-    struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
+midlex_TokenIter midpar_parse_var_decl_inst(
+    struct midpar_VarDeclInst *self, midlex_TokenIter start,
+    const enum midlex_TokenType *end_types, mid_isize n_end_types,
+    const struct midpar_Type *base, struct midsema_Scope *parent_scope,
+    struct midpar_ParseVarDeclFlags flags, struct midpar_Allocators *allocs,
+    struct mid_DiagVec *diags)
 {
     *self = (struct midpar_VarDeclInst){};
 
-    mid_isize type_end;
-    mid_isize name;
-    self->type =
-        midpar_parse_type_no_base(toks, start, &type_end, base, parent_scope,
-                                  &name, false, allocs, diags);
+    midlex_TokenIter type_end;
+    midlex_TokenIter name;
+    self->type = midpar_parse_type_no_base(start, &type_end, base, parent_scope,
+                                           &name, false, allocs, diags);
 
-    auto res = name == -1 ? parent_scope
-                          : midpar_parse_scope_res(toks, name, &name,
-                                                   parent_scope, diags);
-    self->name = valid_name_idx(name, toks) ? toks[name].ident : NULL;
+    auto res = !name ? parent_scope
+                     : midpar_parse_scope_res(name, &name, parent_scope, diags);
+    self->name = valid_name_tok(name) ? name->ident : nullptr;
     if (midsema_type_is_void(&self->type) && self->name)
-        midgen_dynpush(diags, void_var_err(self->name, &toks[start],
+        midgen_dynpush(diags, void_var_err(self->name, start,
                                            MIDDIAG_ERR_BAD_VAR_DECLARATION));
 
     if (self->name && flags.add_to_scope && add_ident(self, res))
         midgen_dynpush(diags,
-                       middiag_ident_redefined_err(self->name, &toks[start],
+                       middiag_ident_redefined_err(self->name, start,
                                                    MIDDIAG_ERR_BAD_IDENTIFIER));
 
-    mid_isize assign_idx = type_end;
-    self->has_ctor = toks[assign_idx].type == MIDLEX_TOKENTYPE_L_PAREN;
-    bool has_init = toks[assign_idx].type == MIDLEX_TOKENTYPE_ASSIGN;
+    midlex_TokenIter assign_idx = type_end;
+    self->has_ctor = assign_idx->type == MIDLEX_TOKENTYPE_L_PAREN;
+    bool has_init = assign_idx->type == MIDLEX_TOKENTYPE_ASSIGN;
 
-    mid_isize ret = type_end;
+    midlex_TokenIter ret = type_end;
     if (self->has_ctor) {
-        ret = parse_inst_ctor(toks, assign_idx, self, res, diags);
+        ret = parse_inst_ctor(assign_idx, self, res, diags);
     } else if (has_init) {
-        ret = parse_inst_init(toks, assign_idx + 1, end_types, n_end_types,
-                              self, flags.skip_init, res, allocs, diags);
+        ret = parse_inst_init(assign_idx + 1, end_types, n_end_types, self,
+                              flags.skip_init, res, allocs, diags);
     } else if (self->type.spec == MIDPAR_TYPESPEC_AUTO) {
-        midgen_dynpush(
-            diags, uninited_deduced_type_err(self->name, "auto", &toks[start]));
+        midgen_dynpush(diags,
+                       uninited_deduced_type_err(self->name, "auto", start));
     }
 
     midsema_typecheck_var_decl_inst(self, parent_scope, diags);
@@ -288,50 +282,47 @@ static bool is_end_type(const enum midlex_TokenType *end_types, mid_isize n,
     return false;
 }
 
-mid_isize midpar_parse_var_decl_inst_list(
-    const struct midlex_Token *toks, mid_isize start,
-    const enum midlex_TokenType *end_types, mid_isize n_end_types,
-    const struct midpar_Type *base, struct midpar_VarDeclInstPVec *insts,
-    struct midpar_VarDecl *decl, struct midsema_Scope *parent_scope,
-    struct midpar_ParseVarDeclFlags flags, struct midpar_Allocators *allocs,
-    struct mid_DiagVec *diags)
+midlex_TokenIter midpar_parse_var_decl_inst_list(
+    midlex_TokenIter start, const enum midlex_TokenType *end_types,
+    mid_isize n_end_types, const struct midpar_Type *base,
+    struct midpar_VarDeclInstPVec *insts, struct midpar_VarDecl *decl,
+    struct midsema_Scope *parent_scope, struct midpar_ParseVarDeclFlags flags,
+    struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
 {
-    mid_isize i = start;
+    auto i = start;
     do {
         struct midpar_VarDeclInst *inst;
         midgen_bumpmalloc(&allocs->ast, (void **)&inst);
 
         MIDPAR_GET_PARENT(inst) = MIDPAR_GET_NODE(decl);
-        MIDPAR_GET_START(inst) = &toks[i];
+        MIDPAR_GET_START(inst) = i;
         MIDPAR_GET_TYPE(inst) = MIDPAR_ASTNODETYPE_VAR_DECL_INST;
 
-        i = midpar_parse_var_decl_inst(inst, toks, i, end_types, n_end_types,
-                                       base, parent_scope, flags, allocs,
-                                       diags);
+        i = midpar_parse_var_decl_inst(inst, i, end_types, n_end_types, base,
+                                       parent_scope, flags, allocs, diags);
 
         midgen_dynpush(insts, inst);
 
-        if (flags.single_inst || toks[i].type != MIDLEX_TOKENTYPE_COMMA)
+        if (flags.single_inst || i->type != MIDLEX_TOKENTYPE_COMMA)
             break;
         ++i;
-    } while (!is_end_type(end_types, n_end_types, toks[i].type));
+    } while (!is_end_type(end_types, n_end_types, i->type));
 
     return i;
 }
 
-mid_isize midpar_parse_var_decl(
-    struct midpar_VarDecl *self, const struct midlex_Token *toks,
-    mid_isize start, const enum midlex_TokenType *end_types,
-    mid_isize n_end_types, struct midpar_ParseVarDeclFlags flags,
-    struct midsema_Scope *parent_scope, struct midpar_Allocators *allocs,
-    struct mid_DiagVec *diags)
+midlex_TokenIter midpar_parse_var_decl(
+    struct midpar_VarDecl *self, midlex_TokenIter start,
+    const enum midlex_TokenType *end_types, mid_isize n_end_types,
+    struct midpar_ParseVarDeclFlags flags, struct midsema_Scope *parent_scope,
+    struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
 {
-    mid_isize base_end;
+    midlex_TokenIter base_end;
     auto base =
-        midpar_parse_base(toks, start, &base_end, parent_scope, allocs, diags);
+        midpar_parse_base(start, &base_end, parent_scope, allocs, diags);
 
-    mid_isize end = midpar_parse_var_decl_inst_list(
-        toks, base_end, end_types, n_end_types, &base, &self->insts, self,
+    midlex_TokenIter end = midpar_parse_var_decl_inst_list(
+        base_end, end_types, n_end_types, &base, &self->insts, self,
         parent_scope, flags, allocs, diags);
 
     midpar_Type_deinit(&base);

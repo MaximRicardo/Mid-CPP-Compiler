@@ -1,10 +1,7 @@
 #pragma once
 
-#include "apfloat.h"
-#include "apint.h"
 #include "diag.h"
 #include "generics/dynarray.h"
-#include "ints.h"
 #include "lexer/token.h"
 #include "sema/ident.h"
 
@@ -74,9 +71,9 @@ void midpar_set_squal_flag(struct midpar_TypeStorQual *qual,
                            enum midlex_TokenType type);
 void midpar_set_dqual_flag(struct midpar_TypeDataQual *qual,
                            enum midlex_TokenType type);
-mid_isize midpar_parse_quals(const struct midlex_Token *toks, mid_isize start,
-                             struct midpar_TypeStorQual *squals,
-                             struct midpar_TypeDataQual *dquals);
+midlex_TokenIter midpar_parse_quals(midlex_TokenIter start,
+                                    struct midpar_TypeStorQual *squals,
+                                    struct midpar_TypeDataQual *dquals);
 
 // not to be confused with an fptr. a func type can refer to multiple overloads
 // of the same name, while a fptr refers to a specific overload without any
@@ -128,30 +125,28 @@ struct midpar_Allocators;
 
 void midpar_Type_deinit(struct midpar_Type *self);
 struct midpar_Type midpar_toktype_to_type(enum midlex_TokenType type);
-struct midpar_Type midpar_parse_type(const struct midlex_Token *toks,
-                                     mid_isize start, mid_isize *out_end,
-                                     struct midsema_Scope *scope,
-                                     mid_isize *out_declname, bool is_type_id,
-                                     struct midpar_Allocators *allocs,
-                                     struct mid_DiagVec *diags);
-struct midpar_Type midpar_parse_base(const struct midlex_Token *toks,
-                                     mid_isize start, mid_isize *out_end,
-                                     struct midsema_Scope *scope,
-                                     struct midpar_Allocators *allocs,
-                                     struct mid_DiagVec *diags);
 struct midpar_Type
-midpar_parse_type_no_base(const struct midlex_Token *toks, mid_isize start,
-                          mid_isize *out_end, const struct midpar_Type *base,
-                          struct midsema_Scope *scope, mid_isize *out_declname,
-                          bool is_type_id, struct midpar_Allocators *allocs,
-                          struct mid_DiagVec *diags);
+midpar_parse_type(midlex_TokenIter start, midlex_TokenIter *out_end,
+                  struct midsema_Scope *scope, midlex_TokenIter *out_declname,
+                  bool is_type_id, struct midpar_Allocators *allocs,
+                  struct mid_DiagVec *diags);
+struct midpar_Type midpar_parse_base(midlex_TokenIter start,
+                                     midlex_TokenIter *out_end,
+                                     struct midsema_Scope *scope,
+                                     struct midpar_Allocators *allocs,
+                                     struct mid_DiagVec *diags);
+struct midpar_Type midpar_parse_type_no_base(
+    midlex_TokenIter start, midlex_TokenIter *out_end,
+    const struct midpar_Type *base, struct midsema_Scope *scope,
+    midlex_TokenIter *out_declname, bool is_type_id,
+    struct midpar_Allocators *allocs, struct mid_DiagVec *diags);
 struct midpar_Type midpar_copy_type(const struct midpar_Type *type);
 struct midpar_TypeFPtr
 midpar_copy_fptr_type(const struct midpar_TypeFPtr *fptr);
 struct midpar_TypeArray
 midpar_copy_array_type(const struct midpar_TypeArray *array);
 // can the token be the start of a type?
-bool midpar_valid_type_start(const struct midlex_Token *toks, mid_isize idx,
+bool midpar_valid_type_start(midlex_TokenIter tok,
                              const struct midsema_Scope *scope);
 // the integral type specifier able to hold exactly the given number of bytes
 enum midpar_TypeSpec midpar_uint_type_of_width(int32_t bytes);

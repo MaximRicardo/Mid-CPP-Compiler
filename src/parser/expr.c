@@ -694,30 +694,28 @@ static struct midpar_Expr op_tok_to_expr_mode1(const struct midlex_Token *tok,
 }
 
 static void parse_func_call_args(struct midpar_Expr *f_call,
-                                 const struct midlex_Token *toks,
-                                 mid_isize lparen, mid_isize *out_rparen,
+                                 const struct midlex_Token *lparen,
+                                 const struct midlex_Token **out_rparen,
                                  struct midsema_Scope *scope,
                                  struct mid_DiagVec *diags)
 {
-    mid_isize rparen = midpar_find_twin_paren(toks, lparen, MID_ISIZE_MAX);
-    if (rparen == -1) {
-        midgen_dynpush(diags,
-                       middiag_expected_token_err("')'", &toks[lparen],
-                                                  MIDDIAG_ERR_MISSING_PAREN));
+    auto rparen = midpar_find_twin_paren(lparen, nullptr);
+    if (rparen == nullptr) {
+        midgen_dynpush(diags, middiag_expected_token_err(
+                                  "')'", lparen, MIDDIAG_ERR_MISSING_PAREN));
         rparen = lparen;
     }
     if (out_rparen)
         *out_rparen = rparen;
 
-    for (mid_isize i = lparen + 1; i < rparen; ++i) {
-        auto arg =
-            midpar_parse_expr(toks, i, MIDPAR_ARG_ENDTYPES, &i, scope, diags);
+    for (auto i = lparen + 1; i < rparen; ++i) {
+        auto arg = midpar_parse_expr(i, MIDPAR_ARG_ENDTYPES, &i, scope, diags);
         midgen_dynpush(&f_call->info.args, arg);
 
-        if (toks[i].type != MIDLEX_TOKENTYPE_R_PAREN &&
-            toks[i].type != MIDLEX_TOKENTYPE_COMMA) {
+        if (i->type != MIDLEX_TOKENTYPE_R_PAREN &&
+            i->type != MIDLEX_TOKENTYPE_COMMA) {
             midgen_dynpush(
-                diags, middiag_expected_token_err("','", &toks[lparen],
+                diags, middiag_expected_token_err("','", lparen,
                                                   MIDDIAG_ERR_MISSING_PAREN));
         }
     }
@@ -728,18 +726,18 @@ static void parse_func_call_args(struct midpar_Expr *f_call,
 // func(a, b, c, d)
 //     ^          ^
 //    idx    out_end_idx
-static struct midpar_Expr op_tok_to_expr(const struct midlex_Token *toks,
-                                         mid_isize idx, mid_isize *out_end_idx,
+static struct midpar_Expr op_tok_to_expr(const struct midlex_Token *tok,
+                                         const struct midlex_Token **out_end,
                                          bool mode, struct midsema_Scope *scope,
                                          struct mid_DiagVec *diags)
 {
-    struct midpar_Expr ret = mode ? op_tok_to_expr_mode1(&toks[idx], diags)
-                                  : op_tok_to_expr_mode0(&toks[idx], diags);
+    struct midpar_Expr ret = mode ? op_tok_to_expr_mode1(tok, diags)
+                                  : op_tok_to_expr_mode0(tok, diags);
 
     if (ret.type == MIDPAR_EXPRTYPE_FUNC_CALL)
-        parse_func_call_args(&ret, toks, idx, out_end_idx, scope, diags);
-    else if (out_end_idx)
-        *out_end_idx = idx;
+        parse_func_call_args(&ret, tok, out_end, scope, diags);
+    else if (out_end)
+        *out_end = tok;
 
     return ret;
 }
@@ -802,14 +800,14 @@ static void add_op_to_out(struct midpar_Expr *op, struct midpar_ExprVec *out,
 }
 
 // handles sending an operator through the shunting yard
-static void push_operator(const struct midlex_Token *toks, mid_isize idx,
-                          mid_isize *out_end_idx, struct midpar_ExprVec *out,
+static void push_operator(const struct midlex_Token *tok,
+                          const struct midlex_Token **out_end,
+                          struct midpar_ExprVec *out,
                           struct midpar_ExprVec *ops, bool mode,
                           struct midsema_Scope *scope,
                           struct mid_DiagVec *diags)
 {
-    struct midpar_Expr op =
-        op_tok_to_expr(toks, idx, out_end_idx, mode, scope, diags);
+    struct midpar_Expr op = op_tok_to_expr(tok, out_end, mode, scope, diags);
 
     // remove any greater precedence operators
     struct midpar_Expr *top = &ops->arr[ops->len - 1];
@@ -831,14 +829,14 @@ static void push_operator(const struct midlex_Token *toks, mid_isize idx,
 }
 
 // a sub expression is a part of an expression encased in parentheses
-static struct midpar_Expr parse_subexpr(const struct midlex_Token *toks,
-                                        mid_isize l_paren, mid_isize *out_end,
+static struct midpar_Expr parse_subexpr(const struct midlex_Token *l_paren,
+                                        const struct midlex_Token **out_end,
                                         struct midsema_Scope *scope,
                                         struct mid_DiagVec *diags)
 {
-    if (midpar_find_twin_paren(toks, l_paren, MID_ISIZE_MAX) == -1) {
-        struct mid_Diag err = {.pos = toks[l_paren].pos,
-                               .line = toks[l_paren].line,
+    if (midpar_find_twin_paren(l_paren, nullptr) == nullptr) {
+        struct mid_Diag err = {.pos = l_paren->pos,
+                               .line = l_paren->line,
                                .msg = midcmd_fmt_to_str("expected ')'"),
                                .err = MIDDIAG_ERR_MISSING_PAREN,
                                .type = MIDDIAG_TYPE_ERROR};
@@ -846,8 +844,8 @@ static struct midpar_Expr parse_subexpr(const struct midlex_Token *toks,
     }
 
     return midpar_parse_expr(
-        toks, l_paren + 1, (enum midlex_TokenType[]){MIDLEX_TOKENTYPE_R_PAREN},
-        1, out_end, scope, diags);
+        l_paren + 1, (enum midlex_TokenType[]){MIDLEX_TOKENTYPE_R_PAREN}, 1,
+        out_end, scope, diags);
 }
 
 static bool is_end_type(enum midlex_TokenType type,
@@ -860,10 +858,10 @@ static bool is_end_type(enum midlex_TokenType type,
     return false;
 }
 
-struct midpar_Expr midpar_parse_expr(const struct midlex_Token *toks,
-                                     mid_isize start,
+struct midpar_Expr midpar_parse_expr(midlex_TokenIter start,
                                      const enum midlex_TokenType *end_types,
-                                     mid_isize n_end_types, mid_isize *out_end,
+                                     mid_isize n_end_types,
+                                     midlex_TokenIter *out_end,
                                      struct midsema_Scope *scope,
                                      struct mid_DiagVec *diags)
 {
@@ -880,42 +878,42 @@ struct midpar_Expr midpar_parse_expr(const struct midlex_Token *toks,
     // operator unless it's a unary postfix operator
     bool mode = true;
 
-    mid_isize i;
-    for (i = start; !is_end_type(toks[i].type, end_types, n_end_types); ++i) {
-        if (midlex_is_lit(toks[i].type)) {
+    midlex_TokenIter i;
+    for (i = start; !is_end_type(i->type, end_types, n_end_types); ++i) {
+        if (midlex_is_lit(i->type)) {
             if (!mode)
-                midgen_dynpush(diags, middiag_unexpected_token_err(
-                                          "literal", &toks[i],
-                                          MIDDIAG_ERR_UNEXPECTED_TOKEN));
+                midgen_dynpush(diags,
+                               middiag_unexpected_token_err(
+                                   "literal", i, MIDDIAG_ERR_UNEXPECTED_TOKEN));
             else
-                midgen_dynpush(&out, lit_tok_to_expr(&toks[i]));
+                midgen_dynpush(&out, lit_tok_to_expr(i));
             mode = false;
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_IDENTIFIER) {
-            if (!mode)
-                midgen_dynpush(diags, middiag_unexpected_token_err(
-                                          "identifier", &toks[i],
-                                          MIDDIAG_ERR_UNEXPECTED_TOKEN));
-            else
-                midgen_dynpush(&out, ident_tok_to_expr(&toks[i]));
-            mode = false;
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_THIS) {
+        } else if (i->type == MIDLEX_TOKENTYPE_IDENTIFIER) {
             if (!mode)
                 midgen_dynpush(
                     diags, middiag_unexpected_token_err(
-                               "this", &toks[i], MIDDIAG_ERR_UNEXPECTED_TOKEN));
+                               "identifier", i, MIDDIAG_ERR_UNEXPECTED_TOKEN));
             else
-                midgen_dynpush(&out, this_tok_to_expr(&toks[i]));
+                midgen_dynpush(&out, ident_tok_to_expr(i));
             mode = false;
-        } else if (midlex_is_op(toks[i].type)) {
-            push_operator(toks, i, &i, &out, &ops, mode, scope, diags);
+        } else if (i->type == MIDLEX_TOKENTYPE_THIS) {
+            if (!mode)
+                midgen_dynpush(diags,
+                               middiag_unexpected_token_err(
+                                   "this", i, MIDDIAG_ERR_UNEXPECTED_TOKEN));
+            else
+                midgen_dynpush(&out, this_tok_to_expr(i));
+            mode = false;
+        } else if (midlex_is_op(i->type)) {
+            push_operator(i, &i, &out, &ops, mode, scope, diags);
             mode = ops.arr[ops.len - 1].type != MIDPAR_EXPRTYPE_POSTFIX_DEC &&
                    ops.arr[ops.len - 1].type != MIDPAR_EXPRTYPE_POSTFIX_INC;
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_L_PAREN) {
+        } else if (i->type == MIDLEX_TOKENTYPE_L_PAREN) {
             if (!mode)
                 // if mode is 0, a sub-expression is actually a function call
-                push_operator(toks, i, &i, &out, &ops, mode, scope, diags);
+                push_operator(i, &i, &out, &ops, mode, scope, diags);
             else
-                midgen_dynpush(&out, parse_subexpr(toks, i, &i, scope, diags));
+                midgen_dynpush(&out, parse_subexpr(i, &i, scope, diags));
             mode = false;
         }
     }
@@ -931,9 +929,8 @@ struct midpar_Expr midpar_parse_expr(const struct midlex_Token *toks,
 
     if (out.len != 1) {
         // handle operator and operand mismatch here
-        printf("expr start at %d:%d\n", toks[start].pos.line,
-               toks[start].pos.column);
-        printf("expr end at %d:%d\n", toks[i].pos.line, toks[i].pos.column);
+        printf("expr start at %d:%d\n", start->pos.line, start->pos.column);
+        printf("expr end at %d:%d\n", i->pos.line, i->pos.column);
         printf("out len = %" MID_PRIisz "\n", out.len);
         MID_CRASH("mismatched operators and operands");
     }
@@ -944,41 +941,38 @@ struct midpar_Expr midpar_parse_expr(const struct midlex_Token *toks,
     return ret;
 }
 
-mid_isize midpar_skip_expr(const struct midlex_Token *toks, mid_isize start,
-                           const enum midlex_TokenType *end_types,
-                           mid_isize n_end_types, struct mid_DiagVec *diags)
+midlex_TokenIter midpar_skip_expr(midlex_TokenIter start,
+                                  const enum midlex_TokenType *end_types,
+                                  mid_isize n_end_types,
+                                  struct mid_DiagVec *diags)
 {
-    mid_isize i;
-    for (i = start; !is_end_type(toks[i].type, end_types, n_end_types); ++i) {
-        if (toks[i].type == MIDLEX_TOKENTYPE_L_PAREN) {
-            mid_isize rparen = midpar_find_twin_paren(toks, i, MID_ISIZE_MAX);
-            if (rparen == -1 && diags)
+    midlex_TokenIter i;
+    for (i = start; !is_end_type(i->type, end_types, n_end_types); ++i) {
+        if (i->type == MIDLEX_TOKENTYPE_L_PAREN) {
+            auto rparen = midpar_find_twin_paren(i, nullptr);
+            if (rparen == nullptr && diags)
+                midgen_dynpush(diags, middiag_expected_token_err(
+                                          "')'", i, MIDDIAG_ERR_MISSING_PAREN));
+            i = rparen == nullptr ? i : rparen;
+        } else if (i->type == MIDLEX_TOKENTYPE_L_CURLY) {
+            auto rcurly = midpar_find_twin_curly(i, nullptr);
+            if (rcurly == nullptr && diags)
+                midgen_dynpush(diags, middiag_expected_token_err(
+                                          "'}'", i, MIDDIAG_ERR_MISSING_CURLY));
+            i = rcurly == nullptr ? i : rcurly;
+        } else if (i->type == MIDLEX_TOKENTYPE_L_SQBRACKET) {
+            auto rsqbracket = midpar_find_twin_sqbracket(i, nullptr);
+            if (rsqbracket == nullptr && diags)
                 midgen_dynpush(diags,
                                middiag_expected_token_err(
-                                   "')'", &toks[i], MIDDIAG_ERR_MISSING_PAREN));
-            i = rparen == -1 ? i : rparen;
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_L_CURLY) {
-            mid_isize rcurly = midpar_find_twin_curly(toks, i, MID_ISIZE_MAX);
-            if (rcurly == -1 && diags)
-                midgen_dynpush(diags,
-                               middiag_expected_token_err(
-                                   "'}'", &toks[i], MIDDIAG_ERR_MISSING_CURLY));
-            i = rcurly == -1 ? i : rcurly;
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_L_SQBRACKET) {
-            mid_isize rsqbracket =
-                midpar_find_twin_sqbracket(toks, i, MID_ISIZE_MAX);
-            if (rsqbracket == -1 && diags)
-                midgen_dynpush(
-                    diags, middiag_expected_token_err(
-                               "']'", &toks[i], MIDDIAG_ERR_MISSING_SQBRACKET));
-            i = rsqbracket == -1 ? i : rsqbracket;
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_LT) {
-            mid_isize rangle = midpar_find_twin_angle(toks, i, MID_ISIZE_MAX);
-            if (rangle == -1 && diags)
-                midgen_dynpush(diags,
-                               middiag_expected_token_err(
-                                   "'>'", &toks[i], MIDDIAG_ERR_MISSING_ANGLE));
-            i = rangle == -1 ? i : rangle;
+                                   "']'", i, MIDDIAG_ERR_MISSING_SQBRACKET));
+            i = rsqbracket == nullptr ? i : rsqbracket;
+        } else if (i->type == MIDLEX_TOKENTYPE_LT) {
+            auto rangle = midpar_find_twin_angle(i, nullptr);
+            if (rangle == nullptr && diags)
+                midgen_dynpush(diags, middiag_expected_token_err(
+                                          "'>'", i, MIDDIAG_ERR_MISSING_ANGLE));
+            i = rangle == nullptr ? i : rangle;
         }
     }
 

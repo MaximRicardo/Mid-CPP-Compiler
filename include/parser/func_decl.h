@@ -51,7 +51,7 @@ struct midpar_FuncDecl {
     struct midpar_FuncMemberInitPVec memb_inits; // only used by ctors
     const char *name;
     struct midsema_Scope *param_scope;
-    const struct midlex_Token *def_start; // points to the left curly '{'
+    midlex_TokenIter def_start; // points to the left curly '{'
     int32_t ident_idx; // index of the identifier holding the function overload
                        // in the parent scope. -1 if there is no identifier
     enum midpar_ExprType op_overload; // the operator that got overloaded
@@ -72,8 +72,8 @@ void midpar_copy_func_decl(struct midpar_FuncDecl *dest,
 struct midsema_Scope *midpar_func_parent(const struct midpar_FuncDecl *func);
 struct midsema_Ident *midpar_func_ident(const struct midpar_FuncDecl *func);
 struct midpar_VarDeclPVec
-midpar_parse_func_params(const struct midlex_Token *toks, mid_isize lparen,
-                         mid_isize *out_rparen, struct midpar_ASTNode *parent,
+midpar_parse_func_params(midlex_TokenIter lparen, midlex_TokenIter *out_rparen,
+                         struct midpar_ASTNode *parent,
                          struct midsema_Scope *scope, bool add_to_scope,
                          bool *out_variadic, struct midpar_Allocators *allocs,
                          struct mid_DiagVec *diags);
@@ -81,25 +81,24 @@ midpar_parse_func_params(const struct midlex_Token *toks, mid_isize lparen,
 //             still be set to the first token of the definition and has_def
 //             will still be set to true if there is a definition. used by
 //             classes, which parse declarations first then definitions
-mid_isize midpar_parse_func_decl(struct midpar_FuncDecl *self,
-                                 const struct midlex_Token *toks,
-                                 mid_isize start, struct midsema_Scope *scope,
-                                 bool skip_def,
-                                 struct midpar_Allocators *allocs,
-                                 struct mid_DiagVec *diags);
-mid_isize midpar_parse_tor(struct midpar_FuncDecl *self,
-                           const struct midlex_Token *toks, mid_isize start,
-                           struct midsema_Scope *scope, bool skip_def,
-                           struct midpar_Allocators *allocs,
-                           struct mid_DiagVec *diags);
+midlex_TokenIter midpar_parse_func_decl(struct midpar_FuncDecl *self,
+                                        midlex_TokenIter start,
+                                        struct midsema_Scope *scope,
+                                        bool skip_def,
+                                        struct midpar_Allocators *allocs,
+                                        struct mid_DiagVec *diags);
+midlex_TokenIter midpar_parse_tor(struct midpar_FuncDecl *self,
+                                  midlex_TokenIter start,
+                                  struct midsema_Scope *scope, bool skip_def,
+                                  struct midpar_Allocators *allocs,
+                                  struct mid_DiagVec *diags);
 
 // returns the idx of the closing curly bracket or semicolon marking the end
 // of the function
-mid_isize midpar_parse_func_body(struct midpar_FuncDecl *self,
-                                 const struct midlex_Token *toks,
-                                 mid_isize start,
-                                 struct midpar_Allocators *allocs,
-                                 struct mid_DiagVec *diags);
+const struct midlex_Token *
+midpar_parse_func_body(struct midpar_FuncDecl *self, midlex_TokenIter start,
+                       struct midpar_Allocators *allocs,
+                       struct mid_DiagVec *diags);
 
 #ifdef __cplusplus
 }

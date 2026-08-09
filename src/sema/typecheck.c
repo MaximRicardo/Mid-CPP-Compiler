@@ -1061,9 +1061,8 @@ static void typecheck_memb_sel(struct midpar_Expr *expr,
         return;
     }
 
-    if (field->type == MIDPAR_ASTNODETYPE_VAR_DECL) {
-        expr->ret = midpar_copy_type(
-            &midpar_decl_inst_of_name(&field->var_decl, field_name)->type);
+    if (field->type == MIDPAR_ASTNODETYPE_VAR_DECL_INST) {
+        expr->ret = midpar_copy_type(&field->var_inst.type);
         expr->valtype = MIDPAR_EXPRVALUE_LVALUE;
     } else {
         assert(field->type == MIDPAR_ASTNODETYPE_FUNC_DECL);

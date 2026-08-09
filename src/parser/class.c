@@ -19,7 +19,6 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/typecheck.h"
-#include <string.h>
 
 void midpar_Class_deinit(struct midpar_Class *self)
 {
@@ -114,28 +113,27 @@ struct midsema_Scope *midpar_class_scope(const struct midpar_Class *self)
 // class SuperHuman : Human { ... };
 //                  ^       ^
 //                colon   return
-static mid_isize parse_class_inheritance(struct midpar_Class *self,
-                                         const struct midlex_Token *toks,
-                                         mid_isize colon,
-                                         struct mid_DiagVec *diags)
+static midlex_TokenIter parse_class_inheritance(struct midpar_Class *self,
+                                                midlex_TokenIter colon,
+                                                struct mid_DiagVec *diags)
 {
-    mid_isize ident = colon + 1;
-    if (toks[ident].type != MIDLEX_TOKENTYPE_IDENTIFIER) {
+    midlex_TokenIter ident = colon + 1;
+    if (ident->type != MIDLEX_TOKENTYPE_IDENTIFIER) {
         midgen_dynpush(diags,
-                       middiag_expected_token_err("identifier", &toks[colon],
+                       middiag_expected_token_err("identifier", colon,
                                                   MIDDIAG_ERR_MISSING_TOKEN));
         return ident;
     }
 
-    const char *super_name = toks[ident].ident;
+    const char *super_name = ident->ident;
     struct midpar_Class *super =
         &midsema_find_ident_const(midpar_class_parent(self), super_name)
              ->def->class_;
 
     if (!super)
         midgen_dynpush(diags, ((struct mid_Diag){
-                                  .pos = toks[ident].pos,
-                                  .line = toks[ident].line,
+                                  .pos = ident->pos,
+                                  .line = ident->line,
                                   .msg = midcmd_fmt_to_str("'%s' is undefined",
                                                            super_name),
                                   .err = MIDDIAG_ERR_BAD_SUPERCLASS,
@@ -144,8 +142,8 @@ static mid_isize parse_class_inheritance(struct midpar_Class *self,
     else if (MIDPAR_GET_TYPE(super) != MIDPAR_ASTNODETYPE_CLASS)
         midgen_dynpush(
             diags, ((struct mid_Diag){
-                       .pos = toks[ident].pos,
-                       .line = toks[ident].line,
+                       .pos = ident->pos,
+                       .line = ident->line,
                        .msg = midcmd_fmt_to_str("'%s' is not a defined class",
                                                 super_name),
                        .err = MIDDIAG_ERR_BAD_SUPERCLASS,
@@ -157,78 +155,73 @@ static mid_isize parse_class_inheritance(struct midpar_Class *self,
     return ident + 1;
 }
 
-static enum midpar_ClassType parse_class_type(const struct midlex_Token *toks,
-                                              mid_isize start)
+static enum midpar_ClassType parse_class_type(midlex_TokenIter start)
 {
-    if (toks[start].type == MIDLEX_TOKENTYPE_UNION) {
+    if (start->type == MIDLEX_TOKENTYPE_UNION) {
         return MIDPAR_CLASSTYPE_UNION;
-    } else if (toks[start].type == MIDLEX_TOKENTYPE_STRUCT) {
+    } else if (start->type == MIDLEX_TOKENTYPE_STRUCT) {
         return MIDPAR_CLASSTYPE_STRUCT;
-    } else if (toks[start].type == MIDLEX_TOKENTYPE_CLASS) {
+    } else if (start->type == MIDLEX_TOKENTYPE_CLASS) {
         return MIDPAR_CLASSTYPE_CLASS;
     } else {
         MID_CRASH("tried to parse something that isn't a class");
     }
 }
 
-static mid_isize parse_class_entry(struct midpar_Class *self,
-                                   const struct midlex_Token *toks,
-                                   mid_isize start,
-                                   struct midsema_Scope *parent_scope,
-                                   struct mid_DiagVec *diags)
+static midlex_TokenIter parse_class_entry(struct midpar_Class *self,
+                                          midlex_TokenIter start,
+                                          struct midsema_Scope *parent_scope,
+                                          struct mid_DiagVec *diags)
 {
-    self->type = parse_class_type(toks, start);
+    self->type = parse_class_type(start);
 
-    mid_isize ident = start + 1;
+    midlex_TokenIter ident = start + 1;
     self->ident.parent =
-        midpar_parse_scope_res(toks, ident, &ident, parent_scope, diags);
-    if (toks[ident].type != MIDLEX_TOKENTYPE_IDENTIFIER) {
+        midpar_parse_scope_res(ident, &ident, parent_scope, diags);
+    if (ident->type != MIDLEX_TOKENTYPE_IDENTIFIER) {
         midgen_dynpush(diags,
-                       middiag_expected_token_err("identifier", &toks[start],
+                       middiag_expected_token_err("identifier", start,
                                                   MIDDIAG_ERR_MISSING_TOKEN));
         --ident;
         self->name = "INVALID-NAME";
     } else {
-        self->name = toks[ident].ident;
+        self->name = ident->ident;
     }
 
-    mid_isize end = ident + 1;
-    if (toks[end].type == MIDLEX_TOKENTYPE_COLON)
-        end = parse_class_inheritance(self, toks, end, diags);
+    midlex_TokenIter end = ident + 1;
+    if (end->type == MIDLEX_TOKENTYPE_COLON)
+        end = parse_class_inheritance(self, end, diags);
 
     return end;
 }
 
 static void parse_node_def(struct midpar_ASTNode *node,
                            struct midsema_Scope *scope,
-                           const struct midlex_Token *toks,
                            struct midpar_Allocators *allocs,
                            struct mid_DiagVec *diags)
 {
     if (node->type == MIDPAR_ASTNODETYPE_VAR_DECL) {
-        midpar_parse_var_decl_def(toks, MIDPAR_VARDECL_ENDTYPES,
-                                  &node->var_decl, false, scope, allocs, diags);
+        midpar_parse_var_decl_def(MIDPAR_VARDECL_ENDTYPES, &node->var_decl,
+                                  false, scope, allocs, diags);
     } else if (node->type == MIDPAR_ASTNODETYPE_FUNC_DECL) {
         if (node->func_decl.def_start) {
-            midpar_parse_func_body(&node->func_decl, toks,
-                                   node->func_decl.def_start - toks, allocs,
-                                   diags);
+            midpar_parse_func_body(&node->func_decl, node->func_decl.def_start,
+                                   allocs, diags);
         }
     } else if (node->type == MIDPAR_ASTNODETYPE_CLASS) {
-        midpar_parse_class_def(&node->class_, toks, scope, allocs, diags);
+        midpar_parse_class_def(&node->class_, scope, allocs, diags);
     }
 }
 
-static mid_isize find_rcurly(mid_isize lcurly, const struct midlex_Token *toks,
-                             struct mid_DiagVec *diags)
+static midlex_TokenIter find_rcurly(midlex_TokenIter lcurly,
+                                    struct mid_DiagVec *diags)
 {
-    mid_isize rcurly = midpar_find_twin_curly(toks, lcurly, MID_ISIZE_MAX);
-    if (rcurly == -1)
-        midgen_dynpush(diags,
-                       middiag_expected_token_err("'}'", &toks[lcurly],
-                                                  MIDDIAG_ERR_MISSING_CURLY));
+    midlex_TokenIter rcurly = midpar_find_twin_curly(lcurly, nullptr);
+    if (!rcurly)
+        midgen_dynpush(diags, middiag_expected_token_err(
+                                  "'}'", lcurly, MIDDIAG_ERR_MISSING_CURLY));
 
-    return rcurly == -1 ? lcurly : rcurly;
+    return !rcurly ? lcurly : rcurly;
 }
 
 static struct midsema_Scope *create_scope(struct midsema_Scope *scope,
@@ -245,26 +238,24 @@ static struct midsema_Scope *create_scope(struct midsema_Scope *scope,
     return child;
 }
 
-static mid_isize parse_accessspec(const struct midlex_Token *toks,
-                                  mid_isize start,
-                                  enum midpar_ClassAccess *out_spec,
-                                  struct mid_DiagVec *diags)
+static midlex_TokenIter parse_accessspec(midlex_TokenIter start,
+                                         enum midpar_ClassAccess *out_spec,
+                                         struct mid_DiagVec *diags)
 {
-    assert(midlex_is_accessspec(toks[start].type));
+    assert(midlex_is_accessspec(start->type));
     if (out_spec) {
-        if (toks[start].type == MIDLEX_TOKENTYPE_PUBLIC)
+        if (start->type == MIDLEX_TOKENTYPE_PUBLIC)
             *out_spec = MIDPAR_CLASSACCESS_PUBLIC;
-        else if (toks[start].type == MIDLEX_TOKENTYPE_PRIVATE)
+        else if (start->type == MIDLEX_TOKENTYPE_PRIVATE)
             *out_spec = MIDPAR_CLASSACCESS_PRIVATE;
         else
             *out_spec = MIDPAR_CLASSACCESS_PROTECTED;
     }
 
-    mid_isize colon = start + 1;
-    if (toks[colon].type != MIDLEX_TOKENTYPE_COLON) {
-        midgen_dynpush(diags,
-                       middiag_expected_token_err("':'", &toks[start],
-                                                  MIDDIAG_ERR_MISSING_TOKEN));
+    midlex_TokenIter colon = start + 1;
+    if (colon->type != MIDLEX_TOKENTYPE_COLON) {
+        midgen_dynpush(diags, middiag_expected_token_err(
+                                  "':'", start, MIDDIAG_ERR_MISSING_TOKEN));
         return colon;
     }
     return colon + 1;
@@ -301,9 +292,9 @@ static struct midsema_Scope *setup_def_scope(struct midpar_Class *self,
     return *def;
 }
 
-static void parse_decls(struct midpar_Class *self,
-                        const struct midlex_Token *toks, mid_isize lcurly,
-                        mid_isize rcurly, struct midpar_Allocators *allocs,
+static void parse_decls(struct midpar_Class *self, midlex_TokenIter lcurly,
+                        midlex_TokenIter rcurly,
+                        struct midpar_Allocators *allocs,
                         struct mid_DiagVec *diags)
 {
     // class members are private by default,
@@ -314,12 +305,12 @@ static void parse_decls(struct midpar_Class *self,
 
     auto def_scope = midsema_deref_identptr(&self->ident)->class_info.def_scope;
 
-    for (mid_isize i = lcurly + 1; i < rcurly;) {
-        if (midlex_is_accessspec(toks[i].type)) {
-            i = parse_accessspec(toks, i, &mode, diags);
+    for (midlex_TokenIter i = lcurly + 1; i < rcurly;) {
+        if (midlex_is_accessspec(i->type)) {
+            i = parse_accessspec(i, &mode, diags);
         } else {
             struct midpar_ASTNode *child =
-                midpar_parse_node(toks, i, &i, MIDPAR_GET_NODE(self), def_scope,
+                midpar_parse_node(i, &i, MIDPAR_GET_NODE(self), def_scope,
                                   (struct midpar_ParseNodeFlags){
                                       .skip_def = true, .is_field = true},
                                   allocs, diags);
@@ -337,21 +328,19 @@ static void parse_decls(struct midpar_Class *self,
 }
 
 static void parse_defs(struct midpar_Class *self,
-                       const struct midlex_Token *toks,
                        struct midpar_Allocators *allocs,
                        struct mid_DiagVec *diags)
 {
     auto def_scope = midsema_deref_identptr(&self->ident)->class_info.def_scope;
 
     for (mid_isize i = 0; i < self->childs.len; ++i)
-        parse_node_def(self->childs.arr[i], def_scope, toks, allocs, diags);
+        parse_node_def(self->childs.arr[i], def_scope, allocs, diags);
 }
 
-static mid_isize parse_class_body(struct midpar_Class *self,
-                                  const struct midlex_Token *toks,
-                                  mid_isize lcurly,
-                                  struct midpar_Allocators *allocs,
-                                  struct mid_DiagVec *diags)
+static midlex_TokenIter parse_class_body(struct midpar_Class *self,
+                                         midlex_TokenIter lcurly,
+                                         struct midpar_Allocators *allocs,
+                                         struct mid_DiagVec *diags)
 {
     // classes are parsed in 2 passes, the first pass gets all the declarations
     // while the second pass gets their definitions
@@ -365,13 +354,13 @@ static mid_isize parse_class_body(struct midpar_Class *self,
     add_class_def(self, diags);
     setup_def_scope(self, allocs, diags);
 
-    mid_isize rcurly = find_rcurly(lcurly, toks, diags);
+    midlex_TokenIter rcurly = find_rcurly(lcurly, diags);
 
 #ifdef MIDPAR_DEBUG_LOG_NODES
     printf("CLASS DECLS PASS\n");
 #endif
 
-    parse_decls(self, toks, lcurly, rcurly, allocs, diags);
+    parse_decls(self, lcurly, rcurly, allocs, diags);
 
 #ifdef MIDPAR_DEBUG_LOG_NODES
     printf("CLASS DEFS PASS\n");
@@ -380,21 +369,20 @@ static mid_isize parse_class_body(struct midpar_Class *self,
            self->pub_childs.len, self->priv_childs.len, self->prot_childs.len);
 #endif
 
-    parse_defs(self, toks, allocs, diags);
+    parse_defs(self, allocs, diags);
 
     return rcurly + 1;
 }
 
 void midpar_parse_class_def(struct midpar_Class *self,
-                            const struct midlex_Token *toks,
                             struct midsema_Scope *scope,
                             struct midpar_Allocators *allocs,
                             struct mid_DiagVec *diags)
 {
-    parse_class_body(self, toks, self->def_start - toks, allocs, diags);
+    parse_class_body(self, self->def_start, allocs, diags);
 
-    midpar_parse_var_decl_def(toks, MIDPAR_VARDECL_ENDTYPES, self->var, false,
-                              scope, allocs, diags);
+    midpar_parse_var_decl_def(MIDPAR_VARDECL_ENDTYPES, self->var, false, scope,
+                              allocs, diags);
 }
 
 static void add_class_to_scope(struct midsema_Scope *scope,
@@ -419,60 +407,54 @@ static void add_class_to_scope(struct midsema_Scope *scope,
     }
 }
 
-static mid_isize parse_class_till_instances(struct midpar_Class *self,
-                                            struct midsema_Scope *parent_scope,
-                                            const struct midlex_Token *toks,
-                                            mid_isize start, bool skip_def,
-                                            struct midpar_Allocators *allocs,
-                                            struct mid_DiagVec *diags)
+static midlex_TokenIter parse_class_till_instances(
+    struct midpar_Class *self, struct midsema_Scope *parent_scope,
+    midlex_TokenIter start, bool skip_def, struct midpar_Allocators *allocs,
+    struct mid_DiagVec *diags)
 {
     *self = (struct midpar_Class){};
-    mid_isize lcurly =
-        parse_class_entry(self, toks, start, parent_scope, diags);
+    midlex_TokenIter lcurly =
+        parse_class_entry(self, start, parent_scope, diags);
 
     if (self->name)
         add_class_to_scope(midpar_class_parent(self), self);
 
-    if (toks[lcurly].type == MIDLEX_TOKENTYPE_SEMICOLON) {
+    if (lcurly->type == MIDLEX_TOKENTYPE_SEMICOLON) {
         return lcurly;
-    } else if (toks[lcurly].type != MIDLEX_TOKENTYPE_L_CURLY) {
-        midgen_dynpush(diags,
-                       middiag_expected_token_err("';'", &toks[start],
-                                                  MIDDIAG_ERR_MISSING_TOKEN));
+    } else if (lcurly->type != MIDLEX_TOKENTYPE_L_CURLY) {
+        midgen_dynpush(diags, middiag_expected_token_err(
+                                  "';'", start, MIDDIAG_ERR_MISSING_TOKEN));
         return lcurly;
     }
 
     self->has_def = true;
-    self->def_start = &toks[lcurly];
+    self->def_start = lcurly;
 
     if (skip_def) {
-        return find_rcurly(lcurly, toks, diags) + 1;
+        return find_rcurly(lcurly, diags) + 1;
     } else {
-        return parse_class_body(self, toks, lcurly, allocs, diags);
+        return parse_class_body(self, lcurly, allocs, diags);
     }
 }
 
-static mid_isize parse_class_instances(struct midpar_Class *self,
-                                       struct midsema_Scope *parent_scope,
-                                       const struct midpar_TypeStorQual *squals,
-                                       const struct midpar_TypeDataQual *dquals,
-                                       const struct midlex_Token *toks,
-                                       mid_isize start, bool skip_def,
-                                       struct midpar_Allocators *allocs,
-                                       struct mid_DiagVec *diags)
+static midlex_TokenIter parse_class_instances(
+    struct midpar_Class *self, struct midsema_Scope *parent_scope,
+    const struct midpar_TypeStorQual *squals,
+    const struct midpar_TypeDataQual *dquals, midlex_TokenIter start,
+    bool skip_def, struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
 {
     midgen_bumpcalloc(&allocs->ast, (struct midpar_ASTNode **)&self->var);
     MIDPAR_GET_PARENT(self->var) = MIDPAR_GET_NODE(self);
-    MIDPAR_GET_START(self->var) = &toks[start];
+    MIDPAR_GET_START(self->var) = start;
     MIDPAR_GET_TYPE(self->var) = MIDPAR_ASTNODETYPE_VAR_DECL;
 
     auto base = midsema_node_type(MIDPAR_GET_NODE(self), parent_scope);
     base.squals = *squals;
     base.dquals.arr[0] = *dquals;
 
-    mid_isize end = midpar_parse_var_decl_inst_list(
-        toks, start, MIDPAR_VARDECL_ENDTYPES, &base, &self->var->insts,
-        self->var, parent_scope,
+    midlex_TokenIter end = midpar_parse_var_decl_inst_list(
+        start, MIDPAR_VARDECL_ENDTYPES, &base, &self->var->insts, self->var,
+        parent_scope,
         (struct midpar_ParseVarDeclFlags){.add_to_scope = true,
                                           .skip_init = skip_def},
         allocs, diags);
@@ -481,21 +463,21 @@ static mid_isize parse_class_instances(struct midpar_Class *self,
     return end;
 }
 
-mid_isize midpar_parse_class(struct midpar_Class *self,
-                             struct midsema_Scope *parent_scope,
-                             const struct midlex_Token *toks, mid_isize start,
-                             bool skip_def, struct midpar_Allocators *allocs,
-                             struct mid_DiagVec *diags)
+midlex_TokenIter midpar_parse_class(struct midpar_Class *self,
+                                    struct midsema_Scope *parent_scope,
+                                    midlex_TokenIter start, bool skip_def,
+                                    struct midpar_Allocators *allocs,
+                                    struct mid_DiagVec *diags)
 {
     struct midpar_TypeStorQual squals = {};
     struct midpar_TypeDataQual dquals = {};
-    start = midpar_parse_quals(toks, start, &squals, &dquals);
+    start = midpar_parse_quals(start, &squals, &dquals);
 
-    mid_isize body_end = parse_class_till_instances(
-        self, parent_scope, toks, start, skip_def, allocs, diags);
-    if (toks[body_end].type == MIDLEX_TOKENTYPE_SEMICOLON)
+    midlex_TokenIter body_end = parse_class_till_instances(
+        self, parent_scope, start, skip_def, allocs, diags);
+    if (body_end->type == MIDLEX_TOKENTYPE_SEMICOLON)
         return body_end;
 
-    return parse_class_instances(self, parent_scope, &squals, &dquals, toks,
-                                 body_end, skip_def, allocs, diags);
+    return parse_class_instances(self, parent_scope, &squals, &dquals, body_end,
+                                 skip_def, allocs, diags);
 }

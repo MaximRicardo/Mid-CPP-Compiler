@@ -221,9 +221,10 @@ int main(int argc, char **argv)
     struct midsema_Scope scope = {.type = MIDSEMA_SCOPETYPE_ROOT,
                                   .node = &root};
 
-    for (mid_isize i = 0; lex.toks.arr[i].type != MIDLEX_TOKENTYPE_END;) {
+    for (midlex_TokenIter i = &lex.toks.arr[0];
+         i->type != MIDLEX_TOKENTYPE_END;) {
         auto node =
-            midpar_parse_node(lex.toks.arr, i, &i, &root, &scope,
+            midpar_parse_node(i, &i, &root, &scope,
                               (struct midpar_ParseNodeFlags){.skip_def = false},
                               &allocs, &parser_diags);
         midgen_dynpush(&root.root, node);

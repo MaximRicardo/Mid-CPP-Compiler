@@ -301,34 +301,34 @@ void midpar_set_dqual_flag(struct midpar_TypeDataQual *qual,
     }
 }
 
-mid_isize midpar_parse_quals(const struct midlex_Token *toks, mid_isize start,
-                             struct midpar_TypeStorQual *squals,
-                             struct midpar_TypeDataQual *dquals)
+midlex_TokenIter midpar_parse_quals(midlex_TokenIter start,
+                                    struct midpar_TypeStorQual *squals,
+                                    struct midpar_TypeDataQual *dquals)
 {
-    mid_isize i;
-    for (i = start; midlex_is_typequal(toks[i].type); ++i) {
-        if (midlex_is_typestorqual(toks[i].type))
-            midpar_set_squal_flag(squals, toks[i].type);
+    midlex_TokenIter i;
+    for (i = start; midlex_is_typequal(i->type); ++i) {
+        if (midlex_is_typestorqual(i->type))
+            midpar_set_squal_flag(squals, i->type);
         else
-            midpar_set_dqual_flag(dquals, toks[i].type);
+            midpar_set_dqual_flag(dquals, i->type);
     }
 
     return i;
 }
 
-static struct midpar_Type type_name_type(const struct midlex_Token *toks,
-                                         mid_isize start, mid_isize *out_end,
+static struct midpar_Type type_name_type(midlex_TokenIter start,
+                                         midlex_TokenIter *out_end,
                                          struct midsema_Scope *scope,
                                          struct midpar_Allocators *allocs,
                                          struct mid_DiagVec *diags)
 {
-    assert(toks[start].type == MIDLEX_TOKENTYPE_IDENTIFIER);
+    assert(start->type == MIDLEX_TOKENTYPE_IDENTIFIER);
 
-    auto ident = midsema_find_ident_const(scope, toks[start].ident);
+    auto ident = midsema_find_ident_const(scope, start->ident);
     if (!midsema_ident_is_tmplt(ident->type)) {
         if (out_end)
             *out_end = start + 1;
-        return midsema_type_name_type(scope, toks[start].ident);
+        return midsema_type_name_type(scope, start->ident);
     }
 
     // the type is a template and therefore we need to parse the template
@@ -336,10 +336,10 @@ static struct midpar_Type type_name_type(const struct midlex_Token *toks,
     //  Type<...>
     //  ^
     // toks[start]
-    mid_isize l_angle = start + 1;
-    mid_isize r_angle;
+    auto l_angle = start + 1;
+    midlex_TokenIter r_angle;
     struct midpar_TmpltArgVec args =
-        midpar_parse_tmplt_args(toks, l_angle, &r_angle, scope, allocs, diags);
+        midpar_parse_tmplt_args(l_angle, &r_angle, scope, allocs, diags);
     if (out_end)
         *out_end = r_angle + 1;
 
@@ -355,24 +355,24 @@ static struct midpar_Type type_name_type(const struct midlex_Token *toks,
 // parses the type specifier and its preceding qualifiers
 // static const int *const &x
 // ^^^^^^^^^^^^^^^^
-struct midpar_Type midpar_parse_base(const struct midlex_Token *toks,
-                                     mid_isize start, mid_isize *out_end,
+struct midpar_Type midpar_parse_base(midlex_TokenIter start,
+                                     midlex_TokenIter *out_end,
                                      struct midsema_Scope *scope,
                                      struct midpar_Allocators *allocs,
                                      struct mid_DiagVec *diags)
 {
     struct midpar_Type ret = {};
 
-    mid_isize i = start;
+    auto i = start;
 
     // this could definitely be written way better
 
     // point to the token holding the modifier
-    const struct midlex_Token *is_signed = NULL;
-    const struct midlex_Token *is_unsigned = NULL;
-    const struct midlex_Token *is_short = NULL;
-    const struct midlex_Token *is_long = NULL;
-    const struct midlex_Token *is_longlong = NULL;
+    midlex_TokenIter is_signed = NULL;
+    midlex_TokenIter is_unsigned = NULL;
+    midlex_TokenIter is_short = NULL;
+    midlex_TokenIter is_long = NULL;
+    midlex_TokenIter is_longlong = NULL;
 
     struct midpar_TypeDataQual dquals = {};
     struct midpar_TypeStorQual squals = {};
@@ -380,53 +380,49 @@ struct midpar_Type midpar_parse_base(const struct midlex_Token *toks,
     bool spec_is_typedef = false;
     bool missing_spec = true;
 
-    for (;
-         midlex_is_typequal(toks[i].type) || midlex_is_typemod(toks[i].type) ||
-         tok_is_type_spec(scope, &toks[i]) ||
-         tok_is_namespace_name(scope, &toks[i]) ||
-         toks[i].type == MIDLEX_TOKENTYPE_SCOPE_RES;
+    for (; midlex_is_typequal(i->type) || midlex_is_typemod(i->type) ||
+           tok_is_type_spec(scope, i) || tok_is_namespace_name(scope, i) ||
+           i->type == MIDLEX_TOKENTYPE_SCOPE_RES;
          ++i) {
-        if (midlex_is_typedataqual(toks[i].type)) {
-            midpar_set_dqual_flag(&dquals, toks[i].type);
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_SIGNED) {
+        if (midlex_is_typedataqual(i->type)) {
+            midpar_set_dqual_flag(&dquals, i->type);
+        } else if (i->type == MIDLEX_TOKENTYPE_SIGNED) {
             if (is_signed)
-                midgen_dynpush(diags,
-                               unnecessary_qual_warn("signed", &toks[i]));
+                midgen_dynpush(diags, unnecessary_qual_warn("signed", i));
             if (is_unsigned)
-                midgen_dynpush(diags, bad_qual_err("signed", &toks[i]));
-            is_signed = &toks[i];
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_UNSIGNED) {
+                midgen_dynpush(diags, bad_qual_err("signed", i));
+            is_signed = i;
+        } else if (i->type == MIDLEX_TOKENTYPE_UNSIGNED) {
             if (is_unsigned)
-                midgen_dynpush(diags,
-                               unnecessary_qual_warn("unsigned", &toks[i]));
+                midgen_dynpush(diags, unnecessary_qual_warn("unsigned", i));
             if (is_signed)
-                midgen_dynpush(diags, bad_qual_err("unsigned", &toks[i]));
-            is_unsigned = &toks[i];
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_SHORT) {
+                midgen_dynpush(diags, bad_qual_err("unsigned", i));
+            is_unsigned = i;
+        } else if (i->type == MIDLEX_TOKENTYPE_SHORT) {
             if (is_short)
-                midgen_dynpush(diags, unnecessary_qual_warn("short", &toks[i]));
+                midgen_dynpush(diags, unnecessary_qual_warn("short", i));
             else if (is_long || is_longlong)
-                midgen_dynpush(diags, bad_qual_err("short", &toks[i]));
-            is_short = &toks[i];
-        } else if (toks[i].type == MIDLEX_TOKENTYPE_LONG) {
+                midgen_dynpush(diags, bad_qual_err("short", i));
+            is_short = i;
+        } else if (i->type == MIDLEX_TOKENTYPE_LONG) {
             if (is_longlong || is_short) {
-                midgen_dynpush(diags, bad_qual_err("long", &toks[i]));
+                midgen_dynpush(diags, bad_qual_err("long", i));
             } else if (is_long) {
-                is_longlong = &toks[i];
+                is_longlong = i;
                 is_long = NULL;
             } else {
-                is_long = &toks[i];
+                is_long = i;
             }
-        } else if (midlex_is_typequal(toks[i].type)) {
-            midpar_set_squal_flag(&squals, toks[i].type);
+        } else if (midlex_is_typequal(i->type)) {
+            midpar_set_squal_flag(&squals, i->type);
         } else if (missing_spec) {
             missing_spec = false;
-            auto res = midpar_parse_scope_res(toks, i, &i, scope, diags);
-            if (toks[i].type == MIDLEX_TOKENTYPE_IDENTIFIER) {
-                ret = type_name_type(toks, i, &i, res, allocs, diags);
+            auto res = midpar_parse_scope_res(i, &i, scope, diags);
+            if (i->type == MIDLEX_TOKENTYPE_IDENTIFIER) {
+                ret = type_name_type(i, &i, res, allocs, diags);
                 --i;
             } else {
-                ret = midpar_toktype_to_type(toks[i].type);
+                ret = midpar_toktype_to_type(i->type);
             }
             spec_is_typedef = ret.squals.is_typedef;
         } else {
@@ -444,8 +440,8 @@ struct midpar_Type midpar_parse_base(const struct midlex_Token *toks,
         missing_spec = false;
         ret.spec = MIDPAR_TYPESPEC_INT;
     } else if (missing_spec) {
-        struct mid_Diag err = {.pos = toks[start].pos,
-                               .line = toks[start].line,
+        struct mid_Diag err = {.pos = start->pos,
+                               .line = start->line,
                                .msg = strdup("expected a type specifier"),
                                .err = MIDDIAG_ERR_MISSING_TYPESPEC,
                                .type = MIDDIAG_TYPE_ERROR};
@@ -471,41 +467,39 @@ struct midpar_Type midpar_parse_base(const struct midlex_Token *toks,
 }
 
 static struct midpar_Type parse_recursive_part(
-    const struct midlex_Token *toks, mid_isize start, mid_isize min,
-    mid_isize *out_end, struct midsema_Scope *scope,
-    const struct midpar_TypeStorQual *squals, struct midpar_Allocators *allocs,
-    struct mid_DiagVec *diags);
+    midlex_TokenIter start, midlex_TokenIter min, midlex_TokenIter *out_end,
+    struct midsema_Scope *scope, const struct midpar_TypeStorQual *squals,
+    struct midpar_Allocators *allocs, struct mid_DiagVec *diags);
 
 // returns the end of the function ptr
 // void (*func_ptr)(int, float)
 //      ^         ^           ^
 //    lparen    rparen      return
-static mid_isize parse_fptr(struct midpar_Type *type,
-                            const struct midlex_Token *toks, mid_isize lparen,
-                            mid_isize rparen, mid_isize min,
-                            struct midsema_Scope *scope,
-                            struct midpar_Allocators *allocs,
-                            struct mid_DiagVec *diags)
+static midlex_TokenIter
+parse_fptr(struct midpar_Type *type, midlex_TokenIter lparen,
+           midlex_TokenIter rparen, midlex_TokenIter min,
+           struct midsema_Scope *scope, struct midpar_Allocators *allocs,
+           struct mid_DiagVec *diags)
 {
-    mid_isize p_lparen = rparen + 1;
-    mid_isize p_rparen = midpar_find_twin_paren(toks, p_lparen, MID_ISIZE_MAX);
+    midlex_TokenIter p_lparen = rparen + 1;
+    midlex_TokenIter p_rparen = midpar_find_twin_paren(p_lparen, nullptr);
 
     type->spec = MIDPAR_TYPESPEC_FPTR;
     type->fptr = mid_malloc(sizeof(*type->fptr));
     type->fptr->ret =
-        parse_recursive_part(toks, lparen - 1, min, NULL, scope,
+        parse_recursive_part(lparen - 1, min, NULL, scope,
                              &(struct midpar_TypeStorQual){}, allocs, diags);
     type->fptr->params = (struct midpar_TypeVec){};
 
-    mid_isize i = p_lparen + 1;
+    midlex_TokenIter i = p_lparen + 1;
     while (i < p_rparen) {
         midgen_dynpush(
             &type->fptr->params,
-            midpar_parse_type(toks, i, &i, scope, NULL, false, allocs, diags));
+            midpar_parse_type(i, &i, scope, NULL, false, allocs, diags));
 
-        if (toks[i].type != MIDLEX_TOKENTYPE_COMMA &&
-            toks[i].type != MIDLEX_TOKENTYPE_R_PAREN) {
-            midgen_dynpush(diags, expected_paren(false, toks));
+        if (i->type != MIDLEX_TOKENTYPE_COMMA &&
+            i->type != MIDLEX_TOKENTYPE_R_PAREN) {
+            midgen_dynpush(diags, expected_paren(false, i));
         }
 
         ++i;
@@ -519,17 +513,15 @@ static mid_isize parse_fptr(struct midpar_Type *type,
 // int arr[height][width]
 //        ^             ^
 //      start          end
-static mid_isize parse_array(struct midpar_Type *type,
-                             const struct midlex_Token *toks, mid_isize lparen,
-                             mid_isize rparen, mid_isize min,
-                             struct midsema_Scope *scope,
-                             struct midpar_Allocators *allocs,
-                             struct mid_DiagVec *diags)
+static midlex_TokenIter
+parse_array(struct midpar_Type *type, midlex_TokenIter lparen,
+            midlex_TokenIter rparen, midlex_TokenIter min,
+            struct midsema_Scope *scope, struct midpar_Allocators *allocs,
+            struct mid_DiagVec *diags)
 {
     // TODO: implement this
     MID_CRASH("parse_array not implemented yet");
     (void)type;
-    (void)toks;
     (void)lparen;
     (void)rparen;
     (void)min;
@@ -539,63 +531,59 @@ static mid_isize parse_array(struct midpar_Type *type,
 }
 
 static struct midpar_Type parse_recursive_part(
-    const struct midlex_Token *toks, mid_isize start, mid_isize min,
-    mid_isize *out_end, struct midsema_Scope *scope,
-    const struct midpar_TypeStorQual *squals, struct midpar_Allocators *allocs,
-    struct mid_DiagVec *diags)
+    midlex_TokenIter start, midlex_TokenIter min, midlex_TokenIter *out_end,
+    struct midsema_Scope *scope, const struct midpar_TypeStorQual *squals,
+    struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
 {
     struct midpar_Type ret = {.squals = *squals};
 
     struct midpar_TypeDataQual dquals = {};
 
-    mid_isize i;
+    midlex_TokenIter i;
     for (i = start;
-         i >= min &&
-         (midlex_is_typedataqual(toks[i].type) || is_ptr_tok(toks[i].type) ||
-          is_lv_ref_tok(toks[i].type) || is_rv_ref_tok(toks[i].type));
+         i >= min && (midlex_is_typedataqual(i->type) || is_ptr_tok(i->type) ||
+                      is_lv_ref_tok(i->type) || is_rv_ref_tok(i->type));
          --i) {
-        if (midlex_is_typedataqual(toks[i].type)) {
-            midpar_set_dqual_flag(&dquals, toks[i].type);
-        } else if (is_ptr_tok(toks[i].type)) {
+        if (midlex_is_typedataqual(i->type)) {
+            midpar_set_dqual_flag(&dquals, i->type);
+        } else if (is_ptr_tok(i->type)) {
             midgen_dynpush(&ret.dquals, dquals);
             dquals = (struct midpar_TypeDataQual){};
-        } else if (is_lv_ref_tok(toks[i].type)) {
+        } else if (is_lv_ref_tok(i->type)) {
             if (ret.lv_ref || ret.rv_ref)
-                midgen_dynpush(diags, type_alr_const_err(&toks[i]));
+                midgen_dynpush(diags, type_alr_const_err(i));
             else if (ret.dquals.len > 0)
-                midgen_dynpush(diags, ptr_to_ref_err(&toks[i]));
+                midgen_dynpush(diags, ptr_to_ref_err(i));
             else if (dquals.is_const)
-                midgen_dynpush(diags, missplaced_const_err(&toks[i]));
+                midgen_dynpush(diags, missplaced_const_err(i));
             else
                 ret.lv_ref = true;
         } else {
             if (ret.lv_ref || ret.rv_ref)
-                midgen_dynpush(diags, type_alr_const_err(&toks[i]));
+                midgen_dynpush(diags, type_alr_const_err(i));
             else if (ret.dquals.len > 0)
-                midgen_dynpush(diags, ptr_to_ref_err(&toks[i]));
+                midgen_dynpush(diags, ptr_to_ref_err(i));
             else if (dquals.is_const)
-                midgen_dynpush(diags, missplaced_const_err(&toks[i]));
+                midgen_dynpush(diags, missplaced_const_err(i));
             else
                 ret.rv_ref = true;
         }
     }
 
     // end is non inclusive
-    mid_isize end = start + 1;
+    auto end = start + 1;
 
-    if (toks[i].type == MIDLEX_TOKENTYPE_L_PAREN) {
-        mid_isize rparen = midpar_find_twin_paren(toks, i, MID_ISIZE_MAX);
-        if (rparen == -1) {
-            midgen_dynpush(diags, expected_paren(false, &toks[i]));
+    if (i->type == MIDLEX_TOKENTYPE_L_PAREN) {
+        auto rparen = midpar_find_twin_paren(i, nullptr);
+        if (!rparen) {
+            midgen_dynpush(diags, expected_paren(false, i));
         } else {
-            if (toks[rparen + 1].type == MIDLEX_TOKENTYPE_L_PAREN)
-                end = parse_fptr(&ret, toks, i, rparen, min, scope, allocs,
-                                 diags);
-            else if (toks[rparen + 1].type == MIDLEX_TOKENTYPE_L_SQBRACKET)
-                end = parse_array(&ret, toks, i, rparen, min, scope, allocs,
-                                  diags);
+            if ((rparen + 1)->type == MIDLEX_TOKENTYPE_L_PAREN)
+                end = parse_fptr(&ret, i, rparen, min, scope, allocs, diags);
+            else if ((rparen + 1)->type == MIDLEX_TOKENTYPE_L_SQBRACKET)
+                end = parse_array(&ret, i, rparen, min, scope, allocs, diags);
         }
-    } else if (toks[end].type == MIDLEX_TOKENTYPE_IDENTIFIER) {
+    } else if (end->type == MIDLEX_TOKENTYPE_IDENTIFIER) {
         ++end;
     }
 
@@ -609,15 +597,15 @@ static struct midpar_Type parse_recursive_part(
 // int const *((*const x)(int))
 //           ^
 //         start
-mid_isize find_type_center(const struct midlex_Token *toks, mid_isize start)
+midlex_TokenIter find_type_center(midlex_TokenIter start)
 {
-    mid_isize i = start;
-    while (toks[i].type == MIDLEX_TOKENTYPE_L_PAREN ||
-           midlex_is_typedataqual(toks[i].type) || is_ptr_tok(toks[i].type) ||
-           is_lv_ref_tok(toks[i].type) || is_rv_ref_tok(toks[i].type))
+    auto i = start;
+    while (i->type == MIDLEX_TOKENTYPE_L_PAREN ||
+           midlex_is_typedataqual(i->type) || is_ptr_tok(i->type) ||
+           is_lv_ref_tok(i->type) || is_rv_ref_tok(i->type))
         ++i;
 
-    if (toks[i].type == MIDLEX_TOKENTYPE_IDENTIFIER)
+    if (i->type == MIDLEX_TOKENTYPE_IDENTIFIER)
         ++i;
 
     return i - 1;
@@ -644,8 +632,7 @@ midpar_copy_array_type(const struct midpar_TypeArray *arr)
 }
 
 static void add_base(struct midpar_Type *type, const struct midpar_Type *base,
-                     const struct midlex_Token *type_start,
-                     struct mid_DiagVec *diags)
+                     midlex_TokenIter type_start, struct mid_DiagVec *diags)
 {
     if (type->spec == MIDPAR_TYPESPEC_FPTR) {
         add_base(&type->fptr->ret, base, type_start, diags);
@@ -676,45 +663,42 @@ static void add_base(struct midpar_Type *type, const struct midpar_Type *base,
     }
 }
 
-struct midpar_Type midpar_parse_type(const struct midlex_Token *toks,
-                                     mid_isize start, mid_isize *out_end,
-                                     struct midsema_Scope *scope,
-                                     mid_isize *out_declname, bool is_type_id,
-                                     struct midpar_Allocators *allocs,
-                                     struct mid_DiagVec *diags)
+struct midpar_Type
+midpar_parse_type(midlex_TokenIter start, midlex_TokenIter *out_end,
+                  struct midsema_Scope *scope, midlex_TokenIter *out_declname,
+                  bool is_type_id, struct midpar_Allocators *allocs,
+                  struct mid_DiagVec *diags)
 {
-    mid_isize i;
-    auto base = midpar_parse_base(toks, start, &i, scope, allocs, diags);
+    midlex_TokenIter i;
+    auto base = midpar_parse_base(start, &i, scope, allocs, diags);
 
-    auto ret =
-        midpar_parse_type_no_base(toks, i, out_end, &base, scope, out_declname,
-                                  is_type_id, allocs, diags);
+    auto ret = midpar_parse_type_no_base(i, out_end, &base, scope, out_declname,
+                                         is_type_id, allocs, diags);
 
     midpar_Type_deinit(&base);
     return ret;
 }
 
-struct midpar_Type
-midpar_parse_type_no_base(const struct midlex_Token *toks, mid_isize start,
-                          mid_isize *out_end, const struct midpar_Type *base,
-                          struct midsema_Scope *scope, mid_isize *out_declname,
-                          bool is_type_id, struct midpar_Allocators *allocs,
-                          struct mid_DiagVec *diags)
+struct midpar_Type midpar_parse_type_no_base(
+    midlex_TokenIter start, midlex_TokenIter *out_end,
+    const struct midpar_Type *base, struct midsema_Scope *scope,
+    midlex_TokenIter *out_declname, bool is_type_id,
+    struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
 {
-    mid_isize c = find_type_center(toks, start);
+    midlex_TokenIter c = find_type_center(start);
 
-    bool has_declname = toks[c].type == MIDLEX_TOKENTYPE_IDENTIFIER &&
-                        !midsema_is_type_name(scope, toks[c].ident);
+    bool has_declname = c->type == MIDLEX_TOKENTYPE_IDENTIFIER &&
+                        !midsema_is_type_name(scope, c->ident);
     if (has_declname && is_type_id)
-        midgen_dynpush(
-            diags, middiag_type_id_w_name_err(&toks[c], MIDDIAG_ERR_BAD_TYPE));
+        midgen_dynpush(diags,
+                       middiag_type_id_w_name_err(c, MIDDIAG_ERR_BAD_TYPE));
 
-    auto ret = parse_recursive_part(toks, c - has_declname, start, out_end,
-                                    scope, &base->squals, allocs, diags);
-    add_base(&ret, base, &toks[start], diags);
+    auto ret = parse_recursive_part(c - has_declname, start, out_end, scope,
+                                    &base->squals, allocs, diags);
+    add_base(&ret, base, start, diags);
 
     if (out_declname)
-        *out_declname = has_declname ? c : -1;
+        *out_declname = has_declname ? c : nullptr;
     return ret;
 }
 
@@ -811,18 +795,18 @@ struct midpar_Type midpar_toktype_to_type(enum midlex_TokenType type)
     return ret;
 }
 
-bool midpar_valid_type_start(const struct midlex_Token *toks, mid_isize idx,
+bool midpar_valid_type_start(midlex_TokenIter tok,
                              const struct midsema_Scope *scope)
 {
-    if (midlex_is_typemod(toks[idx].type) || midlex_is_typequal(toks[idx].type))
+    if (midlex_is_typemod(tok->type) || midlex_is_typequal(tok->type))
         return true;
 
     struct mid_DiagVec tmp = {};
-    mid_isize res_end;
-    auto res = midpar_parse_scope_res_const(toks, idx, &res_end, scope, &tmp);
+    midlex_TokenIter res_end;
+    auto res = midpar_parse_scope_res_const(tok, &res_end, scope, &tmp);
     midgen_dyndeinit(&tmp);
 
-    return tok_is_type_spec(res, &toks[res_end]);
+    return tok_is_type_spec(res, res_end);
 }
 
 enum midpar_TypeSpec midpar_uint_type_of_width(int32_t bytes)

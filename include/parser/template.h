@@ -4,6 +4,7 @@
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
+#include "lexer/token.h"
 #include "parser/allocator.h"
 #include "parser/expr.h"
 #include "parser/type.h"
@@ -111,14 +112,14 @@ void midpar_copy_tmplt_param(struct midpar_TmpltParam *dest,
                              const struct midpar_TmpltParam *src,
                              struct midpar_Allocators *allocs);
 
-mid_isize midpar_parse_tmplt(struct midpar_Tmplt *self,
-                             struct midsema_Scope *scope,
-                             const struct midlex_Token *toks, mid_isize start,
-                             struct midpar_Allocators *allocs,
-                             struct mid_DiagVec *diags);
+midlex_TokenIter midpar_parse_tmplt(struct midpar_Tmplt *self,
+                                    struct midsema_Scope *scope,
+                                    midlex_TokenIter start,
+                                    struct midpar_Allocators *allocs,
+                                    struct mid_DiagVec *diags);
 struct midpar_TmpltArgVec
-midpar_parse_tmplt_args(const struct midlex_Token *toks, mid_isize l_angle,
-                        mid_isize *out_r_angle, struct midsema_Scope *scope,
+midpar_parse_tmplt_args(midlex_TokenIter l_angle, midlex_TokenIter *out_r_angle,
+                        struct midsema_Scope *scope,
                         struct midpar_Allocators *allocs,
                         struct mid_DiagVec *diags);
 

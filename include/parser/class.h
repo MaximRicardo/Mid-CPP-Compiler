@@ -2,7 +2,6 @@
 
 #include "diag.h"
 #include "generics/dynarray.h"
-#include "ints.h"
 #include "lexer/token.h"
 #include "parser/allocator.h"
 #include "parser/astvec.h"
@@ -41,7 +40,7 @@ struct midpar_Class {
     const char *name;
     struct midpar_ClassPVec supers; // classes this class inherits from
                                     // sepcifically points to their definitions
-    const struct midlex_Token *def_start; // the left curly '{'
+    midlex_TokenIter def_start;     // the left curly '{'
     struct midsema_IdentPtr ident;
     enum midpar_ClassType type;
     bool has_def;
@@ -55,13 +54,12 @@ void midpar_copy_class(struct midpar_Class *dest,
 struct midsema_Scope *midpar_class_parent(const struct midpar_Class *self);
 struct midsema_Scope *midpar_class_scope(const struct midpar_Class *self);
 // returns the end of the class
-mid_isize midpar_parse_class(struct midpar_Class *self,
-                             struct midsema_Scope *scope,
-                             const struct midlex_Token *toks, mid_isize start,
-                             bool skip_def, struct midpar_Allocators *allocs,
-                             struct mid_DiagVec *diags);
+midlex_TokenIter midpar_parse_class(struct midpar_Class *self,
+                                    struct midsema_Scope *scope,
+                                    midlex_TokenIter start, bool skip_def,
+                                    struct midpar_Allocators *allocs,
+                                    struct mid_DiagVec *diags);
 void midpar_parse_class_def(struct midpar_Class *self,
-                            const struct midlex_Token *toks,
                             struct midsema_Scope *scope,
                             struct midpar_Allocators *allocs,
                             struct mid_DiagVec *diags);

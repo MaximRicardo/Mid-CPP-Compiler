@@ -60,35 +60,34 @@ static void add_nmspace_to_scope(struct midsema_Scope *scope,
 //   namespace Name { ... }
 //   ^              ^
 // start           ret
-static mid_isize parse_entry(struct midpar_Namespace *self,
-                             struct midsema_Scope *scope,
-                             const struct midlex_Token *toks, mid_isize start,
-                             struct mid_DiagVec *diags)
+static midlex_TokenIter parse_entry(struct midpar_Namespace *self,
+                                    struct midsema_Scope *scope,
+                                    midlex_TokenIter start,
+                                    struct mid_DiagVec *diags)
 {
-    mid_isize name_idx = start + 1;
-    if (toks[name_idx].type != MIDLEX_TOKENTYPE_IDENTIFIER) {
+    midlex_TokenIter name_idx = start + 1;
+    if (name_idx->type != MIDLEX_TOKENTYPE_IDENTIFIER) {
         midgen_dynpush(
-            diags, middiag_expected_token_err("identifier", &toks[start],
+            diags, middiag_expected_token_err("identifier", start,
                                               MIDDIAG_ERR_UNEXPECTED_TOKEN));
         return name_idx;
     }
 
-    self->name = toks[name_idx].ident;
+    self->name = name_idx->ident;
 
     add_nmspace_to_scope(scope, self, diags);
     return name_idx + 1;
 }
 
-static mid_isize find_rcurly(mid_isize lcurly, const struct midlex_Token *toks,
-                             struct mid_DiagVec *diags)
+static midlex_TokenIter find_rcurly(midlex_TokenIter lcurly,
+                                    struct mid_DiagVec *diags)
 {
-    mid_isize rcurly = midpar_find_twin_curly(toks, lcurly, MID_ISIZE_MAX);
-    if (rcurly == -1)
-        midgen_dynpush(diags,
-                       middiag_expected_token_err("'}'", &toks[lcurly],
-                                                  MIDDIAG_ERR_MISSING_CURLY));
+    midlex_TokenIter rcurly = midpar_find_twin_curly(lcurly, nullptr);
+    if (!rcurly)
+        midgen_dynpush(diags, middiag_expected_token_err(
+                                  "'}'", lcurly, MIDDIAG_ERR_MISSING_CURLY));
 
-    return rcurly == -1 ? lcurly : rcurly;
+    return !rcurly ? lcurly : rcurly;
 }
 
 static void setup_scope(struct midsema_Scope *parent,
@@ -102,29 +101,27 @@ static void setup_scope(struct midsema_Scope *parent,
     midgen_dynpush(&parent->childs, self->scope);
 }
 
-mid_isize midpar_parse_namespace(struct midpar_Namespace *self,
-                                 struct midsema_Scope *parent,
-                                 const struct midlex_Token *toks,
-                                 mid_isize start,
-                                 struct midpar_Allocators *allocs,
-                                 struct mid_DiagVec *diags)
+midlex_TokenIter midpar_parse_namespace(struct midpar_Namespace *self,
+                                        struct midsema_Scope *parent,
+                                        midlex_TokenIter start,
+                                        struct midpar_Allocators *allocs,
+                                        struct mid_DiagVec *diags)
 {
     *self = (struct midpar_Namespace){};
     setup_scope(parent, self, allocs);
 
-    mid_isize lcurly = parse_entry(self, parent, toks, start, diags);
-    if (toks[lcurly].type != MIDLEX_TOKENTYPE_L_CURLY) {
-        midgen_dynpush(diags,
-                       middiag_expected_token_err("'{'", &toks[start],
-                                                  MIDDIAG_ERR_MISSING_CURLY));
+    midlex_TokenIter lcurly = parse_entry(self, parent, start, diags);
+    if (lcurly->type != MIDLEX_TOKENTYPE_L_CURLY) {
+        midgen_dynpush(diags, middiag_expected_token_err(
+                                  "'{'", start, MIDDIAG_ERR_MISSING_CURLY));
         return lcurly;
     }
 
-    mid_isize rcurly = find_rcurly(lcurly, toks, diags);
+    midlex_TokenIter rcurly = find_rcurly(lcurly, diags);
 
-    for (mid_isize i = lcurly + 1; i < rcurly;) {
+    for (midlex_TokenIter i = lcurly + 1; i < rcurly;) {
         struct midpar_ASTNode *child = midpar_parse_node(
-            toks, i, &i, MIDPAR_GET_NODE(self), self->scope,
+            i, &i, MIDPAR_GET_NODE(self), self->scope,
             (struct midpar_ParseNodeFlags){.skip_def = false}, allocs, diags);
 
         midgen_dynpush(&self->childs, child);

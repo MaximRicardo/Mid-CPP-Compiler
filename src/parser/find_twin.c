@@ -1,55 +1,55 @@
 #include "parser/find_twin.h"
-#include "ints.h"
 #include "lexer/token.h"
 
-mid_isize midpar_find_twin_generic(const struct midlex_Token *toks,
-                                   mid_isize l_idx, mid_isize end_idx,
-                                   enum midlex_TokenType l_type,
-                                   enum midlex_TokenType r_type)
+midlex_TokenIter midpar_find_twin_generic(midlex_TokenIter left,
+                                          midlex_TokenIter search_end,
+                                          enum midlex_TokenType l_type,
+                                          enum midlex_TokenType r_type)
 {
     int32_t depth = 0;
 
-    for (mid_isize i = l_idx + 1;
-         i < end_idx && toks[i].type != MIDLEX_TOKENTYPE_END; ++i) {
-        if (toks[i].type == l_type) {
+    for (midlex_TokenIter i = left + 1;
+         (!search_end || i < search_end) && i->type != MIDLEX_TOKENTYPE_END;
+         ++i) {
+        if (i->type == l_type) {
             ++depth;
-        } else if (toks[i].type == r_type) {
+        } else if (i->type == r_type) {
             if (depth == 0)
                 return i;
             --depth;
         }
     }
 
-    return -1;
+    return nullptr;
 }
 
-mid_isize midpar_find_twin_paren(const struct midlex_Token *toks,
-                                 mid_isize l_idx, mid_isize end_idx)
+midlex_TokenIter midpar_find_twin_paren(midlex_TokenIter l_paren,
+                                        midlex_TokenIter search_end)
 {
-    return midpar_find_twin_generic(toks, l_idx, end_idx,
+    return midpar_find_twin_generic(l_paren, search_end,
                                     MIDLEX_TOKENTYPE_L_PAREN,
                                     MIDLEX_TOKENTYPE_R_PAREN);
 }
 
-mid_isize midpar_find_twin_sqbracket(const struct midlex_Token *toks,
-                                     mid_isize l_idx, mid_isize end_idx)
+midlex_TokenIter midpar_find_twin_sqbracket(midlex_TokenIter l_bracket,
+                                            midlex_TokenIter search_end)
 {
-    return midpar_find_twin_generic(toks, l_idx, end_idx,
+    return midpar_find_twin_generic(l_bracket, search_end,
                                     MIDLEX_TOKENTYPE_L_SQBRACKET,
                                     MIDLEX_TOKENTYPE_R_SQBRACKET);
 }
 
-mid_isize midpar_find_twin_curly(const struct midlex_Token *toks,
-                                 mid_isize l_idx, mid_isize end_idx)
+midlex_TokenIter midpar_find_twin_curly(midlex_TokenIter l_curly,
+                                        midlex_TokenIter search_end)
 {
-    return midpar_find_twin_generic(toks, l_idx, end_idx,
+    return midpar_find_twin_generic(l_curly, search_end,
                                     MIDLEX_TOKENTYPE_L_CURLY,
                                     MIDLEX_TOKENTYPE_R_CURLY);
 }
 
-mid_isize midpar_find_twin_angle(const struct midlex_Token *toks,
-                                 mid_isize l_idx, mid_isize end_idx)
+midlex_TokenIter midpar_find_twin_angle(midlex_TokenIter l_angle,
+                                        midlex_TokenIter search_end)
 {
-    return midpar_find_twin_generic(toks, l_idx, end_idx, MIDLEX_TOKENTYPE_LT,
+    return midpar_find_twin_generic(l_angle, search_end, MIDLEX_TOKENTYPE_LT,
                                     MIDLEX_TOKENTYPE_GT);
 }

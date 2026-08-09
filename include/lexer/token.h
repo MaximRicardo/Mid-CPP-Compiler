@@ -44,6 +44,11 @@ midgen_dynarray_struct_named(midlex_TokenVec, struct midlex_Token);
 
 void midlex_Token_deinit(struct midlex_Token *self);
 
+// mom can we have c++ iterators?
+// we have iterators at home.
+// iterators at home:
+typedef const struct midlex_Token *midlex_TokenIter;
+
 #ifdef __cplusplus
 }
 #endif

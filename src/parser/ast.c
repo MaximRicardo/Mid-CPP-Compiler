@@ -2,7 +2,6 @@
 #include "diag.h"
 #include "generics/bumpalloc.h"
 #include "generics/dynarray.h"
-#include "ints.h"
 #include "lexer/token.h"
 #include "lexer/token_type.h"
 #include "parser/allocator.h"
@@ -147,26 +146,25 @@ static bool is_class_start(enum midlex_TokenType type)
            type == MIDLEX_TOKENTYPE_UNION;
 }
 
-static mid_isize skip_typequals(const struct midlex_Token *toks,
-                                mid_isize start)
+static midlex_TokenIter skip_typequals(midlex_TokenIter start)
 {
-    mid_isize i = start;
-    while (midlex_is_typequal(toks[i++].type))
+    midlex_TokenIter i = start;
+    while (midlex_is_typequal((i++)->type))
         ;
 
     return i - 1;
 }
 
-static bool is_ctor_start(const struct midlex_Token *toks, mid_isize start,
+static bool is_ctor_start(midlex_TokenIter start,
                           const struct midpar_ASTNode *parent)
 {
-    if (toks[start].type != MIDLEX_TOKENTYPE_IDENTIFIER)
+    if (start->type != MIDLEX_TOKENTYPE_IDENTIFIER)
         return false;
-    if (toks[start + 1].type != MIDLEX_TOKENTYPE_L_PAREN)
+    if ((start + 1)->type != MIDLEX_TOKENTYPE_L_PAREN)
         return false;
 
     assert(parent->type == MIDPAR_ASTNODETYPE_CLASS);
-    return !strcmp(toks[start].ident, parent->class_.name);
+    return !strcmp(start->ident, parent->class_.name);
 }
 
 static bool is_dtor_start(const struct midlex_Token *tok)
@@ -174,13 +172,11 @@ static bool is_dtor_start(const struct midlex_Token *tok)
     return tok->type == MIDLEX_TOKENTYPE_BITWISE_NOT; // '~'
 }
 
-struct midpar_ASTNode *midpar_parse_node(const struct midlex_Token *toks,
-                                         mid_isize start, mid_isize *out_end,
-                                         struct midpar_ASTNode *parent,
-                                         struct midsema_Scope *scope,
-                                         struct midpar_ParseNodeFlags flags,
-                                         struct midpar_Allocators *allocs,
-                                         struct mid_DiagVec *diags)
+struct midpar_ASTNode *
+midpar_parse_node(midlex_TokenIter start, midlex_TokenIter *out_end,
+                  struct midpar_ASTNode *parent, struct midsema_Scope *scope,
+                  struct midpar_ParseNodeFlags flags,
+                  struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
 {
 #ifdef MIDPAR_DEBUG_LOG_NODES
 #define LOG_NODE(x) x
@@ -188,64 +184,64 @@ struct midpar_ASTNode *midpar_parse_node(const struct midlex_Token *toks,
 #define LOG_NODE(x)
 #endif
 
+    // TODO: make this more readable
+
     struct midpar_ASTNode *ret;
     midgen_bumpmalloc(&allocs->ast, &ret);
-    *ret = (struct midpar_ASTNode){.start = &toks[start], .parent = parent};
+    *ret = (struct midpar_ASTNode){.start = start, .parent = parent};
 
     LOG_NODE(printf("AST START AT %d:%d\n", ret->start->pos.line,
                     ret->start->pos.column));
 
-    mid_isize check_type = skip_typequals(toks, start);
-    mid_isize end;
+    midlex_TokenIter check_type = skip_typequals(start);
+    midlex_TokenIter end;
     bool check_semi = true;
-    if (is_class_start(toks[check_type].type)) {
+    if (is_class_start(check_type->type)) {
         LOG_NODE(printf("CLASS NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_CLASS;
-        end = midpar_parse_class(&ret->class_, scope, toks, start,
-                                 flags.skip_def, allocs, diags);
-    } else if (flags.is_field && is_ctor_start(toks, check_type, parent)) {
+        end = midpar_parse_class(&ret->class_, scope, start, flags.skip_def,
+                                 allocs, diags);
+    } else if (flags.is_field && is_ctor_start(check_type, parent)) {
         LOG_NODE(printf("CTOR NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_FUNC_DECL;
-        end = midpar_parse_tor(&ret->func_decl, toks, start, scope,
-                               flags.skip_def, allocs, diags);
+        end = midpar_parse_tor(&ret->func_decl, start, scope, flags.skip_def,
+                               allocs, diags);
         check_semi = !ret->func_decl.has_def;
-    } else if (flags.is_field && is_dtor_start(&toks[check_type])) {
+    } else if (flags.is_field && is_dtor_start(check_type)) {
         LOG_NODE(printf("DTOR NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_FUNC_DECL;
-        end = midpar_parse_tor(&ret->func_decl, toks, start, scope,
-                               flags.skip_def, allocs, diags);
+        end = midpar_parse_tor(&ret->func_decl, start, scope, flags.skip_def,
+                               allocs, diags);
         check_semi = !ret->func_decl.has_def;
-    } else if (toks[check_type].type == MIDLEX_TOKENTYPE_NAMESPACE) {
+    } else if (check_type->type == MIDLEX_TOKENTYPE_NAMESPACE) {
         LOG_NODE(printf("NAMESPACE NODE\n"));
         check_semi = false;
         ret->type = MIDPAR_ASTNODETYPE_NAMESPACE;
-        end = midpar_parse_namespace(&ret->nmspace, scope, toks, start, allocs,
-                                     diags);
-    } else if (toks[start].type == MIDLEX_TOKENTYPE_RETURN) {
+        end =
+            midpar_parse_namespace(&ret->nmspace, scope, start, allocs, diags);
+    } else if (start->type == MIDLEX_TOKENTYPE_RETURN) {
         LOG_NODE(printf("RETURN NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_RETURN;
-        end = midpar_parse_return(&ret->ret, toks, start, scope, allocs, diags);
-    } else if (toks[start].type == MIDLEX_TOKENTYPE_TEMPLATE) {
+        end = midpar_parse_return(&ret->ret, start, scope, allocs, diags);
+    } else if (start->type == MIDLEX_TOKENTYPE_TEMPLATE) {
         LOG_NODE(printf("TEMPLATE NODE\n"));
         check_semi = false;
         ret->type = MIDPAR_ASTNODETYPE_TMPLT;
-        end =
-            midpar_parse_tmplt(&ret->tmplt, scope, toks, start, allocs, diags);
-    } else if (midpar_valid_type_start(toks, start, scope)) {
+        end = midpar_parse_tmplt(&ret->tmplt, scope, start, allocs, diags);
+    } else if (midpar_valid_type_start(start, scope)) {
         LOG_NODE(printf("DECL NODE\n"));
         bool mvp;
-        bool is_func =
-            midpar_decl_is_func(toks, start, scope, allocs, diags, &mvp);
+        bool is_func = midpar_decl_is_func(start, scope, allocs, diags, &mvp);
         if (is_func) {
             LOG_NODE(printf("mvp = %d\n", mvp));
             ret->type = MIDPAR_ASTNODETYPE_FUNC_DECL;
-            end = midpar_parse_func_decl(&ret->func_decl, toks, start, scope,
+            end = midpar_parse_func_decl(&ret->func_decl, start, scope,
                                          flags.skip_def, allocs, diags);
             check_semi = !ret->func_decl.has_def;
         } else {
             ret->type = MIDPAR_ASTNODETYPE_VAR_DECL;
             end = midpar_parse_var_decl(
-                &ret->var_decl, toks, start, MIDPAR_VARDECL_ENDTYPES,
+                &ret->var_decl, start, MIDPAR_VARDECL_ENDTYPES,
                 (struct midpar_ParseVarDeclFlags){.add_to_scope = true,
                                                   .skip_init = flags.skip_def},
                 scope, allocs, diags);
@@ -253,14 +249,13 @@ struct midpar_ASTNode *midpar_parse_node(const struct midlex_Token *toks,
     } else {
         LOG_NODE(printf("EXPR NODE\n"));
         ret->type = MIDPAR_ASTNODETYPE_EXPR;
-        ret->expr = midpar_parse_expr(toks, start, MIDPAR_DEFAULT_ENDTYPES,
-                                      &end, scope, diags);
+        ret->expr = midpar_parse_expr(start, MIDPAR_DEFAULT_ENDTYPES, &end,
+                                      scope, diags);
     }
 
-    if (check_semi && toks[end].type != MIDLEX_TOKENTYPE_SEMICOLON)
-        midgen_dynpush(
-            diags, middiag_expected_token_err("';'", &toks[start],
-                                              MIDDIAG_ERR_MISSING_SEMICOLON));
+    if (check_semi && end->type != MIDLEX_TOKENTYPE_SEMICOLON)
+        midgen_dynpush(diags, middiag_expected_token_err(
+                                  "';'", start, MIDDIAG_ERR_MISSING_SEMICOLON));
     else if (check_semi)
         ++end;
 
