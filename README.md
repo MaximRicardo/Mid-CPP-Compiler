@@ -53,20 +53,20 @@ The include directory mirrors the src directory.
 There are several modules within the compiler for various tasks.
 Here's a brief overfiew of all of them:
 
-mid_*           - Top level prefix, everything not in its own module goes in
+* mid_*           - Top level prefix, everything not in its own module goes in
                   here.
-midflt_*        - Arbitrary precision floats
-midint_*        - Arbitrary precision integers
-midllvm_*       - Stuff related to LLVM, like generating LLVM IR for example
-midcmd_*        - Stuff related to the command line, like parsing command line
+* midflt_*        - Arbitrary precision floats
+* midint_*        - Arbitrary precision integers
+* midllvm_*       - Stuff related to LLVM, like generating LLVM IR for example
+* midcmd_*        - Stuff related to the command line, like parsing command line
                   arguments for example
-middiag_*       - Stuff related to compiler diagnostics
-midstr_*        - Stuff related to mid_Dynstr
-midgen_*        - Generic data types
-midlex_*        - The lexer
-midlit_*        - Stuff related to literals
-midpar_*        - The parser
-midsema_*       - Semantic Analysis
-midsymb_*       - The symbol table
-midtype_*       - Info about C++ data types
-midutf8_*       - UTF8 stuff
+* middiag_*       - Stuff related to compiler diagnostics
+* midstr_*        - Stuff related to mid_Dynstr
+* midgen_*        - Generic data types
+* midlex_*        - The lexer
+* midlit_*        - Stuff related to literals
+* midpar_*        - The parser
+* midsema_*       - Semantic Analysis
+* midsymb_*       - The symbol table
+* midtype_*       - Info about C++ data types
+* midutf8_*       - UTF8 stuff
