@@ -20,61 +20,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// expands to a chain of case statements
-#define CASE_ISALPHA                                                           \
-    case 'a':                                                                  \
-    case 'b':                                                                  \
-    case 'c':                                                                  \
-    case 'd':                                                                  \
-    case 'e':                                                                  \
-    case 'f':                                                                  \
-    case 'g':                                                                  \
-    case 'h':                                                                  \
-    case 'i':                                                                  \
-    case 'j':                                                                  \
-    case 'k':                                                                  \
-    case 'l':                                                                  \
-    case 'm':                                                                  \
-    case 'n':                                                                  \
-    case 'o':                                                                  \
-    case 'p':                                                                  \
-    case 'q':                                                                  \
-    case 'r':                                                                  \
-    case 's':                                                                  \
-    case 't':                                                                  \
-    case 'u':                                                                  \
-    case 'v':                                                                  \
-    case 'w':                                                                  \
-    case 'x':                                                                  \
-    case 'y':                                                                  \
-    case 'z':                                                                  \
-    case 'A':                                                                  \
-    case 'B':                                                                  \
-    case 'C':                                                                  \
-    case 'D':                                                                  \
-    case 'E':                                                                  \
-    case 'F':                                                                  \
-    case 'G':                                                                  \
-    case 'H':                                                                  \
-    case 'I':                                                                  \
-    case 'J':                                                                  \
-    case 'K':                                                                  \
-    case 'L':                                                                  \
-    case 'M':                                                                  \
-    case 'N':                                                                  \
-    case 'O':                                                                  \
-    case 'P':                                                                  \
-    case 'Q':                                                                  \
-    case 'R':                                                                  \
-    case 'S':                                                                  \
-    case 'T':                                                                  \
-    case 'U':                                                                  \
-    case 'V':                                                                  \
-    case 'W':                                                                  \
-    case 'X':                                                                  \
-    case 'Y':                                                                  \
-    case 'Z'
-
 static struct midlex_Token create_basic_tok(enum midlex_TokenType type,
                                             struct mid_Position pos,
                                             const char *line)
@@ -1053,6 +998,63 @@ static char *symb_in_tbl(struct midsymb_Table *tbl, const char *symb)
     return NULL;
 }
 
+static void parse_char_lit(struct midlex_TokenVec *toks, const char *src,
+                           mid_isize *i, struct mid_Position *pos,
+                           const char *line_start, struct mid_DiagVec *diags)
+{
+    mid_isize old_i = *i;
+    midgen_dynpush(toks,
+                   create_charlit_tok(src, *i, i, *pos, line_start, diags));
+    --*i;
+    pos->column += *i - old_i;
+}
+
+static void parse_str_lit(struct midlex_TokenVec *toks, const char *src,
+                          mid_isize *i, struct mid_Position *pos,
+                          const char *line_start,
+                          struct midlit_StringVec *str_lits,
+                          struct mid_DiagVec *diags)
+{
+    mid_isize old_i = *i;
+    midgen_dynpush(
+        toks, create_strlit_tok(src, str_lits, *i, i, *pos, line_start, diags));
+    --*i;
+    pos->column += *i - old_i;
+}
+
+static void parse_ident(struct midlex_TokenVec *toks, const char *src,
+                        mid_isize *i, struct mid_Position *pos,
+                        const char *line_start,
+                        struct midlit_StringVec *str_lits,
+                        struct midsymb_Table *symbtbl,
+                        struct mid_DiagVec *diags)
+{
+    if (src[*i + 1] == '\'') {
+        parse_char_lit(toks, src, i, pos, line_start, diags);
+    } else if (src[*i + 1] == '"') {
+        parse_str_lit(toks, src, i, pos, line_start, str_lits, diags);
+    } else {
+        mid_isize old_i = *i;
+        char *id = read_identifier(src, *i, i);
+        --*i;
+        char *in_tbl = symb_in_tbl(symbtbl, id);
+        if (in_tbl) {
+            free(id);
+            id = in_tbl;
+        }
+        struct midlex_Token tok = create_identifier_tok(id, *pos, line_start);
+        midgen_dynpush(toks, tok);
+        // if the symbol is an actual identifier then it needs to be
+        // added to the symbol table, otherwise the identifier can be
+        // discarded
+        if (!in_tbl && tok.type == MIDLEX_TOKENTYPE_IDENTIFIER)
+            midgen_dynpush(symbtbl, id);
+        else if (!in_tbl)
+            free(id);
+        pos->column += *i - old_i;
+    }
+}
+
 static struct midlex_Tokenize read_tokens(const char *src, const char *file)
 {
     struct midlex_TokenVec toks = {};
@@ -1398,57 +1400,25 @@ static struct midlex_Tokenize read_tokens(const char *src, const char *file)
                                                    pos, line_start));
             break;
 
-        // ew
-        CASE_ISALPHA:
-        case '_': {
-            if (src[i + 1] == '\'') {
-                goto parse_char_lit;
-            } else if (src[i + 1] == '"') {
-                goto parse_str_lit;
-            } else {
-                auto old_i = i;
-                char *id = read_identifier(src, i, &i);
-                --i;
-                char *in_tbl = symb_in_tbl(&symbtbl, id);
-                if (in_tbl) {
-                    free(id);
-                    id = in_tbl;
-                }
-                auto tok = create_identifier_tok(id, pos, line_start);
-                midgen_dynpush(&toks, tok);
-                // if the symbol is an actual identifier then it needs to be
-                // added to the symbol table, otherwise the identifier can be
-                // discarded
-                if (!in_tbl && tok.type == MIDLEX_TOKENTYPE_IDENTIFIER)
-                    midgen_dynpush(&symbtbl, id);
-                else if (!in_tbl)
-                    free(id);
-                pos.column += i - old_i;
-                break;
-            }
-        }
-
-        case '\'': {
-        parse_char_lit:
-            auto old_i = i;
-            midgen_dynpush(
-                &toks, create_charlit_tok(src, i, &i, pos, line_start, &diags));
-            --i;
-            pos.column += i - old_i;
+        case '_':
+            parse_ident(&toks, src, &i, &pos, line_start, &str_lits, &symbtbl,
+                        &diags);
             break;
-        }
 
-        case '"': {
-        parse_str_lit:
-            auto old_i = i;
-            midgen_dynpush(&toks, create_strlit_tok(src, &str_lits, i, &i, pos,
-                                                    line_start, &diags));
-            --i;
-            pos.column += i - old_i;
+        case '\'':
+            parse_char_lit(&toks, src, &i, &pos, line_start, &diags);
             break;
-        }
+
+        case '"':
+            parse_str_lit(&toks, src, &i, &pos, line_start, &str_lits, &diags);
+            break;
 
         default: {
+            if (isalpha(src[i])) {
+                parse_ident(&toks, src, &i, &pos, line_start, &str_lits,
+                            &symbtbl, &diags);
+                break;
+            }
             // column isn't updated cuz it's still one character
             char *c = midutf8_char_to_str(midutf8_read_char(src, i, &i));
             --i;
