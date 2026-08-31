@@ -32,11 +32,19 @@ struct midlit_String {
     char16_t *c16;
     char32_t *c32;
 
+    // the string stored as arbitrary precision integers.
+    // includes the null terminator
+    struct midlit_TaggedValue *nums;
+
+    // doesn't include the null terminator
+    uint_least64_t len;
+
     enum midlit_StringType type;
 };
 midgen_dynarray_struct_named(midlit_StringVec, struct midlit_String);
 
 void midlit_String_deinit(struct midlit_String *self);
+void midlit_setup_string_nums(struct midlit_String *self);
 mid_isize midlit_strlit_len(const struct midlit_String *strlit);
 void midlit_fprint_strlit(FILE *out, const struct midlit_String *self);
 void midlit_print_strlit(const struct midlit_String *self);
@@ -59,10 +67,49 @@ enum midlit_ValueKind {
     MIDLIT_VALUE_ARRAY,
     MIDLIT_VALUE_STRUCT,
     MIDLIT_VALUE_UNION,
+    MIDLIT_VALUE_PTR,
 };
 
+// used by values in an array or string
+struct midlit_ValueArrInfo {
+    uint_least64_t len;
+    struct midlit_TaggedValue *elems; // non-owning
+    enum midlit_ValueKind kind;       // can be either MIDLIT_VALUE_ARRAY or
+                                      // MIDLIT_VALUE_STR
+};
+
+struct midlit_Ptr {
+    union {
+        struct midlit_TaggedValue *raw_val;  // used if idx_used is false.
+                                             // owning ptr to the value we're
+                                             // pointing to
+        struct midlit_ValueArrInfo arr_info; // used if idx_used is true.
+                                             // info abt the array or string
+                                             // we're pointing to
+    };
+    uint_least64_t val_idx; // idx of the value we're pointing to if idx_used
+                            // is true.
+    bool idx_used;
+    bool past_end; // are we pointing past the end of val or the array val is
+                   // in?
+};
+
+void midlit_Ptr_deinit(struct midlit_Ptr *self);
+struct midlit_Ptr midlit_copy_ptr(const struct midlit_Ptr *src);
+void midlit_fprint_ptr(FILE *out, const struct midlit_Ptr *self);
+void midlit_print_ptr(const struct midlit_Ptr *self);
+bool midlit_ptr_is_null(const struct midlit_Ptr *self);
+// returns nullptr on failure
+struct midlit_TaggedValue *midlit_deref_ptr(const struct midlit_Ptr *self);
+// value kind of the value pointed to
+enum midlit_ValueKind midlit_deref_ptr_kind(const struct midlit_Ptr *self);
+struct midlit_TaggedValue midlit_ref_val(const struct midlit_TaggedValue *self);
+// returns true on success, false on failure
+bool midlit_inc_ptr(struct midlit_Ptr *self, int_least64_t inc);
+// returns true on success, false on failure
+bool midlit_dec_ptr(struct midlit_Ptr *self, int_least64_t dec);
+
 union midlit_Value {
-    // scalars
     struct mid_APInt i;
     struct mid_APFloat flt;
 
@@ -70,7 +117,8 @@ union midlit_Value {
 
     struct midlit_Array arr;
 
-    // classes
+    struct midlit_Ptr ptr;
+
     struct midsema_StructLit struct_;
     struct midsema_UnionLit union_;
 };
@@ -79,8 +127,10 @@ midgen_dynarray_struct_named(midlit_ValueVec, union midlit_Value);
 void midlit_Value_deinit(union midlit_Value *self, enum midlit_ValueKind kind);
 
 struct midlit_TaggedValue {
+    struct midlit_ValueArrInfo arr_info; // only used if in_arr is true
     union midlit_Value v;
     enum midlit_ValueKind kind;
+    bool in_arr; // true if the value is in an array or a string
 };
 
 void midlit_TaggedValue_deinit(struct midlit_TaggedValue *self);

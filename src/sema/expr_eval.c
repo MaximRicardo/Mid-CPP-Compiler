@@ -148,6 +148,23 @@ static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
         res.kind = MIDLIT_VALUE_UNSIGNED_INT;
         break;
 
+    case MIDPAR_EXPRTYPE_REF: {
+        struct midlit_TaggedValue tmp = res;
+        res = midlit_ref_val(&tmp);
+        midlit_TaggedValue_deinit(&tmp);
+        break;
+    }
+
+    case MIDPAR_EXPRTYPE_DEREF: {
+        struct midlit_TaggedValue *val = midlit_deref_ptr(&res.v.ptr);
+        if (!val)
+            MID_CRASH("can not dereference ptr");
+        struct midlit_TaggedValue tmp = res;
+        res = midlit_copy_value(val);
+        midlit_TaggedValue_deinit(&tmp);
+        break;
+    }
+
     default:
         MID_CRASH("constant folding expr type not supported");
     }
@@ -190,13 +207,16 @@ static void convert_value(struct midlit_TaggedValue *val,
             MID_CRASH("can't convert integer to string");
 
         case MIDLIT_VALUE_ARRAY:
-            MID_CRASH("can't convert float to array");
+            MID_CRASH("can't convert integer to array");
 
         case MIDLIT_VALUE_STRUCT:
-            MID_CRASH("can't convert float to struct");
+            MID_CRASH("can't convert integer to struct");
 
         case MIDLIT_VALUE_UNION:
-            MID_CRASH("can't convert float to union");
+            MID_CRASH("can't convert integer to union");
+
+        case MIDLIT_VALUE_PTR:
+            MID_CRASH("can't convert integer to ptr");
         }
         break;
 
@@ -226,6 +246,9 @@ static void convert_value(struct midlit_TaggedValue *val,
 
         case MIDLIT_VALUE_UNION:
             MID_CRASH("can't convert float to union");
+
+        case MIDLIT_VALUE_PTR:
+            MID_CRASH("can't convert float to ptr");
         }
         break;
 
@@ -248,15 +271,128 @@ static void convert_value(struct midlit_TaggedValue *val,
         if (new_kind != MIDLIT_VALUE_UNION)
             MID_CRASH("can't convert unions");
         break;
+
+    case MIDLIT_VALUE_PTR:
+        if (new_kind != MIDLIT_VALUE_PTR)
+            MID_CRASH("can't convert ptrs");
+        break;
     }
 
     val->kind = new_kind;
 }
 
 static struct midlit_TaggedValue
+eval_arith_ptr_binop(const struct midpar_Expr *expr,
+                     const struct midlit_TaggedValue *lhs,
+                     const struct midlit_TaggedValue *rhs)
+{
+    const struct midlit_TaggedValue *ptr =
+        lhs->kind == MIDLIT_VALUE_PTR ? lhs : rhs;
+    const struct midlit_TaggedValue *off =
+        lhs->kind == MIDLIT_VALUE_PTR ? rhs : lhs;
+
+    assert(off->kind == MIDLIT_VALUE_SIGNED_INT ||
+           off->kind == MIDLIT_VALUE_UNSIGNED_INT);
+
+    struct midlit_TaggedValue res = {};
+    if (expr->type != MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
+        res = midlit_copy_value(ptr);
+
+    int_least64_t off_val = off->kind == MIDLIT_VALUE_UNSIGNED_INT
+                                ? midint_to_uint(&off->v.i)
+                                : midint_to_sint(&off->v.i);
+
+    switch (expr->type) {
+    case MIDPAR_EXPRTYPE_ADD:
+        if (!midlit_inc_ptr(&res.v.ptr, off_val))
+            MID_CRASH("failed to inc ptr");
+        break;
+
+    case MIDPAR_EXPRTYPE_SUB:
+        if (!midlit_dec_ptr(&res.v.ptr, off_val))
+            MID_CRASH("failed to dec ptr");
+        break;
+
+    case MIDPAR_EXPRTYPE_ARRAY_SUBSCR: {
+        struct midlit_Ptr tmp = midlit_copy_ptr(&ptr->v.ptr);
+        if (!midlit_inc_ptr(&tmp, off_val))
+            MID_CRASH("failed to offset ptr");
+        res = midlit_copy_value(midlit_deref_ptr(&tmp));
+        midlit_Ptr_deinit(&tmp);
+    }
+
+    default:
+        MID_CRASH("expr type is not a valid binary ptr arithmetic operator");
+    }
+
+    return res;
+}
+
+static struct midlit_TaggedValue
+eval_arith_arr_binop(const struct midpar_Expr *expr,
+                     const struct midlit_TaggedValue *lhs,
+                     const struct midlit_TaggedValue *rhs)
+{
+    const struct midlit_TaggedValue *arr =
+        lhs->kind == MIDLIT_VALUE_ARRAY ? lhs : rhs;
+    const struct midlit_TaggedValue *off =
+        lhs->kind == MIDLIT_VALUE_ARRAY ? rhs : lhs;
+
+    struct midlit_TaggedValue ptr = midlit_ref_val(&arr->v.arr.elems[0]);
+
+    struct midlit_TaggedValue res = eval_arith_ptr_binop(expr, &ptr, off);
+
+    midlit_TaggedValue_deinit(&ptr);
+    return res;
+}
+
+static struct midlit_TaggedValue
+eval_arith_str_binop(const struct midpar_Expr *expr,
+                     const struct midlit_TaggedValue *lhs,
+                     const struct midlit_TaggedValue *rhs)
+{
+    const struct midlit_TaggedValue *str =
+        lhs->kind == MIDLIT_VALUE_STR ? lhs : rhs;
+    const struct midlit_TaggedValue *off =
+        lhs->kind == MIDLIT_VALUE_STR ? rhs : lhs;
+
+    struct midlit_TaggedValue ptr = midlit_ref_val(&str->v.str.nums[0]);
+
+    struct midlit_TaggedValue res = eval_arith_ptr_binop(expr, &ptr, off);
+
+    midlit_TaggedValue_deinit(&ptr);
+    return res;
+}
+
+static bool binop_has_ptr_arg(const struct midlit_TaggedValue *lhs,
+                              const struct midlit_TaggedValue *rhs)
+{
+    return lhs->kind == MIDLIT_VALUE_PTR || rhs->kind == MIDLIT_VALUE_PTR;
+}
+
+static bool binop_has_arr_arg(const struct midlit_TaggedValue *lhs,
+                              const struct midlit_TaggedValue *rhs)
+{
+    return lhs->kind == MIDLIT_VALUE_ARRAY || rhs->kind == MIDLIT_VALUE_ARRAY;
+}
+
+static bool binop_has_str_arg(const struct midlit_TaggedValue *lhs,
+                              const struct midlit_TaggedValue *rhs)
+{
+    return lhs->kind == MIDLIT_VALUE_STR || rhs->kind == MIDLIT_VALUE_STR;
+}
+
+static struct midlit_TaggedValue
 eval_arith_binop(const struct midpar_Expr *expr, struct midlit_TaggedValue *lhs,
                  struct midlit_TaggedValue *rhs)
 {
+    if (binop_has_ptr_arg(lhs, rhs))
+        return eval_arith_ptr_binop(expr, lhs, rhs);
+    else if (binop_has_arr_arg(lhs, rhs))
+        return eval_arith_arr_binop(expr, lhs, rhs);
+    else if (binop_has_str_arg(lhs, rhs))
+        return eval_arith_str_binop(expr, lhs, rhs);
+
     enum midlit_ValueKind res_kind = midsema_type_lit_value_kind(&expr->ret);
     bool is_integral = res_kind == MIDLIT_VALUE_SIGNED_INT ||
                        res_kind == MIDLIT_VALUE_UNSIGNED_INT;

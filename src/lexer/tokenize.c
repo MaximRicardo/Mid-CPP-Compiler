@@ -718,7 +718,10 @@ struct midlit_String read_strlit(const char *src, mid_isize lquote,
             realloc_strlit(&str, cap += 128);
     }
 
+    str.len = len;
     strlit_add(&str, len, '\0');
+
+    midlit_setup_string_nums(&str);
 
     if (src[i] != '"')
         midgen_dynpush(

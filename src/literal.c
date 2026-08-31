@@ -11,6 +11,7 @@
 #include "utf8.h"
 #include <ctype.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <wchar.h>
 
@@ -20,6 +21,14 @@ void midlit_Array_deinit(struct midlit_Array *self)
         midlit_TaggedValue_deinit(&self->elems[i]);
     }
     free(self->elems);
+}
+
+void midlit_Ptr_deinit(struct midlit_Ptr *self)
+{
+    if (!self->idx_used) {
+        if (self->raw_val)
+            midlit_TaggedValue_deinit(self->raw_val);
+    }
 }
 
 void midlit_Value_deinit(union midlit_Value *self, enum midlit_ValueKind kind)
@@ -35,11 +44,14 @@ void midlit_Value_deinit(union midlit_Value *self, enum midlit_ValueKind kind)
         break;
 
     case MIDLIT_VALUE_STR:
-        MID_CRASH("string literals are deinit-ed by the str lits table");
         break;
 
     case MIDLIT_VALUE_ARRAY:
         midlit_Array_deinit(&self->arr);
+        break;
+
+    case MIDLIT_VALUE_PTR:
+        midlit_Ptr_deinit(&self->ptr);
         break;
 
     case MIDLIT_VALUE_STRUCT:
@@ -57,6 +69,60 @@ void midlit_TaggedValue_deinit(struct midlit_TaggedValue *self)
     midlit_Value_deinit(&self->v, self->kind);
 }
 
+static bool str_type_signed(enum midlit_StringType type)
+{
+    if (type == MIDLIT_STRINGTYPE_CHAR)
+        return midtype_char_signed;
+    else if (type == MIDLIT_STRINGTYPE_WCHAR)
+        return midtype_wchar_signed;
+    else
+        return false;
+}
+
+static struct midlit_ValueArrInfo str_arr_info(struct midlit_String *self)
+{
+    // len is self->len + 1 cuz we gotta account for the null terminator
+    return (struct midlit_ValueArrInfo){
+        .len = self->len + 1, .elems = self->nums, .kind = MIDLIT_VALUE_STR};
+}
+
+void midlit_setup_string_nums(struct midlit_String *self)
+{
+    self->nums = mid_malloc((self->len + 1) * sizeof(*self->nums));
+
+    bool is_signed = str_type_signed(self->type);
+    enum midlit_ValueKind kind =
+        is_signed ? MIDLIT_VALUE_SIGNED_INT : MIDLIT_VALUE_UNSIGNED_INT;
+    int32_t bits = midlit_strtype_char_size(self->type) * 8;
+
+    for (uint_least64_t i = 0; i < self->len; ++i) {
+        self->nums[i].kind = kind;
+        self->nums[i].in_arr = true;
+        self->nums[i].arr_info = str_arr_info(self);
+
+        switch (self->type) {
+        case MIDLIT_STRINGTYPE_CHAR:
+            self->nums[i].v.i = midint_init(bits, self->c[i], is_signed);
+            break;
+
+        case MIDLIT_STRINGTYPE_WCHAR:
+            self->nums[i].v.i = midint_init(bits, self->wc[i], is_signed);
+            break;
+
+        case MIDLIT_STRINGTYPE_CHAR16:
+            self->nums[i].v.i = midint_init(bits, self->c16[i], is_signed);
+            break;
+
+        case MIDLIT_STRINGTYPE_CHAR32:
+            self->nums[i].v.i = midint_init(bits, self->c32[i], is_signed);
+            break;
+        }
+    }
+
+    self->nums[self->len].kind = kind;
+    self->nums[self->len].v.i = midint_zero(bits);
+}
+
 struct midlit_Array midlit_copy_array(const struct midlit_Array *src)
 {
     struct midlit_Array dest = *src;
@@ -65,6 +131,14 @@ struct midlit_Array midlit_copy_array(const struct midlit_Array *src)
     for (uint_least64_t i = 0; i < src->len; ++i)
         dest.elems[i] = midlit_copy_value(&src->elems[i]);
 
+    return dest;
+}
+
+struct midlit_Ptr midlit_copy_ptr(const struct midlit_Ptr *src)
+{
+    struct midlit_Ptr dest = *src;
+    if (!src->idx_used)
+        *dest.raw_val = midlit_copy_value(src->raw_val);
     return dest;
 }
 
@@ -89,6 +163,10 @@ midlit_copy_value(const struct midlit_TaggedValue *src)
 
     case MIDLIT_VALUE_ARRAY:
         ret.v.arr = midlit_copy_array(&src->v.arr);
+        break;
+
+    case MIDLIT_VALUE_PTR:
+        ret.v.ptr = midlit_copy_ptr(&src->v.ptr);
         break;
 
     case MIDLIT_VALUE_STRUCT:
@@ -139,55 +217,67 @@ void midlit_String_deinit(struct midlit_String *self)
         free(self->c32);
         break;
     }
+
+    for (uint_least64_t i = 0; i <= self->len; ++i) {
+        midlit_TaggedValue_deinit(&self->nums[i]);
+    }
+    free(self->nums);
 }
 
-static mid_isize c_str_len(const TypesCharType *str)
+struct midlit_TaggedValue *midlit_deref_ptr(const struct midlit_Ptr *self)
 {
-    mid_isize i;
-    for (i = 0; str[i] != '\0'; ++i)
-        ;
-    return i;
+    if (self->past_end)
+        return nullptr;
+
+    if (!self->idx_used)
+        return self->raw_val;
+    else
+        return &self->arr_info.elems[self->val_idx];
 }
 
-static mid_isize wc_str_len(const TypesWCharType *str)
+enum midlit_ValueKind midlit_deref_ptr_kind(const struct midlit_Ptr *self)
 {
-    mid_isize i;
-    for (i = 0; str[i] != '\0'; ++i)
-        ;
-    return i;
+    assert(!midlit_ptr_is_null(self));
+
+    if (self->idx_used) {
+        return self->arr_info.elems[0].kind;
+    } else {
+        return self->raw_val->kind;
+    }
 }
 
-static mid_isize c16_str_len(const uint16_t *str)
+bool midlit_ptr_is_null(const struct midlit_Ptr *self)
 {
-    mid_isize i;
-    for (i = 0; str[i] != '\0'; ++i)
-        ;
-    return i;
+    if (self->idx_used) {
+        return !self->arr_info.elems;
+    } else {
+        return !self->raw_val;
+    }
 }
 
-static mid_isize c32_str_len(const uint32_t *str)
+struct midlit_TaggedValue midlit_ref_val(const struct midlit_TaggedValue *self)
 {
-    mid_isize i;
-    for (i = 0; str[i] != '\0'; ++i)
-        ;
-    return i;
+    struct midlit_TaggedValue ret = {.kind = MIDLIT_VALUE_PTR};
+    struct midlit_Ptr *ptr = &ret.v.ptr;
+    ptr->idx_used = self->in_arr;
+    ptr->past_end = false;
+
+    if (self->in_arr) {
+        ptr->arr_info = self->arr_info;
+        ptr->val_idx = self - self->arr_info.elems;
+        assert(ptr->val_idx < ptr->arr_info.len);
+    } else {
+        ptr->raw_val = mid_malloc(sizeof(*ptr->raw_val));
+        *ptr->raw_val = midlit_copy_value(self);
+    }
+
+    return ret;
 }
 
+// TODO: delete this cuz strings store their length now
 mid_isize midlit_strlit_len(const struct midlit_String *strlit)
 {
-    switch (strlit->type) {
-    case MIDLIT_STRINGTYPE_CHAR:
-        return c_str_len(strlit->c);
-
-    case MIDLIT_STRINGTYPE_WCHAR:
-        return wc_str_len(strlit->wc);
-
-    case MIDLIT_STRINGTYPE_CHAR16:
-        return c16_str_len(strlit->c16);
-
-    case MIDLIT_STRINGTYPE_CHAR32:
-        return c32_str_len(strlit->c32);
-    }
+    return strlit->len;
 }
 
 void midlit_fprint_strlit(FILE *out, const struct midlit_String *self)
@@ -244,6 +334,25 @@ void midlit_print_array(const struct midlit_Array *self)
     midlit_fprint_array(stdout, self);
 }
 
+void midlit_fprint_ptr(FILE *out, const struct midlit_Ptr *self)
+{
+    if (midlit_ptr_is_null(self)) {
+        fprintf(out, "(null ptr)");
+        return;
+    } else if (self->past_end) {
+        fprintf(out, "(invalid ptr)");
+        return;
+    }
+
+    fprintf(out, "ptr to ");
+    midlit_tagged_fprint(out, midlit_deref_ptr(self));
+}
+
+void midlit_print_ptr(const struct midlit_Ptr *self)
+{
+    midlit_fprint_ptr(stdout, self);
+}
+
 void midlit_tagged_fprint(FILE *out, const struct midlit_TaggedValue *val)
 {
     switch (val->kind) {
@@ -265,6 +374,10 @@ void midlit_tagged_fprint(FILE *out, const struct midlit_TaggedValue *val)
 
     case MIDLIT_VALUE_ARRAY:
         midlit_fprint_array(out, &val->v.arr);
+        break;
+
+    case MIDLIT_VALUE_PTR:
+        midlit_fprint_ptr(out, &val->v.ptr);
         break;
 
     case MIDLIT_VALUE_STRUCT:
@@ -618,4 +731,44 @@ midlit_read_intlit(const char *str, mid_isize start, mid_isize *out_end)
     }
 
     return ret;
+}
+
+// returns true on success, false on failure
+static bool inc_ptr_with_idx(struct midlit_Ptr *self, int_least64_t inc)
+{
+    uint_least64_t new_idx = self->val_idx + inc;
+    bool overflow = inc > 0 ? new_idx < self->val_idx : new_idx > self->val_idx;
+    if (overflow)
+        return false;
+
+    if (new_idx > self->arr_info.len)
+        return false;
+    else if (new_idx == self->arr_info.len)
+        self->past_end = true;
+    else
+        self->val_idx = new_idx;
+
+    return true;
+}
+
+bool midlit_inc_ptr(struct midlit_Ptr *self, int_least64_t inc)
+{
+    if (self->idx_used)
+        return inc_ptr_with_idx(self, inc);
+
+    if (inc == 0) {
+        return true;
+    } else if (inc == 1) {
+        if (self->past_end)
+            return false;
+        self->past_end = true;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool midlit_dec_ptr(struct midlit_Ptr *self, int_least64_t dec)
+{
+    return midlit_inc_ptr(self, -dec);
 }

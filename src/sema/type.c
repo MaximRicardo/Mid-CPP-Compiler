@@ -636,7 +636,7 @@ enum midlit_ValueKind
 midsema_type_lit_value_kind(const struct midpar_Type *type)
 {
     if (midsema_n_indir(type) > 0)
-        MID_CRASH("ptrs not supported");
+        return MIDLIT_VALUE_PTR;
 
     switch (type->spec) {
     case MIDPAR_TYPESPEC_CHAR:
