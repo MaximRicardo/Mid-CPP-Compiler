@@ -170,7 +170,7 @@ midlit_copy_value(const struct midlit_TaggedValue *src)
         break;
 
     case MIDLIT_VALUE_STRUCT:
-        MID_CRASH("copying struct values not implemented yet");
+        ret.v.struct_ = midsema_copy_structlit(&src->v.struct_);
         break;
 
     case MIDLIT_VALUE_UNION:

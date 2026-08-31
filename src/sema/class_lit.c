@@ -15,6 +15,22 @@ void midsema_StructLit_deinit(struct midsema_StructLit *self)
     free(self->dfields);
 }
 
+struct midsema_StructLit
+midsema_copy_structlit(const struct midsema_StructLit *src)
+{
+    struct midsema_StructLit dst = *src;
+    if (src->n_dfields == 0)
+        return dst;
+
+    dst.dfields = mid_malloc(src->n_dfields * sizeof(*dst.dfields));
+
+    for (mid_isize i = 0; i < src->n_dfields; ++i) {
+        dst.dfields[i] = midlit_copy_value(&src->dfields[i]);
+    }
+
+    return dst;
+}
+
 bool midsema_constexpr_default_init_struct(struct midpar_Class *struct_,
                                            struct midsema_StructLit *out_val)
 {
@@ -32,10 +48,6 @@ bool midsema_constexpr_default_init_struct(struct midpar_Class *struct_,
             failed = true;
             break;
         }
-
-        printf("field '%s' = ", dfields.arr[i]->name);
-        midlit_tagged_print(&out_val->dfields[i]);
-        printf("\n");
     }
 
     if (failed)

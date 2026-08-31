@@ -16,6 +16,8 @@ struct midsema_StructLit {
 };
 
 void midsema_StructLit_deinit(struct midsema_StructLit *self);
+struct midsema_StructLit
+midsema_copy_structlit(const struct midsema_StructLit *src);
 // constructs according to the struct's constexpr default ctor
 // returns true on success, false on failure.
 // out_val        - can not be NULL

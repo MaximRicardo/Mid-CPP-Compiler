@@ -51,6 +51,8 @@ bool midsema_class_is_trivially_constructible(const struct midpar_Class *self);
 bool midsema_is_ctor_trivial(const struct midpar_FuncDecl *ctor);
 bool midsema_has_trivial_default_ctor(const struct midpar_Class *self);
 bool midsema_class_has_constexpr_default_ctor(const struct midpar_Class *self);
+bool midsema_class_is_constexpr_default_constructible(
+    const struct midpar_Class *self);
 // returns true on success, returns false on failure. fails if the field doesn't
 // have a default value or if the default value isn't constexpr
 // out_val        - can't be NULL.

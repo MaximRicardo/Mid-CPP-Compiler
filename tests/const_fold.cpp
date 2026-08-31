@@ -12,9 +12,6 @@ void func()
     constexpr const char *str_p3 = str + 4;
     constexpr const char *str_p4 = str + 5;
 
-    // TODO: get this to work cuz rn the expression evaluator doesn't default
-    //       construct automatically
-    /*
     class Class {
         int x = 0, y = 1, z = 2;
     };
@@ -22,5 +19,4 @@ void func()
     constexpr static Class class_var;
     constexpr const Class *class_p0 = &class_var;
     constexpr const Class *class_p1 = &class_var + 1;
-    */
 }

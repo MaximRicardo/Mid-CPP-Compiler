@@ -81,10 +81,24 @@ get_ident_value(const struct midpar_Expr *expr,
     auto ident = midsema_find_ident_const(scope, expr->info.ident);
     assert(ident);
 
-    if (ident->type != MIDSEMA_IDENTTYPE_VAR)
+    const struct midpar_VarDeclInst *inst = &ident->decl->var_inst;
+
+    if (ident->type != MIDSEMA_IDENTTYPE_VAR) {
         MID_CRASH("getting the value of this identifier type isn't supported");
-    else
-        return midsema_eval_expr(ident->decl->var_inst.init.expr, scope);
+    } else if (inst->has_ctor) {
+        MID_CRASH("calling ctors in constexpr not supported yet");
+    } else if (inst->init.expr) {
+        return midsema_eval_expr(inst->init.expr, scope);
+    } else if (midsema_type_is_constexpr_default_constructible(&inst->type)) {
+        struct midlit_TaggedValue res = {};
+        assert(midsema_constexpr_default_init_type(&inst->type, &res));
+        return res;
+    }
+
+    printf("expr at %d:%d\n", expr->tok->pos.line, expr->tok->pos.column);
+    printf("is constexpr default constructible = %d\n",
+           midsema_type_is_constexpr_default_constructible(&inst->type));
+    MID_CRASH("can't get the value of this identifier");
 }
 
 static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,

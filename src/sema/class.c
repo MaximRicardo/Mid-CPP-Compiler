@@ -12,6 +12,7 @@
 #include "sema/func.h"
 #include "sema/ident.h"
 #include "sema/type.h"
+#include "sema/var.h"
 #include <string.h>
 
 static const struct midpar_ASTNode *
@@ -277,6 +278,52 @@ bool midsema_has_trivial_dtor(const struct midpar_Class *self)
 }
 
 static bool
+all_fields_are_constexpr_in_class_inited(const struct midpar_Class *self)
+{
+    for (mid_isize i = 0; i < self->childs.len; ++i) {
+        const struct midpar_ASTNode *child = self->childs.arr[i];
+        if (child->type != MIDPAR_ASTNODETYPE_VAR_DECL)
+            continue;
+        if (decl_is_nonstatic(&child->var_decl))
+            continue;
+
+        const struct midpar_VarDecl *decl = &child->var_decl;
+        for (int i = 0; i < decl->insts.len; ++i) {
+            if (!midsema_var_inst_is_constexpr_inited(decl->insts.arr[i]))
+                return false;
+        }
+    }
+
+    for (mid_isize i = 0; i < self->supers.len; ++i) {
+        if (!all_fields_are_constexpr_in_class_inited(self->supers.arr[i]))
+            return false;
+    }
+
+    return true;
+}
+
+bool midsema_class_is_constexpr_default_constructible(
+    const struct midpar_Class *self)
+{
+    if (midsema_class_has_constexpr_default_ctor(self))
+        return true;
+
+    if (!midsema_class_is_literal(self))
+        return false;
+
+    if (!all_fields_are_constexpr_in_class_inited(self))
+        return false;
+
+    for (mid_isize i = 0; i < self->supers.len; ++i) {
+        if (!midsema_class_is_constexpr_default_constructible(
+                self->supers.arr[i]))
+            return false;
+    }
+
+    return true;
+}
+
+static bool
 union_has_nonvolatile_literal_variant(const struct midpar_Class *self)
 {
     assert(self->type == MIDPAR_CLASSTYPE_UNION);
@@ -331,6 +378,10 @@ static bool is_literal_default_case(const struct midpar_Class *self)
 {
     // self must have at least one constexpr ctor that is not a copy or move
     // ctor
+
+    // a constexpr default ctor can be implicitly generated
+    if (all_fields_are_constexpr_in_class_inited(self))
+        return true;
 
     struct midpar_FuncDeclPVec ctors = midsema_class_ctors(self);
 
@@ -487,7 +538,7 @@ bool decl_has_initializer(const struct midpar_VarDecl *decl)
 {
     for (mid_isize i = 0; i < decl->insts.len; ++i) {
         const struct midpar_VarDeclInst *inst = decl->insts.arr[i];
-        if (inst->has_ctor || inst->init.expr)
+        if (midsema_var_inst_is_inited(inst))
             return true;
     }
 

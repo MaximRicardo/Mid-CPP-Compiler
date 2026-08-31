@@ -663,6 +663,18 @@ midsema_type_lit_value_kind(const struct midpar_Type *type)
     case MIDPAR_TYPESPEC_LONGDOUBLE:
         return MIDLIT_VALUE_FLOAT;
 
+    case MIDPAR_TYPESPEC_CLASS:
+        if (midsema_type_is_literal(type))
+            return MIDLIT_VALUE_STRUCT;
+        else
+            MID_CRASH("not a literal value");
+
+    case MIDPAR_TYPESPEC_UNION:
+        if (midsema_type_is_literal(type))
+            return MIDLIT_VALUE_UNION;
+        else
+            MID_CRASH("not a literal value");
+
     default:
         MID_CRASH("not a literal value");
     }
@@ -866,13 +878,14 @@ static bool class_type_has_default_ctor(const struct midpar_Type *type)
 }
 
 static bool
-class_type_has_constexpr_default_ctor(const struct midpar_Type *type)
+class_type_is_constexpr_default_constructible(const struct midpar_Type *type)
 {
     const struct midsema_Ident *ident = midsema_deref_identptr(&type->named);
     assert(ident->def);
     assert(ident->def->type == MIDPAR_ASTNODETYPE_CLASS);
 
-    return midsema_class_has_constexpr_default_ctor(&ident->def->class_);
+    return midsema_class_is_constexpr_default_constructible(
+        &ident->def->class_);
 }
 
 bool midsema_type_has_trivial_default_ctor(const struct midpar_Type *type)
@@ -903,7 +916,7 @@ bool midsema_type_is_constexpr_default_constructible(
     const struct midpar_Type *type)
 {
     if (midsema_type_is_class_or_union(type))
-        return class_type_has_constexpr_default_ctor(type);
+        return class_type_is_constexpr_default_constructible(type);
     else if (midsema_type_is_array(type))
         return midsema_type_is_constexpr_default_constructible(
             &type->array->elem);
