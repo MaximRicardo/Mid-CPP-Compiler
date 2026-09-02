@@ -6,12 +6,12 @@
 #include "parser/ast.h"
 #include "parser/var_decl.h"
 #include "sema/class.h"
+#include <string.h>
 
 void midsema_StructLit_deinit(struct midsema_StructLit *self)
 {
-    for (mid_isize i = 0; i < self->n_dfields; ++i) {
+    for (mid_isize i = 0; i < self->n_dfields; ++i)
         midlit_TaggedValue_deinit(&self->dfields[i]);
-    }
     free(self->dfields);
 }
 
@@ -54,6 +54,39 @@ bool midsema_constexpr_default_init_struct(struct midpar_Class *struct_,
         free(out_val->dfields);
     midgen_dyndeinit(&dfields);
     return !failed;
+}
+
+struct midlit_TaggedValue *
+midsema_get_structlit_field(const struct midsema_StructLit *self,
+                            const char *field)
+{
+    struct midpar_VarDeclInstPVec dfields =
+        midsema_nonstatic_dfields(self->class_);
+
+    mid_isize i;
+    for (i = 0; i < dfields.len; ++i) {
+        if (!strcmp(dfields.arr[i]->name, field))
+            break;
+    }
+
+    midgen_dyndeinit(&dfields);
+    if (i < self->n_dfields)
+        return &self->dfields[i];
+    else
+        return nullptr;
+}
+
+const char *midsema_structlit_field_name(const struct midsema_StructLit *self,
+                                         mid_isize field)
+{
+    struct midpar_VarDeclInstPVec dfields =
+        midsema_nonstatic_dfields(self->class_);
+    assert(field >= 0 && field < dfields.len);
+
+    const char *name = dfields.arr[field]->name;
+
+    midgen_dyndeinit(&dfields);
+    return name;
 }
 
 static void print_indent(FILE *out, int indent)

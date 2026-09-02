@@ -132,6 +132,7 @@ struct midlit_TaggedValue {
     enum midlit_ValueKind kind;
     bool in_arr; // true if the value is in an array or a string
 };
+midgen_dynarray_struct_named(midlit_TaggedValueVec, struct midlit_TaggedValue);
 
 void midlit_TaggedValue_deinit(struct midlit_TaggedValue *self);
 struct midlit_TaggedValue

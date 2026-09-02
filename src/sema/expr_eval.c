@@ -2,6 +2,7 @@
 #include "apfloat.h"
 #include "apint.h"
 #include "cmd.h"
+#include "generics/dynarray.h"
 #include "literal.h"
 #include "macros.h"
 #include "parser/ast.h"
@@ -13,6 +14,12 @@
 #include "sema/scope.h"
 #include "sema/type.h"
 #include "types.h"
+
+// a deinit queue is used to extend the life time of temporaries until the end
+// of the expression
+static struct midlit_TaggedValue
+eval_expr(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
+          struct midlit_TaggedValueVec *deinit_queue);
 
 static bool op_always_constant(enum midpar_ExprType type)
 {
@@ -55,6 +62,8 @@ void midsema_set_expr_constant_flag(struct midpar_Expr *expr)
 
     if (op_always_constant(expr->type)) {
         is_constant = true;
+    } else if (midsema_is_memb_sel(expr->type)) {
+        is_constant = expr->info.args.arr[0].constant;
     } else if (midsema_expr_uses_args(expr->type)) {
         // TODO: add support for overloaded operators
         assert(!expr->overloaded);
@@ -76,7 +85,8 @@ void midsema_set_expr_constant_flag(struct midpar_Expr *expr)
 
 static struct midlit_TaggedValue
 get_ident_value(const struct midpar_Expr *expr,
-                const struct midsema_Scope *scope)
+                const struct midsema_Scope *scope,
+                struct midlit_TaggedValueVec *deinit_queue)
 {
     auto ident = midsema_find_ident_const(scope, expr->info.ident);
     assert(ident);
@@ -88,38 +98,37 @@ get_ident_value(const struct midpar_Expr *expr,
     } else if (inst->has_ctor) {
         MID_CRASH("calling ctors in constexpr not supported yet");
     } else if (inst->init.expr) {
-        return midsema_eval_expr(inst->init.expr, scope);
+        return eval_expr(inst->init.expr, scope, deinit_queue);
     } else if (midsema_type_is_constexpr_default_constructible(&inst->type)) {
         struct midlit_TaggedValue res = {};
         assert(midsema_constexpr_default_init_type(&inst->type, &res));
         return res;
     }
 
-    printf("expr at %d:%d\n", expr->tok->pos.line, expr->tok->pos.column);
-    printf("is constexpr default constructible = %d\n",
-           midsema_type_is_constexpr_default_constructible(&inst->type));
     MID_CRASH("can't get the value of this identifier");
 }
 
-static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,
-                                           const struct midsema_Scope *scope)
+static struct midlit_TaggedValue
+eval_leaf(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
+          struct midlit_TaggedValueVec *deinit_queue)
 {
     if (midsema_is_numlit(expr->type) || midsema_is_strlit(expr->type))
         return midlit_copy_value(&expr->info.val);
     else if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
-        return get_ident_value(expr, scope);
+        return get_ident_value(expr, scope, deinit_queue);
     else
         MID_CRASH("can't get value of this expr");
 }
 
-static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
-                                              const struct midsema_Scope *scope)
+static struct midlit_TaggedValue
+eval_unaryop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
+             struct midlit_TaggedValueVec *deinit_queue)
 {
     const struct midpar_Expr *child = &expr->info.args.arr[0];
 
     struct midlit_TaggedValue res;
     if (expr->type != MIDPAR_EXPRTYPE_SIZEOF)
-        res = midsema_eval_expr(child, scope);
+        res = eval_expr(child, scope, deinit_queue);
 
     bool is_integral = res.kind == MIDLIT_VALUE_SIGNED_INT ||
                        res.kind == MIDLIT_VALUE_UNSIGNED_INT;
@@ -140,8 +149,9 @@ static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
             mid_APFloat_deinit(&res.v.flt);
             res.v.flt = midflt_init(!is_zero, kind, rounding);
         } else {
+            assert(res.kind == MIDLIT_VALUE_STR);
             // !"asdf" is always false
-            midlit_TaggedValue_deinit(&res);
+            midgen_dynpush(deinit_queue, res);
             res.kind = MIDLIT_VALUE_SIGNED_INT;
             res.v.i = midint_init(midtype_bool_size * 8, 0, true);
         }
@@ -163,9 +173,8 @@ static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
         break;
 
     case MIDPAR_EXPRTYPE_REF: {
-        struct midlit_TaggedValue tmp = res;
-        res = midlit_ref_val(&tmp);
-        midlit_TaggedValue_deinit(&tmp);
+        midgen_dynpush(deinit_queue, res);
+        res = midlit_ref_val(&res);
         break;
     }
 
@@ -173,9 +182,8 @@ static struct midlit_TaggedValue eval_unaryop(const struct midpar_Expr *expr,
         struct midlit_TaggedValue *val = midlit_deref_ptr(&res.v.ptr);
         if (!val)
             MID_CRASH("can not dereference ptr");
-        struct midlit_TaggedValue tmp = res;
+        midgen_dynpush(deinit_queue, res);
         res = midlit_copy_value(val);
-        midlit_TaggedValue_deinit(&tmp);
         break;
     }
 
@@ -295,10 +303,17 @@ static void convert_value(struct midlit_TaggedValue *val,
     val->kind = new_kind;
 }
 
+static struct midlit_TaggedValue ptr_to_val(struct midlit_Ptr *self)
+{
+    return (struct midlit_TaggedValue){.v.ptr = *self,
+                                       .kind = MIDLIT_VALUE_PTR};
+}
+
 static struct midlit_TaggedValue
 eval_arith_ptr_binop(const struct midpar_Expr *expr,
                      const struct midlit_TaggedValue *lhs,
-                     const struct midlit_TaggedValue *rhs)
+                     const struct midlit_TaggedValue *rhs,
+                     struct midlit_TaggedValueVec *deinit_queue)
 {
     const struct midlit_TaggedValue *ptr =
         lhs->kind == MIDLIT_VALUE_PTR ? lhs : rhs;
@@ -332,7 +347,7 @@ eval_arith_ptr_binop(const struct midpar_Expr *expr,
         if (!midlit_inc_ptr(&tmp, off_val))
             MID_CRASH("failed to offset ptr");
         res = midlit_copy_value(midlit_deref_ptr(&tmp));
-        midlit_Ptr_deinit(&tmp);
+        midgen_dynpush(deinit_queue, ptr_to_val(&tmp));
     }
 
     default:
@@ -345,7 +360,8 @@ eval_arith_ptr_binop(const struct midpar_Expr *expr,
 static struct midlit_TaggedValue
 eval_arith_arr_binop(const struct midpar_Expr *expr,
                      const struct midlit_TaggedValue *lhs,
-                     const struct midlit_TaggedValue *rhs)
+                     const struct midlit_TaggedValue *rhs,
+                     struct midlit_TaggedValueVec *deinit_queue)
 {
     const struct midlit_TaggedValue *arr =
         lhs->kind == MIDLIT_VALUE_ARRAY ? lhs : rhs;
@@ -354,16 +370,18 @@ eval_arith_arr_binop(const struct midpar_Expr *expr,
 
     struct midlit_TaggedValue ptr = midlit_ref_val(&arr->v.arr.elems[0]);
 
-    struct midlit_TaggedValue res = eval_arith_ptr_binop(expr, &ptr, off);
+    struct midlit_TaggedValue res =
+        eval_arith_ptr_binop(expr, &ptr, off, deinit_queue);
 
-    midlit_TaggedValue_deinit(&ptr);
+    midgen_dynpush(deinit_queue, ptr);
     return res;
 }
 
 static struct midlit_TaggedValue
 eval_arith_str_binop(const struct midpar_Expr *expr,
                      const struct midlit_TaggedValue *lhs,
-                     const struct midlit_TaggedValue *rhs)
+                     const struct midlit_TaggedValue *rhs,
+                     struct midlit_TaggedValueVec *deinit_queue)
 {
     const struct midlit_TaggedValue *str =
         lhs->kind == MIDLIT_VALUE_STR ? lhs : rhs;
@@ -372,9 +390,10 @@ eval_arith_str_binop(const struct midpar_Expr *expr,
 
     struct midlit_TaggedValue ptr = midlit_ref_val(&str->v.str.nums[0]);
 
-    struct midlit_TaggedValue res = eval_arith_ptr_binop(expr, &ptr, off);
+    struct midlit_TaggedValue res =
+        eval_arith_ptr_binop(expr, &ptr, off, deinit_queue);
 
-    midlit_TaggedValue_deinit(&ptr);
+    midgen_dynpush(deinit_queue, ptr);
     return res;
 }
 
@@ -398,14 +417,15 @@ static bool binop_has_str_arg(const struct midlit_TaggedValue *lhs,
 
 static struct midlit_TaggedValue
 eval_arith_binop(const struct midpar_Expr *expr, struct midlit_TaggedValue *lhs,
-                 struct midlit_TaggedValue *rhs)
+                 struct midlit_TaggedValue *rhs,
+                 struct midlit_TaggedValueVec *deinit_queue)
 {
     if (binop_has_ptr_arg(lhs, rhs))
-        return eval_arith_ptr_binop(expr, lhs, rhs);
+        return eval_arith_ptr_binop(expr, lhs, rhs, deinit_queue);
     else if (binop_has_arr_arg(lhs, rhs))
-        return eval_arith_arr_binop(expr, lhs, rhs);
+        return eval_arith_arr_binop(expr, lhs, rhs, deinit_queue);
     else if (binop_has_str_arg(lhs, rhs))
-        return eval_arith_str_binop(expr, lhs, rhs);
+        return eval_arith_str_binop(expr, lhs, rhs, deinit_queue);
 
     enum midlit_ValueKind res_kind = midsema_type_lit_value_kind(&expr->ret);
     bool is_integral = res_kind == MIDLIT_VALUE_SIGNED_INT ||
@@ -502,29 +522,61 @@ eval_arith_binop(const struct midpar_Expr *expr, struct midlit_TaggedValue *lhs,
     return res;
 }
 
-static struct midlit_TaggedValue eval_binop(const struct midpar_Expr *expr,
-                                            const struct midsema_Scope *scope)
+static struct midlit_TaggedValue
+eval_memb_sel(const struct midpar_Expr *expr,
+              const struct midlit_TaggedValue *lhs)
+{
+    if (expr->info.args.arr[0].ret.spec != MIDPAR_TYPESPEC_CLASS)
+        MID_CRASH("fetching fields of unions not yet supported");
+
+    if (lhs->kind == MIDLIT_VALUE_PTR)
+        lhs = midlit_deref_ptr(&lhs->v.ptr);
+
+    const char *field_name = expr->info.args.arr[1].info.ident;
+    struct midlit_TaggedValue *field =
+        midsema_get_structlit_field(&lhs->v.struct_, field_name);
+    assert(field);
+
+    return midlit_copy_value(field);
+}
+
+static bool should_eval_binop_rhs(const struct midpar_Expr *expr)
+{
+    return !midsema_is_memb_sel(expr->type);
+}
+
+static struct midlit_TaggedValue
+eval_binop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
+           struct midlit_TaggedValueVec *deinit_queue)
 {
     const struct midpar_Expr *lhs = &expr->info.args.arr[0];
     const struct midpar_Expr *rhs = &expr->info.args.arr[1];
 
-    struct midlit_TaggedValue res_lhs = midsema_eval_expr(lhs, scope);
-    struct midlit_TaggedValue res_rhs = midsema_eval_expr(rhs, scope);
+    struct midlit_TaggedValue res_lhs = eval_expr(lhs, scope, deinit_queue);
+
+    bool rhs_evaled = should_eval_binop_rhs(expr);
+    struct midlit_TaggedValue res_rhs;
+    if (rhs_evaled)
+        res_rhs = eval_expr(rhs, scope, deinit_queue);
 
     struct midlit_TaggedValue res;
 
     if (midsema_is_arith_op(expr->type))
-        res = eval_arith_binop(expr, &res_lhs, &res_rhs);
+        res = eval_arith_binop(expr, &res_lhs, &res_rhs, deinit_queue);
+    else if (midsema_is_memb_sel(expr->type))
+        res = eval_memb_sel(expr, &res_lhs);
     else
         MID_CRASH("constant folding expr type not supported");
 
-    midlit_TaggedValue_deinit(&res_lhs);
-    midlit_TaggedValue_deinit(&res_rhs);
+    midgen_dynpush(deinit_queue, res_lhs);
+    if (rhs_evaled)
+        midgen_dynpush(deinit_queue, res_rhs);
     return res;
 }
 
-struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
-                                            const struct midsema_Scope *scope)
+static struct midlit_TaggedValue
+eval_expr(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
+          struct midlit_TaggedValueVec *deinit_queue)
 {
     assert(expr->typechecked);
     assert(expr->constant);
@@ -536,11 +588,22 @@ struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
     assert(!expr->overloaded);
 
     if (midsema_is_unaryop(expr->type))
-        return eval_unaryop(expr, scope);
+        return eval_unaryop(expr, scope, deinit_queue);
     else if (midsema_is_binop(expr->type))
-        return eval_binop(expr, scope);
+        return eval_binop(expr, scope, deinit_queue);
     else
-        return eval_leaf(expr, scope);
+        return eval_leaf(expr, scope, deinit_queue);
+}
+
+struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
+                                            const struct midsema_Scope *scope)
+{
+    struct midlit_TaggedValueVec deinit_queue = {};
+
+    struct midlit_TaggedValue res = eval_expr(expr, scope, &deinit_queue);
+
+    midgen_dyndeinit(&deinit_queue, midlit_TaggedValue_deinit);
+    return res;
 }
 
 static void fold_expr(struct midpar_Expr *expr,

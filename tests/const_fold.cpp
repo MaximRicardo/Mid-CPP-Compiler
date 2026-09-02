@@ -13,10 +13,14 @@ void func()
     constexpr const char *str_p4 = str + 5;
 
     class Class {
+    public:
         int x = 0, y = 1, z = 2;
     };
 
     constexpr static Class class_var;
     constexpr const Class *class_p0 = &class_var;
     constexpr const Class *class_p1 = &class_var + 1;
+
+    constexpr auto field = class_var.z + class_var.y;
+    constexpr auto p_field = class_p0->z + class_p0->y;
 }

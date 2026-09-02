@@ -1,6 +1,4 @@
 #include "parser/expr.h"
-#include "apfloat.h"
-#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
@@ -985,10 +983,9 @@ void midpar_Expr_deinit(struct midpar_Expr *expr)
         for (mid_isize i = 0; i < expr->info.args.len; ++i)
             midpar_Expr_deinit(&expr->info.args.arr[i]);
         midgen_dyndeinit(&expr->info.args);
-    } else if (midsema_is_fltlit(expr->type)) {
-        mid_APFloat_deinit(&expr->info.val.v.flt);
-    } else if (midsema_is_numlit(expr->type)) {
-        mid_APInt_deinit(&expr->info.val.v.i);
+    } else if (midsema_is_lit(expr->type) ||
+               expr->type == MIDPAR_EXPRTYPE_CONST_FOLD) {
+        midlit_TaggedValue_deinit(&expr->info.val);
     }
 
     midpar_Type_deinit(&expr->ret);

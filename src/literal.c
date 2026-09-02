@@ -26,8 +26,10 @@ void midlit_Array_deinit(struct midlit_Array *self)
 void midlit_Ptr_deinit(struct midlit_Ptr *self)
 {
     if (!self->idx_used) {
-        if (self->raw_val)
+        if (self->raw_val) {
             midlit_TaggedValue_deinit(self->raw_val);
+            free(self->raw_val);
+        }
     }
 }
 
@@ -137,8 +139,12 @@ struct midlit_Array midlit_copy_array(const struct midlit_Array *src)
 struct midlit_Ptr midlit_copy_ptr(const struct midlit_Ptr *src)
 {
     struct midlit_Ptr dest = *src;
-    if (!src->idx_used)
+
+    if (!src->idx_used && src->raw_val) {
+        dest.raw_val = mid_malloc(sizeof(*dest.raw_val));
         *dest.raw_val = midlit_copy_value(src->raw_val);
+    }
+
     return dest;
 }
 

@@ -23,6 +23,11 @@ midsema_copy_structlit(const struct midsema_StructLit *src);
 // out_val        - can not be NULL
 bool midsema_constexpr_default_init_struct(struct midpar_Class *struct_,
                                            struct midsema_StructLit *out_val);
+struct midlit_TaggedValue *
+midsema_get_structlit_field(const struct midsema_StructLit *self,
+                            const char *field);
+const char *midsema_structlit_field_name(const struct midsema_StructLit *self,
+                                         mid_isize field);
 // indent is measured in spaces
 void midsema_fprint_struclit_w_indent(FILE *out,
                                       const struct midsema_StructLit *self,

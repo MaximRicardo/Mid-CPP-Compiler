@@ -44,6 +44,11 @@ bool midsema_is_numlit(enum midpar_ExprType type)
            type < MIDPAR_EXPRTYPE_NUMLIT_END;
 }
 
+bool midsema_is_lit(enum midpar_ExprType type)
+{
+    return midsema_is_numlit(type) || midsema_is_strlit(type);
+}
+
 bool midsema_is_ternaryop(enum midpar_ExprType type)
 {
     return type > MIDPAR_EXPRTYPE_TERNARYOP_START &&

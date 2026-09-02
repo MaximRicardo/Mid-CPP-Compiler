@@ -13,10 +13,8 @@
 #include "parser/allocator.h"
 #include "parser/ast.h"
 #include "parser/ast_log.h"
-#include "parser/class.h"
 #include "parser/type.h"
 #include "position.h"
-#include "sema/class_lit.h"
 #include "sema/scope.h"
 #include "symbol.h"
 #include "types.h"
@@ -174,6 +172,7 @@ static void init_modules()
     midtype_init_module();
 }
 
+/*
 static void test_struct_lits(struct midpar_ASTNode *root)
 {
     assert(root->root.arr[0]->type == MIDPAR_ASTNODETYPE_CLASS);
@@ -187,6 +186,7 @@ static void test_struct_lits(struct midpar_ASTNode *root)
 
     midsema_StructLit_deinit(&lit);
 }
+*/
 
 int main(int argc, char **argv)
 {
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
     if (midcmd_get_args()->ast_out)
         log_ast(midcmd_get_args()->ast_out, &root);
 
-    test_struct_lits(&root);
+    // test_struct_lits(&root);
 
     /*
     test_mangling(&scope);

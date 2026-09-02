@@ -1,6 +1,7 @@
 #pragma once
 
 #include "parser/expr.h"
+#include "parser/expr_type.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,7 +13,10 @@ bool midsema_is_rvalue(enum midpar_ExprValueType type);
 bool midsema_is_strlit(enum midpar_ExprType type);
 bool midsema_is_fltlit(enum midpar_ExprType type);
 bool midsema_is_intlit(enum midpar_ExprType type); // any integral type
+// fltlit or intlit
 bool midsema_is_numlit(enum midpar_ExprType type);
+// any kind of literal
+bool midsema_is_lit(enum midpar_ExprType type);
 bool midsema_is_ternaryop(enum midpar_ExprType type);
 bool midsema_is_binop(enum midpar_ExprType type);
 bool midsema_is_unaryop(enum midpar_ExprType type);

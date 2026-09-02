@@ -29,6 +29,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+// root - is expr the root of the expression tree
+static void typecheck_expr(struct midpar_Expr *expr,
+                           struct midsema_Scope *scope,
+                           struct mid_DiagVec *diags, bool root);
+
 bool midsema_node_creates_new_type(const struct midpar_ASTNode *node)
 {
     switch (node->type) {
@@ -942,7 +947,7 @@ static void typecheck_scope_res_expr(struct midpar_Expr *expr,
         arg = &expr->info.args.arr[0];
     }
 
-    midsema_typecheck_expr(arg, res, diags);
+    typecheck_expr(arg, res, diags, false);
 
     expr->ret = midpar_copy_type(&arg->ret);
     expr->valtype = arg->valtype;
@@ -1026,7 +1031,7 @@ static void typecheck_memb_sel(struct midpar_Expr *expr,
     auto lhs = &expr->info.args.arr[0];
     auto rhs = &expr->info.args.arr[1];
 
-    midsema_typecheck_expr(lhs, scope, diags);
+    typecheck_expr(lhs, scope, diags, false);
     if (!midsema_type_is_typecheckable(&lhs->ret)) {
         mark_expr_unknown_ret(expr);
         return;
@@ -1153,9 +1158,10 @@ static bool has_no_untypecheckable_args(struct midpar_Expr *expr)
     return true;
 }
 
-void midsema_typecheck_expr(struct midpar_Expr *expr,
-                            struct midsema_Scope *scope,
-                            struct mid_DiagVec *diags)
+// root - is expr the root of the expression tree
+static void typecheck_expr(struct midpar_Expr *expr,
+                           struct midsema_Scope *scope,
+                           struct mid_DiagVec *diags, bool root)
 {
     if (expr->typechecked)
         return;
@@ -1172,7 +1178,7 @@ void midsema_typecheck_expr(struct midpar_Expr *expr,
                               !midsema_is_memb_sel(expr->type);
         if (typecheck_args) {
             for (mid_isize i = 0; i < expr->info.args.len; ++i)
-                midsema_typecheck_expr(&expr->info.args.arr[i], scope, diags);
+                typecheck_expr(&expr->info.args.arr[i], scope, diags, false);
 
             if (!has_no_untypecheckable_args(expr)) {
                 mark_expr_unknown_ret(expr);
@@ -1192,7 +1198,15 @@ void midsema_typecheck_expr(struct midpar_Expr *expr,
     midsema_set_expr_constant_flag(expr);
     expr->typechecked = true;
 
-    midsema_const_fold_expr(expr, scope, false);
+    if (root)
+        midsema_const_fold_expr(expr, scope, false);
+}
+
+void midsema_typecheck_expr(struct midpar_Expr *expr,
+                            struct midsema_Scope *scope,
+                            struct mid_DiagVec *diags)
+{
+    typecheck_expr(expr, scope, diags, true);
 }
 
 static struct mid_Diag no_matching_ctor_err(const struct midpar_Type *type,
