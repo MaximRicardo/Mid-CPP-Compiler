@@ -40,6 +40,11 @@ constexpr enum midlex_TokenType midpar_tmplt_arg_endtypes[] = {
 #define MIDPAR_TMPLT_ARG_ENDTYPES                                              \
     midpar_tmplt_arg_endtypes, MID_ARRLEN(midpar_tmplt_arg_endtypes)
 
+constexpr enum midlex_TokenType midpar_subscript_endtypes[] = {
+    MIDLEX_TOKENTYPE_R_SQBRACKET};
+#define MIDPAR_SUBSCRIPT_ENDTYPES                                              \
+    midpar_subscript_endtypes, MID_ARRLEN(midpar_subscript_endtypes)
+
 #ifdef __cplusplus
 }
 #endif

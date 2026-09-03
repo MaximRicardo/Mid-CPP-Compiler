@@ -1,16 +1,21 @@
 #include "parser/type.h"
+#include "apint.h"
 #include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/token_type.h"
+#include "literal.h"
 #include "macros.h"
 #include "mid_alloc.h"
 #include "parser/ast.h"
+#include "parser/end_types.h"
+#include "parser/expr.h"
 #include "parser/find_twin.h"
 #include "parser/scope.h"
 #include "parser/template.h"
+#include "sema/expr_eval.h"
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "sema/template.h"
@@ -343,7 +348,6 @@ static struct midpar_Type type_name_type(midlex_TokenIter start,
     if (out_end)
         *out_end = r_angle + 1;
 
-    printf("n args = %" MID_PRIisz "\n", args.len);
     auto tmplt = ident->decl->parent;
     struct midpar_Type ret =
         midsema_instantiate_class_tmplt(tmplt, &args, allocs);
@@ -471,10 +475,10 @@ static struct midpar_Type parse_recursive_part(
     struct midsema_Scope *scope, const struct midpar_TypeStorQual *squals,
     struct midpar_Allocators *allocs, struct mid_DiagVec *diags);
 
-// returns the end of the function ptr
+// returns the next token after the end of the function ptr
 // void (*func_ptr)(int, float)
 //      ^         ^           ^
-//    lparen    rparen      return
+//    lparen    rparen      end
 static midlex_TokenIter
 parse_fptr(struct midpar_Type *type, midlex_TokenIter lparen,
            midlex_TokenIter rparen, midlex_TokenIter min,
@@ -483,6 +487,7 @@ parse_fptr(struct midpar_Type *type, midlex_TokenIter lparen,
 {
     midlex_TokenIter p_lparen = rparen + 1;
     midlex_TokenIter p_rparen = midpar_find_twin_paren(p_lparen, nullptr);
+    assert(p_rparen);
 
     type->spec = MIDPAR_TYPESPEC_FPTR;
     type->fptr = mid_malloc(sizeof(*type->fptr));
@@ -508,36 +513,116 @@ parse_fptr(struct midpar_Type *type, midlex_TokenIter lparen,
     return p_rparen + 1;
 }
 
-// start is the idx of the left bracket
-// returns the end of the array
-// int arr[height][width]
-//        ^             ^
-//      start          end
-static midlex_TokenIter
-parse_array(struct midpar_Type *type, midlex_TokenIter lparen,
-            midlex_TokenIter rparen, midlex_TokenIter min,
-            struct midsema_Scope *scope, struct midpar_Allocators *allocs,
-            struct mid_DiagVec *diags)
+static struct mid_Diag nonconstexpr_arr_len_err(const struct midlex_Token *tok)
 {
-    // TODO: implement this
-    MID_CRASH("parse_array not implemented yet");
-    (void)type;
-    (void)lparen;
-    (void)rparen;
-    (void)min;
-    (void)scope;
-    (void)allocs;
-    (void)diags;
+    return (struct mid_Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = midcmd_fmt_to_str(
+            "the length of an array must be a constant expression"),
+        .err = MIDDIAG_ERR_BAD_ARRAY_LENGTH,
+        .type = MIDDIAG_TYPE_ERROR};
 }
 
-static struct midpar_Type parse_recursive_part(
-    midlex_TokenIter start, midlex_TokenIter min, midlex_TokenIter *out_end,
-    struct midsema_Scope *scope, const struct midpar_TypeStorQual *squals,
-    struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
+static struct mid_Diag nonint_arr_len_err(const struct midlex_Token *tok)
 {
-    struct midpar_Type ret = {.squals = *squals};
+    return (struct mid_Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg =
+            midcmd_fmt_to_str("the length of an array must be an integer type"),
+        .err = MIDDIAG_ERR_BAD_ARRAY_LENGTH,
+        .type = MIDDIAG_TYPE_ERROR};
+}
 
-    struct midpar_TypeDataQual dquals = {};
+static struct mid_Diag negative_arr_len_err(const struct midlex_Token *tok)
+{
+    return (struct mid_Diag){
+        .pos = tok->pos,
+        .line = tok->line,
+        .msg = midcmd_fmt_to_str("the length of an array can't be negative"),
+        .err = MIDDIAG_ERR_BAD_ARRAY_LENGTH,
+        .type = MIDDIAG_TYPE_ERROR};
+}
+
+static void set_array_len(struct midpar_TypeArray *arr,
+                          const struct midsema_Scope *scope,
+                          struct mid_DiagVec *diags)
+{
+    assert(arr->len_expr);
+
+    // defaults to zero on error for now
+    arr->len = 0;
+
+    if (!midsema_type_is_integral(&arr->len_expr->ret))
+        midgen_dynpush(diags, nonint_arr_len_err(arr->len_expr->tok));
+    else if (!arr->len_expr->constant)
+        midgen_dynpush(diags, nonconstexpr_arr_len_err(arr->len_expr->tok));
+    else {
+        struct midlit_TaggedValue val = midsema_eval_expr(arr->len_expr, scope);
+
+        if (val.kind == MIDLIT_VALUE_SIGNED_INT && midint_is_negative(&val.v.i))
+            midgen_dynpush(diags, negative_arr_len_err(arr->len_expr->tok));
+        else
+            arr->len = midint_to_uint(&val.v.i);
+    }
+}
+
+// start is the idx of the left bracket
+// returns the next token after the end of the array
+// int arr[height][width]
+//     ^  ^             ^
+//     |  l_bracket    end
+//   start
+// dquals       - data qualifiers to be pushed to type. if NULL the default
+//                qualifiers are pushed instead.
+//                if non-NULL, *dquals gets reset to default as well.
+static midlex_TokenIter
+parse_array(struct midpar_Type *type, midlex_TokenIter start,
+            midlex_TokenIter l_bracket, midlex_TokenIter min,
+            struct midpar_TypeDataQual *dquals, struct midsema_Scope *scope,
+            struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
+{
+    // the latest dquals need to be appended else they're lost
+    if (dquals) {
+        midgen_dynpush(&type->dquals, *dquals);
+        *dquals = (struct midpar_TypeDataQual){};
+    } else {
+        midgen_dynpush(&type->dquals, (struct midpar_TypeDataQual){});
+    }
+
+    type->spec = MIDPAR_TYPESPEC_ARRAY;
+    type->array = mid_calloc(1, sizeof(*type->array));
+
+    midlex_TokenIter r_bracket = midpar_find_twin_sqbracket(l_bracket, nullptr);
+    assert(r_bracket);
+
+    midgen_bumpmalloc(&allocs->expr, &type->array->len_expr);
+    *type->array->len_expr = midpar_parse_expr(
+        l_bracket + 1, MIDPAR_SUBSCRIPT_ENDTYPES, nullptr, scope, diags);
+
+    set_array_len(type->array, scope, diags);
+
+    // keep recursively creating arrays for multi dimensional arrays
+    midlex_TokenIter next = r_bracket + 1;
+    if (next->type == MIDLEX_TOKENTYPE_L_SQBRACKET) {
+        return parse_array(&type->array->elem, start, next, min, nullptr, scope,
+                           allocs, diags);
+    } else {
+        type->array->elem = parse_recursive_part(
+            start - 1, min, NULL, scope, &(struct midpar_TypeStorQual){},
+            allocs, diags);
+        return r_bracket + 1;
+    }
+}
+
+static midlex_TokenIter parse_recursive_part_loop(
+    midlex_TokenIter start, midlex_TokenIter *out_end, midlex_TokenIter min,
+    struct midpar_Type *res, struct midpar_TypeDataQual *dquals,
+    struct midsema_Scope *scope, struct midpar_Allocators *allocs,
+    struct mid_DiagVec *diags)
+{
+    midlex_TokenIter end = start + 1;
 
     midlex_TokenIter i;
     for (i = start;
@@ -545,33 +630,30 @@ static struct midpar_Type parse_recursive_part(
                       is_lv_ref_tok(i->type) || is_rv_ref_tok(i->type));
          --i) {
         if (midlex_is_typedataqual(i->type)) {
-            midpar_set_dqual_flag(&dquals, i->type);
+            midpar_set_dqual_flag(dquals, i->type);
         } else if (is_ptr_tok(i->type)) {
-            midgen_dynpush(&ret.dquals, dquals);
-            dquals = (struct midpar_TypeDataQual){};
+            midgen_dynpush(&res->dquals, *dquals);
+            *dquals = (struct midpar_TypeDataQual){};
         } else if (is_lv_ref_tok(i->type)) {
-            if (ret.lv_ref || ret.rv_ref)
+            if (res->lv_ref || res->rv_ref)
                 midgen_dynpush(diags, type_alr_const_err(i));
-            else if (ret.dquals.len > 0)
+            else if (res->dquals.len > 0)
                 midgen_dynpush(diags, ptr_to_ref_err(i));
-            else if (dquals.is_const)
+            else if (dquals->is_const)
                 midgen_dynpush(diags, missplaced_const_err(i));
             else
-                ret.lv_ref = true;
+                res->lv_ref = true;
         } else {
-            if (ret.lv_ref || ret.rv_ref)
+            if (res->lv_ref || res->rv_ref)
                 midgen_dynpush(diags, type_alr_const_err(i));
-            else if (ret.dquals.len > 0)
+            else if (res->dquals.len > 0)
                 midgen_dynpush(diags, ptr_to_ref_err(i));
-            else if (dquals.is_const)
+            else if (dquals->is_const)
                 midgen_dynpush(diags, missplaced_const_err(i));
             else
-                ret.rv_ref = true;
+                res->rv_ref = true;
         }
     }
-
-    // end is non inclusive
-    auto end = start + 1;
 
     if (i->type == MIDLEX_TOKENTYPE_L_PAREN) {
         auto rparen = midpar_find_twin_paren(i, nullptr);
@@ -579,18 +661,44 @@ static struct midpar_Type parse_recursive_part(
             midgen_dynpush(diags, expected_paren(false, i));
         } else {
             if ((rparen + 1)->type == MIDLEX_TOKENTYPE_L_PAREN)
-                end = parse_fptr(&ret, i, rparen, min, scope, allocs, diags);
+                end = parse_fptr(res, i, rparen, min, scope, allocs, diags);
             else if ((rparen + 1)->type == MIDLEX_TOKENTYPE_L_SQBRACKET)
-                end = parse_array(&ret, i, rparen, min, scope, allocs, diags);
+                end = parse_array(res, i, rparen + 1, min, dquals, scope,
+                                  allocs, diags);
+            else if (i > min) {
+                i = parse_recursive_part_loop(i - 1, &end, min, res, dquals,
+                                              scope, allocs, diags);
+            }
         }
-    } else if (end->type == MIDLEX_TOKENTYPE_IDENTIFIER) {
-        ++end;
     }
 
     if (out_end)
         *out_end = end;
+    return i;
+}
 
-    return ret;
+static struct midpar_Type parse_recursive_part(
+    midlex_TokenIter start, midlex_TokenIter min, midlex_TokenIter *out_end,
+    struct midsema_Scope *scope, const struct midpar_TypeStorQual *squals,
+    struct midpar_Allocators *allocs, struct mid_DiagVec *diags)
+{
+    struct midpar_Type res = {.squals = *squals};
+    struct midpar_TypeDataQual dquals = {};
+
+    midlex_TokenIter end;
+    midlex_TokenIter i = parse_recursive_part_loop(
+        start, &end, min, &res, &dquals, scope, allocs, diags);
+
+    if (end->type == MIDLEX_TOKENTYPE_IDENTIFIER)
+        ++end;
+
+    if (end->type == MIDLEX_TOKENTYPE_L_SQBRACKET)
+        end = parse_array(&res, i, end, min, &dquals, scope, allocs, diags);
+
+    if (out_end)
+        *out_end = end;
+
+    return res;
 }
 
 // starts right after the type specifier

@@ -118,6 +118,7 @@ struct midpar_TypeFPtr {
 struct midpar_TypeArray {
     struct midpar_Type elem;
     uint64_t len;
+    struct midpar_Expr *len_expr;
 };
 
 struct midpar_ASTNode;

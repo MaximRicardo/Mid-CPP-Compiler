@@ -208,14 +208,29 @@ struct midpar_Type midsema_deref_type(const struct midpar_Type *type,
 static void type_to_str_impl(const struct midpar_Type *type,
                              struct mid_Dynstr *str);
 
+static void dquals_to_str(const struct midpar_TypeDataQual *dquals,
+                          struct mid_Dynstr *str, bool leading_space,
+                          bool trailing_space)
+{
+    if (dquals->is_const) {
+        if (leading_space)
+            midstr_append_char(str, ' ');
+        midstr_append(str, "const");
+        if (trailing_space)
+            midstr_append_char(str, ' ');
+    }
+}
+
 static void fptr_to_str(const struct midpar_Type *type, struct mid_Dynstr *str)
 {
     type_to_str_impl(&type->fptr->ret, str);
     midstr_append_char(str, ' ');
 
     midstr_append_char(str, '(');
-    for (mid_isize i = 0; i < midsema_n_indir(type) + 1; ++i)
+    for (mid_isize i = type->dquals.len - 1; i >= 0; --i) {
         midstr_append_char(str, '*');
+        dquals_to_str(&type->dquals.arr[i], str, true, false);
+    }
     if (type->lv_ref)
         midstr_append_char(str, '&');
     else if (type->rv_ref)
@@ -234,20 +249,28 @@ static void fptr_to_str(const struct midpar_Type *type, struct mid_Dynstr *str)
 static void array_to_str(const struct midpar_Type *type, struct mid_Dynstr *str)
 {
     type_to_str_impl(&type->array->elem, str);
-    midstr_append_printf(str, "[%" PRIu64 "]", type->array->len);
-}
 
-static void dquals_to_str(const struct midpar_TypeDataQual *dquals,
-                          struct mid_Dynstr *str, bool leading_space,
-                          bool trailing_space)
-{
-    if (dquals->is_const) {
-        if (leading_space)
-            midstr_append_char(str, ' ');
-        midstr_append(str, "const");
-        if (trailing_space)
-            midstr_append_char(str, ' ');
+    if (midsema_n_indir(type) > 0) {
+        midstr_append(str, " (");
+
+        for (mid_isize i = midsema_n_indir(type) - 1; i >= 0; --i) {
+            midstr_append_char(str, '*');
+            dquals_to_str(&type->dquals.arr[i], str, true, false);
+        }
+
+        if (type->lv_ref)
+            midstr_append_char(str, '&');
+        else if (type->rv_ref)
+            midstr_append(str, "&&");
+
+        midstr_append_char(str, ')');
+    } else if (type->lv_ref) {
+        midstr_append(str, " (&)");
+    } else if (type->rv_ref) {
+        midstr_append(str, " (&&)");
     }
+
+    midstr_append_printf(str, "[%" PRIu64 "]", type->array->len);
 }
 
 static void regular_type_to_str(const struct midpar_Type *type,
@@ -259,9 +282,9 @@ static void regular_type_to_str(const struct midpar_Type *type,
         midstr_append_printf(
             str, " %s", type->named.parent->idents.arr[type->named.idx].name);
 
-    for (mid_isize i = midsema_n_indir(type); i > 0; --i) {
+    for (mid_isize i = midsema_n_indir(type) - 1; i >= 0; --i) {
         midstr_append_char(str, '*');
-        dquals_to_str(&type->dquals.arr[i - 1], str, true, false);
+        dquals_to_str(&type->dquals.arr[i], str, true, false);
     }
 
     if (type->lv_ref)
@@ -514,6 +537,18 @@ bool midsema_type_is_scalar(const struct midpar_Type *type)
 {
     return midsema_n_indir(type) > 0 ||
            midsema_is_integral_typespec(type->spec) ||
+           midsema_is_floating_typespec(type->spec);
+}
+
+bool midsema_type_is_integral(const struct midpar_Type *type)
+{
+    return midsema_n_indir(type) == 0 &&
+           midsema_is_integral_typespec(type->spec);
+}
+
+bool midsema_type_is_floating(const struct midpar_Type *type)
+{
+    return midsema_n_indir(type) == 0 &&
            midsema_is_floating_typespec(type->spec);
 }
 
