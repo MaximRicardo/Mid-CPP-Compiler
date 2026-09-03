@@ -23,4 +23,6 @@ void func()
 
     constexpr auto field = class_var.z + class_var.y;
     constexpr auto p_field = class_p0->z + class_p0->y;
+
+    constexpr long double *flt_p = nullptr;
 }

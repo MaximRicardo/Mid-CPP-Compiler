@@ -108,11 +108,19 @@ get_ident_value(const struct midpar_Expr *expr,
     MID_CRASH("can't get the value of this identifier");
 }
 
+static struct midlit_TaggedValue create_nullptr_val()
+{
+    return (struct midlit_TaggedValue){.kind = MIDLIT_VALUE_PTR,
+                                       .v.ptr = midlit_null_ptr()};
+}
+
 static struct midlit_TaggedValue
 eval_leaf(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
           struct midlit_TaggedValueVec *deinit_queue)
 {
-    if (midsema_is_numlit(expr->type) || midsema_is_strlit(expr->type))
+    if (expr->type == MIDPAR_EXPRTYPE_NULLPTR_LIT)
+        return create_nullptr_val();
+    else if (midsema_is_numlit(expr->type) || midsema_is_strlit(expr->type))
         return midlit_copy_value(&expr->info.val);
     else if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
         return get_ident_value(expr, scope, deinit_queue);

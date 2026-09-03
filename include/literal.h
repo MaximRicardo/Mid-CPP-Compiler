@@ -96,6 +96,7 @@ struct midlit_Ptr {
 
 void midlit_Ptr_deinit(struct midlit_Ptr *self);
 struct midlit_Ptr midlit_copy_ptr(const struct midlit_Ptr *src);
+struct midlit_Ptr midlit_null_ptr();
 void midlit_fprint_ptr(FILE *out, const struct midlit_Ptr *self);
 void midlit_print_ptr(const struct midlit_Ptr *self);
 bool midlit_ptr_is_null(const struct midlit_Ptr *self);

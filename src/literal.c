@@ -148,6 +148,12 @@ struct midlit_Ptr midlit_copy_ptr(const struct midlit_Ptr *src)
     return dest;
 }
 
+struct midlit_Ptr midlit_null_ptr()
+{
+    return (struct midlit_Ptr){
+        .raw_val = nullptr, .idx_used = false, .past_end = false};
+}
+
 struct midlit_TaggedValue
 midlit_copy_value(const struct midlit_TaggedValue *src)
 {
