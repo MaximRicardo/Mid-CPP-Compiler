@@ -82,6 +82,43 @@ void midsema_set_expr_constant_flag(struct midpar_Expr *expr)
     expr->constant = is_constant;
 }
 
+// returns a ptr to the subscripted element
+static struct midlit_TaggedValue
+eval_subscr_ref(const struct midlit_TaggedValue *lhs,
+                const struct midlit_TaggedValue *rhs)
+{
+    bool lhs_int = lhs->kind == MIDLIT_VALUE_SIGNED_INT ||
+                   lhs->kind == MIDLIT_VALUE_UNSIGNED_INT;
+    const struct midlit_TaggedValue *arr = lhs_int ? rhs : lhs;
+    const struct midlit_TaggedValue *idx = lhs_int ? lhs : rhs;
+
+    assert(idx->kind == MIDLIT_VALUE_SIGNED_INT ||
+           idx->kind == MIDLIT_VALUE_UNSIGNED_INT);
+    assert(arr->kind == MIDLIT_VALUE_PTR || arr->kind == MIDLIT_VALUE_ARRAY);
+
+    if (arr->kind == MIDLIT_VALUE_PTR) {
+        struct midlit_TaggedValue elem_ptr = midlit_copy_value(arr);
+        assert(midlit_inc_ptr(&elem_ptr.v.ptr, midint_to_sint(&idx->v.i)));
+        return elem_ptr;
+    } else {
+        struct midlit_TaggedValue ptr = midlit_ref_val(&arr->v.arr.elems[0]);
+        return eval_subscr_ref(&ptr, rhs);
+    }
+}
+
+static struct midlit_TaggedValue
+eval_subscr(const struct midlit_TaggedValue *lhs,
+            const struct midlit_TaggedValue *rhs,
+            struct midlit_TaggedValueVec *deinit_queue)
+{
+    struct midlit_TaggedValue elem_ptr = eval_subscr_ref(lhs, rhs);
+    if (midlit_ptr_is_null(&elem_ptr.v.ptr) || elem_ptr.v.ptr.past_end)
+        MID_CRASH("invalid subscript idx");
+
+    midgen_dynpush(deinit_queue, elem_ptr);
+    return midlit_copy_value(midlit_deref_ptr(&elem_ptr.v.ptr));
+}
+
 static struct midlit_TaggedValue *
 get_ident_value_raw(const struct midpar_Expr *expr,
                     const struct midsema_Scope *scope)
@@ -123,13 +160,28 @@ static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,
         MID_CRASH("can't get value of this expr");
 }
 
-static struct midlit_TaggedValue eval_ref_op(const struct midpar_Expr *expr,
-                                             const struct midsema_Scope *scope)
+static struct midlit_TaggedValue
+eval_ref_op(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
+            struct midlit_TaggedValueVec *deinit_queue)
 {
     const struct midpar_Expr *child = &expr->info.args.arr[0];
-    assert(child->type == MIDPAR_EXPRTYPE_IDENTIFIER);
 
-    return midlit_ref_val(get_ident_value_raw(child, scope));
+    if (child->type == MIDPAR_EXPRTYPE_IDENTIFIER) {
+        return midlit_ref_val(get_ident_value_raw(child, scope));
+    } else if (child->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR) {
+        struct midlit_TaggedValue lhs =
+            eval_expr(&child->info.args.arr[0], scope, deinit_queue);
+        struct midlit_TaggedValue rhs =
+            eval_expr(&child->info.args.arr[1], scope, deinit_queue);
+
+        struct midlit_TaggedValue res = eval_subscr_ref(&lhs, &rhs);
+
+        midgen_dynpush(deinit_queue, lhs);
+        midgen_dynpush(deinit_queue, rhs);
+        return res;
+    } else {
+        MID_CRASH("can't reference child expr");
+    }
 }
 
 static struct midlit_TaggedValue
@@ -137,7 +189,7 @@ eval_unaryop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
              struct midlit_TaggedValueVec *deinit_queue)
 {
     if (expr->type == MIDPAR_EXPRTYPE_REF)
-        return eval_ref_op(expr, scope);
+        return eval_ref_op(expr, scope, deinit_queue);
 
     const struct midpar_Expr *child = &expr->info.args.arr[0];
 
@@ -471,6 +523,8 @@ eval_binop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
         res = eval_arith_binop(expr, &res_lhs, &res_rhs, deinit_queue);
     else if (midsema_is_memb_sel(expr->type))
         res = eval_memb_sel(expr, &res_lhs);
+    else if (expr->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
+        res = eval_subscr(&res_lhs, &res_rhs, deinit_queue);
     else
         MID_CRASH("constant folding expr type not supported");
 

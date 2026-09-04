@@ -6,11 +6,23 @@ void func()
     constexpr int d_a = *a;
 
     constexpr const char *str = "asdf";
-    constexpr const char *str_p0 = str + 1;
-    constexpr const char *str_p1 = str + 2;
-    constexpr const char *str_p2 = str + 3;
-    constexpr const char *str_p3 = str + 4;
-    constexpr const char *str_p4 = str + 5;
+    constexpr const char *str_p0a = str + 0;
+    constexpr const char *str_p1a = str + 1;
+    constexpr const char *str_p2a = str + 2;
+    constexpr const char *str_p3a = str + 3;
+    constexpr const char *str_p4a = str + 4;
+    constexpr const char *str_p5a = str + 5;
+    constexpr char str_c0 = str[0];
+    constexpr char str_c1 = str[1];
+    constexpr char str_c2 = str[2];
+    constexpr char str_c3 = str[3];
+    constexpr char str_c4 = str[4];
+    constexpr const char *str_p0b = &str[0];
+    constexpr const char *str_p1b = &str[1];
+    constexpr const char *str_p2b = &str[2];
+    constexpr const char *str_p3b = &str[3];
+    constexpr const char *str_p4b = &str[4];
+    constexpr const char *str_p5b = &str[5];
 
     class Class {
     public:
