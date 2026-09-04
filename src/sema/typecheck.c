@@ -622,9 +622,9 @@ static void typecheck_arr_subscr_expr(struct midpar_Expr *expr,
     bool rhs_int = midsema_is_integral_typespec(rhs->ret.spec) &&
                    midsema_n_indir(&rhs->ret) == 0;
 
-    if (!(lhs_valid && lhs_int) && !(rhs_valid && rhs_int)) {
+    if (!(lhs_valid && rhs_int) && !(rhs_valid && lhs_int)) {
         char *lhs_tname = midsema_type_to_str(&lhs->ret);
-        char *rhs_tname = midsema_type_to_str(&lhs->ret);
+        char *rhs_tname = midsema_type_to_str(&rhs->ret);
         midgen_dynpush(
             diags,
             ((struct mid_Diag){

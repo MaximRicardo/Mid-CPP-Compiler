@@ -6,4 +6,6 @@ void func()
 
     float *a[10];
     const int *const(*const(*b))[z];
+
+    a[2] = nullptr;
 }

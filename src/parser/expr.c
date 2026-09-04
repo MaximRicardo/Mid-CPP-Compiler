@@ -692,8 +692,8 @@ static struct midpar_Expr op_tok_to_expr_mode1(const struct midlex_Token *tok,
 }
 
 static void parse_func_call_args(struct midpar_Expr *f_call,
-                                 const struct midlex_Token *lparen,
-                                 const struct midlex_Token **out_rparen,
+                                 midlex_TokenIter lparen,
+                                 midlex_TokenIter *out_rparen,
                                  struct midsema_Scope *scope,
                                  struct mid_DiagVec *diags)
 {
@@ -719,14 +719,35 @@ static void parse_func_call_args(struct midpar_Expr *f_call,
     }
 }
 
+static void parse_arr_subscr(struct midpar_Expr *subscr,
+                             midlex_TokenIter l_bracket,
+                             midlex_TokenIter *out_r_bracket,
+                             struct midsema_Scope *scope,
+                             struct mid_DiagVec *diags)
+{
+    midlex_TokenIter r_bracket = midpar_find_twin_sqbracket(l_bracket, nullptr);
+    if (!r_bracket) {
+        midgen_dynpush(
+            diags, middiag_expected_token_err("']'", l_bracket,
+                                              MIDDIAG_ERR_MISSING_SQBRACKET));
+        r_bracket = l_bracket;
+    }
+    if (out_r_bracket)
+        *out_r_bracket = r_bracket;
+
+    struct midpar_Expr idx = midpar_parse_expr(
+        l_bracket + 1, MIDPAR_SUBSCRIPT_ENDTYPES, nullptr, scope, diags);
+    midgen_dynpush(&subscr->info.args, idx);
+}
+
 // in most cases out_end_idx is set to idx, but in some cases like func calls
 // and array subscripts out_end_idx is set to the last token in the expr:
 // func(a, b, c, d)
 //     ^          ^
 //    idx    out_end_idx
-static struct midpar_Expr op_tok_to_expr(const struct midlex_Token *tok,
-                                         const struct midlex_Token **out_end,
-                                         bool mode, struct midsema_Scope *scope,
+static struct midpar_Expr op_tok_to_expr(midlex_TokenIter tok,
+                                         midlex_TokenIter *out_end, bool mode,
+                                         struct midsema_Scope *scope,
                                          struct mid_DiagVec *diags)
 {
     struct midpar_Expr ret = mode ? op_tok_to_expr_mode1(tok, diags)
@@ -734,6 +755,8 @@ static struct midpar_Expr op_tok_to_expr(const struct midlex_Token *tok,
 
     if (ret.type == MIDPAR_EXPRTYPE_FUNC_CALL)
         parse_func_call_args(&ret, tok, out_end, scope, diags);
+    if (ret.type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
+        parse_arr_subscr(&ret, tok, out_end, scope, diags);
     else if (out_end)
         *out_end = tok;
 
@@ -742,7 +765,7 @@ static struct midpar_Expr op_tok_to_expr(const struct midlex_Token *tok,
 
 static bool has_enough_operands(enum midpar_ExprType op, int n)
 {
-    if (midsema_is_unaryop(op))
+    if (midsema_is_unaryop(op) || op == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
         return n >= 1;
     else if (midsema_is_binop(op))
         return n >= 2;
@@ -752,37 +775,48 @@ static bool has_enough_operands(enum midpar_ExprType op, int n)
         MID_CRASH("bad expression type");
 }
 
+static struct mid_Diag not_enough_operands_err(const struct midpar_Expr *op,
+                                               const struct midpar_ExprVec *out)
+{
+    return (struct mid_Diag){
+        .pos = op->tok->pos,
+        .line = op->tok->line,
+        .msg = midcmd_fmt_to_str(
+            "%s operator expects %d %s, received %" MID_PRIisz,
+            midsema_is_unaryop(op->type) ? "unary"
+            : midsema_is_binop(op->type) ? "binary"
+                                         : "ternary",
+            midsema_is_unaryop(op->type) ? 1
+            : midsema_is_binop(op->type) ? 2
+                                         : 3,
+            midsema_is_unaryop(op->type) ? "operand" : "operands", out->len),
+        .err = MIDDIAG_ERR_INSUFFICIENT_OPERANDS,
+        .type = MIDDIAG_TYPE_ERROR};
+}
+
 static void add_op_to_out(struct midpar_Expr *op, struct midpar_ExprVec *out,
                           struct mid_DiagVec *diags)
 {
     if (!has_enough_operands(op->type, out->len)) {
-        struct mid_Diag err = {
-            .pos = op->tok->pos,
-            .line = op->tok->line,
-            .msg = midcmd_fmt_to_str(
-                "%s operator expects %d %s, received %" MID_PRIisz,
-                midsema_is_unaryop(op->type) ? "unary"
-                : midsema_is_binop(op->type) ? "binary"
-                                             : "ternary",
-                midsema_is_unaryop(op->type) ? 1
-                : midsema_is_binop(op->type) ? 2
-                                             : 3,
-                midsema_is_unaryop(op->type) ? "operand" : "operands",
-                out->len),
-            .err = MIDDIAG_ERR_INSUFFICIENT_OPERANDS,
-            .type = MIDDIAG_TYPE_ERROR};
-        midgen_dynpush(diags, err);
+        midgen_dynpush(diags, not_enough_operands_err(op, out));
         return;
     }
 
     // the exprs at the top act as operands for the new op
     if (midsema_is_ternaryop(op->type))
         midgen_dynpush(&op->info.args, out->arr[out->len - 3]);
-    if (midsema_is_ternaryop(op->type) || midsema_is_binop(op->type))
+
+    bool real_bin_op =
+        midsema_is_binop(op->type) && op->type != MIDPAR_EXPRTYPE_ARRAY_SUBSCR;
+    if (midsema_is_ternaryop(op->type) || real_bin_op)
         midgen_dynpush(&op->info.args, out->arr[out->len - 2]);
-    if (op->type == MIDPAR_EXPRTYPE_FUNC_CALL && op->info.args.len > 0)
-        // func calls already have the arguments pushed into args, so we gotta
-        // use insert to put the identifier being called first
+
+    // func calls and array subscripts already have the arguments pushed into
+    // args, so we gotta use insert to put the lhs first in the arg list
+    bool push_top =
+        !(op->type == MIDPAR_EXPRTYPE_FUNC_CALL && op->info.args.len > 0) &&
+        !(op->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR);
+    if (!push_top)
         midgen_dyninsert(&op->info.args, 0, out->arr[out->len - 1]);
     else
         midgen_dynpush(&op->info.args, out->arr[out->len - 1]);
@@ -790,7 +824,7 @@ static void add_op_to_out(struct midpar_Expr *op, struct midpar_ExprVec *out,
     // the expressions are now encoded in op
     if (midsema_is_ternaryop(op->type))
         midgen_dynpop(out);
-    if (midsema_is_ternaryop(op->type) || midsema_is_binop(op->type))
+    if (midsema_is_ternaryop(op->type) || real_bin_op)
         midgen_dynpop(out);
     midgen_dynpop(out);
 
@@ -798,8 +832,7 @@ static void add_op_to_out(struct midpar_Expr *op, struct midpar_ExprVec *out,
 }
 
 // handles sending an operator through the shunting yard
-static void push_operator(const struct midlex_Token *tok,
-                          const struct midlex_Token **out_end,
+static void push_operator(midlex_TokenIter tok, midlex_TokenIter *out_end,
                           struct midpar_ExprVec *out,
                           struct midpar_ExprVec *ops, bool mode,
                           struct midsema_Scope *scope,
@@ -869,7 +902,7 @@ struct midpar_Expr midpar_parse_expr(midlex_TokenIter start,
     struct midpar_ExprVec ops = midgen_dyninit();
 
     // when false, binary operators remain binary and unary operators are
-    // treated as postifx operators
+    // treated as postfix operators
     // when true, binary operators are treated as unary and unary operators are
     // treated as prefix operators
     // becomes true after finding an operand, becomes false after finding an
@@ -912,6 +945,10 @@ struct midpar_Expr midpar_parse_expr(midlex_TokenIter start,
                 push_operator(i, &i, &out, &ops, mode, scope, diags);
             else
                 midgen_dynpush(&out, parse_subexpr(i, &i, scope, diags));
+            mode = false;
+        } else if (i->type == MIDLEX_TOKENTYPE_L_SQBRACKET) {
+            // array subscript operator
+            push_operator(i, &i, &out, &ops, mode, scope, diags);
             mode = false;
         }
     }
