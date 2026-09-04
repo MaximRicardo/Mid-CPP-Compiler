@@ -25,12 +25,15 @@ void midlit_Array_deinit(struct midlit_Array *self)
 
 void midlit_Ptr_deinit(struct midlit_Ptr *self)
 {
+    (void)self;
+    /*
     if (!self->idx_used) {
         if (self->raw_val) {
             midlit_TaggedValue_deinit(self->raw_val);
             free(self->raw_val);
         }
     }
+    */
 }
 
 void midlit_Value_deinit(union midlit_Value *self, enum midlit_ValueKind kind)
@@ -140,10 +143,12 @@ struct midlit_Ptr midlit_copy_ptr(const struct midlit_Ptr *src)
 {
     struct midlit_Ptr dest = *src;
 
+    /*
     if (!src->idx_used && src->raw_val) {
         dest.raw_val = mid_malloc(sizeof(*dest.raw_val));
         *dest.raw_val = midlit_copy_value(src->raw_val);
     }
+    */
 
     return dest;
 }
@@ -267,7 +272,7 @@ bool midlit_ptr_is_null(const struct midlit_Ptr *self)
     }
 }
 
-struct midlit_TaggedValue midlit_ref_val(const struct midlit_TaggedValue *self)
+struct midlit_TaggedValue midlit_ref_val(struct midlit_TaggedValue *self)
 {
     struct midlit_TaggedValue ret = {.kind = MIDLIT_VALUE_PTR};
     struct midlit_Ptr *ptr = &ret.v.ptr;
@@ -279,8 +284,7 @@ struct midlit_TaggedValue midlit_ref_val(const struct midlit_TaggedValue *self)
         ptr->val_idx = self - self->arr_info.elems;
         assert(ptr->val_idx < ptr->arr_info.len);
     } else {
-        ptr->raw_val = mid_malloc(sizeof(*ptr->raw_val));
-        *ptr->raw_val = midlit_copy_value(self);
+        ptr->raw_val = self;
     }
 
     return ret;

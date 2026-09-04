@@ -80,9 +80,9 @@ struct midlit_ValueArrInfo {
 
 struct midlit_Ptr {
     union {
-        struct midlit_TaggedValue *raw_val;  // used if idx_used is false.
-                                             // owning ptr to the value we're
-                                             // pointing to
+        struct midlit_TaggedValue *raw_val; // used if idx_used is false.
+                                            // non-owning ptr to the value we're
+                                            // pointing to
         struct midlit_ValueArrInfo arr_info; // used if idx_used is true.
                                              // info abt the array or string
                                              // we're pointing to
@@ -104,7 +104,7 @@ bool midlit_ptr_is_null(const struct midlit_Ptr *self);
 struct midlit_TaggedValue *midlit_deref_ptr(const struct midlit_Ptr *self);
 // value kind of the value pointed to
 enum midlit_ValueKind midlit_deref_ptr_kind(const struct midlit_Ptr *self);
-struct midlit_TaggedValue midlit_ref_val(const struct midlit_TaggedValue *self);
+struct midlit_TaggedValue midlit_ref_val(struct midlit_TaggedValue *self);
 // returns true on success, false on failure
 bool midlit_inc_ptr(struct midlit_Ptr *self, int_least64_t inc);
 // returns true on success, false on failure

@@ -83,9 +83,9 @@ void midsema_set_expr_constant_flag(struct midpar_Expr *expr)
     expr->constant = is_constant;
 }
 
-static struct midlit_TaggedValue
-get_ident_value(const struct midpar_Expr *expr,
-                const struct midsema_Scope *scope)
+static struct midlit_TaggedValue *
+get_ident_value_raw(const struct midpar_Expr *expr,
+                    const struct midsema_Scope *scope)
 {
     auto ident = midsema_find_ident_const(scope, expr->info.ident);
     assert(ident);
@@ -94,7 +94,15 @@ get_ident_value(const struct midpar_Expr *expr,
     if (!inst->constexpr_val)
         MID_CRASH("can't get the value of this identifier");
 
-    return midlit_copy_value(inst->constexpr_val);
+    return inst->constexpr_val;
+}
+
+// fetches a copy of the identifier's value
+static struct midlit_TaggedValue
+get_ident_value(const struct midpar_Expr *expr,
+                const struct midsema_Scope *scope)
+{
+    return midlit_copy_value(get_ident_value_raw(expr, scope));
 }
 
 static struct midlit_TaggedValue create_nullptr_val()
@@ -116,10 +124,22 @@ static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,
         MID_CRASH("can't get value of this expr");
 }
 
+static struct midlit_TaggedValue eval_ref_op(const struct midpar_Expr *expr,
+                                             const struct midsema_Scope *scope)
+{
+    const struct midpar_Expr *child = &expr->info.args.arr[0];
+    assert(child->type == MIDPAR_EXPRTYPE_IDENTIFIER);
+
+    return midlit_ref_val(get_ident_value_raw(child, scope));
+}
+
 static struct midlit_TaggedValue
 eval_unaryop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
              struct midlit_TaggedValueVec *deinit_queue)
 {
+    if (expr->type == MIDPAR_EXPRTYPE_REF)
+        return eval_ref_op(expr, scope);
+
     const struct midpar_Expr *child = &expr->info.args.arr[0];
 
     struct midlit_TaggedValue res;
