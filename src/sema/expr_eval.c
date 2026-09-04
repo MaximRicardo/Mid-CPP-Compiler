@@ -85,27 +85,16 @@ void midsema_set_expr_constant_flag(struct midpar_Expr *expr)
 
 static struct midlit_TaggedValue
 get_ident_value(const struct midpar_Expr *expr,
-                const struct midsema_Scope *scope,
-                struct midlit_TaggedValueVec *deinit_queue)
+                const struct midsema_Scope *scope)
 {
     auto ident = midsema_find_ident_const(scope, expr->info.ident);
     assert(ident);
 
     const struct midpar_VarDeclInst *inst = &ident->decl->var_inst;
+    if (!inst->constexpr_val)
+        MID_CRASH("can't get the value of this identifier");
 
-    if (ident->type != MIDSEMA_IDENTTYPE_VAR) {
-        MID_CRASH("getting the value of this identifier type isn't supported");
-    } else if (inst->has_ctor) {
-        MID_CRASH("calling ctors in constexpr not supported yet");
-    } else if (inst->init.expr) {
-        return eval_expr(inst->init.expr, scope, deinit_queue);
-    } else if (midsema_type_is_constexpr_default_constructible(&inst->type)) {
-        struct midlit_TaggedValue res = {};
-        assert(midsema_constexpr_default_init_type(&inst->type, &res));
-        return res;
-    }
-
-    MID_CRASH("can't get the value of this identifier");
+    return midlit_copy_value(inst->constexpr_val);
 }
 
 static struct midlit_TaggedValue create_nullptr_val()
@@ -114,16 +103,15 @@ static struct midlit_TaggedValue create_nullptr_val()
                                        .v.ptr = midlit_null_ptr()};
 }
 
-static struct midlit_TaggedValue
-eval_leaf(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
-          struct midlit_TaggedValueVec *deinit_queue)
+static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,
+                                           const struct midsema_Scope *scope)
 {
     if (expr->type == MIDPAR_EXPRTYPE_NULLPTR_LIT)
         return create_nullptr_val();
     else if (midsema_is_numlit(expr->type) || midsema_is_strlit(expr->type))
         return midlit_copy_value(&expr->info.val);
     else if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
-        return get_ident_value(expr, scope, deinit_queue);
+        return get_ident_value(expr, scope);
     else
         MID_CRASH("can't get value of this expr");
 }
@@ -600,7 +588,7 @@ eval_expr(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
     else if (midsema_is_binop(expr->type))
         return eval_binop(expr, scope, deinit_queue);
     else
-        return eval_leaf(expr, scope, deinit_queue);
+        return eval_leaf(expr, scope);
 }
 
 struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,

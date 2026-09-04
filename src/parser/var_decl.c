@@ -6,6 +6,7 @@
 #include "ints.h"
 #include "lexer/token.h"
 #include "lexer/token_type.h"
+#include "literal.h"
 #include "mid_alloc.h"
 #include "parser/allocator.h"
 #include "parser/ast.h"
@@ -39,6 +40,11 @@ static struct midsema_Ident *add_ident(struct midpar_VarDeclInst *inst,
 
 void midpar_VarDeclInst_deinit(struct midpar_VarDeclInst *self)
 {
+    if (self->constexpr_val) {
+        midlit_TaggedValue_deinit(self->constexpr_val);
+        free(self->constexpr_val);
+    }
+
     if (self->has_ctor)
         midgen_dyndeinit(&self->ctor.args, midpar_Expr_deinit);
     midpar_Type_deinit(&self->type);

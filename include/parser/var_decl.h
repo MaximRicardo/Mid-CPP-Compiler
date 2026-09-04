@@ -19,6 +19,7 @@ struct midpar_VarDecl;
 struct midpar_VarDeclInst {
     struct midpar_Type type;
     const char *name;
+    struct midlit_TaggedValue *constexpr_val;
 
     // a var decl can have: an initializer, a ctor, or neither
     union {

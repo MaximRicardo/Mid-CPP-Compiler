@@ -7,6 +7,7 @@
 #include "lexer/token.h"
 #include "literal.h"
 #include "macros.h"
+#include "mid_alloc.h"
 #include "parser/ast.h"
 #include "parser/astvec.h"
 #include "parser/class.h"
@@ -1328,17 +1329,8 @@ constexpr_var_not_literal_type_err(const char *name,
     return ret;
 }
 
-static bool constexpr_of_type_needs_init(const struct midpar_Type *type)
-{
-    if (midsema_type_is_class_or_union(type))
-        return !midsema_type_is_constexpr_default_constructible(type);
-    else if (midsema_type_is_array(type))
-        return constexpr_of_type_needs_init(&type->array->elem);
-    else
-        return false;
-}
-
 static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
+                                    struct midsema_Scope *scope,
                                     struct mid_DiagVec *diags)
 {
     if (!midsema_type_is_literal(&inst->type))
@@ -1346,14 +1338,25 @@ static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
             diags, constexpr_var_not_literal_type_err(inst->name, &inst->type,
                                                       MIDPAR_GET_START(inst)));
 
-    if (!inst->init.start && !inst->has_ctor &&
-        constexpr_of_type_needs_init(&inst->type))
-        midgen_dynpush(diags, uninited_constexpr_var_err(
-                                  inst->name, MIDPAR_GET_START(inst)));
-
-    if (inst->init.expr && !inst->init.expr->constant)
-        midgen_dynpush(diags, constexpr_var_init_not_constexpr_err(
-                                  inst->name, MIDPAR_GET_START(inst)));
+    if (!inst->has_ctor) {
+        if (inst->init.expr && !inst->init.expr->constant) {
+            midgen_dynpush(diags, constexpr_var_init_not_constexpr_err(
+                                      inst->name, MIDPAR_GET_START(inst)));
+        } else if (inst->init.expr) {
+            inst->constexpr_val = mid_malloc(sizeof(*inst->constexpr_val));
+            *inst->constexpr_val = midsema_eval_expr(inst->init.expr, scope);
+        } else if (midsema_type_is_constexpr_default_constructible(
+                       &inst->type)) {
+            inst->constexpr_val = mid_malloc(sizeof(*inst->constexpr_val));
+            assert(midsema_constexpr_default_init_type(&inst->type,
+                                                       inst->constexpr_val));
+        } else {
+            midgen_dynpush(diags, uninited_constexpr_var_err(
+                                      inst->name, MIDPAR_GET_START(inst)));
+        }
+    } else {
+        MID_CRASH("calling constexpr ctors not supported yet");
+    }
 }
 
 void midsema_typecheck_var_decl_inst(struct midpar_VarDeclInst *inst,
@@ -1368,7 +1371,7 @@ void midsema_typecheck_var_decl_inst(struct midpar_VarDeclInst *inst,
         midsema_typecheck_expr(inst->init.expr, scope, diags);
 
     if (inst->type.squals.is_constexpr)
-        typecheck_constexpr_var(inst, diags);
+        typecheck_constexpr_var(inst, scope, diags);
 }
 
 static struct mid_Diag
