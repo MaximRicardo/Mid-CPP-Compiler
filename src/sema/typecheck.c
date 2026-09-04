@@ -1345,6 +1345,9 @@ static void typecheck_constexpr_var(struct midpar_VarDeclInst *inst,
         } else if (inst->init.expr) {
             inst->constexpr_val = mid_malloc(sizeof(*inst->constexpr_val));
             *inst->constexpr_val = midsema_eval_expr(inst->init.expr, scope);
+            // we gotta apply any potential implicit type conversions to make
+            // sure the value is the right type
+            midlit_convert_value(inst->constexpr_val, &inst->type);
         } else if (midsema_type_is_constexpr_default_constructible(
                        &inst->type)) {
             inst->constexpr_val = mid_malloc(sizeof(*inst->constexpr_val));

@@ -1,12 +1,15 @@
 #include "literal.h"
 #include "apfloat.h"
 #include "apint.h"
+#include "cmd.h"
+#include "generics/dynarray.h"
 #include "ints.h"
 #include "lexer/token_type.h"
 #include "macros.h"
 #include "mid_alloc.h"
 #include "parser/expr_type.h"
 #include "sema/class_lit.h"
+#include "sema/type.h"
 #include "types.h"
 #include "utf8.h"
 #include <ctype.h>
@@ -787,4 +790,154 @@ bool midlit_inc_ptr(struct midlit_Ptr *self, int_least64_t inc)
 bool midlit_dec_ptr(struct midlit_Ptr *self, int_least64_t dec)
 {
     return midlit_inc_ptr(self, -dec);
+}
+
+static void convert_str_value(struct midlit_TaggedValue *str,
+                              enum midlit_ValueKind target_kind,
+                              struct midlit_TaggedValueVec *deinit_queue)
+{
+    if (target_kind == MIDLIT_VALUE_STR)
+        return;
+    else if (target_kind != MIDLIT_VALUE_PTR)
+        MID_CRASH("can't convert a string to a non-ptr type");
+
+    midgen_dynpush(deinit_queue, *str);
+
+    *str = midlit_ref_val(&str->v.str.nums[0]);
+}
+
+static void convert_arr_value(struct midlit_TaggedValue *arr,
+                              enum midlit_ValueKind target_kind,
+                              struct midlit_TaggedValueVec *deinit_queue)
+{
+    if (target_kind == MIDLIT_VALUE_STR)
+        return;
+    else if (target_kind != MIDLIT_VALUE_PTR)
+        MID_CRASH("can't convert an array to a non-ptr type");
+
+    midgen_dynpush(deinit_queue, *arr);
+
+    *arr = midlit_ref_val(&arr->v.arr.elems[0]);
+}
+
+void midlit_convert_value(struct midlit_TaggedValue *val,
+                          const struct midpar_Type *target)
+{
+    struct midlit_TaggedValueVec deinit_queue = {};
+
+    midlit_convert_value_deinit_queue(val, target, &deinit_queue);
+
+    midgen_dyndeinit(&deinit_queue, midlit_TaggedValue_deinit);
+}
+
+void midlit_convert_value_deinit_queue(
+    struct midlit_TaggedValue *val, const struct midpar_Type *target,
+    struct midlit_TaggedValueVec *deinit_queue)
+{
+    enum midlit_ValueKind target_kind = midsema_type_lit_value_kind(target);
+    enum midflt_Kind target_flt_kind =
+        midsema_is_floating_typespec(target->spec)
+            ? midsema_get_flt_kind(target->spec)
+            : -1;
+
+    switch (val->kind) {
+    case MIDLIT_VALUE_SIGNED_INT:
+    case MIDLIT_VALUE_UNSIGNED_INT: {
+        int_least64_t target_width = midsema_typespec_size(target->spec) * 8;
+        switch (target_kind) {
+        case MIDLIT_VALUE_SIGNED_INT:
+            midint_ext(&val->v.i, target_width, true);
+            break;
+
+        case MIDLIT_VALUE_UNSIGNED_INT:
+            midint_ext(&val->v.i, target_width, false);
+            break;
+
+        case MIDLIT_VALUE_FLOAT: {
+            auto tmp = val->kind == MIDLIT_VALUE_SIGNED_INT
+                           ? midflt_init_sint(&val->v.i, target_flt_kind,
+                                              midcmd_get_fpu()->rmode)
+                           : midflt_init_uint(&val->v.i, target_flt_kind,
+                                              midcmd_get_fpu()->rmode);
+            mid_APInt_deinit(&val->v.i);
+            val->v.flt = tmp;
+        } break;
+
+        case MIDLIT_VALUE_STR:
+            MID_CRASH("can't convert integer to string");
+
+        case MIDLIT_VALUE_ARRAY:
+            MID_CRASH("can't convert integer to array");
+
+        case MIDLIT_VALUE_STRUCT:
+            MID_CRASH("can't convert integer to struct");
+
+        case MIDLIT_VALUE_UNION:
+            MID_CRASH("can't convert integer to union");
+
+        case MIDLIT_VALUE_PTR:
+            MID_CRASH("can't convert integer to ptr");
+        }
+        break;
+    }
+
+    case MIDLIT_VALUE_FLOAT: {
+        int_least64_t target_width = midsema_typespec_size(target->spec) * 8;
+        switch (target_kind) {
+        case MIDLIT_VALUE_SIGNED_INT:
+        case MIDLIT_VALUE_UNSIGNED_INT: {
+            auto tmp = midflt_to_sint(&val->v.flt);
+            mid_APFloat_deinit(&val->v.flt);
+            val->v.i = tmp;
+            midint_ext(&val->v.i, target_width,
+                       target_kind == MIDLIT_VALUE_SIGNED_INT);
+        } break;
+
+        case MIDLIT_VALUE_FLOAT:
+            midflt_change_kind(&val->v.flt, target_flt_kind);
+            break;
+
+        case MIDLIT_VALUE_STR:
+            MID_CRASH("can't convert float to string");
+
+        case MIDLIT_VALUE_ARRAY:
+            MID_CRASH("can't convert float to array");
+
+        case MIDLIT_VALUE_STRUCT:
+            MID_CRASH("can't convert float to struct");
+
+        case MIDLIT_VALUE_UNION:
+            MID_CRASH("can't convert float to union");
+
+        case MIDLIT_VALUE_PTR:
+            MID_CRASH("can't convert float to ptr");
+        }
+        break;
+    }
+
+    case MIDLIT_VALUE_STR:
+        convert_str_value(val, target_kind, deinit_queue);
+        break;
+
+    case MIDLIT_VALUE_ARRAY:
+        convert_arr_value(val, target_kind, deinit_queue);
+        break;
+
+    case MIDLIT_VALUE_STRUCT:
+        if (target_kind != MIDLIT_VALUE_STRUCT)
+            MID_CRASH("can't convert structs");
+        break;
+
+    case MIDLIT_VALUE_UNION:
+        if (target_kind != MIDLIT_VALUE_UNION)
+            MID_CRASH("can't convert unions");
+        break;
+
+    case MIDLIT_VALUE_PTR:
+        if (target_kind != MIDLIT_VALUE_PTR)
+            MID_CRASH("can't convert ptrs");
+        break;
+    }
+
+    val->kind = target_kind;
 }

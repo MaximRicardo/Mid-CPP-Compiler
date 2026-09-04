@@ -148,6 +148,13 @@ void midlit_fprint_toktype(FILE *out, const union midlit_Value *val,
 void midlit_print(const union midlit_Value *val, enum midpar_ExprType type);
 void midlit_print_toktype(const union midlit_Value *val,
                           enum midlex_TokenType type);
+void midlit_convert_value(struct midlit_TaggedValue *val,
+                          const struct midpar_Type *target);
+// any values to be deinit-ed will be pushed to the deinit queue instead of
+// being deinited right away, in case u wanna extend the values' life times
+void midlit_convert_value_deinit_queue(
+    struct midlit_TaggedValue *val, const struct midpar_Type *target,
+    struct midlit_TaggedValueVec *deinit_queue);
 
 struct midlit_ReadIntLitInfo {
     struct mid_APInt value;
