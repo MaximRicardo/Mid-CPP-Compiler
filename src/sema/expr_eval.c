@@ -155,8 +155,6 @@ eval_expr_ref(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
               const struct FuncArgValVec *f_args, bool *failed,
               int recursion_depth);
 
-static bool can_eval_expr_ref(const struct midpar_Expr *expr);
-
 static struct midlit_TaggedValue *
 ref_eval_ident(const struct midpar_Expr *expr,
                const struct midsema_Scope *scope,
@@ -208,14 +206,11 @@ ref_eval_memb_sel(const struct midpar_Expr *expr,
     // expression we need to make sure we're getting a pointer straight to
     // the original value's field, rather than a local copy which will go out
     // of scope once the expression has ended and give us an invalid pointer.
-    if (can_eval_expr_ref(lhs_expr)) {
-        struct midlit_TaggedValue *lhs = eval_expr_ref(
-            lhs_expr, scope, deinit_queue, f_args, failed, recursion_depth);
-        if (*failed)
-            return nullptr;
-
-        return eval_memb_sel_ref(expr, lhs);
-    }
+    bool ref_failed = false;
+    struct midlit_TaggedValue *lhs_ref = eval_expr_ref(
+        lhs_expr, scope, deinit_queue, f_args, &ref_failed, recursion_depth);
+    if (!ref_failed)
+        return eval_memb_sel_ref(expr, lhs_ref);
 
     struct midlit_TaggedValue lhs = eval_expr(lhs_expr, scope, deinit_queue,
                                               f_args, failed, recursion_depth);
@@ -256,13 +251,6 @@ ref_eval_subscr(const struct midpar_Expr *expr,
     return midlit_deref_ptr(&res.v.ptr);
 }
 
-static bool can_eval_expr_ref(const struct midpar_Expr *expr)
-{
-    return expr->type == MIDPAR_EXPRTYPE_IDENTIFIER ||
-           midsema_is_memb_sel(expr->type) ||
-           expr->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR;
-}
-
 static struct midlit_TaggedValue *
 eval_expr_ref(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
               struct midlit_TaggedValueVec *deinit_queue,
@@ -277,8 +265,9 @@ eval_expr_ref(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
     else if (expr->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
         return ref_eval_subscr(expr, scope, f_args, deinit_queue, failed,
                                recursion_depth);
-    else
-        MID_CRASH("can't reference expr");
+
+    *failed = true;
+    return nullptr;
 }
 
 static struct midlit_TaggedValue
