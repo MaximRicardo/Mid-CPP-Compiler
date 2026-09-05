@@ -875,8 +875,9 @@ void midlit_convert_value_deinit_queue(
 
     switch (val->kind) {
     case MIDLIT_VALUE_NONE:
-        if (target_kind != MIDLIT_VALUE_NONE)
+        if (target_kind != MIDLIT_VALUE_NONE) {
             MID_CRASH("can't convert none");
+        }
         break;
 
     case MIDLIT_VALUE_SIGNED_INT:

@@ -73,9 +73,6 @@ enum midpar_TypeSpec midsema_integral_prom(enum midpar_TypeSpec spec);
 bool midsema_constexpr_default_init_type(const struct midpar_Type *type,
                                          struct midlit_TaggedValue *out_val);
 
-bool midsema_can_constexpr_implicit_cast_type(const struct midpar_Type *src,
-                                              const struct midpar_Type *dst);
-
 bool midsema_types_are_same(const struct midpar_Type *a,
                             const struct midpar_Type *b,
                             bool ignore_top_level_dqual);

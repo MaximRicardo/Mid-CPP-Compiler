@@ -1068,6 +1068,7 @@ bool midsema_constexpr_default_init_type(const struct midpar_Type *type,
     return true;
 }
 
+/*
 static bool can_implicitly_convert_dquals(const struct midpar_TypeDataQual *src,
                                           const struct midpar_TypeDataQual *dst)
 {
@@ -1131,6 +1132,7 @@ bool midsema_can_constexpr_implicit_cast_type(const struct midpar_Type *src,
 
     return false;
 }
+*/
 
 static bool func_types_are_same(const struct midpar_TypeFunc *a,
                                 const struct midpar_TypeFunc *b)

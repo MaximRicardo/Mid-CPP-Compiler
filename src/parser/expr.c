@@ -17,6 +17,11 @@
 #include <assert.h>
 #include <stdio.h>
 
+static struct midpar_Expr
+parse_expr_impl(midlex_TokenIter start, const enum midlex_TokenType *end_types,
+                mid_isize n_end_types, midlex_TokenIter *out_end,
+                struct midsema_Scope *scope, struct mid_DiagVec *diags);
+
 bool midpar_is_rvalue(enum midpar_ExprValueType type);
 
 static struct midpar_Expr lit_tok_to_expr(const struct midlex_Token *tok)
@@ -707,7 +712,7 @@ static void parse_func_call_args(struct midpar_Expr *f_call,
         *out_rparen = rparen;
 
     for (auto i = lparen + 1; i < rparen; ++i) {
-        auto arg = midpar_parse_expr(i, MIDPAR_ARG_ENDTYPES, &i, scope, diags);
+        auto arg = parse_expr_impl(i, MIDPAR_ARG_ENDTYPES, &i, scope, diags);
         midgen_dynpush(&f_call->info.args, arg);
 
         if (i->type != MIDLEX_TOKENTYPE_R_PAREN &&
@@ -735,7 +740,7 @@ static void parse_arr_subscr(struct midpar_Expr *subscr,
     if (out_r_bracket)
         *out_r_bracket = r_bracket;
 
-    struct midpar_Expr idx = midpar_parse_expr(
+    struct midpar_Expr idx = parse_expr_impl(
         l_bracket + 1, MIDPAR_SUBSCRIPT_ENDTYPES, nullptr, scope, diags);
     midgen_dynpush(&subscr->info.args, idx);
 }
@@ -874,9 +879,9 @@ static struct midpar_Expr parse_subexpr(const struct midlex_Token *l_paren,
         midgen_dynpush(diags, err);
     }
 
-    return midpar_parse_expr(
-        l_paren + 1, (enum midlex_TokenType[]){MIDLEX_TOKENTYPE_R_PAREN}, 1,
-        out_end, scope, diags);
+    return parse_expr_impl(l_paren + 1,
+                           (enum midlex_TokenType[]){MIDLEX_TOKENTYPE_R_PAREN},
+                           1, out_end, scope, diags);
 }
 
 static bool is_end_type(enum midlex_TokenType type,
@@ -889,12 +894,11 @@ static bool is_end_type(enum midlex_TokenType type,
     return false;
 }
 
-struct midpar_Expr midpar_parse_expr(midlex_TokenIter start,
-                                     const enum midlex_TokenType *end_types,
-                                     mid_isize n_end_types,
-                                     midlex_TokenIter *out_end,
-                                     struct midsema_Scope *scope,
-                                     struct mid_DiagVec *diags)
+// doesn't do any typechecking
+static struct midpar_Expr
+parse_expr_impl(midlex_TokenIter start, const enum midlex_TokenType *end_types,
+                mid_isize n_end_types, midlex_TokenIter *out_end,
+                struct midsema_Scope *scope, struct mid_DiagVec *diags)
 {
     // uses the shunting yard algorithm
 
@@ -972,6 +976,18 @@ struct midpar_Expr midpar_parse_expr(midlex_TokenIter start,
 
     struct midpar_Expr ret = out.arr[0];
     midgen_dyndeinit(&out);
+    return ret;
+}
+
+struct midpar_Expr midpar_parse_expr(midlex_TokenIter start,
+                                     const enum midlex_TokenType *end_types,
+                                     mid_isize n_end_types,
+                                     midlex_TokenIter *out_end,
+                                     struct midsema_Scope *scope,
+                                     struct mid_DiagVec *diags)
+{
+    struct midpar_Expr ret =
+        parse_expr_impl(start, end_types, n_end_types, out_end, scope, diags);
     midsema_typecheck_expr(&ret, scope, diags);
     return ret;
 }

@@ -1,11 +1,11 @@
 #include "sema/expr_eval.h"
 #include "apfloat.h"
 #include "apint.h"
+#include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
 #include "literal.h"
 #include "macros.h"
-#include "mid_alloc.h"
 #include "parser/ast.h"
 #include "parser/expr.h"
 #include "parser/expr_type.h"
@@ -31,226 +31,17 @@ midgen_dynarray_struct_named(FuncArgValVec, struct FuncArgVal);
 // f_args           - if the expr is inside of a func call we're evaluating,
 //                    then this holds the relevant func arguments; otherwise
 //                    this parameter is NULL.
+// failed           - must be non-NULL. set to false on failure, unmodified on
+// success.
 static struct midlit_TaggedValue
 eval_expr(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
           struct midlit_TaggedValueVec *deinit_queue,
-          const struct FuncArgValVec *f_args);
-
-// recurse                - should the function be applied recursively to all
-//                          of the expr's children or should the children's
-//                          constant flag be used instead?
-// set_flag               - should the expr's constant flag be set to the
-//                          function's return value?
-// const_params           - list of every in-scope parameter with a constexpr
-//                          value.
-// NOTE: expr is NOT modified if set_flag is false
-static bool is_expr_constant(struct midpar_Expr *expr, bool recurse,
-                             bool set_flag, const char *const *const_params,
-                             int n_const_params);
-
-static bool is_expr_constant_no_set_flag(const struct midpar_Expr *expr,
-                                         bool recurse,
-                                         const char *const *const_params,
-                                         int n_const_params)
-{
-    return is_expr_constant((struct midpar_Expr *)expr, recurse, false,
-                            const_params, n_const_params);
-}
-
-static bool op_always_constant(enum midpar_ExprType type)
-{
-    return type == MIDPAR_EXPRTYPE_SIZEOF;
-}
-
-static bool leaf_expr_is_constant(const struct midpar_Expr *expr,
-                                  const char *const *const_params,
-                                  int n_const_params)
-{
-    if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER) {
-        for (int i = 0; i < n_const_params; ++i) {
-            if (const_params[i] && !strcmp(expr->info.ident, const_params[i]))
-                return true;
-        }
-        return expr->ret.squals.is_constexpr;
-    } else if (midsema_is_numlit(expr->type) || midsema_is_strlit(expr->type)) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-static struct midpar_Return *
-find_constexpr_func_ret(const struct midpar_FuncDecl *func)
-{
-    for (mid_isize i = 0; i < func->nodes.len; ++i) {
-        struct midpar_ASTNode *node = func->nodes.arr[i];
-        if (node->type == MIDPAR_ASTNODETYPE_RETURN)
-            return &node->ret;
-    }
-
-    return nullptr;
-}
-
-static bool arg_is_constexpr(const struct midpar_FuncDecl *func,
-                             const struct midpar_Expr *arg, int param_idx,
-                             const char *const *const_params,
-                             int n_const_params)
-{
-    if (!arg)
-        return false;
-
-    if (!is_expr_constant_no_set_flag(arg, true, const_params, n_const_params))
-        return false;
-
-    bool ret = midsema_can_constexpr_implicit_cast_type(
-        &arg->ret, &func->params.arr[param_idx]->insts.arr[0]->type);
-    return ret;
-}
-
-static bool func_args_are_constexpr(const struct midpar_FuncDecl *func,
-                                    const struct midpar_Expr *args, int n_args,
-                                    const char *const *const_params,
-                                    int n_const_params)
-{
-    assert(n_args <= func->params.len);
-
-    for (int i = 0; i < n_args; ++i) {
-        if (!arg_is_constexpr(func, &args[i], i, const_params, n_const_params))
-            return false;
-    }
-
-    // check default arguments
-    for (int i = n_args; i < func->params.len; ++i) {
-        const struct midpar_Expr *arg =
-            midpar_func_ident(func)->func_info.default_args[i];
-
-        if (!arg_is_constexpr(func, arg, i, const_params, n_const_params))
-            return false;
-    }
-
-    return true;
-}
-
-const char **func_param_names(const struct midpar_FuncDecl *func)
-{
-    const char **names = mid_malloc(func->params.len * sizeof(*names));
-
-    for (mid_isize i = 0; i < func->params.len; ++i)
-        names[i] = func->params.arr[i]->insts.arr[0]->name;
-
-    return names;
-}
-
-static bool func_call_is_constant(const struct midpar_FuncDecl *func,
-                                  const struct midpar_Expr *args, int n_args,
-                                  const char *const *const_params,
-                                  int n_const_params)
-{
-    if (midsema_func_is_ctor(func))
-        MID_CRASH("determining whether a ctor call is constant hasn't been "
-                  "implemented yet");
-
-    // make sure we're looking at the definition
-    func = &midpar_func_ident(func)->def->func_decl;
-    if (!func) // an undefined function can't be evaluated at comp time
-        return false;
-
-    const struct midpar_Return *ret_stmt = find_constexpr_func_ret(func);
-    if (!ret_stmt)
-        return false;
-
-    if (!ret_stmt->expr || ret_stmt->expr->constant)
-        return true;
-
-    if (!func_args_are_constexpr(func, args, n_args, const_params,
-                                 n_const_params))
-        return false;
-
-    const char **param_names = func_param_names(func);
-
-    bool is_constant = is_expr_constant(ret_stmt->expr, true, false,
-                                        param_names, func->params.len);
-
-    free(param_names);
-    return is_constant;
-}
-
-static bool is_call_expr_constant(struct midpar_Expr *call,
-                                  const char *const *const_params,
-                                  int n_const_params)
-{
-    if (!call->node)
-        MID_CRASH("determining whether a call to a function ptr is constant "
-                  "hasn't been implemented yet");
-
-    return func_call_is_constant(
-        &call->node->func_decl, &call->info.args.arr[1],
-        call->info.args.len - 1, const_params, n_const_params);
-}
-
-static bool is_expr_constant(struct midpar_Expr *expr, bool recurse,
-                             bool set_flag, const char *const *const_params,
-                             int n_const_params)
-{
-    // TODO: add support for overloaded operators
-    assert(!expr->overloaded);
-
-    if (expr->constant) {
-        return true;
-    } else if (expr->ret.spec == MIDPAR_TYPESPEC_UNKNOWN ||
-               expr->ret.spec == MIDPAR_TYPESPEC_TEMPLATED) {
-        if (set_flag)
-            expr->constant = false;
-        return false;
-    } else if (midsema_op_has_side_effects(expr->type)) {
-        if (set_flag)
-            expr->constant = false;
-        return false;
-    }
-
-    bool is_constant = false;
-
-    if (op_always_constant(expr->type)) {
-        is_constant = true;
-    } else if (midsema_is_memb_sel(expr->type)) {
-        is_constant = expr->info.args.arr[0].constant;
-    } else if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL) {
-        is_constant = is_call_expr_constant(expr, const_params, n_const_params);
-    } else if (midsema_expr_uses_args(expr->type)) {
-        is_constant = true;
-        for (int i = 0; i < expr->info.args.len; ++i) {
-            struct midpar_Expr *arg = &expr->info.args.arr[i];
-
-            bool arg_is_constant;
-            if (recurse)
-                arg_is_constant = is_expr_constant(
-                    arg, true, set_flag, const_params, n_const_params);
-            else
-                arg_is_constant = arg->constant;
-
-            if (!arg_is_constant) {
-                is_constant = false;
-                break;
-            }
-        }
-    } else {
-        is_constant = leaf_expr_is_constant(expr, const_params, n_const_params);
-    }
-
-    if (set_flag)
-        expr->constant = is_constant;
-    return is_constant;
-}
-
-void midsema_set_expr_constant_flag(struct midpar_Expr *expr)
-{
-    is_expr_constant(expr, false, true, nullptr, 0);
-}
+          const struct FuncArgValVec *f_args, bool *failed);
 
 // returns a ptr to the subscripted element
 static struct midlit_TaggedValue
 eval_subscr_ref(const struct midlit_TaggedValue *lhs,
-                const struct midlit_TaggedValue *rhs)
+                const struct midlit_TaggedValue *rhs, bool *failed)
 {
     bool lhs_int = lhs->kind == MIDLIT_VALUE_SIGNED_INT ||
                    lhs->kind == MIDLIT_VALUE_UNSIGNED_INT;
@@ -264,25 +55,33 @@ eval_subscr_ref(const struct midlit_TaggedValue *lhs,
 
     if (arr->kind == MIDLIT_VALUE_PTR) {
         struct midlit_TaggedValue elem_ptr = midlit_copy_value(arr);
-        assert(midlit_inc_ptr(&elem_ptr.v.ptr, midint_to_sint(&idx->v.i)));
+        if (!midlit_inc_ptr(&elem_ptr.v.ptr, midint_to_sint(&idx->v.i))) {
+            *failed = true;
+            midlit_TaggedValue_deinit(&elem_ptr);
+            return (struct midlit_TaggedValue){};
+        }
+
         return elem_ptr;
     } else if (arr->kind == MIDLIT_VALUE_STR) {
         struct midlit_TaggedValue ptr = midlit_ref_val(&arr->v.str.nums[0]);
-        return eval_subscr_ref(&ptr, rhs);
+        return eval_subscr_ref(&ptr, rhs, failed);
     } else {
         struct midlit_TaggedValue ptr = midlit_ref_val(&arr->v.arr.elems[0]);
-        return eval_subscr_ref(&ptr, rhs);
+        return eval_subscr_ref(&ptr, rhs, failed);
     }
 }
 
 static struct midlit_TaggedValue
 eval_subscr(const struct midlit_TaggedValue *lhs,
             const struct midlit_TaggedValue *rhs,
-            struct midlit_TaggedValueVec *deinit_queue)
+            struct midlit_TaggedValueVec *deinit_queue, bool *failed)
 {
-    struct midlit_TaggedValue elem_ptr = eval_subscr_ref(lhs, rhs);
-    if (midlit_ptr_is_null(&elem_ptr.v.ptr) || elem_ptr.v.ptr.past_end)
-        MID_CRASH("invalid subscript idx");
+    struct midlit_TaggedValue elem_ptr = eval_subscr_ref(lhs, rhs, failed);
+    if (*failed || midlit_ptr_is_null(&elem_ptr.v.ptr) ||
+        elem_ptr.v.ptr.past_end) {
+        *failed = true;
+        return (struct midlit_TaggedValue){};
+    }
 
     midgen_dynpush(deinit_queue, elem_ptr);
     return midlit_copy_value(midlit_deref_ptr(&elem_ptr.v.ptr));
@@ -291,7 +90,7 @@ eval_subscr(const struct midlit_TaggedValue *lhs,
 static struct midlit_TaggedValue *
 get_ident_value_raw(const struct midpar_Expr *expr,
                     const struct midsema_Scope *scope,
-                    const struct FuncArgValVec *f_args)
+                    const struct FuncArgValVec *f_args, bool *failed)
 {
     if (f_args) {
         for (int i = 0; i < f_args->len; ++i) {
@@ -307,16 +106,22 @@ get_ident_value_raw(const struct midpar_Expr *expr,
     if (inst->constexpr_val)
         return inst->constexpr_val;
 
-    MID_CRASH("can't get the value of this identifier");
+    *failed = true;
+    return nullptr;
 }
 
 // fetches a copy of the identifier's value
 static struct midlit_TaggedValue
 get_ident_value(const struct midpar_Expr *expr,
                 const struct midsema_Scope *scope,
-                const struct FuncArgValVec *f_args)
+                const struct FuncArgValVec *f_args, bool *failed)
 {
-    return midlit_copy_value(get_ident_value_raw(expr, scope, f_args));
+    const struct midlit_TaggedValue *raw =
+        get_ident_value_raw(expr, scope, f_args, failed);
+    if (*failed)
+        return (struct midlit_TaggedValue){};
+
+    return midlit_copy_value(raw);
 }
 
 static struct midlit_TaggedValue create_nullptr_val()
@@ -327,38 +132,53 @@ static struct midlit_TaggedValue create_nullptr_val()
 
 static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,
                                            const struct midsema_Scope *scope,
-                                           const struct FuncArgValVec *f_args)
+                                           const struct FuncArgValVec *f_args,
+                                           bool *failed)
 {
     if (expr->type == MIDPAR_EXPRTYPE_NULLPTR_LIT)
         return create_nullptr_val();
     else if (midsema_is_numlit(expr->type) || midsema_is_strlit(expr->type))
         return midlit_copy_value(&expr->info.val);
     else if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
-        return get_ident_value(expr, scope, f_args);
-    else
-        MID_CRASH("can't get value of this expr");
+        return get_ident_value(expr, scope, f_args, failed);
+
+    *failed = true;
+    return (struct midlit_TaggedValue){};
 }
 
 static struct midlit_TaggedValue
 eval_ref_op(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
             struct midlit_TaggedValueVec *deinit_queue,
-            const struct FuncArgValVec *f_args)
+            const struct FuncArgValVec *f_args, bool *failed)
 {
     const struct midpar_Expr *child = &expr->info.args.arr[0];
 
     if (child->type == MIDPAR_EXPRTYPE_IDENTIFIER) {
-        return midlit_ref_val(get_ident_value_raw(child, scope, f_args));
+        struct midlit_TaggedValue *raw =
+            get_ident_value_raw(child, scope, f_args, failed);
+        if (*failed)
+            return (struct midlit_TaggedValue){};
+        return midlit_ref_val(raw);
     } else if (child->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR) {
-        struct midlit_TaggedValue lhs =
-            eval_expr(&child->info.args.arr[0], scope, deinit_queue, f_args);
-        struct midlit_TaggedValue rhs =
-            eval_expr(&child->info.args.arr[1], scope, deinit_queue, f_args);
 
-        struct midlit_TaggedValue res = eval_subscr_ref(&lhs, &rhs);
+        struct midlit_TaggedValue lhs = eval_expr(
+            &child->info.args.arr[0], scope, deinit_queue, f_args, failed);
+        if (*failed)
+            return (struct midlit_TaggedValue){};
+
+        struct midlit_TaggedValue rhs = eval_expr(
+            &child->info.args.arr[1], scope, deinit_queue, f_args, failed);
+        if (*failed) {
+            midlit_TaggedValue_deinit(&lhs);
+            return (struct midlit_TaggedValue){};
+        }
+
+        struct midlit_TaggedValue res = eval_subscr_ref(&lhs, &rhs, failed);
 
         midgen_dynpush(deinit_queue, lhs);
         midgen_dynpush(deinit_queue, rhs);
         return res;
+
     } else {
         MID_CRASH("can't reference child expr");
     }
@@ -367,16 +187,18 @@ eval_ref_op(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
 static struct midlit_TaggedValue
 eval_unaryop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
              struct midlit_TaggedValueVec *deinit_queue,
-             const struct FuncArgValVec *f_args)
+             const struct FuncArgValVec *f_args, bool *failed)
 {
     if (expr->type == MIDPAR_EXPRTYPE_REF)
-        return eval_ref_op(expr, scope, deinit_queue, f_args);
+        return eval_ref_op(expr, scope, deinit_queue, f_args, failed);
 
     const struct midpar_Expr *child = &expr->info.args.arr[0];
 
     struct midlit_TaggedValue res;
     if (expr->type != MIDPAR_EXPRTYPE_SIZEOF)
-        res = eval_expr(child, scope, deinit_queue, f_args);
+        res = eval_expr(child, scope, deinit_queue, f_args, failed);
+    if (*failed)
+        return (struct midlit_TaggedValue){};
 
     bool is_integral = res.kind == MIDLIT_VALUE_SIGNED_INT ||
                        res.kind == MIDLIT_VALUE_UNSIGNED_INT;
@@ -428,8 +250,11 @@ eval_unaryop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
 
     case MIDPAR_EXPRTYPE_DEREF: {
         struct midlit_TaggedValue *val = midlit_deref_ptr(&res.v.ptr);
-        if (!val)
-            MID_CRASH("can not dereference ptr");
+        if (!val) {
+            *failed = true;
+            midlit_TaggedValue_deinit(&res);
+            return (struct midlit_TaggedValue){};
+        }
         midgen_dynpush(deinit_queue, res);
         res = midlit_copy_value(val);
         break;
@@ -452,7 +277,7 @@ static struct midlit_TaggedValue
 eval_arith_ptr_binop(const struct midpar_Expr *expr,
                      const struct midlit_TaggedValue *lhs,
                      const struct midlit_TaggedValue *rhs,
-                     struct midlit_TaggedValueVec *deinit_queue)
+                     struct midlit_TaggedValueVec *deinit_queue, bool *failed)
 {
     const struct midlit_TaggedValue *ptr =
         lhs->kind == MIDLIT_VALUE_PTR ? lhs : rhs;
@@ -473,24 +298,32 @@ eval_arith_ptr_binop(const struct midpar_Expr *expr,
     switch (expr->type) {
     case MIDPAR_EXPRTYPE_ADD:
         if (!midlit_inc_ptr(&res.v.ptr, off_val))
-            MID_CRASH("failed to inc ptr");
+            *failed = true;
         break;
 
     case MIDPAR_EXPRTYPE_SUB:
         if (!midlit_dec_ptr(&res.v.ptr, off_val))
-            MID_CRASH("failed to dec ptr");
+            *failed = true;
         break;
 
     case MIDPAR_EXPRTYPE_ARRAY_SUBSCR: {
         struct midlit_Ptr tmp = midlit_copy_ptr(&ptr->v.ptr);
-        if (!midlit_inc_ptr(&tmp, off_val))
-            MID_CRASH("failed to offset ptr");
+        if (!midlit_inc_ptr(&tmp, off_val)) {
+            *failed = true;
+            break;
+        }
         res = midlit_copy_value(midlit_deref_ptr(&tmp));
         midgen_dynpush(deinit_queue, ptr_to_val(&tmp));
+        break;
     }
 
     default:
         MID_CRASH("expr type is not a valid binary ptr arithmetic operator");
+    }
+
+    if (*failed) {
+        midlit_TaggedValue_deinit(&res);
+        return (struct midlit_TaggedValue){};
     }
 
     return res;
@@ -500,7 +333,7 @@ static struct midlit_TaggedValue
 eval_arith_arr_binop(const struct midpar_Expr *expr,
                      const struct midlit_TaggedValue *lhs,
                      const struct midlit_TaggedValue *rhs,
-                     struct midlit_TaggedValueVec *deinit_queue)
+                     struct midlit_TaggedValueVec *deinit_queue, bool *failed)
 {
     const struct midlit_TaggedValue *arr =
         lhs->kind == MIDLIT_VALUE_ARRAY ? lhs : rhs;
@@ -510,7 +343,7 @@ eval_arith_arr_binop(const struct midpar_Expr *expr,
     struct midlit_TaggedValue ptr = midlit_ref_val(&arr->v.arr.elems[0]);
 
     struct midlit_TaggedValue res =
-        eval_arith_ptr_binop(expr, &ptr, off, deinit_queue);
+        eval_arith_ptr_binop(expr, &ptr, off, deinit_queue, failed);
 
     midgen_dynpush(deinit_queue, ptr);
     return res;
@@ -520,7 +353,7 @@ static struct midlit_TaggedValue
 eval_arith_str_binop(const struct midpar_Expr *expr,
                      const struct midlit_TaggedValue *lhs,
                      const struct midlit_TaggedValue *rhs,
-                     struct midlit_TaggedValueVec *deinit_queue)
+                     struct midlit_TaggedValueVec *deinit_queue, bool *failed)
 {
     const struct midlit_TaggedValue *str =
         lhs->kind == MIDLIT_VALUE_STR ? lhs : rhs;
@@ -530,7 +363,7 @@ eval_arith_str_binop(const struct midpar_Expr *expr,
     struct midlit_TaggedValue ptr = midlit_ref_val(&str->v.str.nums[0]);
 
     struct midlit_TaggedValue res =
-        eval_arith_ptr_binop(expr, &ptr, off, deinit_queue);
+        eval_arith_ptr_binop(expr, &ptr, off, deinit_queue, failed);
 
     midgen_dynpush(deinit_queue, ptr);
     return res;
@@ -557,14 +390,14 @@ static bool binop_has_str_arg(const struct midlit_TaggedValue *lhs,
 static struct midlit_TaggedValue
 eval_arith_binop(const struct midpar_Expr *expr, struct midlit_TaggedValue *lhs,
                  struct midlit_TaggedValue *rhs,
-                 struct midlit_TaggedValueVec *deinit_queue)
+                 struct midlit_TaggedValueVec *deinit_queue, bool *failed)
 {
     if (binop_has_ptr_arg(lhs, rhs))
-        return eval_arith_ptr_binop(expr, lhs, rhs, deinit_queue);
+        return eval_arith_ptr_binop(expr, lhs, rhs, deinit_queue, failed);
     else if (binop_has_arr_arg(lhs, rhs))
-        return eval_arith_arr_binop(expr, lhs, rhs, deinit_queue);
+        return eval_arith_arr_binop(expr, lhs, rhs, deinit_queue, failed);
     else if (binop_has_str_arg(lhs, rhs))
-        return eval_arith_str_binop(expr, lhs, rhs, deinit_queue);
+        return eval_arith_str_binop(expr, lhs, rhs, deinit_queue, failed);
 
     enum midlit_ValueKind res_kind = midsema_type_lit_value_kind(&expr->ret);
     bool is_integral = res_kind == MIDLIT_VALUE_SIGNED_INT ||
@@ -687,27 +520,34 @@ static bool should_eval_binop_rhs(const struct midpar_Expr *expr)
 static struct midlit_TaggedValue
 eval_binop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
            struct midlit_TaggedValueVec *deinit_queue,
-           const struct FuncArgValVec *f_args)
+           const struct FuncArgValVec *f_args, bool *failed)
 {
     const struct midpar_Expr *lhs = &expr->info.args.arr[0];
     const struct midpar_Expr *rhs = &expr->info.args.arr[1];
 
-    struct midlit_TaggedValue res_lhs =
-        eval_expr(lhs, scope, deinit_queue, f_args);
+    struct midlit_TaggedValue res_rhs = {};
+    bool rhs_evaled = false;
 
-    bool rhs_evaled = should_eval_binop_rhs(expr);
-    struct midlit_TaggedValue res_rhs;
-    if (rhs_evaled)
-        res_rhs = eval_expr(rhs, scope, deinit_queue, f_args);
+    struct midlit_TaggedValue res_lhs =
+        eval_expr(lhs, scope, deinit_queue, f_args, failed);
+    if (*failed)
+        goto failure;
+
+    rhs_evaled = should_eval_binop_rhs(expr);
+    if (rhs_evaled) {
+        res_rhs = eval_expr(rhs, scope, deinit_queue, f_args, failed);
+        if (*failed)
+            goto failure;
+    }
 
     struct midlit_TaggedValue res;
 
     if (midsema_is_arith_op(expr->type))
-        res = eval_arith_binop(expr, &res_lhs, &res_rhs, deinit_queue);
+        res = eval_arith_binop(expr, &res_lhs, &res_rhs, deinit_queue, failed);
     else if (midsema_is_memb_sel(expr->type))
         res = eval_memb_sel(expr, &res_lhs);
     else if (expr->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
-        res = eval_subscr(&res_lhs, &res_rhs, deinit_queue);
+        res = eval_subscr(&res_lhs, &res_rhs, deinit_queue, failed);
     else
         MID_CRASH("constant folding expr type not supported");
 
@@ -715,6 +555,13 @@ eval_binop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
     if (rhs_evaled)
         midgen_dynpush(deinit_queue, res_rhs);
     return res;
+
+failure:
+    midlit_TaggedValue_deinit(&res_lhs);
+    if (rhs_evaled)
+        midlit_TaggedValue_deinit(&res_rhs);
+
+    return (struct midlit_TaggedValue){};
 }
 
 static struct FuncArgValVec
@@ -722,7 +569,7 @@ get_func_arg_vals(const struct midpar_FuncDecl *func,
                   const struct midpar_Expr *args, int n_args,
                   const struct midsema_Scope *scope,
                   struct midlit_TaggedValueVec *deinit_queue,
-                  const struct FuncArgValVec *f_args)
+                  const struct FuncArgValVec *f_args, bool *failed)
 {
     assert(n_args <= func->params.len);
 
@@ -735,7 +582,10 @@ get_func_arg_vals(const struct midpar_FuncDecl *func,
 
         struct FuncArgVal arg_val;
         arg_val.param = param->name;
-        arg_val.val = eval_expr(&args[i], scope, deinit_queue, f_args);
+        arg_val.val = eval_expr(&args[i], scope, deinit_queue, f_args, failed);
+        if (*failed)
+            goto failure;
+
         midlit_convert_value_deinit_queue(&arg_val.val, &param->type,
                                           deinit_queue);
 
@@ -751,7 +601,10 @@ get_func_arg_vals(const struct midpar_FuncDecl *func,
 
         struct FuncArgVal arg_val;
         arg_val.param = param->name;
-        arg_val.val = eval_expr(def_arg, scope, deinit_queue, f_args);
+        arg_val.val = eval_expr(def_arg, scope, deinit_queue, f_args, failed);
+        if (*failed)
+            goto failure;
+
         midlit_convert_value_deinit_queue(&arg_val.val, &param->type,
                                           deinit_queue);
 
@@ -759,22 +612,45 @@ get_func_arg_vals(const struct midpar_FuncDecl *func,
     }
 
     return arg_vals;
+
+failure:
+    for (mid_isize i = 0; i < arg_vals.len; ++i)
+        midgen_dynpush(deinit_queue, arg_vals.arr[i].val);
+    midgen_dyndeinit(&arg_vals);
+    return (struct FuncArgValVec){};
+}
+
+static struct midpar_Return *
+find_constexpr_func_ret(const struct midpar_FuncDecl *func)
+{
+    for (mid_isize i = 0; i < func->nodes.len; ++i) {
+        struct midpar_ASTNode *node = func->nodes.arr[i];
+        if (node->type == MIDPAR_ASTNODETYPE_RETURN)
+            return &node->ret;
+    }
+
+    return nullptr;
 }
 
 static struct midlit_TaggedValue
 eval_regular_func_call(const struct midpar_FuncDecl *func,
                        const struct FuncArgValVec *args,
-                       struct midlit_TaggedValueVec *deinit_queue)
+                       struct midlit_TaggedValueVec *deinit_queue, bool *failed)
 {
     const struct midpar_Return *ret_stmt = find_constexpr_func_ret(func);
-    assert(ret_stmt);
+    if (!ret_stmt) {
+        *failed = true;
+        return (struct midlit_TaggedValue){};
+    }
 
     if (!ret_stmt->expr)
-        return (struct midlit_TaggedValue){.kind = MIDLIT_VALUE_NONE};
+        return (struct midlit_TaggedValue){};
 
     struct midlit_TaggedValue val =
         eval_expr(ret_stmt->expr, midpar_func_ident(func)->func_info.def_scope,
-                  deinit_queue, args);
+                  deinit_queue, args, failed);
+    if (*failed)
+        return (struct midlit_TaggedValue){};
     midlit_convert_value_deinit_queue(&val, &func->ret, deinit_queue);
     return val;
 }
@@ -783,7 +659,7 @@ static struct midlit_TaggedValue
 eval_func_call(const struct midpar_Expr *call,
                const struct midsema_Scope *scope,
                struct midlit_TaggedValueVec *deinit_queue,
-               const struct FuncArgValVec *f_args)
+               const struct FuncArgValVec *f_args, bool *failed)
 {
     if (!call->node)
         MID_CRASH(
@@ -792,18 +668,23 @@ eval_func_call(const struct midpar_Expr *call,
     const struct midpar_FuncDecl *func = &call->node->func_decl;
     // make sure we're looking at the func definition
     func = &midpar_func_ident(func)->def->func_decl;
-    if (!func)
-        MID_CRASH("can't evaluate a call to an undefined function");
+    if (!func) {
+        // we can't evaluate calls to undefined functions
+        *failed = true;
+        return (struct midlit_TaggedValue){};
+    }
 
-    struct FuncArgValVec arg_vals =
-        get_func_arg_vals(func, &call->info.args.arr[1],
-                          call->info.args.len - 1, scope, deinit_queue, f_args);
+    struct FuncArgValVec arg_vals = get_func_arg_vals(
+        func, &call->info.args.arr[1], call->info.args.len - 1, scope,
+        deinit_queue, f_args, failed);
+    if (*failed)
+        return (struct midlit_TaggedValue){};
 
     struct midlit_TaggedValue res;
     if (midsema_func_is_ctor(func)) {
         MID_CRASH("evaluating ctor calls hasn't been implemented yet");
     } else {
-        res = eval_regular_func_call(func, &arg_vals, deinit_queue);
+        res = eval_regular_func_call(func, &arg_vals, deinit_queue, failed);
     }
 
     for (int i = 0; i < arg_vals.len; ++i)
@@ -816,7 +697,7 @@ eval_func_call(const struct midpar_Expr *call,
 static struct midlit_TaggedValue
 eval_expr(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
           struct midlit_TaggedValueVec *deinit_queue,
-          const struct FuncArgValVec *f_args)
+          const struct FuncArgValVec *f_args, bool *failed)
 {
     assert(expr->typechecked);
 
@@ -824,36 +705,53 @@ eval_expr(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
         return midlit_copy_value(&expr->info.val);
 
     // TODO: add support for operator overloading
-    assert(!expr->overloaded);
+    if (expr->overloaded)
+        return (struct midlit_TaggedValue){};
 
     if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL)
-        return eval_func_call(expr, scope, deinit_queue, f_args);
+        return eval_func_call(expr, scope, deinit_queue, f_args, failed);
     else if (midsema_is_unaryop(expr->type))
-        return eval_unaryop(expr, scope, deinit_queue, f_args);
+        return eval_unaryop(expr, scope, deinit_queue, f_args, failed);
     else if (midsema_is_binop(expr->type))
-        return eval_binop(expr, scope, deinit_queue, f_args);
+        return eval_binop(expr, scope, deinit_queue, f_args, failed);
     else
-        return eval_leaf(expr, scope, f_args);
+        return eval_leaf(expr, scope, f_args, failed);
 }
 
 struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
-                                            const struct midsema_Scope *scope)
+                                            const struct midsema_Scope *scope,
+                                            bool *failed)
 {
-    assert(expr->constant);
-
     struct midlit_TaggedValueVec deinit_queue = {};
 
+    *failed = false;
     struct midlit_TaggedValue res =
-        eval_expr(expr, scope, &deinit_queue, nullptr);
+        eval_expr(expr, scope, &deinit_queue, nullptr, failed);
 
     midgen_dyndeinit(&deinit_queue, midlit_TaggedValue_deinit);
+    if (*failed)
+        return (struct midlit_TaggedValue){};
     return res;
 }
 
-static void fold_expr(struct midpar_Expr *expr,
+struct midlit_TaggedValue
+midsema_eval_expr_mut(struct midpar_Expr *expr,
                       const struct midsema_Scope *scope)
 {
-    struct midlit_TaggedValue val = midsema_eval_expr(expr, scope);
+    bool failed;
+    struct midlit_TaggedValue res = midsema_eval_expr(expr, scope, &failed);
+    expr->constant = !failed;
+
+    return res;
+}
+
+// returns true on success, false on failure
+static bool fold_expr(struct midpar_Expr *expr,
+                      const struct midsema_Scope *scope)
+{
+    struct midlit_TaggedValue val = midsema_eval_expr_mut(expr, scope);
+    if (!expr->constant)
+        return false;
 
     const struct midlex_Token *tok = expr->tok;
     struct midpar_Type ret = midpar_copy_type(&expr->ret);
@@ -868,6 +766,8 @@ static void fold_expr(struct midpar_Expr *expr,
                                  .valtype = valtype,
                                  .typechecked = true,
                                  .constant = true};
+
+    return true;
 }
 
 void midsema_const_fold_expr(struct midpar_Expr *expr,
@@ -875,9 +775,10 @@ void midsema_const_fold_expr(struct midpar_Expr *expr,
 {
     assert(expr->typechecked);
 
-    if (expr->constant) {
-        fold_expr(expr, scope);
-    } else if (recursive && midsema_expr_uses_args(expr->type)) {
+    if (fold_expr(expr, scope))
+        return;
+
+    if (recursive && midsema_expr_uses_args(expr->type)) {
         for (int i = 0; i < expr->info.args.len; ++i) {
             struct midpar_Expr *arg = &expr->info.args.arr[i];
             midsema_const_fold_expr(arg, scope, true);

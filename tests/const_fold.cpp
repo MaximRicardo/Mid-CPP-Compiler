@@ -8,6 +8,11 @@ constexpr int const_func(int x)
     return 1 + const_str_func()[x];
 }
 
+constexpr int const_recursive_func()
+{
+    return const_recursive_func();
+}
+
 void func()
 {
     constexpr static int x = 10;

@@ -560,7 +560,10 @@ static void set_array_len(struct midpar_TypeArray *arr,
     else if (!arr->len_expr->constant)
         midgen_dynpush(diags, nonconstexpr_arr_len_err(arr->len_expr->tok));
     else {
-        struct midlit_TaggedValue val = midsema_eval_expr(arr->len_expr, scope);
+        bool failed;
+        struct midlit_TaggedValue val =
+            midsema_eval_expr(arr->len_expr, scope, &failed);
+        assert(!failed);
 
         if (val.kind == MIDLIT_VALUE_SIGNED_INT && midint_is_negative(&val.v.i))
             midgen_dynpush(diags, negative_arr_len_err(arr->len_expr->tok));

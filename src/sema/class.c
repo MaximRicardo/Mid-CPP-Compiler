@@ -713,7 +713,10 @@ static bool get_default_memb_init_value(const struct midpar_Class *self,
     } else if (inst->init.expr) {
         if (!inst->init.expr->constant)
             return false;
-        *out_val = midsema_eval_expr(inst->init.expr, midpar_class_scope(self));
+        bool failed;
+        *out_val = midsema_eval_expr(inst->init.expr, midpar_class_scope(self),
+                                     &failed);
+        assert(!failed);
     } else {
         // primitive types without an explicit initalizer are undefined
         if (!midsema_type_is_class_or_union(&inst->type))
