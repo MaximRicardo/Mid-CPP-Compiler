@@ -26,6 +26,7 @@ struct midcmd_Args {
     const char *asm_out;
     bool log_tokens;
     bool log_symbols;
+    int max_constexpr_recursion;
 };
 
 void midcmd_init_args(int argc, const char *const *argv);

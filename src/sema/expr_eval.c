@@ -1,6 +1,7 @@
 #include "sema/expr_eval.h"
 #include "apfloat.h"
 #include "apint.h"
+#include "cmd.h"
 #include "diag.h"
 #include "generics/dynarray.h"
 #include "ints.h"
@@ -32,11 +33,13 @@ midgen_dynarray_struct_named(FuncArgValVec, struct FuncArgVal);
 //                    then this holds the relevant func arguments; otherwise
 //                    this parameter is NULL.
 // failed           - must be non-NULL. set to false on failure, unmodified on
+// recursion_depth  - amount of constexpr func calls deep we are
 // success.
 static struct midlit_TaggedValue
 eval_expr(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
           struct midlit_TaggedValueVec *deinit_queue,
-          const struct FuncArgValVec *f_args, bool *failed);
+          const struct FuncArgValVec *f_args, bool *failed,
+          int recursion_depth);
 
 // returns a ptr to the subscripted element
 static struct midlit_TaggedValue
@@ -149,7 +152,8 @@ static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,
 static struct midlit_TaggedValue
 eval_ref_op(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
             struct midlit_TaggedValueVec *deinit_queue,
-            const struct FuncArgValVec *f_args, bool *failed)
+            const struct FuncArgValVec *f_args, bool *failed,
+            int recursion_depth)
 {
     const struct midpar_Expr *child = &expr->info.args.arr[0];
 
@@ -161,13 +165,15 @@ eval_ref_op(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
         return midlit_ref_val(raw);
     } else if (child->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR) {
 
-        struct midlit_TaggedValue lhs = eval_expr(
-            &child->info.args.arr[0], scope, deinit_queue, f_args, failed);
+        struct midlit_TaggedValue lhs =
+            eval_expr(&child->info.args.arr[0], scope, deinit_queue, f_args,
+                      failed, recursion_depth);
         if (*failed)
             return (struct midlit_TaggedValue){};
 
-        struct midlit_TaggedValue rhs = eval_expr(
-            &child->info.args.arr[1], scope, deinit_queue, f_args, failed);
+        struct midlit_TaggedValue rhs =
+            eval_expr(&child->info.args.arr[1], scope, deinit_queue, f_args,
+                      failed, recursion_depth);
         if (*failed) {
             midlit_TaggedValue_deinit(&lhs);
             return (struct midlit_TaggedValue){};
@@ -187,16 +193,19 @@ eval_ref_op(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
 static struct midlit_TaggedValue
 eval_unaryop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
              struct midlit_TaggedValueVec *deinit_queue,
-             const struct FuncArgValVec *f_args, bool *failed)
+             const struct FuncArgValVec *f_args, bool *failed,
+             int recursion_depth)
 {
     if (expr->type == MIDPAR_EXPRTYPE_REF)
-        return eval_ref_op(expr, scope, deinit_queue, f_args, failed);
+        return eval_ref_op(expr, scope, deinit_queue, f_args, failed,
+                           recursion_depth);
 
     const struct midpar_Expr *child = &expr->info.args.arr[0];
 
     struct midlit_TaggedValue res;
     if (expr->type != MIDPAR_EXPRTYPE_SIZEOF)
-        res = eval_expr(child, scope, deinit_queue, f_args, failed);
+        res = eval_expr(child, scope, deinit_queue, f_args, failed,
+                        recursion_depth);
     if (*failed)
         return (struct midlit_TaggedValue){};
 
@@ -520,7 +529,8 @@ static bool should_eval_binop_rhs(const struct midpar_Expr *expr)
 static struct midlit_TaggedValue
 eval_binop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
            struct midlit_TaggedValueVec *deinit_queue,
-           const struct FuncArgValVec *f_args, bool *failed)
+           const struct FuncArgValVec *f_args, bool *failed,
+           int recursion_depth)
 {
     const struct midpar_Expr *lhs = &expr->info.args.arr[0];
     const struct midpar_Expr *rhs = &expr->info.args.arr[1];
@@ -529,13 +539,14 @@ eval_binop(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
     bool rhs_evaled = false;
 
     struct midlit_TaggedValue res_lhs =
-        eval_expr(lhs, scope, deinit_queue, f_args, failed);
+        eval_expr(lhs, scope, deinit_queue, f_args, failed, recursion_depth);
     if (*failed)
         goto failure;
 
     rhs_evaled = should_eval_binop_rhs(expr);
     if (rhs_evaled) {
-        res_rhs = eval_expr(rhs, scope, deinit_queue, f_args, failed);
+        res_rhs = eval_expr(rhs, scope, deinit_queue, f_args, failed,
+                            recursion_depth);
         if (*failed)
             goto failure;
     }
@@ -564,12 +575,11 @@ failure:
     return (struct midlit_TaggedValue){};
 }
 
-static struct FuncArgValVec
-get_func_arg_vals(const struct midpar_FuncDecl *func,
-                  const struct midpar_Expr *args, int n_args,
-                  const struct midsema_Scope *scope,
-                  struct midlit_TaggedValueVec *deinit_queue,
-                  const struct FuncArgValVec *f_args, bool *failed)
+static struct FuncArgValVec get_func_arg_vals(
+    const struct midpar_FuncDecl *func, const struct midpar_Expr *args,
+    int n_args, const struct midsema_Scope *scope,
+    struct midlit_TaggedValueVec *deinit_queue,
+    const struct FuncArgValVec *f_args, bool *failed, int recursion_depth)
 {
     assert(n_args <= func->params.len);
 
@@ -582,7 +592,8 @@ get_func_arg_vals(const struct midpar_FuncDecl *func,
 
         struct FuncArgVal arg_val;
         arg_val.param = param->name;
-        arg_val.val = eval_expr(&args[i], scope, deinit_queue, f_args, failed);
+        arg_val.val = eval_expr(&args[i], scope, deinit_queue, f_args, failed,
+                                recursion_depth);
         if (*failed)
             goto failure;
 
@@ -601,7 +612,8 @@ get_func_arg_vals(const struct midpar_FuncDecl *func,
 
         struct FuncArgVal arg_val;
         arg_val.param = param->name;
-        arg_val.val = eval_expr(def_arg, scope, deinit_queue, f_args, failed);
+        arg_val.val = eval_expr(def_arg, scope, deinit_queue, f_args, failed,
+                                recursion_depth);
         if (*failed)
             goto failure;
 
@@ -635,7 +647,8 @@ find_constexpr_func_ret(const struct midpar_FuncDecl *func)
 static struct midlit_TaggedValue
 eval_regular_func_call(const struct midpar_FuncDecl *func,
                        const struct FuncArgValVec *args,
-                       struct midlit_TaggedValueVec *deinit_queue, bool *failed)
+                       struct midlit_TaggedValueVec *deinit_queue, bool *failed,
+                       int recursion_depth)
 {
     const struct midpar_Return *ret_stmt = find_constexpr_func_ret(func);
     if (!ret_stmt) {
@@ -648,19 +661,23 @@ eval_regular_func_call(const struct midpar_FuncDecl *func,
 
     struct midlit_TaggedValue val =
         eval_expr(ret_stmt->expr, midpar_func_ident(func)->func_info.def_scope,
-                  deinit_queue, args, failed);
+                  deinit_queue, args, failed, recursion_depth + 1);
     if (*failed)
         return (struct midlit_TaggedValue){};
     midlit_convert_value_deinit_queue(&val, &func->ret, deinit_queue);
     return val;
 }
 
-static struct midlit_TaggedValue
-eval_func_call(const struct midpar_Expr *call,
-               const struct midsema_Scope *scope,
-               struct midlit_TaggedValueVec *deinit_queue,
-               const struct FuncArgValVec *f_args, bool *failed)
+static struct midlit_TaggedValue eval_func_call(
+    const struct midpar_Expr *call, const struct midsema_Scope *scope,
+    struct midlit_TaggedValueVec *deinit_queue,
+    const struct FuncArgValVec *f_args, bool *failed, int recursion_depth)
 {
+    if (recursion_depth >= midcmd_get_args()->max_constexpr_recursion) {
+        *failed = true;
+        return (struct midlit_TaggedValue){};
+    }
+
     if (!call->node)
         MID_CRASH(
             "evaluating calls to function ptrs hasn't been implemented yet");
@@ -676,7 +693,7 @@ eval_func_call(const struct midpar_Expr *call,
 
     struct FuncArgValVec arg_vals = get_func_arg_vals(
         func, &call->info.args.arr[1], call->info.args.len - 1, scope,
-        deinit_queue, f_args, failed);
+        deinit_queue, f_args, failed, recursion_depth);
     if (*failed)
         return (struct midlit_TaggedValue){};
 
@@ -684,7 +701,8 @@ eval_func_call(const struct midpar_Expr *call,
     if (midsema_func_is_ctor(func)) {
         MID_CRASH("evaluating ctor calls hasn't been implemented yet");
     } else {
-        res = eval_regular_func_call(func, &arg_vals, deinit_queue, failed);
+        res = eval_regular_func_call(func, &arg_vals, deinit_queue, failed,
+                                     recursion_depth);
     }
 
     for (int i = 0; i < arg_vals.len; ++i)
@@ -697,7 +715,7 @@ eval_func_call(const struct midpar_Expr *call,
 static struct midlit_TaggedValue
 eval_expr(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
           struct midlit_TaggedValueVec *deinit_queue,
-          const struct FuncArgValVec *f_args, bool *failed)
+          const struct FuncArgValVec *f_args, bool *failed, int recursion_depth)
 {
     assert(expr->typechecked);
 
@@ -709,11 +727,14 @@ eval_expr(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
         return (struct midlit_TaggedValue){};
 
     if (expr->type == MIDPAR_EXPRTYPE_FUNC_CALL)
-        return eval_func_call(expr, scope, deinit_queue, f_args, failed);
+        return eval_func_call(expr, scope, deinit_queue, f_args, failed,
+                              recursion_depth);
     else if (midsema_is_unaryop(expr->type))
-        return eval_unaryop(expr, scope, deinit_queue, f_args, failed);
+        return eval_unaryop(expr, scope, deinit_queue, f_args, failed,
+                            recursion_depth);
     else if (midsema_is_binop(expr->type))
-        return eval_binop(expr, scope, deinit_queue, f_args, failed);
+        return eval_binop(expr, scope, deinit_queue, f_args, failed,
+                          recursion_depth);
     else
         return eval_leaf(expr, scope, f_args, failed);
 }
@@ -726,7 +747,7 @@ struct midlit_TaggedValue midsema_eval_expr(const struct midpar_Expr *expr,
 
     *failed = false;
     struct midlit_TaggedValue res =
-        eval_expr(expr, scope, &deinit_queue, nullptr, failed);
+        eval_expr(expr, scope, &deinit_queue, nullptr, failed, 0);
 
     midgen_dyndeinit(&deinit_queue, midlit_TaggedValue_deinit);
     if (*failed)

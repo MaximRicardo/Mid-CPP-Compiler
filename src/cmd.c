@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static bool cmd_args_inited = false;
@@ -25,6 +26,8 @@ static void print_help_menu(void)
            "specific rounding mode. Valid modes are nearest-ties-even, "
            "nearest-ties-away, down, up and towards-zero. By default the "
            "compiler assumes nearest-ties-even is selected\n");
+    printf("\t-fconstexpr-depth=<num>\t\tMaximum allowed recursion depth "
+           "within a constant expression\n");
 }
 
 // finds the equals sign in the argument. returns -1 if it couldn't be found
@@ -101,6 +104,8 @@ static bool read_arg_with_eq(struct midcmd_Args *args, const char *arg)
     bool found = true;
     if (!strcmp(name, "-fset-rounding-mode"))
         fset_rounding_mode(args, val);
+    if (!strcmp(name, "-fconstexpr-depth"))
+        args->max_constexpr_recursion = strtol(val, nullptr, 0);
     else
         found = false;
 
@@ -112,6 +117,7 @@ static bool read_arg_with_eq(struct midcmd_Args *args, const char *arg)
 static void set_default_args(struct midcmd_Args *args)
 {
     args->fpu.rmode = MIDFLT_ROUND_NEAREST_TIES_EVEN;
+    args->max_constexpr_recursion = 512;
 }
 
 void midcmd_init_args(int argc, const char *const *argv)
