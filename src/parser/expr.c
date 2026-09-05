@@ -755,7 +755,7 @@ static struct midpar_Expr op_tok_to_expr(midlex_TokenIter tok,
 
     if (ret.type == MIDPAR_EXPRTYPE_FUNC_CALL)
         parse_func_call_args(&ret, tok, out_end, scope, diags);
-    if (ret.type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
+    else if (ret.type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
         parse_arr_subscr(&ret, tok, out_end, scope, diags);
     else if (out_end)
         *out_end = tok;
