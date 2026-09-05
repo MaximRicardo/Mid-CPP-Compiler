@@ -149,6 +149,138 @@ static struct midlit_TaggedValue eval_leaf(const struct midpar_Expr *expr,
     return (struct midlit_TaggedValue){};
 }
 
+static struct midlit_TaggedValue *
+eval_expr_ref(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
+              struct midlit_TaggedValueVec *deinit_queue,
+              const struct FuncArgValVec *f_args, bool *failed,
+              int recursion_depth);
+
+static bool can_eval_expr_ref(const struct midpar_Expr *expr);
+
+static struct midlit_TaggedValue *
+ref_eval_ident(const struct midpar_Expr *expr,
+               const struct midsema_Scope *scope,
+               const struct FuncArgValVec *f_args, bool *failed)
+{
+    struct midlit_TaggedValue *raw =
+        get_ident_value_raw(expr, scope, f_args, failed);
+    if (*failed)
+        return nullptr;
+
+    return raw;
+}
+
+static struct midlit_TaggedValue *
+eval_memb_sel_ref(const struct midpar_Expr *expr,
+                  const struct midlit_TaggedValue *lhs)
+{
+    if (expr->info.args.arr[0].ret.spec != MIDPAR_TYPESPEC_STRUCT)
+        MID_CRASH("fetching fields of unions not yet supported");
+
+    if (lhs->kind == MIDLIT_VALUE_PTR)
+        lhs = midlit_deref_ptr(&lhs->v.ptr);
+
+    const char *field_name = expr->info.args.arr[1].info.ident;
+    struct midlit_TaggedValue *field =
+        midsema_get_structlit_field(&lhs->v.struct_, field_name);
+    assert(field);
+
+    return field;
+}
+
+static struct midlit_TaggedValue
+eval_memb_sel(const struct midpar_Expr *expr,
+              const struct midlit_TaggedValue *lhs)
+{
+    return midlit_copy_value(eval_memb_sel_ref(expr, lhs));
+}
+
+static struct midlit_TaggedValue *
+ref_eval_memb_sel(const struct midpar_Expr *expr,
+                  const struct midsema_Scope *scope,
+                  const struct FuncArgValVec *f_args,
+                  struct midlit_TaggedValueVec *deinit_queue, bool *failed,
+                  int recursion_depth)
+{
+    const struct midpar_Expr *lhs_expr = &expr->info.args.arr[0];
+
+    // if we're getting the member of a value with a scope greater than this
+    // expression we need to make sure we're getting a pointer straight to
+    // the original value's field, rather than a local copy which will go out
+    // of scope once the expression has ended and give us an invalid pointer.
+    if (can_eval_expr_ref(lhs_expr)) {
+        struct midlit_TaggedValue *lhs = eval_expr_ref(
+            lhs_expr, scope, deinit_queue, f_args, failed, recursion_depth);
+        if (*failed)
+            return nullptr;
+
+        return eval_memb_sel_ref(expr, lhs);
+    }
+
+    struct midlit_TaggedValue lhs = eval_expr(lhs_expr, scope, deinit_queue,
+                                              f_args, failed, recursion_depth);
+    if (*failed)
+        return nullptr;
+
+    struct midlit_TaggedValue *memb = eval_memb_sel_ref(expr, &lhs);
+
+    midgen_dynpush(deinit_queue, lhs);
+    return memb;
+}
+
+static struct midlit_TaggedValue *
+ref_eval_subscr(const struct midpar_Expr *expr,
+                const struct midsema_Scope *scope,
+                const struct FuncArgValVec *f_args,
+                struct midlit_TaggedValueVec *deinit_queue, bool *failed,
+                int recursion_depth)
+{
+    struct midlit_TaggedValue lhs =
+        eval_expr(&expr->info.args.arr[0], scope, deinit_queue, f_args, failed,
+                  recursion_depth);
+    if (*failed)
+        return nullptr;
+
+    struct midlit_TaggedValue rhs =
+        eval_expr(&expr->info.args.arr[1], scope, deinit_queue, f_args, failed,
+                  recursion_depth);
+    if (*failed) {
+        midlit_TaggedValue_deinit(&lhs);
+        return nullptr;
+    }
+
+    struct midlit_TaggedValue res = eval_subscr_ref(&lhs, &rhs, failed);
+
+    midgen_dynpush(deinit_queue, lhs);
+    midgen_dynpush(deinit_queue, rhs);
+    return midlit_deref_ptr(&res.v.ptr);
+}
+
+static bool can_eval_expr_ref(const struct midpar_Expr *expr)
+{
+    return expr->type == MIDPAR_EXPRTYPE_IDENTIFIER ||
+           midsema_is_memb_sel(expr->type) ||
+           expr->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR;
+}
+
+static struct midlit_TaggedValue *
+eval_expr_ref(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
+              struct midlit_TaggedValueVec *deinit_queue,
+              const struct FuncArgValVec *f_args, bool *failed,
+              int recursion_depth)
+{
+    if (expr->type == MIDPAR_EXPRTYPE_IDENTIFIER)
+        return ref_eval_ident(expr, scope, f_args, failed);
+    else if (midsema_is_memb_sel(expr->type))
+        return ref_eval_memb_sel(expr, scope, f_args, deinit_queue, failed,
+                                 recursion_depth);
+    else if (expr->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR)
+        return ref_eval_subscr(expr, scope, f_args, deinit_queue, failed,
+                               recursion_depth);
+    else
+        MID_CRASH("can't reference expr");
+}
+
 static struct midlit_TaggedValue
 eval_ref_op(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
             struct midlit_TaggedValueVec *deinit_queue,
@@ -157,37 +289,12 @@ eval_ref_op(const struct midpar_Expr *expr, const struct midsema_Scope *scope,
 {
     const struct midpar_Expr *child = &expr->info.args.arr[0];
 
-    if (child->type == MIDPAR_EXPRTYPE_IDENTIFIER) {
-        struct midlit_TaggedValue *raw =
-            get_ident_value_raw(child, scope, f_args, failed);
-        if (*failed)
-            return (struct midlit_TaggedValue){};
-        return midlit_ref_val(raw);
-    } else if (child->type == MIDPAR_EXPRTYPE_ARRAY_SUBSCR) {
+    struct midlit_TaggedValue *res = eval_expr_ref(
+        child, scope, deinit_queue, f_args, failed, recursion_depth);
+    if (*failed)
+        return (struct midlit_TaggedValue){};
 
-        struct midlit_TaggedValue lhs =
-            eval_expr(&child->info.args.arr[0], scope, deinit_queue, f_args,
-                      failed, recursion_depth);
-        if (*failed)
-            return (struct midlit_TaggedValue){};
-
-        struct midlit_TaggedValue rhs =
-            eval_expr(&child->info.args.arr[1], scope, deinit_queue, f_args,
-                      failed, recursion_depth);
-        if (*failed) {
-            midlit_TaggedValue_deinit(&lhs);
-            return (struct midlit_TaggedValue){};
-        }
-
-        struct midlit_TaggedValue res = eval_subscr_ref(&lhs, &rhs, failed);
-
-        midgen_dynpush(deinit_queue, lhs);
-        midgen_dynpush(deinit_queue, rhs);
-        return res;
-
-    } else {
-        MID_CRASH("can't reference child expr");
-    }
+    return midlit_ref_val(res);
 }
 
 static struct midlit_TaggedValue
@@ -501,24 +608,6 @@ eval_arith_binop(const struct midpar_Expr *expr, struct midlit_TaggedValue *lhs,
     }
 
     return res;
-}
-
-static struct midlit_TaggedValue
-eval_memb_sel(const struct midpar_Expr *expr,
-              const struct midlit_TaggedValue *lhs)
-{
-    if (expr->info.args.arr[0].ret.spec != MIDPAR_TYPESPEC_STRUCT)
-        MID_CRASH("fetching fields of unions not yet supported");
-
-    if (lhs->kind == MIDLIT_VALUE_PTR)
-        lhs = midlit_deref_ptr(&lhs->v.ptr);
-
-    const char *field_name = expr->info.args.arr[1].info.ident;
-    struct midlit_TaggedValue *field =
-        midsema_get_structlit_field(&lhs->v.struct_, field_name);
-    assert(field);
-
-    return midlit_copy_value(field);
 }
 
 static bool should_eval_binop_rhs(const struct midpar_Expr *expr)

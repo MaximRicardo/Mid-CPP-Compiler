@@ -285,6 +285,10 @@ bool midlit_ptr_is_null(const struct midlit_Ptr *self)
 
 struct midlit_TaggedValue midlit_ref_val(struct midlit_TaggedValue *self)
 {
+    if (!self)
+        return (struct midlit_TaggedValue){.kind = MIDLIT_VALUE_PTR,
+                                           .v.ptr.raw_val = nullptr};
+
     struct midlit_TaggedValue ret = {.kind = MIDLIT_VALUE_PTR};
     struct midlit_Ptr *ptr = &ret.v.ptr;
     ptr->idx_used = self->in_arr;
