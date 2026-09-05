@@ -197,7 +197,8 @@ midsema_instantiate_class_tmplt(struct midpar_ASTNode *tmplt_node,
 
     bool is_union = class->type == MIDPAR_CLASSTYPE_UNION;
     struct midpar_Type type = midpar_create_named_type(
-        class->ident, is_union ? MIDPAR_TYPESPEC_UNION : MIDPAR_TYPESPEC_CLASS);
+        class->ident,
+        is_union ? MIDPAR_TYPESPEC_UNION : MIDPAR_TYPESPEC_STRUCT);
 
     return type;
 }

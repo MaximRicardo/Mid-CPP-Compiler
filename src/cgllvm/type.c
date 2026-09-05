@@ -81,7 +81,7 @@ LLVMTypeRef midllvm_convert_parser_type(const struct midpar_Type *type,
             midllvm_convert_parser_type(&type->array->elem, context, true),
             type->array->len);
 
-    case MIDPAR_TYPESPEC_CLASS:
+    case MIDPAR_TYPESPEC_STRUCT:
         return midllvm_create_struct(
             &midsema_deref_identptr(&type->named)->def->class_, context);
 

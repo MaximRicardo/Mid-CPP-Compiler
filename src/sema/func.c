@@ -101,7 +101,7 @@ bool midsema_func_is_copy_ctor(const struct midpar_FuncDecl *self)
     // ClassName(const ClassName &)
 
     const struct midpar_Type *param = &self->params.arr[0]->insts.arr[0]->type;
-    if (!midsema_type_is_class_or_union(param))
+    if (!midsema_type_is_class(param))
         return false;
     if (!param->lv_ref || !param->dquals.arr[0].is_const)
         return false;
@@ -127,7 +127,7 @@ bool midsema_func_is_move_ctor(const struct midpar_FuncDecl *self)
     // ClassName(ClassName &&)
 
     const struct midpar_Type *param = &self->params.arr[0]->insts.arr[0]->type;
-    if (!midsema_type_is_class_or_union(param))
+    if (!midsema_type_is_class(param))
         return false;
     if (!param->rv_ref)
         return false;

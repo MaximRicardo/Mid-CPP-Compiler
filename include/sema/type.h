@@ -31,7 +31,7 @@ bool midsema_type_is_void(const struct midpar_Type *type);
 bool midsema_type_is_void_ptr(const struct midpar_Type *type);
 bool midsema_type_is_nullptr_t(const struct midpar_Type *type);
 bool midsema_type_is_ref(const struct midpar_Type *type);
-bool midsema_type_is_class_or_union(const struct midpar_Type *type);
+bool midsema_type_is_class(const struct midpar_Type *type);
 bool midsema_type_is_array(const struct midpar_Type *type);
 // lvls of indir doesn't matter here
 bool midsema_type_is_typecheckable(const struct midpar_Type *type);

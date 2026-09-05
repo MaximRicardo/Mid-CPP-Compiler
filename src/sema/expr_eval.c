@@ -507,7 +507,7 @@ static struct midlit_TaggedValue
 eval_memb_sel(const struct midpar_Expr *expr,
               const struct midlit_TaggedValue *lhs)
 {
-    if (expr->info.args.arr[0].ret.spec != MIDPAR_TYPESPEC_CLASS)
+    if (expr->info.args.arr[0].ret.spec != MIDPAR_TYPESPEC_STRUCT)
         MID_CRASH("fetching fields of unions not yet supported");
 
     if (lhs->kind == MIDLIT_VALUE_PTR)

@@ -88,7 +88,7 @@ static void get_assoc_scopes(const struct midpar_Expr *args, mid_isize n_args,
                              struct midsema_ScopePVec *scopes)
 {
     for (mid_isize i = 0; i < n_args; ++i) {
-        if (args[i].ret.spec == MIDPAR_TYPESPEC_CLASS ||
+        if (args[i].ret.spec == MIDPAR_TYPESPEC_STRUCT ||
             args[i].ret.spec == MIDPAR_TYPESPEC_UNION)
             get_assoc_scopes_class(&args[i], scopes);
     }
@@ -247,7 +247,7 @@ static bool valid_this_arg(const struct midpar_FuncDecl *func,
 {
     assert(midsema_func_takes_implicit_this(func, false));
 
-    if (arg->ret.spec != MIDPAR_TYPESPEC_CLASS &&
+    if (arg->ret.spec != MIDPAR_TYPESPEC_STRUCT &&
         arg->ret.spec != MIDPAR_TYPESPEC_UNION)
         return false;
     if (midsema_n_indir(&arg->ret) > 0)

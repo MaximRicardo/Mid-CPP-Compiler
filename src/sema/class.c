@@ -609,7 +609,7 @@ bool midsema_has_default_ctor(const struct midpar_Class *self)
 
 static bool class_type_has_trivial_default_ctor(const struct midpar_Type *type)
 {
-    assert(midsema_type_is_class_or_union(type));
+    assert(midsema_type_is_class(type));
 
     const struct midsema_Ident *ident = midsema_deref_identptr(&type->named);
     assert(ident->def);
@@ -648,7 +648,7 @@ bool midsema_class_is_trivially_constructible(const struct midpar_Class *self)
         for (mid_isize inst_i = 0; inst_i < self->childs.len; ++inst_i) {
             const struct midpar_VarDeclInst *inst = decl->insts.arr[inst_i];
 
-            if (midsema_type_is_class_or_union(&inst->type) &&
+            if (midsema_type_is_class(&inst->type) &&
                 !class_type_has_trivial_default_ctor(&inst->type))
                 return false;
             else if (midsema_type_is_array(&inst->type) &&
@@ -719,7 +719,7 @@ static bool get_default_memb_init_value(const struct midpar_Class *self,
         assert(!failed);
     } else {
         // primitive types without an explicit initalizer are undefined
-        if (!midsema_type_is_class_or_union(&inst->type))
+        if (!midsema_type_is_class(&inst->type))
             return false;
 
         return default_init_class_inst(inst, out_val);

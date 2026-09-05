@@ -61,7 +61,7 @@ static struct midpar_Type class_node_type(const struct midpar_ASTNode *node)
 
     struct midpar_Type ret = {};
     ret.spec = class_->type == MIDPAR_CLASSTYPE_UNION ? MIDPAR_TYPESPEC_UNION
-                                                      : MIDPAR_TYPESPEC_CLASS;
+                                                      : MIDPAR_TYPESPEC_STRUCT;
     ret.named = class_->ident;
     midgen_dynpush(&ret.dquals, (struct midpar_TypeDataQual){});
 
@@ -253,7 +253,7 @@ static void typecheck_ident_expr(struct midpar_Expr *expr,
         auto type = midsema_type_name_type(scope, expr->tok->ident);
 
         expr->ret = midpar_toktype_to_type(MIDLEX_TOKENTYPE_INT);
-        if (type.spec != MIDPAR_TYPESPEC_CLASS &&
+        if (type.spec != MIDPAR_TYPESPEC_STRUCT &&
             type.spec != MIDPAR_TYPESPEC_UNION) {
             midgen_dynpush(diags, bad_ctor_call_type(&type, expr->tok));
         } else {
@@ -309,7 +309,7 @@ static void typecheck_this_expr(struct midpar_Expr *expr,
 
     expr->ret.spec = class_->type == MIDPAR_CLASSTYPE_UNION
                          ? MIDPAR_TYPESPEC_UNION
-                         : MIDPAR_TYPESPEC_CLASS;
+                         : MIDPAR_TYPESPEC_STRUCT;
     expr->ret.named = class_->ident;
 
     midgen_dynpush(
@@ -1049,7 +1049,7 @@ static void typecheck_memb_sel(struct midpar_Expr *expr,
         return;
     }
 
-    if (lhs->ret.spec != MIDPAR_TYPESPEC_CLASS &&
+    if (lhs->ret.spec != MIDPAR_TYPESPEC_STRUCT &&
         lhs->ret.spec != MIDPAR_TYPESPEC_UNION) {
         midgen_dynpush(diags, memb_sel_lhs_not_class_err(expr));
         return;
@@ -1267,7 +1267,7 @@ bool typecheck_ctor_call(const struct midpar_Type *type,
                          const struct midpar_Expr *args, mid_isize n_args,
                          struct midpar_FuncDecl **out_ctor)
 {
-    if (midsema_type_is_class_or_union(type)) {
+    if (midsema_type_is_class(type)) {
         *out_ctor = typecheck_class_type_ctor_call(type, args, n_args);
         return *out_ctor != nullptr;
     } else {

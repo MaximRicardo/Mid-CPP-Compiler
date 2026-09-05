@@ -136,7 +136,7 @@ static void mangle_type_spec(const struct midpar_Type *type,
         midstr_append(str, "Dn");
         break;
 
-    case MIDPAR_TYPESPEC_CLASS:
+    case MIDPAR_TYPESPEC_STRUCT:
     case MIDPAR_TYPESPEC_UNION:
         mangle_type_spec_class(type, str);
         break;

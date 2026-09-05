@@ -22,7 +22,7 @@ bool midsema_is_typespec_typecheckable(enum midpar_TypeSpec spec)
 
 bool midsema_is_typespec_named(enum midpar_TypeSpec spec)
 {
-    return spec == MIDPAR_TYPESPEC_CLASS || spec == MIDPAR_TYPESPEC_ENUM ||
+    return spec == MIDPAR_TYPESPEC_STRUCT || spec == MIDPAR_TYPESPEC_ENUM ||
            spec == MIDPAR_TYPESPEC_UNION || spec == MIDPAR_TYPESPEC_TEMPLATED;
 }
 
@@ -115,7 +115,7 @@ const char *midsema_typespec_to_str(enum midpar_TypeSpec spec)
     case MIDPAR_TYPESPEC_AUTO:
         return "auto";
 
-    case MIDPAR_TYPESPEC_CLASS:
+    case MIDPAR_TYPESPEC_STRUCT:
         return "class";
     case MIDPAR_TYPESPEC_UNION:
         return "union";
@@ -566,7 +566,7 @@ bool midsema_type_is_literal(const struct midpar_Type *type)
     } else if (midsema_type_is_array(type)) {
         return midsema_type_is_literal(&type->array->elem);
 
-    } else if (midsema_type_is_class_or_union(type)) {
+    } else if (midsema_type_is_class(type)) {
         const struct midsema_Ident *ident =
             midsema_deref_identptr(&type->named);
         assert(ident->def);
@@ -699,7 +699,7 @@ midsema_type_lit_value_kind(const struct midpar_Type *type)
     case MIDPAR_TYPESPEC_LONGDOUBLE:
         return MIDLIT_VALUE_FLOAT;
 
-    case MIDPAR_TYPESPEC_CLASS:
+    case MIDPAR_TYPESPEC_STRUCT:
         if (midsema_type_is_literal(type))
             return MIDLIT_VALUE_STRUCT;
         else
@@ -846,10 +846,11 @@ struct mid_APInt midsema_sizeof_type(const struct midpar_Type *type)
     return bytes;
 }
 
-bool midsema_type_is_class_or_union(const struct midpar_Type *type)
+bool midsema_type_is_class(const struct midpar_Type *type)
 {
-    return midsema_n_indir(type) == 0 && (type->spec == MIDPAR_TYPESPEC_CLASS ||
-                                          type->spec == MIDPAR_TYPESPEC_UNION);
+    return midsema_n_indir(type) == 0 &&
+           (type->spec == MIDPAR_TYPESPEC_STRUCT ||
+            type->spec == MIDPAR_TYPESPEC_UNION);
 }
 
 bool midsema_type_is_array(const struct midpar_Type *type)
@@ -868,7 +869,7 @@ static bool class_type_has_trivial_dtor(const struct midpar_Type *type)
 
 bool midsema_type_has_trivial_dtor(const struct midpar_Type *type)
 {
-    if (midsema_type_is_class_or_union(type))
+    if (midsema_type_is_class(type))
         return class_type_has_trivial_dtor(type);
     else if (midsema_type_is_array(type))
         return midsema_type_has_trivial_dtor(&type->array->elem);
@@ -887,7 +888,7 @@ static bool class_type_trivially_constructible(const struct midpar_Type *type)
 
 bool midsema_type_is_trivially_constructible(const struct midpar_Type *type)
 {
-    if (midsema_type_is_class_or_union(type))
+    if (midsema_type_is_class(type))
         return class_type_trivially_constructible(type);
     else if (midsema_type_is_array(type))
         return midsema_type_is_trivially_constructible(&type->array->elem);
@@ -926,7 +927,7 @@ class_type_is_constexpr_default_constructible(const struct midpar_Type *type)
 
 bool midsema_type_has_trivial_default_ctor(const struct midpar_Type *type)
 {
-    if (midsema_type_is_class_or_union(type))
+    if (midsema_type_is_class(type))
         return class_type_has_trivial_default_ctor(type);
     else if (midsema_type_is_array(type))
         return midsema_type_has_trivial_default_ctor(&type->array->elem);
@@ -938,7 +939,7 @@ bool midsema_type_has_trivial_default_ctor(const struct midpar_Type *type)
 
 bool midsema_type_is_default_constructible(const struct midpar_Type *type)
 {
-    if (midsema_type_is_class_or_union(type))
+    if (midsema_type_is_class(type))
         return class_type_has_default_ctor(type);
     else if (midsema_type_is_array(type))
         return midsema_type_is_default_constructible(&type->array->elem);
@@ -951,7 +952,7 @@ bool midsema_type_is_default_constructible(const struct midpar_Type *type)
 bool midsema_type_is_constexpr_default_constructible(
     const struct midpar_Type *type)
 {
-    if (midsema_type_is_class_or_union(type))
+    if (midsema_type_is_class(type))
         return class_type_is_constexpr_default_constructible(type);
     else if (midsema_type_is_array(type))
         return midsema_type_is_constexpr_default_constructible(
@@ -1054,7 +1055,7 @@ bool midsema_constexpr_default_init_type(const struct midpar_Type *type,
     case MIDPAR_TYPESPEC_ARRAY:
         return constexpr_default_init_arr(type, &out_val->v.arr);
 
-    case MIDPAR_TYPESPEC_CLASS: {
+    case MIDPAR_TYPESPEC_STRUCT: {
         struct midpar_Class *class =
             &midsema_deref_identptr(&type->named)->def->class_;
         return midsema_constexpr_default_init_struct(class,

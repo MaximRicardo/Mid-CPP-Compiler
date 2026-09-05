@@ -889,7 +889,7 @@ struct midpar_Type midpar_toktype_to_type(enum midlex_TokenType type)
 
     case MIDLEX_TOKENTYPE_STRUCT:
     case MIDLEX_TOKENTYPE_CLASS:
-        ret.spec = MIDPAR_TYPESPEC_CLASS;
+        ret.spec = MIDPAR_TYPESPEC_STRUCT;
         break;
 
     case MIDLEX_TOKENTYPE_UNION:

@@ -46,7 +46,7 @@ enum midpar_TypeSpec {
     MIDPAR_TYPESPEC_UNKNOWN,   // can't be type checked
 
     // prefixed types
-    MIDPAR_TYPESPEC_CLASS,
+    MIDPAR_TYPESPEC_STRUCT,
     MIDPAR_TYPESPEC_UNION,
     MIDPAR_TYPESPEC_ENUM,
 };
