@@ -637,13 +637,24 @@ static void typecheck_arr_subscr_expr(struct midpar_Expr *expr,
             }));
         free(lhs_tname);
         free(rhs_tname);
-    } else if ((lhs_valid && lhs->valtype == MIDPAR_EXPRVALUE_LVALUE) ||
-               (rhs_valid && rhs->valtype == MIDPAR_EXPRVALUE_LVALUE) ||
-               midsema_n_indir(&lhs->ret) > 0 ||
-               midsema_n_indir(&rhs->ret) > 0) {
+        return;
+    }
+
+    if ((lhs_valid && lhs->valtype == MIDPAR_EXPRVALUE_LVALUE) ||
+        (rhs_valid && rhs->valtype == MIDPAR_EXPRVALUE_LVALUE) ||
+        midsema_n_indir(&lhs->ret) > 0 || midsema_n_indir(&rhs->ret) > 0) {
         expr->valtype = MIDPAR_EXPRVALUE_LVALUE;
     } else {
         expr->valtype = MIDPAR_EXPRVALUE_XVALUE;
+    }
+
+    const struct midpar_Expr *arr = lhs_valid ? lhs : rhs;
+
+    if (midsema_n_indir(&arr->ret) > 0) {
+        expr->ret = midsema_deref_type(&arr->ret, nullptr);
+    } else {
+        assert(midsema_type_is_array(&arr->ret));
+        expr->ret = midpar_copy_type(&arr->ret.array->elem);
     }
 }
 
@@ -747,10 +758,10 @@ static enum midpar_TypeSpec op_prom_typespec(enum midpar_TypeSpec spec)
     else if (midsema_is_floating_typespec(spec))
         return spec;
     else {
+        printf("type spec = %d\n", spec);
         /*
-        *(volatile int *)NULL = 10;
-        printf("spec = %d, %d\n", spec, MIDPAR_TYPESPEC_ARRAY);
-        */
+         *(volatile int *)NULL = 10;
+         */
         MID_CRASH("can't promote type spec");
     }
 }

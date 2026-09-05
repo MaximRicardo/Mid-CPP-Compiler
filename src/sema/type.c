@@ -13,6 +13,7 @@
 #include "sema/ident.h"
 #include "sema/scope.h"
 #include "types.h"
+#include <string.h>
 
 bool midsema_is_typespec_typecheckable(enum midpar_TypeSpec spec)
 {
@@ -1063,6 +1064,140 @@ bool midsema_constexpr_default_init_type(const struct midpar_Type *type,
     default:
         MID_CRASH("can't default initialize type");
     }
+
+    return true;
+}
+
+static bool can_implicitly_convert_dquals(const struct midpar_TypeDataQual *src,
+                                          const struct midpar_TypeDataQual *dst)
+{
+    if (dst->is_const && !src->is_const)
+        return false;
+    if (dst->is_volatile && !src->is_volatile)
+        return false;
+
+    return true;
+}
+
+bool midsema_can_constexpr_implicit_cast_type(const struct midpar_Type *src,
+                                              const struct midpar_Type *dst)
+{
+    if (src->spec == MIDPAR_TYPESPEC_UNKNOWN ||
+        dst->spec == MIDPAR_TYPESPEC_UNKNOWN)
+        return false;
+    if (src->spec == MIDPAR_TYPESPEC_TEMPLATED ||
+        dst->spec == MIDPAR_TYPESPEC_TEMPLATED)
+        return false;
+
+    // make sure dquals match
+    for (mid_isize i = 0; i < MID_MIN(src->dquals.len, dst->dquals.len) - 1;
+         ++i) {
+        mid_isize src_i = src->dquals.len - i - 1;
+        mid_isize dst_i = dst->dquals.len - i - 1;
+
+        if (!can_implicitly_convert_dquals(&src->dquals.arr[src_i],
+                                           &dst->dquals.arr[dst_i]))
+            return false;
+    }
+
+    if (midsema_types_are_same(src, dst, true))
+        return true;
+
+    bool src_int = midsema_type_is_integral(src);
+    bool src_flt = midsema_type_is_floating(src);
+    bool dst_int = midsema_type_is_integral(src);
+    bool dst_flt = midsema_type_is_floating(src);
+
+    if ((src_int && dst_flt) || (src_flt && dst_int))
+        return true;
+
+    bool src_ptr = midsema_n_indir(src) > 0;
+    bool dst_ptr = midsema_n_indir(dst) > 0;
+
+    bool dst_void_ptr = midsema_type_is_void_ptr(dst);
+    if (src_ptr && dst_void_ptr)
+        return true;
+    if (midsema_type_is_nullptr_t(src) && dst_ptr)
+        return true;
+
+    if (src->spec == MIDPAR_TYPESPEC_ARRAY && dst_ptr) {
+        struct midpar_Type src_as_ptr =
+            midsema_ref_type(&src->array->elem, nullptr);
+        bool convertible =
+            midsema_can_constexpr_implicit_cast_type(&src_as_ptr, dst);
+        midpar_Type_deinit(&src_as_ptr);
+        return convertible;
+    }
+
+    return false;
+}
+
+static bool func_types_are_same(const struct midpar_TypeFunc *a,
+                                const struct midpar_TypeFunc *b)
+{
+    return !memcmp(a, b, sizeof(*a));
+}
+
+static bool fptr_types_are_same(const struct midpar_TypeFPtr *a,
+                                const struct midpar_TypeFPtr *b)
+{
+    if (a->has_ellipsis != b->has_ellipsis)
+        return false;
+    if (!midsema_types_are_same(&a->ret, &b->ret, false))
+        return false;
+    if (a->params.len != b->params.len)
+        return false;
+
+    for (mid_isize i = 0; i < a->params.len; ++i) {
+        if (!midsema_types_are_same(&a->params.arr[i], &b->params.arr[i],
+                                    false))
+            return false;
+    }
+
+    return true;
+}
+
+static bool array_types_are_same(const struct midpar_TypeArray *a,
+                                 const struct midpar_TypeArray *b)
+{
+    if (!a->len_expr->constant || !b->len_expr->constant)
+        return false; // impossible to know so just assume they're not the same
+    if (a->len != b->len)
+        return false;
+
+    return midsema_types_are_same(&a->elem, &b->elem, false);
+}
+
+static bool named_types_are_same(const struct midsema_Ident *a,
+                                 const struct midsema_Ident *b)
+{
+    return a == b;
+}
+
+bool midsema_types_are_same(const struct midpar_Type *a,
+                            const struct midpar_Type *b,
+                            bool ignore_top_level_dqual)
+{
+    if (a->spec != b->spec)
+        return false;
+    if (midsema_n_indir(a) != midsema_n_indir(b))
+        return false;
+
+    for (mid_isize i = ignore_top_level_dqual; i < a->dquals.len; ++i) {
+        if (memcmp(&a->dquals.arr[i], &b->dquals.arr[i],
+                   sizeof(*a->dquals.arr)) != 0)
+            return false;
+    }
+
+    if (midsema_is_typespec_named(a->spec))
+        return named_types_are_same(midsema_deref_identptr(&a->named),
+                                    midsema_deref_identptr(&b->named));
+    else if (a->spec == MIDPAR_TYPESPEC_ARRAY)
+        return array_types_are_same(a->array, b->array);
+    else if (a->spec == MIDPAR_TYPESPEC_FPTR)
+        return fptr_types_are_same(a->fptr, b->fptr);
+    else if (a->spec == MIDPAR_TYPESPEC_FUNC)
+        return func_types_are_same(&a->func, &b->func);
 
     return true;
 }

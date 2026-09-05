@@ -23,7 +23,10 @@ midgen_dynarray_struct_named(midpar_ExprVec, struct midpar_Expr);
 
 struct midpar_Expr {
     union {
-        struct midpar_ExprVec args;
+        struct midpar_ExprVec args; // arguments to operator expressions.
+                                    // NOTE: func decls hold the lhs of the
+                                    //       call expr as the first arg,
+                                    //       followed by the call arguments
         struct midlit_TaggedValue
             val; // NOTE: STR LITS ARE NON-OWNING! LIFETIME IS MANAGED BY
                  //       STR_LITS TABLE
@@ -36,7 +39,7 @@ struct midpar_Expr {
                                  // associated with them:
                                  //
                                  // function calls reference the func
-                                 // being called.
+                                 // being called if it is known at comp time.
                                  //
                                  // overloaded operators reference the
                                  // function holding the overload.

@@ -60,6 +60,7 @@ void midlit_fprint_array(FILE *out, const struct midlit_Array *self);
 void midlit_print_array(const struct midlit_Array *self);
 
 enum midlit_ValueKind {
+    MIDLIT_VALUE_NONE,
     MIDLIT_VALUE_SIGNED_INT,
     MIDLIT_VALUE_UNSIGNED_INT,
     MIDLIT_VALUE_FLOAT,
@@ -155,6 +156,8 @@ void midlit_convert_value(struct midlit_TaggedValue *val,
 void midlit_convert_value_deinit_queue(
     struct midlit_TaggedValue *val, const struct midpar_Type *target,
     struct midlit_TaggedValueVec *deinit_queue);
+bool midlit_can_convert_value(const struct midlit_TaggedValue *val,
+                              const struct midpar_Type *target);
 
 struct midlit_ReadIntLitInfo {
     struct mid_APInt value;

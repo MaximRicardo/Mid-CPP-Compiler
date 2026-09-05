@@ -1,3 +1,13 @@
+constexpr const char *const_str_func()
+{
+    return "asdf";
+}
+
+constexpr int const_func(int x)
+{
+    return 1 + const_str_func()[x];
+}
+
 void func()
 {
     constexpr static int x = 10;
@@ -37,4 +47,10 @@ void func()
     constexpr auto p_field = class_p0->z + class_p0->y;
 
     constexpr long double *flt_p = nullptr;
+
+    constexpr int func_call0 = const_func(0);
+    constexpr int func_call1 = const_func(1);
+    constexpr int func_call2 = const_func(2);
+    constexpr int func_call3 = const_func(3);
+    constexpr int func_call4 = const_func(4);
 }

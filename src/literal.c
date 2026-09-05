@@ -7,8 +7,10 @@
 #include "lexer/token_type.h"
 #include "macros.h"
 #include "mid_alloc.h"
+#include "parser/class.h"
 #include "parser/expr_type.h"
 #include "sema/class_lit.h"
+#include "sema/ident.h"
 #include "sema/type.h"
 #include "types.h"
 #include "utf8.h"
@@ -42,6 +44,9 @@ void midlit_Ptr_deinit(struct midlit_Ptr *self)
 void midlit_Value_deinit(union midlit_Value *self, enum midlit_ValueKind kind)
 {
     switch (kind) {
+    case MIDLIT_VALUE_NONE:
+        break;
+
     case MIDLIT_VALUE_SIGNED_INT:
     case MIDLIT_VALUE_UNSIGNED_INT:
         mid_APInt_deinit(&self->i);
@@ -168,6 +173,9 @@ midlit_copy_value(const struct midlit_TaggedValue *src)
     struct midlit_TaggedValue ret = {.kind = src->kind};
 
     switch (src->kind) {
+    case MIDLIT_VALUE_NONE:
+        break;
+
     case MIDLIT_VALUE_SIGNED_INT:
     case MIDLIT_VALUE_UNSIGNED_INT:
         ret.v.i = midint_copy(&src->v.i);
@@ -375,6 +383,10 @@ void midlit_print_ptr(const struct midlit_Ptr *self)
 void midlit_tagged_fprint(FILE *out, const struct midlit_TaggedValue *val)
 {
     switch (val->kind) {
+    case MIDLIT_VALUE_NONE:
+        fprintf(out, "(none)");
+        break;
+
     case MIDLIT_VALUE_SIGNED_INT:
         midint_print(&val->v.i, out, true);
         break;
@@ -806,11 +818,16 @@ static void convert_str_value(struct midlit_TaggedValue *str,
     *str = midlit_ref_val(&str->v.str.nums[0]);
 }
 
+static bool can_convert_str_value(enum midlit_ValueKind target_kind)
+{
+    return target_kind == MIDLIT_VALUE_STR || target_kind == MIDLIT_VALUE_PTR;
+}
+
 static void convert_arr_value(struct midlit_TaggedValue *arr,
                               enum midlit_ValueKind target_kind,
                               struct midlit_TaggedValueVec *deinit_queue)
 {
-    if (target_kind == MIDLIT_VALUE_STR)
+    if (target_kind == MIDLIT_VALUE_ARRAY)
         return;
     else if (target_kind != MIDLIT_VALUE_PTR)
         MID_CRASH("can't convert an array to a non-ptr type");
@@ -818,6 +835,22 @@ static void convert_arr_value(struct midlit_TaggedValue *arr,
     midgen_dynpush(deinit_queue, *arr);
 
     *arr = midlit_ref_val(&arr->v.arr.elems[0]);
+}
+
+static bool can_convert_arr_value(enum midlit_ValueKind target_kind)
+{
+    return target_kind == MIDLIT_VALUE_ARRAY || target_kind == MIDLIT_VALUE_PTR;
+}
+
+static bool can_convert_class_value(const struct midlit_TaggedValue *val,
+                                    const struct midpar_Type *target)
+{
+    const struct midpar_Class *class = val->kind == MIDLIT_VALUE_STRUCT
+                                           ? val->v.struct_.class_
+                                           : val->v.union_.class_;
+
+    return midsema_deref_identptr(&class->ident) ==
+           midsema_deref_identptr(&target->named);
 }
 
 void midlit_convert_value(struct midlit_TaggedValue *val,
@@ -841,10 +874,18 @@ void midlit_convert_value_deinit_queue(
             : -1;
 
     switch (val->kind) {
+    case MIDLIT_VALUE_NONE:
+        if (target_kind != MIDLIT_VALUE_NONE)
+            MID_CRASH("can't convert none");
+        break;
+
     case MIDLIT_VALUE_SIGNED_INT:
     case MIDLIT_VALUE_UNSIGNED_INT: {
         int_least64_t target_width = midsema_typespec_size(target->spec) * 8;
         switch (target_kind) {
+        case MIDLIT_VALUE_NONE:
+            MID_CRASH("can't convert integer to none");
+
         case MIDLIT_VALUE_SIGNED_INT:
             midint_ext(&val->v.i, target_width, true);
             break;
@@ -884,6 +925,9 @@ void midlit_convert_value_deinit_queue(
     case MIDLIT_VALUE_FLOAT: {
         int_least64_t target_width = midsema_typespec_size(target->spec) * 8;
         switch (target_kind) {
+        case MIDLIT_VALUE_NONE:
+            MID_CRASH("can't convert float to none");
+
         case MIDLIT_VALUE_SIGNED_INT:
         case MIDLIT_VALUE_UNSIGNED_INT: {
             auto tmp = midflt_to_sint(&val->v.flt);
@@ -940,4 +984,39 @@ void midlit_convert_value_deinit_queue(
     }
 
     val->kind = target_kind;
+}
+
+bool midlit_can_convert_value(const struct midlit_TaggedValue *val,
+                              const struct midpar_Type *target)
+{
+    enum midlit_ValueKind target_kind = midsema_type_lit_value_kind(target);
+
+    switch (val->kind) {
+    case MIDLIT_VALUE_NONE:
+        return false;
+
+    case MIDLIT_VALUE_SIGNED_INT:
+    case MIDLIT_VALUE_UNSIGNED_INT:
+        return target_kind == MIDLIT_VALUE_SIGNED_INT ||
+               target_kind == MIDLIT_VALUE_UNSIGNED_INT ||
+               target_kind == MIDLIT_VALUE_FLOAT;
+
+    case MIDLIT_VALUE_FLOAT:
+        return target_kind == MIDLIT_VALUE_SIGNED_INT ||
+               target_kind == MIDLIT_VALUE_UNSIGNED_INT ||
+               target_kind == MIDLIT_VALUE_FLOAT;
+
+    case MIDLIT_VALUE_STR:
+        return can_convert_str_value(target_kind);
+
+    case MIDLIT_VALUE_ARRAY:
+        return can_convert_arr_value(target_kind);
+
+    case MIDLIT_VALUE_UNION:
+    case MIDLIT_VALUE_STRUCT:
+        return can_convert_class_value(val, target);
+
+    case MIDLIT_VALUE_PTR:
+        return target_kind == MIDLIT_VALUE_PTR;
+    }
 }
