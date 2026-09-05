@@ -26,11 +26,9 @@ midlex_TokenIter midpar_parse_return(struct midpar_Return *self,
 
     *self = (struct midpar_Return){};
 
-    midlex_TokenIter end;
+    midlex_TokenIter end = start + 1;
 
-    if (start->type == MIDLEX_TOKENTYPE_SEMICOLON) {
-        end = start + 1;
-    } else {
+    if (end->type != MIDLEX_TOKENTYPE_SEMICOLON) {
         midgen_bumpmalloc(&allocs->expr, &self->expr);
         *self->expr = midpar_parse_expr(start + 1, MIDPAR_DEFAULT_ENDTYPES,
                                         &end, scope, diags);
